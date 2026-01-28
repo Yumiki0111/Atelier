@@ -2,6 +2,5 @@
   "buildCommand": "npm run build:console",
   "devCommand": "npm run dev:console",
   "installCommand": "npm install",
-  "framework": "nextjs",
-  "rootDirectory": "apps/console"
+  "framework": "nextjs"
 }
