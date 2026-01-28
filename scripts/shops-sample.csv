@@ -1,0 +1,4 @@
+shopName,ownerEmail,allowedDomains
+株式会社サンプルA,owner-a@example-a.com,"example-a.com,www.example-a.com"
+株式会社サンプルB,owner-b@example-b.com,"example-b.com"
+株式会社サンプルC,owner-c@example-c.com,"example-c.com,shop.example-c.com"

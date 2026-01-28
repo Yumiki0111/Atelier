@@ -1,0 +1,20 @@
+{
+  "name": "@atelier/widget",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@atelier/preview": "*",
+    "@atelier/shared": "*",
+    "three": "^0.169.0"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "vite": "^5.4.11"
+  }
+}

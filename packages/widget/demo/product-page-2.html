@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ダブルジャケット - アパレルECサイト</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      color: #333;
+      line-height: 1.6;
+      background: #f5f5f5;
+    }
+    
+    .header {
+      background: white;
+      border-bottom: 1px solid #e0e0e0;
+      padding: 16px 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+      color: #000;
+      text-decoration: none;
+    }
+    
+    .nav {
+      display: flex;
+      gap: 24px;
+    }
+    
+    .nav a {
+      color: #666;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    
+    .nav a:hover {
+      color: #000;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+    
+    .breadcrumb {
+      margin-bottom: 20px;
+      font-size: 14px;
+      color: #666;
+    }
+    
+    .breadcrumb a {
+      color: #666;
+      text-decoration: none;
+    }
+    
+    .breadcrumb a:hover {
+      text-decoration: underline;
+    }
+    
+    .product-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      background: white;
+      padding: 40px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .product-image {
+      position: relative;
+      background: #f9f9f9;
+      border-radius: 8px;
+      overflow: hidden;
+      aspect-ratio: 1;
+    }
+    
+    .product-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .product-image-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #999;
+      font-size: 18px;
+    }
+    
+    .product-info h1 {
+      font-size: 32px;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+    
+    .product-brand {
+      color: #666;
+      font-size: 16px;
+      margin-bottom: 20px;
+    }
+    
+    .product-price {
+      font-size: 36px;
+      font-weight: bold;
+      margin: 24px 0;
+      color: #000;
+    }
+    
+    .product-description {
+      color: #666;
+      line-height: 1.8;
+      margin-bottom: 32px;
+    }
+    
+    .widget-section {
+      margin: 32px 0;
+      padding: 24px;
+      background: #f9f9f9;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+    }
+    
+    .widget-section h3 {
+      font-size: 18px;
+      margin-bottom: 16px;
+      color: #333;
+    }
+    
+    .widget-container {
+      min-height: 100px;
+    }
+    
+    .add-to-cart {
+      width: 100%;
+      padding: 16px;
+      background: #000;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 24px;
+    }
+    
+    .add-to-cart:hover {
+      background: #333;
+    }
+    
+    .product-details {
+      margin-top: 40px;
+      padding-top: 40px;
+      border-top: 1px solid #e0e0e0;
+    }
+    
+    .product-details h2 {
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    
+    .product-details table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    .product-details td {
+      padding: 12px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .product-details td:first-child {
+      width: 120px;
+      color: #666;
+      font-weight: 500;
+    }
+    
+    @media (max-width: 768px) {
+      .product-container {
+        grid-template-columns: 1fr;
+        gap: 32px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="index.html" class="logo">ATELIER</a>
+      <nav class="nav">
+        <a href="index.html">ホーム</a>
+        <a href="index.html">商品一覧</a>
+        <a href="index.html">お問い合わせ</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="breadcrumb">
+      <a href="index.html">ホーム</a> / 
+      <a href="index.html">ジャケット</a> / 
+      ダブルジャケット
+    </div>
+
+    <div class="product-container">
+      <div class="product-image">
+        <!-- Widget埋め込み: 商品画像エリアに3Dキューブを表示 -->
+        <div
+          data-atelier-shop-id="00000000-0000-0000-0000-000000000001"
+          data-atelier-sku="DBL-JKT-001"
+          style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+        </div>
+      </div>
+
+      <div class="product-info">
+        <h1>ダブルジャケット</h1>
+        <div class="product-brand">ATELIER BRAND</div>
+        <div class="product-price">¥15,800</div>
+        
+        <div class="product-description">
+          ダブルジャケットは、2枚重ねのデザインが特徴的なジャケットです。機能性とスタイリッシュさを兼ね備えたアイテムです。
+        </div>
+
+        <!-- Widget埋め込みエリア（補助的な位置） -->
+        <div class="widget-section">
+          <h3>3D試着</h3>
+          <p style="font-size: 14px; color: #666; margin-bottom: 12px;">
+            キューブをクリックして、実際のサイズ感を3Dで確認できます
+          </p>
+          <div class="widget-container">
+            <div
+              data-atelier-shop-id="00000000-0000-0000-0000-000000000001"
+              data-atelier-sku="DBL-JKT-001">
+            </div>
+          </div>
+        </div>
+
+        <button class="add-to-cart" onclick="alert('カートに追加しました')">
+          カートに追加
+        </button>
+      </div>
+    </div>
+
+    <div class="product-details">
+      <h2>商品詳細</h2>
+      <table>
+        <tr>
+          <td>素材</td>
+          <td>コットン 100%</td>
+        </tr>
+        <tr>
+          <td>サイズ</td>
+          <td>S, M, L</td>
+        </tr>
+        <tr>
+          <td>カラー</td>
+          <td>ネイビー</td>
+        </tr>
+        <tr>
+          <td>原産国</td>
+          <td>日本</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <script type="module">
+    try {
+      console.log('[Demo Page] Starting widget initialization...');
+      const { initWidget } = await import('../src/widget.ts');
+      console.log('[Demo Page] Widget module loaded');
+      
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+          console.log('[Demo Page] DOM loaded, initializing widget...');
+          initWidget();
+        });
+      } else {
+        console.log('[Demo Page] DOM already loaded, initializing widget...');
+        initWidget();
+      }
+    } catch (error) {
+      console.error('[Demo Page] Error loading widget:', error);
+    }
+  </script>
+</body>
+</html>

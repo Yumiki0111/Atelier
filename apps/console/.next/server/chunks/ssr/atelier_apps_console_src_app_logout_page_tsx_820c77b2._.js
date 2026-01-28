@@ -1,0 +1,3 @@
+module.exports=[11663,a=>{"use strict";var b=a.i(48736),c=a.i(21004),d=a.i(94966);function e(){let{logout:a}=(0,d.useAuth)();return(0,c.useEffect)(()=>{a()},[a]),(0,b.jsx)("div",{className:"flex min-h-screen items-center justify-center bg-gray-50",children:(0,b.jsx)("p",{className:"text-gray-500",children:"ログアウト中..."})})}a.s(["default",()=>e])}];
+
+//# sourceMappingURL=atelier_apps_console_src_app_logout_page_tsx_820c77b2._.js.map
