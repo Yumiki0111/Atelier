@@ -14,12 +14,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // TypeScriptの型チェックのために定数に保存
+    const admin = supabaseAdmin;
+
     const searchParams = request.nextUrl.searchParams;
     const shopId = searchParams.get("shopId") || "default_shop";
     const limit = parseInt(searchParams.get("limit") || "10", 10);
 
     // 会話を取得
-    const { data: conversations, error: conversationsError } = await supabaseAdmin
+    const { data: conversations, error: conversationsError } = await admin
       .from("conversations")
       .select(
         `
@@ -50,7 +53,7 @@ export async function GET(request: NextRequest) {
     // 各会話のメッセージ数を確認
     const conversationsWithMessages = await Promise.all(
       (conversations || []).map(async (conv) => {
-        const { data: messages, error: messagesError } = await supabaseAdmin
+        const { data: messages, error: messagesError } = await admin
           .from("messages")
           .select("id, role, content, created_at")
           .eq("conversation_id", conv.id)
