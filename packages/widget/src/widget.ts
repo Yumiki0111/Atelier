@@ -20,14 +20,35 @@ function isDevelopmentMode(): boolean {
 function getApiBaseUrl(): string {
   if (typeof window === "undefined") return "";
   
-  // 開発環境では環境変数から取得（Viteのdefineで設定）
+  // 1. 環境変数から取得（ビルド時に設定）
   // @ts-ignore - Viteのdefineで注入される
   if (typeof process !== "undefined" && process.env?.API_BASE_URL) {
     // @ts-ignore
     return process.env.API_BASE_URL;
   }
   
-  // 本番環境では現在のオリジンを使用
+  // 2. data-atelier-api-url属性から取得（ページごとに設定可能）
+  const apiUrlAttr = document.querySelector('[data-atelier-api-url]')?.getAttribute('data-atelier-api-url');
+  if (apiUrlAttr) {
+    return apiUrlAttr;
+  }
+  
+  // 3. デフォルト: widget.jsが読み込まれたドメイン（consoleアプリのドメイン）
+  // widget.jsのスクリプトタグのsrcから取得を試みる
+  const scriptTag = document.querySelector('script[src*="widget.js"]');
+  if (scriptTag) {
+    const src = scriptTag.getAttribute('src');
+    if (src) {
+      try {
+        const url = new URL(src, window.location.href);
+        return `${url.protocol}//${url.host}`;
+      } catch (e) {
+        // URL解析に失敗した場合は現在のオリジンを使用
+      }
+    }
+  }
+  
+  // 4. フォールバック: 現在のオリジンを使用
   const protocol = window.location.protocol;
   const host = window.location.host;
   return `${protocol}//${host}`;

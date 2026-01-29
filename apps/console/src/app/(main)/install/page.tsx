@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useProducts } from "@/features/products/useProducts";
 import {
@@ -17,9 +17,6 @@ import { Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { authenticatedFetch } from "@/lib/auth/api-client";
-
-// ウィジェットのCDN URLを環境変数から取得（未設定の場合はプレースホルダー）
-const WIDGET_CDN_URL = process.env.NEXT_PUBLIC_WIDGET_CDN_URL || "https://your-cdn.example.com/widget.js";
 
 interface WidgetKey {
   id: string;
@@ -49,6 +46,18 @@ export default function InstallPage() {
   });
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [widgetUrl, setWidgetUrl] = useState<string>("");
+
+  // ウィジェットのCDN URLを取得（環境変数が設定されていない場合は現在のドメインを使用）
+  useEffect(() => {
+    const envUrl = process.env.NEXT_PUBLIC_WIDGET_CDN_URL;
+    if (envUrl) {
+      setWidgetUrl(envUrl);
+    } else if (typeof window !== "undefined") {
+      // 環境変数が設定されていない場合は、現在のドメインからwidget.jsを読み込む
+      setWidgetUrl(`${window.location.origin}/widget.js`);
+    }
+  }, []);
 
   const selectedProduct = selectedProductId ? products.find((p) => p.id === selectedProductId) : null;
   
@@ -60,6 +69,10 @@ export default function InstallPage() {
       return "<!-- Widgetキーが設定されていません。設定ページでWidgetキーを確認してください。 -->";
     }
 
+    if (!widgetUrl) {
+      return "<!-- ウィジェットURLを読み込み中... -->";
+    }
+
     const attributes: string[] = [`data-atelier-public-key="${publicKey}"`];
     
     if (externalProductId) {
@@ -69,7 +82,7 @@ export default function InstallPage() {
     return `<div
   ${attributes.join("\n  ")}>
 </div>
-<script async src="${WIDGET_CDN_URL}"></script>`;
+<script async src="${widgetUrl}"></script>`;
   };
 
   const snippet = generateSnippet(selectedProduct?.externalProductId);
