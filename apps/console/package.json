@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "prebuild": "npm run build:widget && npm run copy:widget",
-    "build:widget": "npm run build --workspace=@atelier/widget",
+    "build:widget": "cd ../.. && npm run build:widget",
     "copy:widget": "cp ../../packages/widget/dist/widget.iife.js ./public/widget.js",
     "build": "next build",
     "start": "next start",

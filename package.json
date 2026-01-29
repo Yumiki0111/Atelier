@@ -12,6 +12,7 @@
     "build:console": "npm run build --workspace=@atelier/console",
     "build:widget": "npm run build --workspace=@atelier/widget",
     "build:all": "npm run build --workspaces",
+    "vercel-build": "npm run build:console",
     "lint": "npm run lint --workspaces",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
