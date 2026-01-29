@@ -337,6 +337,7 @@ async function POST(request) {
                 // ユーザーメッセージを保存
                 const { data: userMsgData, error: userMsgError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("messages").insert({
                     conversation_id: currentConversationId,
+                    shop_id: shopId,
                     role: "user",
                     content: message,
                     product_id: validProductId,
@@ -357,6 +358,7 @@ async function POST(request) {
                 // アシスタントレスポンスを保存
                 const { data: assistantMsgData, error: assistantMsgError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("messages").insert({
                     conversation_id: currentConversationId,
+                    shop_id: shopId,
                     role: "assistant",
                     content: response,
                     product_id: validProductId,

@@ -253,6 +253,7 @@ export async function POST(request: NextRequest) {
           .from("messages")
           .insert({
             conversation_id: currentConversationId,
+            shop_id: shopId,
             role: "user",
             content: message,
             product_id: validProductId,
@@ -279,6 +280,7 @@ export async function POST(request: NextRequest) {
           .from("messages")
           .insert({
             conversation_id: currentConversationId,
+            shop_id: shopId,
             role: "assistant",
             content: response,
             product_id: validProductId,

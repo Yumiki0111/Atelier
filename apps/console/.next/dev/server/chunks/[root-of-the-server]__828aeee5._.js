@@ -484,6 +484,7 @@ async function GET(request, { params }) {
         const product = {
             id: data.id,
             shopId: data.shop_id,
+            externalProductId: data.external_product_id,
             name: data.name,
             brand: data.brand,
             category: data.category,
@@ -605,6 +606,7 @@ async function PATCH(request, { params }) {
         const product = {
             id: data.id,
             shopId: data.shop_id,
+            externalProductId: data.external_product_id,
             name: data.name,
             brand: data.brand,
             category: data.category,

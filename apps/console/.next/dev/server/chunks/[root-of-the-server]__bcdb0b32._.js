@@ -97,19 +97,19 @@ async function getAuthenticatedUser(request) {
             console.error("Error verifying token:", error);
             return null;
         }
-        // usersテーブルからshop_idを取得（RLSをバイパスするためsupabaseAdminを使用）
+        // profiles テーブルから shop_id を取得（RLSをバイパスするためsupabaseAdminを使用）
         if (!__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"]) {
             console.error("supabaseAdmin not initialized");
             return null;
         }
-        const { data: userData, error: userError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("users").select("shop_id").eq("id", user.id).single();
-        if (userError || !userData) {
-            console.error("Error fetching shop_id:", userError);
+        const { data: profileData, error: profileError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("profiles").select("shop_id").eq("id", user.id).single();
+        if (profileError || !profileData) {
+            console.error("Error fetching shop_id from profiles:", profileError);
             return null;
         }
         return {
             userId: user.id,
-            shopId: userData.shop_id
+            shopId: profileData.shop_id
         };
     } catch (error) {
         console.error("Error in getAuthenticatedUser:", error);
