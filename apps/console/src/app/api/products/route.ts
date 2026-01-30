@@ -60,12 +60,7 @@ export async function GET(request: NextRequest) {
       name: p.name,
       brand: p.brand,
       category: p.category,
-      sku: p.sku,
-      handle: p.handle,
-      url: p.url,
-      sizeTypeId: p.size_type_id,
       thumbnailUrl: p.thumbnail_url,
-      previewImageUrl: p.preview_image_url,
       description: p.description,
       createdAt: p.created_at,
       updatedAt: p.updated_at,
@@ -117,15 +112,11 @@ export async function POST(request: NextRequest) {
       .from("products")
       .insert({
         shop_id: validated.shopId,
+        external_product_id: validated.externalProductId || null,
         name: validated.name,
         brand: validated.brand || null,
         category: validated.category || null,
-        sku: validated.sku || null,
-        handle: validated.handle || null,
-        url: validated.url || null,
-        size_type_id: validated.sizeTypeId || null,
         thumbnail_url: validated.thumbnailUrl || null,
-        preview_image_url: validated.previewImageUrl || null,
         description: validated.description || null,
       })
       .select()

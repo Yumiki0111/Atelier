@@ -99,8 +99,11 @@ export function useUpdateProduct() {
     mutationFn: ({ id, updates }: { id: string; updates: Parameters<typeof updateProduct>[1] }) =>
       updateProduct(id, updates),
     onSuccess: (_, variables) => {
+      // すべてのproductsクエリを無効化（shopIdに関係なく）
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["product", variables.id] });
+      // 明示的にrefetchも実行
+      queryClient.refetchQueries({ queryKey: ["products"] });
     },
   });
 }

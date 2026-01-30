@@ -844,6 +844,7 @@ function useUpdateProduct() {
     return (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useMutation$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMutation"])({
         mutationFn: ({ id, updates })=>updateProduct(id, updates),
         onSuccess: (_, variables)=>{
+            // すべてのproductsクエリを無効化（shopIdに関係なく）
             queryClient.invalidateQueries({
                 queryKey: [
                     "products"
@@ -853,6 +854,12 @@ function useUpdateProduct() {
                 queryKey: [
                     "product",
                     variables.id
+                ]
+            });
+            // 明示的にrefetchも実行
+            queryClient.refetchQueries({
+                queryKey: [
+                    "products"
                 ]
             });
         }
@@ -945,24 +952,11 @@ const productCategorySchema = __TURBOPACK__imported__module__$5b$project$5d2f$at
 const productSchema = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].object({
     id: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().uuid(),
     shopId: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().min(1),
+    externalProductId: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().optional(),
     name: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().min(1),
     brand: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().optional(),
     category: productCategorySchema.optional(),
-    sku: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().optional(),
-    handle: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().optional(),
-    url: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].union([
-        __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url(),
-        __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].literal("")
-    ]).optional(),
-    sizeTypeId: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].union([
-        __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().uuid(),
-        __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].literal("")
-    ]).optional(),
     thumbnailUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].union([
-        __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url(),
-        __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].literal("")
-    ]).optional(),
-    previewImageUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].union([
         __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url(),
         __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].literal("")
     ]).optional(),
@@ -1221,7 +1215,6 @@ function ProductAddDialog({ onProductAdded }) {
     const addProduct = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$features$2f$products$2f$useProducts$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useAddProduct"])();
     const { shopId } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$contexts$2f$AuthContext$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useAuth"])();
     const [uploadingThumbnail, setUploadingThumbnail] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
-    const [uploadingPreview, setUploadingPreview] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
     const { register, handleSubmit, formState: { errors }, setValue, watch, reset } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$react$2d$hook$2d$form$2f$dist$2f$index$2e$esm$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useForm"])({
         resolver: (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f40$hookform$2f$resolvers$2f$zod$2f$dist$2f$zod$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["zodResolver"])(productFormSchema),
         defaultValues: {
@@ -1230,16 +1223,14 @@ function ProductAddDialog({ onProductAdded }) {
     });
     const selectedCategory = watch("category");
     const thumbnailUrl = watch("thumbnailUrl");
-    const previewImageUrl = watch("previewImageUrl");
     const handleOpenChange = (newOpen)=>{
         setOpen(newOpen);
         if (!newOpen) {
             reset();
         }
     };
-    const handleFileUpload = async (file, type)=>{
-        const setUploading = type === "thumbnail" ? setUploadingThumbnail : setUploadingPreview;
-        setUploading(true);
+    const handleFileUpload = async (file)=>{
+        setUploadingThumbnail(true);
         try {
             const formData = new FormData();
             formData.append("file", file);
@@ -1262,21 +1253,15 @@ function ProductAddDialog({ onProductAdded }) {
                 console.warn("Upload warning:", data.warning);
                 alert(`アップロード成功: ${data.warning}`);
             }
-            if (type === "thumbnail") {
-                setValue("thumbnailUrl", data.url, {
-                    shouldValidate: true
-                });
-            } else {
-                setValue("previewImageUrl", data.url, {
-                    shouldValidate: true
-                });
-            }
+            setValue("thumbnailUrl", data.url, {
+                shouldValidate: true
+            });
         } catch (error) {
             console.error("Failed to upload file:", error);
             const errorMessage = error instanceof Error ? error.message : "アップロードに失敗しました";
             alert(errorMessage);
         } finally{
-            setUploading(false);
+            setUploadingThumbnail(false);
         }
     };
     const onSubmit = async (data)=>{
@@ -1284,15 +1269,11 @@ function ProductAddDialog({ onProductAdded }) {
             // 空文字列をundefinedに変換
             const cleanedData = {
                 shopId: data.shopId,
+                externalProductId: data.externalProductId && data.externalProductId.trim() !== "" ? data.externalProductId : undefined,
                 name: data.name,
                 brand: data.brand && data.brand.trim() !== "" ? data.brand : undefined,
                 category: data.category,
-                sku: data.sku && data.sku.trim() !== "" ? data.sku : undefined,
-                handle: data.handle && data.handle.trim() !== "" ? data.handle : undefined,
-                url: data.url && data.url.trim() !== "" ? data.url : undefined,
-                sizeTypeId: data.sizeTypeId && data.sizeTypeId.trim() !== "" ? data.sizeTypeId : undefined,
                 thumbnailUrl: data.thumbnailUrl && data.thumbnailUrl.trim() !== "" ? data.thumbnailUrl : undefined,
-                previewImageUrl: data.previewImageUrl && data.previewImageUrl.trim() !== "" ? data.previewImageUrl : undefined,
                 description: data.description && data.description.trim() !== "" ? data.description : undefined
             };
             await addProduct.mutateAsync(cleanedData);
@@ -1317,19 +1298,19 @@ function ProductAddDialog({ onProductAdded }) {
                             className: "h-4 w-4"
                         }, void 0, false, {
                             fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                            lineNumber: 156,
+                            lineNumber: 145,
                             columnNumber: 11
                         }, this),
                         "商品を追加"
                     ]
                 }, void 0, true, {
                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                    lineNumber: 155,
+                    lineNumber: 144,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                lineNumber: 154,
+                lineNumber: 143,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$dialog$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DialogContent"], {
@@ -1342,20 +1323,20 @@ function ProductAddDialog({ onProductAdded }) {
                                 children: "商品を追加"
                             }, void 0, false, {
                                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                lineNumber: 162,
+                                lineNumber: 151,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$dialog$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DialogDescription"], {
                                 children: "新しい商品の情報を入力してください。"
                             }, void 0, false, {
                                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                lineNumber: 163,
+                                lineNumber: 152,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                        lineNumber: 161,
+                        lineNumber: 150,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
@@ -1370,7 +1351,7 @@ function ProductAddDialog({ onProductAdded }) {
                                         children: "商品名"
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 169,
+                                        lineNumber: 158,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
@@ -1380,7 +1361,7 @@ function ProductAddDialog({ onProductAdded }) {
                                         className: "w-full"
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 170,
+                                        lineNumber: 159,
                                         columnNumber: 13
                                     }, this),
                                     errors.name && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1388,13 +1369,66 @@ function ProductAddDialog({ onProductAdded }) {
                                         children: errors.name.message
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 177,
+                                        lineNumber: 166,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                lineNumber: 168,
+                                lineNumber: 157,
+                                columnNumber: 11
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "space-y-2 min-w-0",
+                                children: [
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Label"], {
+                                        htmlFor: "externalProductId",
+                                        children: [
+                                            "外部商品ID ",
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                className: "text-red-500",
+                                                children: "*"
+                                            }, void 0, false, {
+                                                fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
+                                                lineNumber: 172,
+                                                columnNumber: 22
+                                            }, this)
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
+                                        lineNumber: 171,
+                                        columnNumber: 13
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
+                                        id: "externalProductId",
+                                        ...register("externalProductId"),
+                                        placeholder: "ECサイトの商品ID（例: product-001）",
+                                        className: "w-full"
+                                    }, void 0, false, {
+                                        fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
+                                        lineNumber: 174,
+                                        columnNumber: 13
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                        className: "text-xs text-gray-500",
+                                        children: "ECサイトの商品IDと一致させる必要があります。ウィジェット連携で使用されます。"
+                                    }, void 0, false, {
+                                        fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
+                                        lineNumber: 180,
+                                        columnNumber: 13
+                                    }, this),
+                                    errors.externalProductId && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                        className: "text-sm text-red-500",
+                                        children: errors.externalProductId.message
+                                    }, void 0, false, {
+                                        fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
+                                        lineNumber: 184,
+                                        columnNumber: 15
+                                    }, this)
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
+                                lineNumber: 170,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1405,7 +1439,7 @@ function ProductAddDialog({ onProductAdded }) {
                                         children: "ブランド（任意）"
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 182,
+                                        lineNumber: 189,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
@@ -1415,13 +1449,13 @@ function ProductAddDialog({ onProductAdded }) {
                                         className: "w-full"
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 183,
+                                        lineNumber: 190,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                lineNumber: 181,
+                                lineNumber: 188,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1432,7 +1466,7 @@ function ProductAddDialog({ onProductAdded }) {
                                         children: "カテゴリ（任意）"
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 192,
+                                        lineNumber: 199,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Select"], {
@@ -1447,12 +1481,12 @@ function ProductAddDialog({ onProductAdded }) {
                                                     placeholder: "カテゴリを選択"
                                                 }, void 0, false, {
                                                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                                    lineNumber: 200,
+                                                    lineNumber: 207,
                                                     columnNumber: 17
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                                lineNumber: 199,
+                                                lineNumber: 206,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectContent"], {
@@ -1462,7 +1496,7 @@ function ProductAddDialog({ onProductAdded }) {
                                                         children: "ジャケット"
                                                     }, void 0, false, {
                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                                        lineNumber: 203,
+                                                        lineNumber: 210,
                                                         columnNumber: 17
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -1470,7 +1504,7 @@ function ProductAddDialog({ onProductAdded }) {
                                                         children: "コート"
                                                     }, void 0, false, {
                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                                        lineNumber: 204,
+                                                        lineNumber: 211,
                                                         columnNumber: 17
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -1478,7 +1512,7 @@ function ProductAddDialog({ onProductAdded }) {
                                                         children: "トップス"
                                                     }, void 0, false, {
                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                                        lineNumber: 205,
+                                                        lineNumber: 212,
                                                         columnNumber: 17
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -1486,19 +1520,19 @@ function ProductAddDialog({ onProductAdded }) {
                                                         children: "ボトムス"
                                                     }, void 0, false, {
                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                                        lineNumber: 206,
+                                                        lineNumber: 213,
                                                         columnNumber: 17
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                                lineNumber: 202,
+                                                lineNumber: 209,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 193,
+                                        lineNumber: 200,
                                         columnNumber: 13
                                     }, this),
                                     errors.category && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1506,137 +1540,13 @@ function ProductAddDialog({ onProductAdded }) {
                                         children: errors.category.message
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 210,
+                                        lineNumber: 217,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                lineNumber: 191,
-                                columnNumber: 11
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "space-y-2 min-w-0",
-                                children: [
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Label"], {
-                                        htmlFor: "sku",
-                                        children: "SKU（任意）"
-                                    }, void 0, false, {
-                                        fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 215,
-                                        columnNumber: 13
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
-                                        id: "sku",
-                                        ...register("sku"),
-                                        placeholder: "SKUを入力",
-                                        className: "w-full"
-                                    }, void 0, false, {
-                                        fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 216,
-                                        columnNumber: 13
-                                    }, this)
-                                ]
-                            }, void 0, true, {
-                                fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                lineNumber: 214,
-                                columnNumber: 11
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "space-y-2 min-w-0",
-                                children: [
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Label"], {
-                                        htmlFor: "handle",
-                                        children: "Handle（任意）"
-                                    }, void 0, false, {
-                                        fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 225,
-                                        columnNumber: 13
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
-                                        id: "handle",
-                                        ...register("handle"),
-                                        placeholder: "handleを入力",
-                                        className: "w-full"
-                                    }, void 0, false, {
-                                        fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 226,
-                                        columnNumber: 13
-                                    }, this)
-                                ]
-                            }, void 0, true, {
-                                fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                lineNumber: 224,
-                                columnNumber: 11
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "space-y-2 min-w-0",
-                                children: [
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Label"], {
-                                        htmlFor: "url",
-                                        children: "URL（任意）"
-                                    }, void 0, false, {
-                                        fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 235,
-                                        columnNumber: 13
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
-                                        id: "url",
-                                        ...register("url"),
-                                        placeholder: "https://...",
-                                        className: "w-full"
-                                    }, void 0, false, {
-                                        fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 236,
-                                        columnNumber: 13
-                                    }, this)
-                                ]
-                            }, void 0, true, {
-                                fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                lineNumber: 234,
-                                columnNumber: 11
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "space-y-2 min-w-0",
-                                children: [
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Label"], {
-                                        htmlFor: "sizeTypeId",
-                                        children: "サイズタイプID（任意）"
-                                    }, void 0, false, {
-                                        fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 245,
-                                        columnNumber: 13
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
-                                        id: "sizeTypeId",
-                                        ...register("sizeTypeId"),
-                                        placeholder: "空UUID形式で入力",
-                                        className: "w-full"
-                                    }, void 0, false, {
-                                        fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 246,
-                                        columnNumber: 13
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                        className: "text-xs text-gray-500",
-                                        children: "入力する場合は、サイズタイプのUUIDを入力してください（例: レターサイズ、数字サイズなど）。空欄のままでも登録できます。"
-                                    }, void 0, false, {
-                                        fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 252,
-                                        columnNumber: 13
-                                    }, this),
-                                    errors.sizeTypeId && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                        className: "text-sm text-red-500",
-                                        children: errors.sizeTypeId.message
-                                    }, void 0, false, {
-                                        fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 256,
-                                        columnNumber: 15
-                                    }, this)
-                                ]
-                            }, void 0, true, {
-                                fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                lineNumber: 244,
+                                lineNumber: 198,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1647,7 +1557,7 @@ function ProductAddDialog({ onProductAdded }) {
                                         children: "サムネイル画像（任意）"
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 261,
+                                        lineNumber: 222,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1660,7 +1570,7 @@ function ProductAddDialog({ onProductAdded }) {
                                                 className: "w-full"
                                             }, void 0, false, {
                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                                lineNumber: 263,
+                                                lineNumber: 224,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1674,12 +1584,12 @@ function ProductAddDialog({ onProductAdded }) {
                                                         onChange: (e)=>{
                                                             const file = e.target.files?.[0];
                                                             if (file) {
-                                                                handleFileUpload(file, "thumbnail");
+                                                                handleFileUpload(file);
                                                             }
                                                         }
                                                     }, void 0, false, {
                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                                        lineNumber: 270,
+                                                        lineNumber: 231,
                                                         columnNumber: 17
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
@@ -1695,24 +1605,24 @@ function ProductAddDialog({ onProductAdded }) {
                                                             className: "h-4 w-4"
                                                         }, void 0, false, {
                                                             fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                                            lineNumber: 292,
+                                                            lineNumber: 253,
                                                             columnNumber: 19
                                                         }, this)
                                                     }, void 0, false, {
                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                                        lineNumber: 282,
+                                                        lineNumber: 243,
                                                         columnNumber: 17
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                                lineNumber: 269,
+                                                lineNumber: 230,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 262,
+                                        lineNumber: 223,
                                         columnNumber: 13
                                     }, this),
                                     thumbnailUrl && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1724,7 +1634,7 @@ function ProductAddDialog({ onProductAdded }) {
                                                 className: "h-20 w-20 object-cover rounded border"
                                             }, void 0, false, {
                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                                lineNumber: 298,
+                                                lineNumber: 259,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1735,140 +1645,24 @@ function ProductAddDialog({ onProductAdded }) {
                                                     className: "h-3 w-3"
                                                 }, void 0, false, {
                                                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                                    lineNumber: 308,
+                                                    lineNumber: 269,
                                                     columnNumber: 19
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                                lineNumber: 303,
+                                                lineNumber: 264,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 297,
+                                        lineNumber: 258,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                lineNumber: 260,
-                                columnNumber: 11
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "space-y-2 min-w-0",
-                                children: [
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Label"], {
-                                        htmlFor: "previewImageUrl",
-                                        children: "プレビュー画像（任意）"
-                                    }, void 0, false, {
-                                        fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 315,
-                                        columnNumber: 13
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "flex gap-2",
-                                        children: [
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
-                                                id: "previewImageUrl",
-                                                ...register("previewImageUrl"),
-                                                placeholder: "https://... またはファイルをアップロード",
-                                                className: "w-full"
-                                            }, void 0, false, {
-                                                fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                                lineNumber: 317,
-                                                columnNumber: 15
-                                            }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                className: "flex-shrink-0",
-                                                children: [
-                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
-                                                        id: "previewFile",
-                                                        type: "file",
-                                                        accept: "image/*",
-                                                        className: "hidden",
-                                                        onChange: (e)=>{
-                                                            const file = e.target.files?.[0];
-                                                            if (file) {
-                                                                handleFileUpload(file, "preview");
-                                                            }
-                                                        }
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                                        lineNumber: 324,
-                                                        columnNumber: 17
-                                                    }, this),
-                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
-                                                        type: "button",
-                                                        variant: "outline",
-                                                        disabled: uploadingPreview,
-                                                        size: "icon",
-                                                        title: uploadingPreview ? "アップロード中..." : "ファイルをアップロード",
-                                                        onClick: ()=>{
-                                                            document.getElementById("previewFile")?.click();
-                                                        },
-                                                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$upload$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Upload$3e$__["Upload"], {
-                                                            className: "h-4 w-4"
-                                                        }, void 0, false, {
-                                                            fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                                            lineNumber: 346,
-                                                            columnNumber: 19
-                                                        }, this)
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                                        lineNumber: 336,
-                                                        columnNumber: 17
-                                                    }, this)
-                                                ]
-                                            }, void 0, true, {
-                                                fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                                lineNumber: 323,
-                                                columnNumber: 15
-                                            }, this)
-                                        ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 316,
-                                        columnNumber: 13
-                                    }, this),
-                                    previewImageUrl && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "relative inline-block mt-2",
-                                        children: [
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("img", {
-                                                src: previewImageUrl,
-                                                alt: "プレビュー画像",
-                                                className: "h-20 w-20 object-cover rounded border"
-                                            }, void 0, false, {
-                                                fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                                lineNumber: 352,
-                                                columnNumber: 17
-                                            }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                                type: "button",
-                                                onClick: ()=>setValue("previewImageUrl", ""),
-                                                className: "absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600",
-                                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$x$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__X$3e$__["X"], {
-                                                    className: "h-3 w-3"
-                                                }, void 0, false, {
-                                                    fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                                    lineNumber: 362,
-                                                    columnNumber: 19
-                                                }, this)
-                                            }, void 0, false, {
-                                                fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                                lineNumber: 357,
-                                                columnNumber: 17
-                                            }, this)
-                                        ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 351,
-                                        columnNumber: 15
-                                    }, this)
-                                ]
-                            }, void 0, true, {
-                                fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                lineNumber: 314,
+                                lineNumber: 221,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1879,7 +1673,7 @@ function ProductAddDialog({ onProductAdded }) {
                                         children: "商品説明（任意）"
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 369,
+                                        lineNumber: 277,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$textarea$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Textarea"], {
@@ -1890,13 +1684,13 @@ function ProductAddDialog({ onProductAdded }) {
                                         rows: 4
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 370,
+                                        lineNumber: 278,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                lineNumber: 368,
+                                lineNumber: 276,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$dialog$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DialogFooter"], {
@@ -1908,7 +1702,7 @@ function ProductAddDialog({ onProductAdded }) {
                                         children: "キャンセル"
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 380,
+                                        lineNumber: 288,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
@@ -1917,31 +1711,31 @@ function ProductAddDialog({ onProductAdded }) {
                                         children: addProduct.isPending ? "追加中..." : "追加"
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                        lineNumber: 387,
+                                        lineNumber: 295,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                                lineNumber: 379,
+                                lineNumber: 287,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                        lineNumber: 167,
+                        lineNumber: 156,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-                lineNumber: 160,
+                lineNumber: 149,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductAddDialog.tsx",
-        lineNumber: 153,
+        lineNumber: 142,
         columnNumber: 5
     }, this);
 }
@@ -1991,7 +1785,6 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
     const { data: product, isLoading } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$features$2f$products$2f$useProducts$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useProduct"])(productId);
     const { shopId } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$contexts$2f$AuthContext$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useAuth"])();
     const [uploadingThumbnail, setUploadingThumbnail] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
-    const [uploadingPreview, setUploadingPreview] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
     const { register, handleSubmit, formState: { errors }, setValue, watch, reset } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$react$2d$hook$2d$form$2f$dist$2f$index$2e$esm$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useForm"])({
         resolver: (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f40$hookform$2f$resolvers$2f$zod$2f$dist$2f$zod$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["zodResolver"])(productFormSchema),
         defaultValues: {
@@ -2000,29 +1793,23 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
     });
     const selectedCategory = watch("category");
     const thumbnailUrl = watch("thumbnailUrl");
-    const previewImageUrl = watch("previewImageUrl");
     // 商品データが読み込まれたらフォームに設定
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
         if (product) {
             setValue("shopId", product.shopId);
             setValue("name", product.name);
+            setValue("externalProductId", product.externalProductId || "");
             setValue("brand", product.brand || "");
             setValue("category", product.category);
-            setValue("sku", product.sku || "");
-            setValue("handle", product.handle || "");
-            setValue("url", product.url || "");
-            setValue("sizeTypeId", product.sizeTypeId || "");
             setValue("thumbnailUrl", product.thumbnailUrl || "");
-            setValue("previewImageUrl", product.previewImageUrl || "");
             setValue("description", product.description || "");
         }
     }, [
         product,
         setValue
     ]);
-    const handleFileUpload = async (file, type)=>{
-        const setUploading = type === "thumbnail" ? setUploadingThumbnail : setUploadingPreview;
-        setUploading(true);
+    const handleFileUpload = async (file)=>{
+        setUploadingThumbnail(true);
         try {
             const formData = new FormData();
             formData.append("file", file);
@@ -2045,21 +1832,15 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
                 console.warn("Upload warning:", data.warning);
                 alert(`アップロード成功: ${data.warning}`);
             }
-            if (type === "thumbnail") {
-                setValue("thumbnailUrl", data.url, {
-                    shouldValidate: true
-                });
-            } else {
-                setValue("previewImageUrl", data.url, {
-                    shouldValidate: true
-                });
-            }
+            setValue("thumbnailUrl", data.url, {
+                shouldValidate: true
+            });
         } catch (error) {
             console.error("Failed to upload file:", error);
             const errorMessage = error instanceof Error ? error.message : "アップロードに失敗しました";
             alert(errorMessage);
         } finally{
-            setUploading(false);
+            setUploadingThumbnail(false);
         }
     };
     const handleOpenChange = (newOpen)=>{
@@ -2073,14 +1854,10 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
             // 空文字列をundefinedに変換（shopIdは更新対象外なので除外）
             const cleanedData = {
                 name: data.name,
+                externalProductId: data.externalProductId && data.externalProductId.trim() !== "" ? data.externalProductId : undefined,
                 brand: data.brand && data.brand.trim() !== "" ? data.brand : undefined,
                 category: data.category || undefined,
-                sku: data.sku && data.sku.trim() !== "" ? data.sku : undefined,
-                handle: data.handle && data.handle.trim() !== "" ? data.handle : undefined,
-                url: data.url && data.url.trim() !== "" ? data.url : undefined,
-                sizeTypeId: data.sizeTypeId && data.sizeTypeId.trim() !== "" ? data.sizeTypeId : undefined,
                 thumbnailUrl: data.thumbnailUrl && data.thumbnailUrl.trim() !== "" ? data.thumbnailUrl : undefined,
-                previewImageUrl: data.previewImageUrl && data.previewImageUrl.trim() !== "" ? data.previewImageUrl : undefined,
                 description: data.description && data.description.trim() !== "" ? data.description : undefined
             };
             await updateProduct.mutateAsync({
@@ -2109,30 +1886,30 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
                             children: "商品を編集"
                         }, void 0, false, {
                             fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                            lineNumber: 179,
+                            lineNumber: 164,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$dialog$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DialogDescription"], {
                             children: "読み込み中..."
                         }, void 0, false, {
                             fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                            lineNumber: 180,
+                            lineNumber: 165,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                    lineNumber: 178,
+                    lineNumber: 163,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                lineNumber: 177,
+                lineNumber: 162,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-            lineNumber: 176,
+            lineNumber: 161,
             columnNumber: 7
         }, this);
     }
@@ -2149,20 +1926,20 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
                             children: "商品を編集"
                         }, void 0, false, {
                             fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                            lineNumber: 191,
+                            lineNumber: 176,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$dialog$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DialogDescription"], {
                             children: "商品の情報を編集してください。"
                         }, void 0, false, {
                             fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                            lineNumber: 192,
+                            lineNumber: 177,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                    lineNumber: 190,
+                    lineNumber: 175,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
@@ -2177,7 +1954,7 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
                                     children: "商品名"
                                 }, void 0, false, {
                                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 198,
+                                    lineNumber: 183,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
@@ -2187,7 +1964,7 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
                                     className: "w-full"
                                 }, void 0, false, {
                                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 199,
+                                    lineNumber: 184,
                                     columnNumber: 13
                                 }, this),
                                 errors.name && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2195,13 +1972,66 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
                                     children: errors.name.message
                                 }, void 0, false, {
                                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 206,
+                                    lineNumber: 191,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                            lineNumber: 197,
+                            lineNumber: 182,
+                            columnNumber: 11
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "space-y-2 min-w-0",
+                            children: [
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Label"], {
+                                    htmlFor: "externalProductId",
+                                    children: [
+                                        "外部商品ID ",
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                            className: "text-red-500",
+                                            children: "*"
+                                        }, void 0, false, {
+                                            fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
+                                            lineNumber: 197,
+                                            columnNumber: 22
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
+                                    lineNumber: 196,
+                                    columnNumber: 13
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
+                                    id: "externalProductId",
+                                    ...register("externalProductId"),
+                                    placeholder: "ECサイトの商品ID（例: product-001）",
+                                    className: "w-full"
+                                }, void 0, false, {
+                                    fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
+                                    lineNumber: 199,
+                                    columnNumber: 13
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                    className: "text-xs text-gray-500",
+                                    children: "ECサイトの商品IDと一致させる必要があります。ウィジェット連携で使用されます。"
+                                }, void 0, false, {
+                                    fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
+                                    lineNumber: 205,
+                                    columnNumber: 13
+                                }, this),
+                                errors.externalProductId && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                    className: "text-sm text-red-500",
+                                    children: errors.externalProductId.message
+                                }, void 0, false, {
+                                    fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
+                                    lineNumber: 209,
+                                    columnNumber: 15
+                                }, this)
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
+                            lineNumber: 195,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2212,7 +2042,7 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
                                     children: "ブランド（任意）"
                                 }, void 0, false, {
                                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 211,
+                                    lineNumber: 214,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
@@ -2222,13 +2052,13 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
                                     className: "w-full"
                                 }, void 0, false, {
                                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 212,
+                                    lineNumber: 215,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                            lineNumber: 210,
+                            lineNumber: 213,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2239,7 +2069,7 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
                                     children: "カテゴリ（任意）"
                                 }, void 0, false, {
                                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 221,
+                                    lineNumber: 224,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Select"], {
@@ -2254,12 +2084,12 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
                                                 placeholder: "カテゴリを選択"
                                             }, void 0, false, {
                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                                lineNumber: 229,
+                                                lineNumber: 232,
                                                 columnNumber: 17
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                            lineNumber: 228,
+                                            lineNumber: 231,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectContent"], {
@@ -2269,7 +2099,7 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
                                                     children: "ジャケット"
                                                 }, void 0, false, {
                                                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                                    lineNumber: 232,
+                                                    lineNumber: 235,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2277,7 +2107,7 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
                                                     children: "コート"
                                                 }, void 0, false, {
                                                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                                    lineNumber: 233,
+                                                    lineNumber: 236,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2285,7 +2115,7 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
                                                     children: "トップス"
                                                 }, void 0, false, {
                                                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                                    lineNumber: 234,
+                                                    lineNumber: 237,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2293,19 +2123,19 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
                                                     children: "ボトムス"
                                                 }, void 0, false, {
                                                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                                    lineNumber: 235,
+                                                    lineNumber: 238,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                            lineNumber: 231,
+                                            lineNumber: 234,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 222,
+                                    lineNumber: 225,
                                     columnNumber: 13
                                 }, this),
                                 errors.category && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2313,137 +2143,13 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
                                     children: errors.category.message
                                 }, void 0, false, {
                                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 239,
+                                    lineNumber: 242,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                            lineNumber: 220,
-                            columnNumber: 11
-                        }, this),
-                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: "space-y-2 min-w-0",
-                            children: [
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Label"], {
-                                    htmlFor: "sku",
-                                    children: "SKU（任意）"
-                                }, void 0, false, {
-                                    fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 244,
-                                    columnNumber: 13
-                                }, this),
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
-                                    id: "sku",
-                                    ...register("sku"),
-                                    placeholder: "SKUを入力",
-                                    className: "w-full"
-                                }, void 0, false, {
-                                    fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 245,
-                                    columnNumber: 13
-                                }, this)
-                            ]
-                        }, void 0, true, {
-                            fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                            lineNumber: 243,
-                            columnNumber: 11
-                        }, this),
-                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: "space-y-2 min-w-0",
-                            children: [
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Label"], {
-                                    htmlFor: "handle",
-                                    children: "Handle（任意）"
-                                }, void 0, false, {
-                                    fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 254,
-                                    columnNumber: 13
-                                }, this),
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
-                                    id: "handle",
-                                    ...register("handle"),
-                                    placeholder: "handleを入力",
-                                    className: "w-full"
-                                }, void 0, false, {
-                                    fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 255,
-                                    columnNumber: 13
-                                }, this)
-                            ]
-                        }, void 0, true, {
-                            fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                            lineNumber: 253,
-                            columnNumber: 11
-                        }, this),
-                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: "space-y-2 min-w-0",
-                            children: [
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Label"], {
-                                    htmlFor: "url",
-                                    children: "URL（任意）"
-                                }, void 0, false, {
-                                    fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 264,
-                                    columnNumber: 13
-                                }, this),
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
-                                    id: "url",
-                                    ...register("url"),
-                                    placeholder: "空欄可、またはURL形式で入力",
-                                    className: "w-full"
-                                }, void 0, false, {
-                                    fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 265,
-                                    columnNumber: 13
-                                }, this)
-                            ]
-                        }, void 0, true, {
-                            fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                            lineNumber: 263,
-                            columnNumber: 11
-                        }, this),
-                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: "space-y-2 min-w-0",
-                            children: [
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Label"], {
-                                    htmlFor: "sizeTypeId",
-                                    children: "サイズタイプID（任意）"
-                                }, void 0, false, {
-                                    fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 274,
-                                    columnNumber: 13
-                                }, this),
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
-                                    id: "sizeTypeId",
-                                    ...register("sizeTypeId"),
-                                    placeholder: "空欄可、またはUUID形式で入力",
-                                    className: "w-full"
-                                }, void 0, false, {
-                                    fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 275,
-                                    columnNumber: 13
-                                }, this),
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                    className: "text-xs text-gray-500",
-                                    children: "入力する場合は、サイズタイプのUUIDを入力してください（例: レターサイズ、数字サイズなど）。空欄のままでも登録できます。"
-                                }, void 0, false, {
-                                    fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 281,
-                                    columnNumber: 13
-                                }, this),
-                                errors.sizeTypeId && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                    className: "text-sm text-red-500",
-                                    children: errors.sizeTypeId.message
-                                }, void 0, false, {
-                                    fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 285,
-                                    columnNumber: 15
-                                }, this)
-                            ]
-                        }, void 0, true, {
-                            fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                            lineNumber: 273,
+                            lineNumber: 223,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2454,7 +2160,7 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
                                     children: "サムネイル画像（任意）"
                                 }, void 0, false, {
                                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 290,
+                                    lineNumber: 247,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2467,7 +2173,7 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
                                             className: "w-full"
                                         }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                            lineNumber: 292,
+                                            lineNumber: 249,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2481,12 +2187,12 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
                                                     onChange: (e)=>{
                                                         const file = e.target.files?.[0];
                                                         if (file) {
-                                                            handleFileUpload(file, "thumbnail");
+                                                            handleFileUpload(file);
                                                         }
                                                     }
                                                 }, void 0, false, {
                                                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                                    lineNumber: 299,
+                                                    lineNumber: 256,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
@@ -2502,24 +2208,24 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
                                                         className: "h-4 w-4"
                                                     }, void 0, false, {
                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                                        lineNumber: 321,
+                                                        lineNumber: 278,
                                                         columnNumber: 19
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                                    lineNumber: 311,
+                                                    lineNumber: 268,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                            lineNumber: 298,
+                                            lineNumber: 255,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 291,
+                                    lineNumber: 248,
                                     columnNumber: 13
                                 }, this),
                                 thumbnailUrl && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2531,7 +2237,7 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
                                             className: "h-20 w-20 object-cover rounded border"
                                         }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                            lineNumber: 327,
+                                            lineNumber: 284,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2542,140 +2248,24 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
                                                 className: "h-3 w-3"
                                             }, void 0, false, {
                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                                lineNumber: 337,
+                                                lineNumber: 294,
                                                 columnNumber: 19
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                            lineNumber: 332,
+                                            lineNumber: 289,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 326,
+                                    lineNumber: 283,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                            lineNumber: 289,
-                            columnNumber: 11
-                        }, this),
-                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: "space-y-2 min-w-0",
-                            children: [
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Label"], {
-                                    htmlFor: "previewImageUrl",
-                                    children: "プレビュー画像（任意）"
-                                }, void 0, false, {
-                                    fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 344,
-                                    columnNumber: 13
-                                }, this),
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                    className: "flex gap-2",
-                                    children: [
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
-                                            id: "previewImageUrl",
-                                            ...register("previewImageUrl"),
-                                            placeholder: "https://... またはファイルをアップロード",
-                                            className: "w-full"
-                                        }, void 0, false, {
-                                            fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                            lineNumber: 346,
-                                            columnNumber: 15
-                                        }, this),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                            className: "flex-shrink-0",
-                                            children: [
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
-                                                    id: "previewFile",
-                                                    type: "file",
-                                                    accept: "image/*",
-                                                    className: "hidden",
-                                                    onChange: (e)=>{
-                                                        const file = e.target.files?.[0];
-                                                        if (file) {
-                                                            handleFileUpload(file, "preview");
-                                                        }
-                                                    }
-                                                }, void 0, false, {
-                                                    fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                                    lineNumber: 353,
-                                                    columnNumber: 17
-                                                }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
-                                                    type: "button",
-                                                    variant: "outline",
-                                                    disabled: uploadingPreview,
-                                                    size: "icon",
-                                                    title: uploadingPreview ? "アップロード中..." : "ファイルをアップロード",
-                                                    onClick: ()=>{
-                                                        document.getElementById("previewFile")?.click();
-                                                    },
-                                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$upload$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Upload$3e$__["Upload"], {
-                                                        className: "h-4 w-4"
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                                        lineNumber: 375,
-                                                        columnNumber: 19
-                                                    }, this)
-                                                }, void 0, false, {
-                                                    fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                                    lineNumber: 365,
-                                                    columnNumber: 17
-                                                }, this)
-                                            ]
-                                        }, void 0, true, {
-                                            fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                            lineNumber: 352,
-                                            columnNumber: 15
-                                        }, this)
-                                    ]
-                                }, void 0, true, {
-                                    fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 345,
-                                    columnNumber: 13
-                                }, this),
-                                previewImageUrl && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                    className: "relative inline-block mt-2",
-                                    children: [
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("img", {
-                                            src: previewImageUrl,
-                                            alt: "プレビュー画像",
-                                            className: "h-20 w-20 object-cover rounded border"
-                                        }, void 0, false, {
-                                            fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                            lineNumber: 381,
-                                            columnNumber: 17
-                                        }, this),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                            type: "button",
-                                            onClick: ()=>setValue("previewImageUrl", ""),
-                                            className: "absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600",
-                                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$x$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__X$3e$__["X"], {
-                                                className: "h-3 w-3"
-                                            }, void 0, false, {
-                                                fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                                lineNumber: 391,
-                                                columnNumber: 19
-                                            }, this)
-                                        }, void 0, false, {
-                                            fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                            lineNumber: 386,
-                                            columnNumber: 17
-                                        }, this)
-                                    ]
-                                }, void 0, true, {
-                                    fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 380,
-                                    columnNumber: 15
-                                }, this)
-                            ]
-                        }, void 0, true, {
-                            fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                            lineNumber: 343,
+                            lineNumber: 246,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2686,7 +2276,7 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
                                     children: "商品説明（任意）"
                                 }, void 0, false, {
                                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 398,
+                                    lineNumber: 301,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$textarea$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Textarea"], {
@@ -2697,13 +2287,13 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
                                     rows: 4
                                 }, void 0, false, {
                                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 399,
+                                    lineNumber: 302,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                            lineNumber: 397,
+                            lineNumber: 300,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$dialog$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DialogFooter"], {
@@ -2715,7 +2305,7 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
                                     children: "キャンセル"
                                 }, void 0, false, {
                                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 409,
+                                    lineNumber: 312,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
@@ -2724,30 +2314,30 @@ function ProductEditDialog({ productId, open, onOpenChange, onProductUpdated }) 
                                     children: updateProduct.isPending ? "更新中..." : "更新"
                                 }, void 0, false, {
                                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                                    lineNumber: 416,
+                                    lineNumber: 319,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                            lineNumber: 408,
+                            lineNumber: 311,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-                    lineNumber: 196,
+                    lineNumber: 181,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-            lineNumber: 189,
+            lineNumber: 174,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductEditDialog.tsx",
-        lineNumber: 188,
+        lineNumber: 173,
         columnNumber: 5
     }, this);
 }
@@ -4529,7 +4119,7 @@ function ProductsTable({ products, onProductSelect, selectedProductId, selectedS
         }
     };
     const filteredProducts = products.filter((product)=>{
-        const matchesSearch = searchQuery === "" || product.name.toLowerCase().includes(searchQuery.toLowerCase()) || product.brand?.toLowerCase().includes(searchQuery.toLowerCase()) || product.sku?.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesSearch = searchQuery === "" || product.name.toLowerCase().includes(searchQuery.toLowerCase()) || product.brand?.toLowerCase().includes(searchQuery.toLowerCase()) || product.externalProductId?.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesSearch;
     });
     const toggleRowSelection = (productId)=>{
@@ -4668,7 +4258,7 @@ function ProductsTable({ products, onProductSelect, selectedProductId, selectedS
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$table$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["TableHead"], {
                                         className: "w-32",
-                                        children: "SKU"
+                                        children: "外部商品ID"
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductsTable.tsx",
                                         lineNumber: 150,
@@ -4704,7 +4294,7 @@ function ProductsTable({ products, onProductSelect, selectedProductId, selectedS
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$table$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["TableBody"], {
                             children: filteredProducts.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$table$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["TableRow"], {
                                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$table$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["TableCell"], {
-                                    colSpan: 7,
+                                    colSpan: 8,
                                     className: "text-center text-gray-500",
                                     children: "商品が見つかりませんでした"
                                 }, void 0, false, {
@@ -4784,8 +4374,15 @@ function ProductsTable({ products, onProductSelect, selectedProductId, selectedS
                                             columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$table$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["TableCell"], {
-                                            className: `py-2 ${isSelected ? "bg-blue-50" : ""}`,
-                                            children: product.sku || "-"
+                                            className: `py-2 ${isSelected ? "bg-blue-50" : ""} font-mono text-xs`,
+                                            children: product.externalProductId || /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                className: "text-gray-400 italic",
+                                                children: "未設定"
+                                            }, void 0, false, {
+                                                fileName: "[project]/atelier/apps/console/src/features/products/components/ProductsTable.tsx",
+                                                lineNumber: 198,
+                                                columnNumber: 25
+                                            }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/features/products/components/ProductsTable.tsx",
                                             lineNumber: 196,
@@ -4803,12 +4400,12 @@ function ProductsTable({ products, onProductSelect, selectedProductId, selectedS
                                                 children: truncateDescription(product.description)
                                             }, void 0, false, {
                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductsTable.tsx",
-                                                lineNumber: 199,
+                                                lineNumber: 203,
                                                 columnNumber: 25
                                             }, this) : "-"
                                         }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/features/products/components/ProductsTable.tsx",
-                                            lineNumber: 197,
+                                            lineNumber: 201,
                                             columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$table$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["TableCell"], {
@@ -4827,14 +4424,14 @@ function ProductsTable({ products, onProductSelect, selectedProductId, selectedS
                                                                 className: "h-4 w-4"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductsTable.tsx",
-                                                                lineNumber: 225,
+                                                                lineNumber: 229,
                                                                 columnNumber: 29
                                                             }, this),
                                                             "編集"
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductsTable.tsx",
-                                                        lineNumber: 219,
+                                                        lineNumber: 223,
                                                         columnNumber: 27
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
@@ -4848,20 +4445,20 @@ function ProductsTable({ products, onProductSelect, selectedProductId, selectedS
                                                                 className: "h-4 w-4"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductsTable.tsx",
-                                                                lineNumber: 235,
+                                                                lineNumber: 239,
                                                                 columnNumber: 29
                                                             }, this),
                                                             "削除"
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductsTable.tsx",
-                                                        lineNumber: 228,
+                                                        lineNumber: 232,
                                                         columnNumber: 27
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductsTable.tsx",
-                                                lineNumber: 218,
+                                                lineNumber: 222,
                                                 columnNumber: 25
                                             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                                 className: "flex gap-2",
@@ -4879,14 +4476,14 @@ function ProductsTable({ products, onProductSelect, selectedProductId, selectedS
                                                                 className: "h-4 w-4"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductsTable.tsx",
-                                                                lineNumber: 250,
+                                                                lineNumber: 254,
                                                                 columnNumber: 29
                                                             }, this),
                                                             "プレビュー"
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductsTable.tsx",
-                                                        lineNumber: 241,
+                                                        lineNumber: 245,
                                                         columnNumber: 27
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$features$2f$products$2f$components$2f$AssetManagementDialog$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["AssetManagementDialog"], {
@@ -4894,18 +4491,18 @@ function ProductsTable({ products, onProductSelect, selectedProductId, selectedS
                                                         productName: product.name
                                                     }, void 0, false, {
                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/ProductsTable.tsx",
-                                                        lineNumber: 253,
+                                                        lineNumber: 257,
                                                         columnNumber: 27
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductsTable.tsx",
-                                                lineNumber: 240,
+                                                lineNumber: 244,
                                                 columnNumber: 25
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/features/products/components/ProductsTable.tsx",
-                                            lineNumber: 213,
+                                            lineNumber: 217,
                                             columnNumber: 21
                                         }, this)
                                     ]
@@ -4944,7 +4541,7 @@ function ProductsTable({ products, onProductSelect, selectedProductId, selectedS
                 }
             }, void 0, false, {
                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductsTable.tsx",
-                lineNumber: 270,
+                lineNumber: 274,
                 columnNumber: 9
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$dialog$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Dialog"], {
@@ -4959,20 +4556,20 @@ function ProductsTable({ products, onProductSelect, selectedProductId, selectedS
                                     children: "商品説明"
                                 }, void 0, false, {
                                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductsTable.tsx",
-                                    lineNumber: 288,
+                                    lineNumber: 292,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$dialog$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DialogDescription"], {
                                     children: "商品の詳細な説明を表示します。"
                                 }, void 0, false, {
                                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductsTable.tsx",
-                                    lineNumber: 289,
+                                    lineNumber: 293,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/atelier/apps/console/src/features/products/components/ProductsTable.tsx",
-                            lineNumber: 287,
+                            lineNumber: 291,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4982,23 +4579,23 @@ function ProductsTable({ products, onProductSelect, selectedProductId, selectedS
                                 children: selectedDescription || "説明がありません"
                             }, void 0, false, {
                                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductsTable.tsx",
-                                lineNumber: 294,
+                                lineNumber: 298,
                                 columnNumber: 13
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/atelier/apps/console/src/features/products/components/ProductsTable.tsx",
-                            lineNumber: 293,
+                            lineNumber: 297,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/atelier/apps/console/src/features/products/components/ProductsTable.tsx",
-                    lineNumber: 286,
+                    lineNumber: 290,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/atelier/apps/console/src/features/products/components/ProductsTable.tsx",
-                lineNumber: 285,
+                lineNumber: 289,
                 columnNumber: 7
             }, this)
         ]

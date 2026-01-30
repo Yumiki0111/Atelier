@@ -194,24 +194,11 @@ const productCategorySchema = __TURBOPACK__imported__module__$5b$project$5d2f$at
 const productSchema = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].object({
     id: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().uuid(),
     shopId: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().min(1),
+    externalProductId: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().optional(),
     name: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().min(1),
     brand: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().optional(),
     category: productCategorySchema.optional(),
-    sku: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().optional(),
-    handle: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().optional(),
-    url: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].union([
-        __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url(),
-        __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].literal("")
-    ]).optional(),
-    sizeTypeId: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].union([
-        __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().uuid(),
-        __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].literal("")
-    ]).optional(),
     thumbnailUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].union([
-        __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url(),
-        __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].literal("")
-    ]).optional(),
-    previewImageUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].union([
         __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url(),
         __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].literal("")
     ]).optional(),
@@ -489,12 +476,7 @@ async function GET(request) {
                 name: p.name,
                 brand: p.brand,
                 category: p.category,
-                sku: p.sku,
-                handle: p.handle,
-                url: p.url,
-                sizeTypeId: p.size_type_id,
                 thumbnailUrl: p.thumbnail_url,
-                previewImageUrl: p.preview_image_url,
                 description: p.description,
                 createdAt: p.created_at,
                 updatedAt: p.updated_at
@@ -536,15 +518,11 @@ async function POST(request) {
         validated.shopId = auth.shopId;
         const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("products").insert({
             shop_id: validated.shopId,
+            external_product_id: validated.externalProductId || null,
             name: validated.name,
             brand: validated.brand || null,
             category: validated.category || null,
-            sku: validated.sku || null,
-            handle: validated.handle || null,
-            url: validated.url || null,
-            size_type_id: validated.sizeTypeId || null,
             thumbnail_url: validated.thumbnailUrl || null,
-            preview_image_url: validated.previewImageUrl || null,
             description: validated.description || null
         }).select().single();
         if (error) {

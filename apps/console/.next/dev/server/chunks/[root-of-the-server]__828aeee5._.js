@@ -194,24 +194,11 @@ const productCategorySchema = __TURBOPACK__imported__module__$5b$project$5d2f$at
 const productSchema = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].object({
     id: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().uuid(),
     shopId: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().min(1),
+    externalProductId: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().optional(),
     name: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().min(1),
     brand: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().optional(),
     category: productCategorySchema.optional(),
-    sku: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().optional(),
-    handle: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().optional(),
-    url: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].union([
-        __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url(),
-        __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].literal("")
-    ]).optional(),
-    sizeTypeId: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].union([
-        __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().uuid(),
-        __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].literal("")
-    ]).optional(),
     thumbnailUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].union([
-        __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url(),
-        __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].literal("")
-    ]).optional(),
-    previewImageUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].union([
         __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url(),
         __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].literal("")
     ]).optional(),
@@ -488,12 +475,7 @@ async function GET(request, { params }) {
             name: data.name,
             brand: data.brand,
             category: data.category,
-            sku: data.sku,
-            handle: data.handle,
-            url: data.url,
-            sizeTypeId: data.size_type_id,
             thumbnailUrl: data.thumbnail_url,
-            previewImageUrl: data.preview_image_url,
             description: data.description,
             createdAt: data.created_at,
             updatedAt: data.updated_at
@@ -542,25 +524,12 @@ async function PATCH(request, { params }) {
         }
         const updateData = {};
         if (validated.name !== undefined) updateData.name = validated.name;
+        if (validated.externalProductId !== undefined) updateData.external_product_id = validated.externalProductId || null;
         if (validated.brand !== undefined) updateData.brand = validated.brand || null;
         if (validated.category !== undefined) updateData.category = validated.category || null;
-        if (validated.sku !== undefined) updateData.sku = validated.sku || null;
-        if (validated.handle !== undefined) updateData.handle = validated.handle || null;
-        if (validated.url !== undefined) {
-            // 空文字列の場合はnullに変換
-            updateData.url = validated.url === "" ? null : validated.url;
-        }
-        if (validated.sizeTypeId !== undefined) {
-            // 空文字列の場合はnullに変換
-            updateData.size_type_id = validated.sizeTypeId === "" ? null : validated.sizeTypeId;
-        }
         if (validated.thumbnailUrl !== undefined) {
             // 空文字列の場合はnullに変換
             updateData.thumbnail_url = validated.thumbnailUrl === "" ? null : validated.thumbnailUrl;
-        }
-        if (validated.previewImageUrl !== undefined) {
-            // 空文字列の場合はnullに変換
-            updateData.preview_image_url = validated.previewImageUrl === "" ? null : validated.previewImageUrl;
         }
         if (validated.description !== undefined) updateData.description = validated.description || null;
         updateData.updated_at = new Date().toISOString();
@@ -610,12 +579,7 @@ async function PATCH(request, { params }) {
             name: data.name,
             brand: data.brand,
             category: data.category,
-            sku: data.sku,
-            handle: data.handle,
-            url: data.url,
-            sizeTypeId: data.size_type_id,
             thumbnailUrl: data.thumbnail_url,
-            previewImageUrl: data.preview_image_url,
             description: data.description,
             createdAt: data.created_at,
             updatedAt: data.updated_at

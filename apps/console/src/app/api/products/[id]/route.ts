@@ -56,12 +56,7 @@ export async function GET(
       name: data.name,
       brand: data.brand,
       category: data.category,
-      sku: data.sku,
-      handle: data.handle,
-      url: data.url,
-      sizeTypeId: data.size_type_id,
       thumbnailUrl: data.thumbnail_url,
-      previewImageUrl: data.preview_image_url,
       description: data.description,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
@@ -120,25 +115,12 @@ export async function PATCH(
 
     const updateData: Record<string, unknown> = {};
     if (validated.name !== undefined) updateData.name = validated.name;
+    if (validated.externalProductId !== undefined) updateData.external_product_id = validated.externalProductId || null;
     if (validated.brand !== undefined) updateData.brand = validated.brand || null;
     if (validated.category !== undefined) updateData.category = validated.category || null;
-    if (validated.sku !== undefined) updateData.sku = validated.sku || null;
-    if (validated.handle !== undefined) updateData.handle = validated.handle || null;
-    if (validated.url !== undefined) {
-      // 空文字列の場合はnullに変換
-      updateData.url = validated.url === "" ? null : validated.url;
-    }
-    if (validated.sizeTypeId !== undefined) {
-      // 空文字列の場合はnullに変換
-      updateData.size_type_id = validated.sizeTypeId === "" ? null : validated.sizeTypeId;
-    }
     if (validated.thumbnailUrl !== undefined) {
       // 空文字列の場合はnullに変換
       updateData.thumbnail_url = validated.thumbnailUrl === "" ? null : validated.thumbnailUrl;
-    }
-    if (validated.previewImageUrl !== undefined) {
-      // 空文字列の場合はnullに変換
-      updateData.preview_image_url = validated.previewImageUrl === "" ? null : validated.previewImageUrl;
     }
     if (validated.description !== undefined) updateData.description = validated.description || null;
 
@@ -201,12 +183,7 @@ export async function PATCH(
       name: data.name,
       brand: data.brand,
       category: data.category,
-      sku: data.sku,
-      handle: data.handle,
-      url: data.url,
-      sizeTypeId: data.size_type_id,
       thumbnailUrl: data.thumbnail_url,
-      previewImageUrl: data.preview_image_url,
       description: data.description,
       createdAt: data.created_at,
       updatedAt: data.updated_at,

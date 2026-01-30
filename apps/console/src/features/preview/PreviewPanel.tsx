@@ -119,7 +119,7 @@ export function PreviewPanel({
     const instance = initPreviewPanel({
       container: previewContainerRef.current,
       glbUrl: selectedAsset.glbUrl,
-      textureUrl: selectedProduct?.previewImageUrl,
+      textureUrl: selectedProduct?.thumbnailUrl,
       initialHeight: height,
       minHeight: 150,
       maxHeight: 190,
@@ -212,7 +212,7 @@ export function PreviewPanel({
     // 依存配列を最小限に（isSendingMessageは削除 - コールバック内で最新の値を取得）
     // availableSizesはuseMemoでメモ化されているので、参照が変わったときだけ再初期化される
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAsset?.glbUrl, selectedProduct?.previewImageUrl, availableSizes, currentSize, height]);
+  }, [selectedAsset?.glbUrl, selectedProduct?.thumbnailUrl, availableSizes, currentSize, height]);
 
   // サイズが変更されたときに、対応するアセットのGLB URLを更新
   useEffect(() => {

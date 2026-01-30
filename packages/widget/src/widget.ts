@@ -322,6 +322,13 @@ async function fetchWidgetConfig(params: {
 
       const config = await response.json();
       
+      console.log("[Atelier Widget] API response:", {
+        enabled: config.enabled,
+        hasAsset: !!config.asset,
+        sizes: config.asset?.sizes ? Object.keys(config.asset.sizes) : [],
+        glbUrls: config.asset?.sizes ? Object.entries(config.asset.sizes).map(([size, data]: [string, any]) => `${size}: ${data.glbUrl}`) : [],
+      });
+      
       // 開発環境では、APIが`enabled: false`を返した場合でもモックデータを使用
       if (isDevelopmentMode() && !config.enabled) {
         console.warn(
@@ -509,6 +516,7 @@ function renderModal(
   
   // 開発モードでglbUrlがundefinedの場合、デフォルトのGLBファイルを使用
   if (isDevelopmentMode() && !glbUrl) {
+    console.warn("[Atelier Widget] glbUrl is undefined, using fallback");
     glbUrl = "http://localhost:3000/3d/model_men.glb";
   }
   
@@ -517,6 +525,8 @@ function renderModal(
     hasConfig: !!config.asset,
     defaultSize,
     availableSizes,
+    allSizes: config.asset?.sizes ? Object.keys(config.asset.sizes) : [],
+    allGlbUrls: config.asset?.sizes ? Object.entries(config.asset.sizes).map(([size, data]: [string, any]) => `${size}: ${data.glbUrl}`) : [],
   });
   
   const previewInstance = initPreviewPanel({

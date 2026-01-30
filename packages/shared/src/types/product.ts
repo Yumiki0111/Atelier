@@ -8,16 +8,11 @@ export type ProductCategory = "ジャケット" | "コート" | "トップス" |
 export interface Product {
   id: string;
   shopId: string; // 現時点ではTEXT型（将来的にUUID型に変更予定）
-  externalProductId?: string; // 外部システムの商品ID（CSV取り込み時に使用）
+  externalProductId?: string; // 外部システムの商品ID（ウィジェット連携で使用）
   name: string;
   brand?: string;
   category?: ProductCategory;
-  sku?: string;
-  handle?: string;
-  url?: string;
-  sizeTypeId?: string; // UUID形式の文字列（size_typesテーブルへの参照）
   thumbnailUrl?: string;
-  previewImageUrl?: string;
   description?: string; // 商品説明
   createdAt: string;
   updatedAt: string;

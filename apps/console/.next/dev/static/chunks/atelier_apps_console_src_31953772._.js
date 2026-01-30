@@ -181,7 +181,7 @@ var _s = __turbopack_context__.k.signature();
 ;
 ;
 ;
-function LoginPage() {
+function LoginForm() {
     _s();
     const router = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRouter"])();
     const searchParams = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useSearchParams"])();
@@ -192,7 +192,7 @@ function LoginPage() {
     const [error, setError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [message, setMessage] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
-        "LoginPage.useEffect": ()=>{
+        "LoginForm.useEffect": ()=>{
             // URLパラメータからメッセージを取得
             const messageParam = searchParams.get("message");
             if (messageParam) {
@@ -210,7 +210,7 @@ function LoginPage() {
                 router.replace("/");
             }
         }
-    }["LoginPage.useEffect"], [
+    }["LoginForm.useEffect"], [
         isAuthenticated,
         authLoading,
         router,
@@ -449,16 +449,46 @@ function LoginPage() {
         columnNumber: 5
     }, this);
 }
-_s(LoginPage, "Bq3+G+i9Mfp1GlEJqsSm0Re2Z98=", false, function() {
+_s(LoginForm, "Bq3+G+i9Mfp1GlEJqsSm0Re2Z98=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRouter"],
         __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useSearchParams"],
         __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$contexts$2f$AuthContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useAuth"]
     ];
 });
-_c = LoginPage;
-var _c;
-__turbopack_context__.k.register(_c, "LoginPage");
+_c = LoginForm;
+function LoginPage() {
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Suspense"], {
+        fallback: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            className: "flex min-h-screen items-center justify-center bg-white",
+            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                className: "text-gray-500",
+                children: "読み込み中..."
+            }, void 0, false, {
+                fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
+                lineNumber: 159,
+                columnNumber: 9
+            }, void 0)
+        }, void 0, false, {
+            fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
+            lineNumber: 158,
+            columnNumber: 7
+        }, void 0),
+        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(LoginForm, {}, void 0, false, {
+            fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
+            lineNumber: 162,
+            columnNumber: 7
+        }, this)
+    }, void 0, false, {
+        fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
+        lineNumber: 157,
+        columnNumber: 5
+    }, this);
+}
+_c1 = LoginPage;
+var _c, _c1;
+__turbopack_context__.k.register(_c, "LoginForm");
+__turbopack_context__.k.register(_c1, "LoginPage");
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
 }

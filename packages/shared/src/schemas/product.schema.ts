@@ -15,21 +15,11 @@ export const productCategorySchema = z.enum([
 export const productSchema = z.object({
   id: z.string().uuid(),
   shopId: z.string().min(1), // 現時点ではTEXT型のため、UUID検証は緩和（将来的にUUID型に変更予定）
+  externalProductId: z.string().optional(), // 外部システムの商品ID（ウィジェット連携で使用）
   name: z.string().min(1),
   brand: z.string().optional(),
   category: productCategorySchema.optional(),
-  sku: z.string().optional(),
-  handle: z.string().optional(),
-  url: z
-    .union([z.string().url(), z.literal("")])
-    .optional(), // URL形式であることを検証、空文字列も許可
-  sizeTypeId: z
-    .union([z.string().uuid(), z.literal("")])
-    .optional(), // UUID形式であることを検証、空文字列も許可
   thumbnailUrl: z
-    .union([z.string().url(), z.literal("")])
-    .optional(), // URL形式であることを検証、空文字列も許可
-  previewImageUrl: z
     .union([z.string().url(), z.literal("")])
     .optional(), // URL形式であることを検証、空文字列も許可
   description: z.string().optional(), // 商品説明

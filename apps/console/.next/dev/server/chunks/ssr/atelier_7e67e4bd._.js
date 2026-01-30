@@ -244,6 +244,7 @@ function useUpdateProduct() {
     return (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useMutation$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMutation"])({
         mutationFn: ({ id, updates })=>updateProduct(id, updates),
         onSuccess: (_, variables)=>{
+            // すべてのproductsクエリを無効化（shopIdに関係なく）
             queryClient.invalidateQueries({
                 queryKey: [
                     "products"
@@ -253,6 +254,12 @@ function useUpdateProduct() {
                 queryKey: [
                     "product",
                     variables.id
+                ]
+            });
+            // 明示的にrefetchも実行
+            queryClient.refetchQueries({
+                queryKey: [
+                    "products"
                 ]
             });
         }

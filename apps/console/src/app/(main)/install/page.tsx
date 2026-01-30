@@ -169,9 +169,6 @@ export default function InstallPage() {
             {selectedProduct.externalProductId && (
               <p className="text-sm text-gray-600">外部商品ID: {selectedProduct.externalProductId}</p>
             )}
-            {selectedProduct.sku && (
-              <p className="text-sm text-gray-600">SKU: {selectedProduct.sku}</p>
-            )}
           </div>
         )}
 

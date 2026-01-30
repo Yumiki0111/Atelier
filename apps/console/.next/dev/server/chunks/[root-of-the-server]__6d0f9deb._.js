@@ -64,12 +64,42 @@ const supabaseAdmin = supabaseUrl && supabaseServiceRoleKey ? (0, __TURBOPACK__i
 
 __turbopack_context__.s([
     "GET",
-    ()=>GET
+    ()=>GET,
+    "OPTIONS",
+    ()=>OPTIONS
 ]);
 var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/atelier/node_modules/next/server.js [app-route] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/atelier/apps/console/src/lib/supabase/server.ts [app-route] (ecmascript)");
 ;
 ;
+/**
+ * Widget Config 公開API
+ * 
+ * pubkey + external_product_id から最新の3DモデルURLを返す
+ * 
+ * クエリパラメータ:
+ * - publicKey: widget_keys.public_key（必須）
+ * - externalProductId: products.external_product_id（必須）
+ * 
+ * レスポンス:
+ * - { enabled: true, asset: { defaultSize: "M", sizes: { "S": { glbUrl: "..." }, "M": { glbUrl: "..." }, "L": { glbUrl: "..." } } } } または { enabled: false }
+ */ // CORSヘッダーを設定するヘルパー関数
+function setCorsHeaders(response, request) {
+    const origin = request.headers.get("origin");
+    if (origin) {
+        response.headers.set("Access-Control-Allow-Origin", origin);
+        response.headers.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+        response.headers.set("Access-Control-Allow-Headers", "Content-Type");
+        response.headers.set("Access-Control-Allow-Credentials", "true");
+    }
+    return response;
+}
+async function OPTIONS(request) {
+    const response = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"](null, {
+        status: 200
+    });
+    return setCorsHeaders(response, request);
+}
 async function GET(request) {
     try {
         const searchParams = request.nextUrl.searchParams;
@@ -80,28 +110,31 @@ async function GET(request) {
             externalProductId
         });
         if (!publicKey || !externalProductId) {
-            return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+            const response = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
                 enabled: false,
                 error: "publicKey and externalProductId are required"
             }, {
                 status: 400
             });
+            return setCorsHeaders(response, request);
         }
         if (!__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"]) {
             console.error("[widget-config API] Database not configured");
-            return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+            const response = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
                 enabled: false
             }, {
                 status: 500
             });
+            return setCorsHeaders(response, request);
         }
         // 1. public_key から shop_id を取得（enabled=true のみ）
         const { data: widgetKey, error: keyError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("widget_keys").select("shop_id, allowed_domains").eq("public_key", publicKey).eq("enabled", true).single();
         if (keyError || !widgetKey) {
             console.warn("[widget-config API] Invalid or disabled public_key:", publicKey);
-            return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+            const response = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
                 enabled: false
             });
+            return setCorsHeaders(response, request);
         }
         console.log("[widget-config API] Widget key found:", {
             shop_id: widgetKey.shop_id,
@@ -129,23 +162,26 @@ async function GET(request) {
                 });
                 if (!isAllowed) {
                     console.warn("[widget-config API] Domain not allowed:", host);
-                    return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+                    const response = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
                         enabled: false
                     });
+                    return setCorsHeaders(response, request);
                 }
                 console.log("[widget-config API] Domain verified:", host);
             } catch (urlError) {
                 console.error("[widget-config API] Invalid origin URL:", origin, urlError);
-                return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+                const response = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
                     enabled: false
                 });
+                return setCorsHeaders(response, request);
             }
         } else {
             console.warn("[widget-config API] No origin or referer header");
             // Origin/Referer がない場合は拒否
-            return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+            const response = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
                 enabled: false
             });
+            return setCorsHeaders(response, request);
         }
         // 3. products を (shop_id, external_product_id) で検索
         const { data: product, error: productError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("products").select("id").eq("shop_id", widgetKey.shop_id).eq("external_product_id", externalProductId).single();
@@ -154,34 +190,91 @@ async function GET(request) {
                 shop_id: widgetKey.shop_id,
                 external_product_id: externalProductId
             });
-            return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+            const response = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
                 enabled: false
             });
+            return setCorsHeaders(response, request);
         }
         console.log("[widget-config API] Product found:", product.id);
-        // 4. assets を (shop_id, product_id) で最新 created_at desc limit 1
-        const { data: asset, error: assetError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("assets").select("glb_url").eq("shop_id", widgetKey.shop_id).eq("product_id", product.id).order("created_at", {
+        // 4. assets を (shop_id, product_id) で取得（サイズごとに最新バージョン）
+        const { data: allAssets, error: assetsError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("assets").select("size, glb_url, version, created_at, is_active").eq("shop_id", widgetKey.shop_id).eq("product_id", product.id).order("size", {
+            ascending: true
+        }).order("created_at", {
             ascending: false
-        }).limit(1).single();
-        if (assetError || !asset) {
-            console.warn("[widget-config API] Asset not found for product:", product.id);
-            return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+        });
+        if (assetsError) {
+            console.warn("[widget-config API] Error fetching assets:", assetsError);
+            const response = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
                 enabled: false
             });
+            return setCorsHeaders(response, request);
         }
-        console.log("[widget-config API] Asset found:", asset.glb_url);
-        // 5. 成功レスポンス
-        return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-            enabled: true,
-            glbUrl: asset.glb_url
+        if (!allAssets || allAssets.length === 0) {
+            console.warn("[widget-config API] No assets found for product:", product.id);
+            const response = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+                enabled: false
+            });
+            return setCorsHeaders(response, request);
+        }
+        // サイズごとに最新バージョンのアセットを取得（is_activeがtrueのものを優先）
+        const assetsBySize = new Map();
+        for (const asset of allAssets){
+            const size = asset.size;
+            const existing = assetsBySize.get(size);
+            // まだ登録されていない、またはより新しいバージョン、またはis_activeがtrueの場合
+            if (!existing || asset.version > existing.version || asset.is_active && !existing.isActive) {
+                assetsBySize.set(size, {
+                    glbUrl: asset.glb_url,
+                    version: asset.version,
+                    isActive: asset.is_active ?? true
+                });
+            }
+        }
+        if (assetsBySize.size === 0) {
+            console.warn("[widget-config API] No valid assets found for product:", product.id);
+            const response = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+                enabled: false
+            });
+            return setCorsHeaders(response, request);
+        }
+        // サイズごとのGLB URLを構築
+        const sizes = {};
+        let defaultSize;
+        for (const [size, asset] of assetsBySize.entries()){
+            sizes[size] = {
+                glbUrl: asset.glbUrl
+            };
+            // デフォルトサイズは最初に見つかったサイズ、または"M"があれば"M"
+            if (!defaultSize || size === "M") {
+                defaultSize = size;
+            }
+        }
+        // Mがなければ最初のサイズをデフォルトに
+        if (!defaultSize) {
+            defaultSize = Array.from(assetsBySize.keys())[0];
+        }
+        console.log("[widget-config API] Assets found:", {
+            productId: product.id,
+            sizes: Object.keys(sizes),
+            defaultSize
         });
+        // 5. 成功レスポンス（サイズごとのアセット情報を含む）
+        const response = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+            enabled: true,
+            asset: {
+                defaultSize,
+                sizes
+            }
+        });
+        return setCorsHeaders(response, request);
     } catch (error) {
         console.error("[widget-config API] Unexpected error:", error);
-        return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+        const response = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
             enabled: false
         }, {
             status: 500
         });
+        return setCorsHeaders(response, request);
     }
 }
 }),

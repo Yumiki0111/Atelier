@@ -5,10 +5,8 @@
 ## ファイル構成
 
 - `index.html` - 商品一覧ページ
-- `product-page.html` - デニムジャケットの商品ページ（productId指定）
-- `product-page-2.html` - ダブルジャケットの商品ページ（SKU指定）
-- `product-page-3.html` - レザージャケットの商品ページ（handle指定）
-- `product-page-4.html` - ウールコートの商品ページ（URL指定）
+- `product-page-2.html` - ダブルジャケットの商品ページ（external_product_id指定）
+- `product-page-4.html` - ウールコートの商品ページ（external_product_id指定）
 - `product-page.css` - 共通スタイルシート
 
 ## 使い方
@@ -23,19 +21,43 @@ npm run dev:console
 npm run dev:widget
 ```
 
-### 2. ブラウザでアクセス
+### 2. デモページの設定
+
+**重要**: デモページを使用する前に、実際の値を設定する必要があります。
+
+1. **Atelier管理画面で以下を確認**:
+   - Widget KeyのPublic Key（設定ページ `/settings` で確認）
+   - 商品の外部商品ID（`external_product_id`）- 商品データベースで確認
+
+2. **デモページのHTMLファイルを編集**:
+   - `product-page-2.html` と `product-page-4.html` を開く
+   - `data-atelier-public-key` が正しく設定されているか確認
+   - `data-atelier-external-product-id` が実際の `external_product_id` と一致しているか確認
+
+**例**:
+```html
+<!-- 変更前 -->
+<div
+  data-atelier-public-key="YOUR_PUBLIC_KEY_HERE"
+  data-atelier-external-product-id="PRODUCT_1">
+</div>
+
+<!-- 変更後（実際の値） -->
+<div
+  data-atelier-public-key="pub_live_xxxxxxxxxxxxx"
+  data-atelier-external-product-id="denim-jacket-001">
+</div>
+```
+
+### 3. ブラウザでアクセス
 
 開発サーバー起動後、以下のURLにアクセスしてください：
 
 - **商品一覧**: `http://localhost:5174/demo/index.html`
-- **商品ページ1（デニムジャケット）**: `http://localhost:5174/demo/product-page.html`
-  - 商品ID指定: `data-atelier-product-id="1"`
 - **商品ページ2（ダブルジャケット）**: `http://localhost:5174/demo/product-page-2.html`
-  - SKU指定: `data-atelier-sku="DBL-JKT-001"`
-- **商品ページ3（レザージャケット）**: `http://localhost:5174/demo/product-page-3.html`
-  - Handle指定: `data-atelier-handle="leather-jacket"`
+  - 外部商品ID指定: `data-atelier-external-product-id="e489b59b-e06e-4e3f-b403-823c85efd6f7"`
 - **商品ページ4（ウールコート）**: `http://localhost:5174/demo/product-page-4.html`
-  - URL指定: `data-atelier-url="https://example.com/products/wool-coat"`
+  - 外部商品ID指定: `data-atelier-external-product-id="a6b494eb-a68a-45af-b868-9eb9ac03add7"`
 
 ### 3. Widgetの動作確認
 
@@ -90,12 +112,12 @@ npm run dev:widget
 
 ### 商品識別子の指定方法
 
-各商品ページで異なる識別子を使用してwidgetを埋め込んでいます：
+各商品ページで `data-atelier-external-product-id` を使用してwidgetを埋め込んでいます：
 
-1. **product-page.html**: `data-atelier-product-id="1"` - 商品ID指定
-2. **product-page-2.html**: `data-atelier-sku="DBL-JKT-001"` - SKU指定
-3. **product-page-3.html**: `data-atelier-handle="leather-jacket"` - Handle指定
-4. **product-page-4.html**: `data-atelier-url="https://example.com/products/wool-coat"` - URL指定
+1. **product-page-2.html**: `data-atelier-external-product-id="e489b59b-e06e-4e3f-b403-823c85efd6f7"` - ダブルジャケットの外部商品ID
+2. **product-page-4.html**: `data-atelier-external-product-id="a6b494eb-a68a-45af-b868-9eb9ac03add7"` - ウールコートの外部商品ID
+
+**注意**: `external_product_id` は、Atelier管理画面で登録した商品の `external_product_id` と一致している必要があります。
 
 ### スクリプトの読み込み
 
@@ -136,4 +158,5 @@ npm run dev:widget
 
 - 開発環境では、APIエラーが発生してもモックデータが使用されます
 - 実際の商品データは、consoleサーバーで管理されているデータベースから取得されます
-- 商品ID、SKU、Handle、URLは、実際のデータベースに存在する値を使用してください
+- `external_product_id` は、Atelier管理画面で登録した商品の `external_product_id` と一致している必要があります
+- デモページは、データベースに実際に登録されている商品のみを含んでいます

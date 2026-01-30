@@ -71,7 +71,7 @@ export function ProductsTable({
       searchQuery === "" ||
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.brand?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.sku?.toLowerCase().includes(searchQuery.toLowerCase());
+      product.externalProductId?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch;
   });
 
@@ -147,7 +147,7 @@ export function ProductsTable({
               <TableHead className="w-20">画像</TableHead>
               <TableHead className="w-48">商品名</TableHead>
               <TableHead className="w-32">ブランド</TableHead>
-              <TableHead className="w-32">SKU</TableHead>
+              <TableHead className="w-32">外部商品ID</TableHead>
               <TableHead className="w-48">説明</TableHead>
               <TableHead className="w-32">操作</TableHead>
             </TableRow>
@@ -155,7 +155,7 @@ export function ProductsTable({
           <TableBody>
             {filteredProducts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-gray-500">
+                <TableCell colSpan={8} className="text-center text-gray-500">
                   商品が見つかりませんでした
                 </TableCell>
               </TableRow>
@@ -193,7 +193,11 @@ export function ProductsTable({
                     </TableCell>
                     <TableCell className={`font-medium py-2 ${isSelected ? "bg-blue-50" : ""}`}>{product.name}</TableCell>
                     <TableCell className={`py-2 ${isSelected ? "bg-blue-50" : ""}`}>{product.brand || "-"}</TableCell>
-                    <TableCell className={`py-2 ${isSelected ? "bg-blue-50" : ""}`}>{product.sku || "-"}</TableCell>
+                    <TableCell className={`py-2 ${isSelected ? "bg-blue-50" : ""} font-mono text-xs`}>
+                      {product.externalProductId || (
+                        <span className="text-gray-400 italic">未設定</span>
+                      )}
+                    </TableCell>
                     <TableCell className={`py-2 ${isSelected ? "bg-blue-50" : ""}`}>
                       {product.description ? (
                         <button

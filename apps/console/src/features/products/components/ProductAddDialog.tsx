@@ -45,7 +45,6 @@ export function ProductAddDialog({ onProductAdded }: ProductAddDialogProps) {
   const addProduct = useAddProduct();
   const { shopId } = useAuth();
   const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
-  const [uploadingPreview, setUploadingPreview] = useState(false);
 
   const {
     register,
@@ -63,7 +62,6 @@ export function ProductAddDialog({ onProductAdded }: ProductAddDialogProps) {
 
   const selectedCategory = watch("category");
   const thumbnailUrl = watch("thumbnailUrl");
-  const previewImageUrl = watch("previewImageUrl");
 
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
@@ -72,9 +70,8 @@ export function ProductAddDialog({ onProductAdded }: ProductAddDialogProps) {
     }
   };
 
-  const handleFileUpload = async (file: File, type: "thumbnail" | "preview") => {
-    const setUploading = type === "thumbnail" ? setUploadingThumbnail : setUploadingPreview;
-    setUploading(true);
+  const handleFileUpload = async (file: File) => {
+    setUploadingThumbnail(true);
     
     try {
       const formData = new FormData();
@@ -107,17 +104,13 @@ export function ProductAddDialog({ onProductAdded }: ProductAddDialogProps) {
         alert(`アップロード成功: ${data.warning}`);
       }
       
-      if (type === "thumbnail") {
-        setValue("thumbnailUrl", data.url, { shouldValidate: true });
-      } else {
-        setValue("previewImageUrl", data.url, { shouldValidate: true });
-      }
+      setValue("thumbnailUrl", data.url, { shouldValidate: true });
     } catch (error) {
       console.error("Failed to upload file:", error);
       const errorMessage = error instanceof Error ? error.message : "アップロードに失敗しました";
       alert(errorMessage);
     } finally {
-      setUploading(false);
+      setUploadingThumbnail(false);
     }
   };
 
@@ -126,15 +119,11 @@ export function ProductAddDialog({ onProductAdded }: ProductAddDialogProps) {
       // 空文字列をundefinedに変換
       const cleanedData = {
         shopId: data.shopId,
+        externalProductId: data.externalProductId && data.externalProductId.trim() !== "" ? data.externalProductId : undefined,
         name: data.name,
         brand: data.brand && data.brand.trim() !== "" ? data.brand : undefined,
         category: data.category,
-        sku: data.sku && data.sku.trim() !== "" ? data.sku : undefined,
-        handle: data.handle && data.handle.trim() !== "" ? data.handle : undefined,
-        url: data.url && data.url.trim() !== "" ? data.url : undefined,
-        sizeTypeId: data.sizeTypeId && data.sizeTypeId.trim() !== "" ? data.sizeTypeId : undefined,
         thumbnailUrl: data.thumbnailUrl && data.thumbnailUrl.trim() !== "" ? data.thumbnailUrl : undefined,
-        previewImageUrl: data.previewImageUrl && data.previewImageUrl.trim() !== "" ? data.previewImageUrl : undefined,
         description: data.description && data.description.trim() !== "" ? data.description : undefined,
       };
       
@@ -179,6 +168,24 @@ export function ProductAddDialog({ onProductAdded }: ProductAddDialogProps) {
           </div>
 
           <div className="space-y-2 min-w-0">
+            <Label htmlFor="externalProductId">
+              外部商品ID <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="externalProductId"
+              {...register("externalProductId")}
+              placeholder="ECサイトの商品ID（例: product-001）"
+              className="w-full"
+            />
+            <p className="text-xs text-gray-500">
+              ECサイトの商品IDと一致させる必要があります。ウィジェット連携で使用されます。
+            </p>
+            {errors.externalProductId && (
+              <p className="text-sm text-red-500">{errors.externalProductId.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2 min-w-0">
             <Label htmlFor="brand">ブランド（任意）</Label>
             <Input
               id="brand"
@@ -212,52 +219,6 @@ export function ProductAddDialog({ onProductAdded }: ProductAddDialogProps) {
           </div>
 
           <div className="space-y-2 min-w-0">
-            <Label htmlFor="sku">SKU（任意）</Label>
-            <Input
-              id="sku"
-              {...register("sku")}
-              placeholder="SKUを入力"
-              className="w-full"
-            />
-          </div>
-
-          <div className="space-y-2 min-w-0">
-            <Label htmlFor="handle">Handle（任意）</Label>
-            <Input
-              id="handle"
-              {...register("handle")}
-              placeholder="handleを入力"
-              className="w-full"
-            />
-          </div>
-
-          <div className="space-y-2 min-w-0">
-            <Label htmlFor="url">URL（任意）</Label>
-            <Input
-              id="url"
-              {...register("url")}
-              placeholder="https://..."
-              className="w-full"
-            />
-          </div>
-
-          <div className="space-y-2 min-w-0">
-            <Label htmlFor="sizeTypeId">サイズタイプID（任意）</Label>
-            <Input
-              id="sizeTypeId"
-              {...register("sizeTypeId")}
-              placeholder="空UUID形式で入力"
-              className="w-full"
-            />
-            <p className="text-xs text-gray-500">
-              入力する場合は、サイズタイプのUUIDを入力してください（例: レターサイズ、数字サイズなど）。空欄のままでも登録できます。
-            </p>
-            {errors.sizeTypeId && (
-              <p className="text-sm text-red-500">{errors.sizeTypeId.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2 min-w-0">
             <Label htmlFor="thumbnailUrl">サムネイル画像（任意）</Label>
             <div className="flex gap-2">
               <Input
@@ -275,7 +236,7 @@ export function ProductAddDialog({ onProductAdded }: ProductAddDialogProps) {
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
-                      handleFileUpload(file, "thumbnail");
+                      handleFileUpload(file);
                     }
                   }}
                 />
@@ -311,59 +272,6 @@ export function ProductAddDialog({ onProductAdded }: ProductAddDialogProps) {
             )}
           </div>
 
-          <div className="space-y-2 min-w-0">
-            <Label htmlFor="previewImageUrl">プレビュー画像（任意）</Label>
-            <div className="flex gap-2">
-              <Input
-                id="previewImageUrl"
-                {...register("previewImageUrl")}
-                placeholder="https://... またはファイルをアップロード"
-                className="w-full"
-              />
-              <div className="flex-shrink-0">
-                <input
-                  id="previewFile"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      handleFileUpload(file, "preview");
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={uploadingPreview}
-                  size="icon"
-                  title={uploadingPreview ? "アップロード中..." : "ファイルをアップロード"}
-                  onClick={() => {
-                    document.getElementById("previewFile")?.click();
-                  }}
-                >
-                  <Upload className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            {previewImageUrl && (
-              <div className="relative inline-block mt-2">
-                <img
-                  src={previewImageUrl}
-                  alt="プレビュー画像"
-                  className="h-20 w-20 object-cover rounded border"
-                />
-                <button
-                  type="button"
-                  onClick={() => setValue("previewImageUrl", "")}
-                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
-            )}
-          </div>
 
           <div className="space-y-2 min-w-0">
             <Label htmlFor="description">商品説明（任意）</Label>

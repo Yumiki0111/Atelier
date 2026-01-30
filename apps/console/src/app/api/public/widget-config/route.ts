@@ -11,8 +11,27 @@ import { supabaseAdmin } from "@/lib/supabase/server";
  * - externalProductId: products.external_product_id（必須）
  * 
  * レスポンス:
- * - { enabled: true, glbUrl: "..." } または { enabled: false }
+ * - { enabled: true, asset: { defaultSize: "M", sizes: { "S": { glbUrl: "..." }, "M": { glbUrl: "..." }, "L": { glbUrl: "..." } } } } または { enabled: false }
  */
+
+// CORSヘッダーを設定するヘルパー関数
+function setCorsHeaders(response: NextResponse, request: NextRequest): NextResponse {
+  const origin = request.headers.get("origin");
+  if (origin) {
+    response.headers.set("Access-Control-Allow-Origin", origin);
+    response.headers.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+    response.headers.set("Access-Control-Allow-Headers", "Content-Type");
+    response.headers.set("Access-Control-Allow-Credentials", "true");
+  }
+  return response;
+}
+
+// OPTIONS リクエスト（プリフライト）を処理
+export async function OPTIONS(request: NextRequest) {
+  const response = new NextResponse(null, { status: 200 });
+  return setCorsHeaders(response, request);
+}
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -22,15 +41,17 @@ export async function GET(request: NextRequest) {
     console.log("[widget-config API] GET request:", { publicKey, externalProductId });
 
     if (!publicKey || !externalProductId) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { enabled: false, error: "publicKey and externalProductId are required" },
         { status: 400 }
       );
+      return setCorsHeaders(response, request);
     }
 
     if (!supabaseAdmin) {
       console.error("[widget-config API] Database not configured");
-      return NextResponse.json({ enabled: false }, { status: 500 });
+      const response = NextResponse.json({ enabled: false }, { status: 500 });
+      return setCorsHeaders(response, request);
     }
 
     // 1. public_key から shop_id を取得（enabled=true のみ）
@@ -43,7 +64,8 @@ export async function GET(request: NextRequest) {
 
     if (keyError || !widgetKey) {
       console.warn("[widget-config API] Invalid or disabled public_key:", publicKey);
-      return NextResponse.json({ enabled: false });
+      const response = NextResponse.json({ enabled: false });
+      return setCorsHeaders(response, request);
     }
 
     console.log("[widget-config API] Widget key found:", {
@@ -79,18 +101,21 @@ export async function GET(request: NextRequest) {
 
         if (!isAllowed) {
           console.warn("[widget-config API] Domain not allowed:", host);
-          return NextResponse.json({ enabled: false });
+          const response = NextResponse.json({ enabled: false });
+          return setCorsHeaders(response, request);
         }
 
         console.log("[widget-config API] Domain verified:", host);
       } catch (urlError) {
         console.error("[widget-config API] Invalid origin URL:", origin, urlError);
-        return NextResponse.json({ enabled: false });
+        const response = NextResponse.json({ enabled: false });
+        return setCorsHeaders(response, request);
       }
     } else {
       console.warn("[widget-config API] No origin or referer header");
       // Origin/Referer がない場合は拒否
-      return NextResponse.json({ enabled: false });
+      const response = NextResponse.json({ enabled: false });
+      return setCorsHeaders(response, request);
     }
 
     // 3. products を (shop_id, external_product_id) で検索
@@ -106,35 +131,96 @@ export async function GET(request: NextRequest) {
         shop_id: widgetKey.shop_id,
         external_product_id: externalProductId,
       });
-      return NextResponse.json({ enabled: false });
+      const response = NextResponse.json({ enabled: false });
+      return setCorsHeaders(response, request);
     }
 
     console.log("[widget-config API] Product found:", product.id);
 
-    // 4. assets を (shop_id, product_id) で最新 created_at desc limit 1
-    const { data: asset, error: assetError } = await supabaseAdmin
+    // 4. assets を (shop_id, product_id) で取得（サイズごとに最新バージョン）
+    const { data: allAssets, error: assetsError } = await supabaseAdmin
       .from("assets")
-      .select("glb_url")
+      .select("size, glb_url, version, created_at, is_active")
       .eq("shop_id", widgetKey.shop_id)
       .eq("product_id", product.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
+      .order("size", { ascending: true })
+      .order("created_at", { ascending: false });
 
-    if (assetError || !asset) {
-      console.warn("[widget-config API] Asset not found for product:", product.id);
-      return NextResponse.json({ enabled: false });
+    if (assetsError) {
+      console.warn("[widget-config API] Error fetching assets:", assetsError);
+      const response = NextResponse.json({ enabled: false });
+      return setCorsHeaders(response, request);
     }
 
-    console.log("[widget-config API] Asset found:", asset.glb_url);
+    if (!allAssets || allAssets.length === 0) {
+      console.warn("[widget-config API] No assets found for product:", product.id);
+      const response = NextResponse.json({ enabled: false });
+      return setCorsHeaders(response, request);
+    }
 
-    // 5. 成功レスポンス
-    return NextResponse.json({
-      enabled: true,
-      glbUrl: asset.glb_url,
+    // サイズごとに最新バージョンのアセットを取得（is_activeがtrueのものを優先）
+    const assetsBySize = new Map<string, { glbUrl: string; version: number; isActive: boolean }>();
+    
+    for (const asset of allAssets) {
+      const size = asset.size;
+      const existing = assetsBySize.get(size);
+      
+      // まだ登録されていない、またはより新しいバージョン、またはis_activeがtrueの場合
+      if (
+        !existing ||
+        asset.version > existing.version ||
+        (asset.is_active && !existing.isActive)
+      ) {
+        assetsBySize.set(size, {
+          glbUrl: asset.glb_url,
+          version: asset.version,
+          isActive: asset.is_active ?? true,
+        });
+      }
+    }
+
+    if (assetsBySize.size === 0) {
+      console.warn("[widget-config API] No valid assets found for product:", product.id);
+      const response = NextResponse.json({ enabled: false });
+      return setCorsHeaders(response, request);
+    }
+
+    // サイズごとのGLB URLを構築
+    const sizes: Record<string, { glbUrl: string }> = {};
+    let defaultSize: string | undefined;
+    
+    for (const [size, asset] of assetsBySize.entries()) {
+      sizes[size] = { glbUrl: asset.glbUrl };
+      // デフォルトサイズは最初に見つかったサイズ、または"M"があれば"M"
+      if (!defaultSize || size === "M") {
+        defaultSize = size;
+      }
+    }
+
+    // Mがなければ最初のサイズをデフォルトに
+    if (!defaultSize) {
+      defaultSize = Array.from(assetsBySize.keys())[0];
+    }
+
+    console.log("[widget-config API] Assets found:", {
+      productId: product.id,
+      sizes: Object.keys(sizes),
+      defaultSize,
     });
+
+    // 5. 成功レスポンス（サイズごとのアセット情報を含む）
+    const response = NextResponse.json({
+      enabled: true,
+      asset: {
+        defaultSize,
+        sizes,
+      },
+    });
+    
+    return setCorsHeaders(response, request);
   } catch (error: any) {
     console.error("[widget-config API] Unexpected error:", error);
-    return NextResponse.json({ enabled: false }, { status: 500 });
+    const response = NextResponse.json({ enabled: false }, { status: 500 });
+    return setCorsHeaders(response, request);
   }
 }
