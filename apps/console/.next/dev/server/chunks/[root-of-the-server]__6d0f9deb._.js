@@ -163,7 +163,8 @@ async function GET(request) {
                 if (!isAllowed) {
                     console.warn("[widget-config API] Domain not allowed:", host);
                     const response = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-                        enabled: false
+                        enabled: false,
+                        error: `ドメイン "${host}" が許可されていません。設定画面で許可ドメインに追加してください。`
                     });
                     return setCorsHeaders(response, request);
                 }
@@ -191,7 +192,8 @@ async function GET(request) {
                 external_product_id: externalProductId
             });
             const response = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-                enabled: false
+                enabled: false,
+                error: `商品が見つかりません。external_product_id: "${externalProductId}" が正しく登録されているか確認してください。`
             });
             return setCorsHeaders(response, request);
         }

@@ -101,7 +101,10 @@ export async function GET(request: NextRequest) {
 
         if (!isAllowed) {
           console.warn("[widget-config API] Domain not allowed:", host);
-          const response = NextResponse.json({ enabled: false });
+          const response = NextResponse.json({ 
+            enabled: false,
+            error: `ドメイン "${host}" が許可されていません。設定画面で許可ドメインに追加してください。`
+          });
           return setCorsHeaders(response, request);
         }
 
@@ -131,7 +134,10 @@ export async function GET(request: NextRequest) {
         shop_id: widgetKey.shop_id,
         external_product_id: externalProductId,
       });
-      const response = NextResponse.json({ enabled: false });
+      const response = NextResponse.json({ 
+        enabled: false,
+        error: `商品が見つかりません。external_product_id: "${externalProductId}" が正しく登録されているか確認してください。`
+      });
       return setCorsHeaders(response, request);
     }
 

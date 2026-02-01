@@ -5,5 +5,71 @@ import { initWidget } from "./widget";
 
 // Auto-initialize when script loads
 if (typeof window !== "undefined") {
-  initWidget();
+  let initialized = false;
+  
+  // 初期化関数（重複実行を防ぐ）
+  function doInit() {
+    if (initialized) return;
+    initialized = true;
+    console.log("[Atelier Widget] Initializing widget");
+    initWidget();
+  }
+  
+  // DOMが読み込まれるまで待つ
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => {
+      console.log("[Atelier Widget] DOMContentLoaded");
+      doInit();
+    });
+  } else {
+    // DOMが既に読み込まれている場合は即座に初期化
+    console.log("[Atelier Widget] DOM already loaded");
+    doInit();
+  }
+  
+  // window.onloadも待つ（念のため）
+  if (document.readyState !== "complete") {
+    window.addEventListener("load", () => {
+      console.log("[Atelier Widget] Window loaded");
+      if (!initialized) {
+        doInit();
+      }
+    });
+  }
+  
+  // 動的に追加される要素にも対応するため、MutationObserverを使用
+  if (typeof MutationObserver !== "undefined") {
+    const observer = new MutationObserver(() => {
+      const elements = document.querySelectorAll<HTMLElement>(
+        "[data-atelier-public-key], [data-atelier-shop-id]"
+      );
+      const uninitialized = Array.from(elements).filter(
+        (el) => !el.shadowRoot
+      );
+      if (uninitialized.length > 0) {
+        console.log(`[Atelier Widget] Found ${uninitialized.length} uninitialized widget element(s), initializing`);
+        initWidget();
+      }
+    });
+    
+    // DOMの変更を監視
+    observer.observe(document.body || document.documentElement, {
+      childList: true,
+      subtree: true,
+    });
+  }
+  
+  // フォールバック: 少し遅延して再初期化を試みる
+  setTimeout(() => {
+    const elements = document.querySelectorAll<HTMLElement>(
+      "[data-atelier-public-key], [data-atelier-shop-id]"
+    );
+    const uninitialized = Array.from(elements).filter(
+      (el) => !el.shadowRoot
+    );
+    if (uninitialized.length > 0) {
+      console.log(`[Atelier Widget] Fallback: Found ${uninitialized.length} uninitialized widget element(s), initializing`);
+      initWidget();
+    }
+  }, 500);
 }

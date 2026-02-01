@@ -1,13 +1,10 @@
 {
-  "/(main)/page": "app/(main)/page.js",
   "/(main)/settings/page": "app/(main)/settings/page.js",
   "/api/admin/members/route": "app/api/admin/members/route.js",
-  "/api/analytics/route": "app/api/analytics/route.js",
   "/api/auth/post-login/route": "app/api/auth/post-login/route.js",
-  "/api/auth/profile/route": "app/api/auth/profile/route.js",
   "/api/auth/shop-id/route": "app/api/auth/shop-id/route.js",
-  "/api/products/route": "app/api/products/route.js",
-  "/api/shops/[id]/route": "app/api/shops/[id]/route.js",
+  "/api/events/route": "app/api/events/route.js",
+  "/api/public/widget-config/route": "app/api/public/widget-config/route.js",
   "/api/widget-keys/[id]/route": "app/api/widget-keys/[id]/route.js",
   "/api/widget-keys/route": "app/api/widget-keys/route.js"
 }
