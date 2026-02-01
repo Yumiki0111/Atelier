@@ -55,16 +55,21 @@ export function PreviewPanel({
     return sizeAssets[0];
   }, [assets, currentSize]);
 
-  // 利用可能なサイズを取得（アセットから動的に取得）
+  // 利用可能なサイズを取得（デフォルトでS、M、L、XLを表示）
   const availableSizes = useMemo(() => {
-    const sizes = new Set<string>();
+    // 常にデフォルトサイズを返す（アセットの有無に関わらず）
+    const defaultSizes = ["S", "M", "L", "XL"];
+    
+    // アセットから実際に存在するサイズを取得
+    const assetSizes = new Set<string>();
     assets.forEach((asset) => {
       if (asset.isActive !== false) {
-        sizes.add(asset.size);
+        assetSizes.add(asset.size);
       }
     });
-    // アセットがない場合はデフォルトサイズを返す
-    return sizes.size > 0 ? Array.from(sizes).sort() : ["S", "M", "L"];
+    
+    // デフォルトサイズを返す（アセットが存在するサイズも含む）
+    return defaultSizes;
   }, [assets]);
 
   // Vanilla JSのプレビューパネルを初期化
@@ -119,6 +124,10 @@ export function PreviewPanel({
       return;
     }
 
+    // 商品名を取得
+    const currentProductName = selectedProduct?.name;
+    console.log("[PreviewPanel] Product name:", currentProductName);
+
     // 新しいインスタンスを初期化
     const instance = initPreviewPanel({
       container: previewContainerRef.current,
@@ -130,6 +139,7 @@ export function PreviewPanel({
       maxHeight: 190,
       availableSizes: availableSizes as ProductSize[],
       initialSize: currentSize,
+      productName: currentProductName,
       onBackClick: () => {
         // PreviewPanel.tsxでは、ナビゲーションバーの戻るボタンは不要
         // （既に独自のヘッダーがあるため）

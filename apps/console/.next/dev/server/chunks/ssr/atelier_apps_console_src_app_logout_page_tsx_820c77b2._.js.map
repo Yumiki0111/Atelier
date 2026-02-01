@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///Users/y62h34yh/atelier/apps/console/src/app/logout/page.tsx"],"sourcesContent":["\"use client\";\n\nimport { useEffect } from \"react\";\nimport { useAuth } from \"@/contexts/AuthContext\";\n\nexport default function LogoutPage() {\n  const { logout } = useAuth();\n\n  useEffect(() => {\n    logout();\n  }, [logout]);\n\n  return (\n    <div className=\"flex min-h-screen items-center justify-center bg-gray-50\">\n      <p className=\"text-gray-500\">ログアウト中...</p>\n    </div>\n  );\n}\n"],"names":[],"mappings":";;;;;AAEA;AACA;AAHA;;;;AAKe,SAAS;IACtB,MAAM,EAAE,MAAM,EAAE,GAAG,IAAA,wKAAO;IAE1B,IAAA,6NAAS,EAAC;QACR;IACF,GAAG;QAAC;KAAO;IAEX,qBACE,yPAAC;QAAI,WAAU;kBACb,cAAA,yPAAC;YAAE,WAAU;sBAAgB;;;;;;;;;;;AAGnC"}}]
+}

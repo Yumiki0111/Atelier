@@ -30,8 +30,5 @@ export interface PreviewPanelInstance {
   updateModelUrl(modelUrl: string | undefined): void; // GLBとFBXの両方をサポート
   updateHeight(height: number): void;
   updateSize(size: ProductSize): void;
-  addChatMessage(message: ChatMessage): void;
-  showChatHistory(): void;
-  hideChatHistory(): void;
   destroy(): void;
 }

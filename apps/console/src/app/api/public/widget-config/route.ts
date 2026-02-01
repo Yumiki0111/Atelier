@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
     // 3. products を (shop_id, external_product_id) で検索
     const { data: product, error: productError } = await supabaseAdmin
       .from("products")
-      .select("id")
+      .select("id, name")
       .eq("shop_id", widgetKey.shop_id)
       .eq("external_product_id", externalProductId)
       .single();
@@ -226,6 +226,7 @@ export async function GET(request: NextRequest) {
       asset: {
         defaultSize,
         sizes,
+        productName: product.name,
       },
     });
     

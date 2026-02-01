@@ -682,6 +682,7 @@ function renderModal(
     maxHeight: 190,
     availableSizes,
     initialSize: currentSize,
+    productName: config.asset?.productName,
     onSizeChange: (size) => {
       currentSize = size;
       const newModelUrl = config.asset?.sizes[size]?.modelUrl || config.asset?.sizes[size]?.glbUrl || 
