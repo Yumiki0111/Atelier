@@ -22,7 +22,8 @@ export interface Asset {
   id: string;
   productId: string;
   size: ProductSize; // 柔軟な形式（商品のsizeTypeIdに応じて異なる）
-  glbUrl: string;
+  glbUrl?: string; // 後方互換性のため残す
+  modelUrl?: string; // GLBとFBXの両方をサポート（優先的に使用）
   thumbnailUrl?: string;
   version: number;
   isActive?: boolean; // アクティブなアセットかどうか（最新バージョンのみtrue推奨）

@@ -1,988 +1,647 @@
-[00:00:00.951] Server  LOG     ✓ Ready in 765ms
-[00:00:05.165] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:00:05.287] Server  LOG     [post-login API] POST request received
-[00:00:05.288] Server  LOG     [post-login API] Auth header: "present"
-[00:00:05.288] Server  LOG     [post-login API] Token extracted, length: 796
-[00:00:05.288] Server  LOG     [post-login API] Verifying token...
-[00:00:05.320] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:00:05.331] Server  LOG     [shop-id API] GET request received
-[00:00:05.332] Server  LOG     [shop-id API] Auth header: "present"
-[00:00:05.332] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:00:05.332] Server  LOG     [shop-id API] Verifying token...
-[00:00:05.337] Browser LOG     [authenticatedFetch] Starting, url: /api/products?shopId=default_shop
-[00:00:05.337] Browser LOG     [authenticatedFetch] Getting session...
-[00:00:05.337] Browser LOG     [AuthContext] State update: {"hasUser":false,"isAuthenticated":false,"isLoading":true,"shopId":"default_shop"}
-[00:00:05.337] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:00:05.337] Browser LOG     [authenticatedFetch] Authorization header set
-[00:00:05.337] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products?shopId=default_shop
-[00:00:05.337] Browser LOG     [AuthContext] Initial session retrieved: {"hasError":false,"hasSession":true}
-[00:00:05.337] Browser LOG     [AuthContext] Calling post-login API to ensure profile exists...
-[00:00:05.337] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":true,"shopId":"default_shop","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:00:05.337] Browser LOG     [AuthContext] Auth state changed: INITIAL_SESSION {"hasSession":true}
-[00:00:05.337] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:00:05.337] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:00:05.337] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:00:05.337] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":true,"shopId":"default_shop","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:00:05.921] Server  LOG     [shop-id API] Token verification result: {}
-[00:00:05.922] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:00:05.925] Server  LOG     [post-login API] Token verification result: {}
-[00:00:05.927] Server  LOG     [post-login API] Looking up pending_invites for email: "y62h34yh@gmail.com"
-[00:00:06.155] Server  WARN    [post-login API] No pending invite found for: "y62h34yh@gmail.com"
-[00:00:06.163] Server  LOG     [shop-id API] Query result: {}
-[00:00:06.163] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:00:06.173] Server  LOG     [shop-id API] GET request received
-[00:00:06.173] Server  LOG     [shop-id API] Auth header: "present"
-[00:00:06.173] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:00:06.173] Server  LOG     [shop-id API] Verifying token...
-[00:00:06.179] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:00:06.272] Browser LOG     [AuthContext] post-login not needed or already completed
-[00:00:06.272] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:00:06.272] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:00:06.272] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:00:06.272] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:00:06.272] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:00:06.272] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:00:06.272] Browser LOG     [AuthContext] role found: owner
-[00:00:06.272] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:00:06.272] Browser LOG     [authenticatedFetch] Starting, url: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:00:06.272] Browser LOG     [authenticatedFetch] Getting session...
-[00:00:06.272] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:00:06.272] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:00:06.272] Browser LOG     [authenticatedFetch] Authorization header set
-[00:00:06.272] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:00:06.435] Server  LOG     [shop-id API] Token verification result: {}
-[00:00:06.435] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:00:06.437] Server  ERROR   Error fetching products: {}
-[00:00:06.543] Browser LOG     [authenticatedFetch] Fetch completed, status: 500
-[00:00:06.597] Server  LOG     [shop-id API] Query result: {}
-[00:00:06.597] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:00:06.702] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:00:06.702] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:00:06.702] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:00:06.702] Browser LOG     [AuthContext] role found: owner
-[00:00:06.702] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:00:06.883] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:00:11.155] Browser LOG     [PreviewPanel] Initializing preview panel: {"assetsCount":1,"availableSizes":["M"],"currentSize":"M","glbUrl":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/glb/1769615582923-53gqscw76m9.glb","hasAsset":true}
-[00:00:11.155] Browser LOG     [Atelier Preview] Initializing 3D viewer: {"containerHeight":416,"containerWidth":286,"initialHeight":416,"initialWidth":286}
-[00:00:11.155] Browser LOG     [Atelier Preview] Loading 3D model: https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/glb/1769615582923-53gqscw76m9.glb
-[00:00:11.155] Browser LOG     [Atelier Preview] Loading 3D model: https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/glb/1769615582923-53gqscw76m9.glb
-[00:00:11.155] Browser LOG     [Atelier Preview] Resized 3D viewer: {"height":416,"width":286}
-[00:00:11.156] Browser LOG     [Atelier Preview] 3D model loaded successfully: https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/glb/1769615582923-53gqscw76m9.glb
-[00:00:11.156] Browser LOG     [PreviewPanel] 3D model loaded: https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/glb/1769615582923-53gqscw76m9.glb
-[00:00:11.156] Browser LOG     [Atelier Preview] 3D model loaded successfully: https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/glb/1769615582923-53gqscw76m9.glb
-[00:00:11.156] Browser LOG     [PreviewPanel] 3D model loaded: https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/glb/1769615582923-53gqscw76m9.glb
-[00:00:34.372] Server  LOG     [shop-id API] GET request received
-[00:00:34.372] Server  LOG     [shop-id API] Auth header: "present"
-[00:00:34.372] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:00:34.372] Server  LOG     [shop-id API] Verifying token...
-[00:00:34.477] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:00:34.477] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:00:34.477] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:00:34.477] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:00:34.477] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:00:34.625] Server  LOG     [shop-id API] Token verification result: {}
-[00:00:34.625] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:00:34.786] Server  LOG     [shop-id API] Query result: {}
-[00:00:34.787] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:00:34.891] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:00:34.891] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:00:34.891] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:00:34.891] Browser LOG     [AuthContext] role found: owner
-[00:00:34.891] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:00:56.426] Server  LOG     [shop-id API] GET request received
-[00:00:56.426] Server  LOG     [shop-id API] Auth header: "present"
-[00:00:56.426] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:00:56.427] Server  LOG     [shop-id API] Verifying token...
-[00:00:56.532] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:00:56.532] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:00:56.532] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:00:56.532] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:00:56.532] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:00:56.665] Server  LOG     [shop-id API] Token verification result: {}
-[00:00:56.666] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:00:56.838] Server  LOG     [shop-id API] Query result: {}
-[00:00:56.839] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:00:56.944] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:00:56.944] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:00:56.944] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:00:56.944] Browser LOG     [AuthContext] role found: owner
-[00:00:56.944] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:00:59.444] Server  LOG     [shop-id API] GET request received
-[00:00:59.444] Server  LOG     [shop-id API] Auth header: "present"
-[00:00:59.444] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:00:59.444] Server  LOG     [shop-id API] Verifying token...
-[00:00:59.551] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:00:59.551] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:00:59.551] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:00:59.551] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:00:59.551] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:00:59.625] Server  LOG     [shop-id API] Token verification result: {}
-[00:00:59.625] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:00:59.805] Server  LOG     [shop-id API] Query result: {}
-[00:00:59.805] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:00:59.909] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:00:59.909] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:00:59.909] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:00:59.909] Browser LOG     [AuthContext] role found: owner
-[00:00:59.909] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:01:23.531] Server  LOG     [shop-id API] GET request received
-[00:01:23.531] Server  LOG     [shop-id API] Auth header: "present"
-[00:01:23.531] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:01:23.531] Server  LOG     [shop-id API] Verifying token...
-[00:01:23.636] Browser LOG     [authenticatedFetch] Starting, url: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:01:23.636] Browser LOG     [authenticatedFetch] Getting session...
-[00:01:23.636] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:01:23.636] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:01:23.636] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:01:23.636] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:01:23.636] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:01:23.765] Server  LOG     [shop-id API] Token verification result: {}
-[00:01:23.765] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:01:23.944] Server  LOG     [shop-id API] Query result: {}
-[00:01:23.945] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:01:23.952] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:01:24.049] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:01:24.049] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:01:24.049] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:01:24.049] Browser LOG     [AuthContext] role found: owner
-[00:01:24.049] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:01:24.049] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:01:24.049] Browser LOG     [authenticatedFetch] Authorization header set
-[00:01:24.049] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:01:24.628] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:04:15.610] Server  LOG     [shop-id API] GET request received
-[00:04:15.610] Server  LOG     [shop-id API] Auth header: "present"
-[00:04:15.611] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:04:15.611] Server  LOG     [shop-id API] Verifying token...
-[00:04:15.716] Browser LOG     [authenticatedFetch] Starting, url: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:04:15.716] Browser LOG     [authenticatedFetch] Getting session...
-[00:04:15.716] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:04:15.716] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:04:15.716] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:04:15.716] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:04:15.716] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:04:16.402] Server  LOG     [shop-id API] Token verification result: {}
-[00:04:16.403] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:04:16.809] Server  LOG     [shop-id API] Query result: {}
-[00:04:16.809] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:04:16.823] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:04:16.975] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:04:16.976] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:04:16.976] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:04:16.976] Browser LOG     [AuthContext] role found: owner
-[00:04:16.976] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:04:16.976] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:04:16.976] Browser LOG     [authenticatedFetch] Authorization header set
-[00:04:16.976] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:04:17.976] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:05:42.015] Server  LOG     [shop-id API] GET request received
-[00:05:42.015] Server  LOG     [shop-id API] Auth header: "present"
-[00:05:42.015] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:05:42.015] Server  LOG     [shop-id API] Verifying token...
-[00:05:42.108] Browser LOG     [authenticatedFetch] Starting, url: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:05:42.108] Browser LOG     [authenticatedFetch] Getting session...
-[00:05:42.108] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:05:42.108] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:05:42.108] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:05:42.108] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:05:42.108] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:05:42.276] Server  LOG     [shop-id API] Token verification result: {}
-[00:05:42.277] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:05:42.468] Server  LOG     [shop-id API] Query result: {}
-[00:05:42.469] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:05:42.482] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:05:42.575] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:05:42.575] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:05:42.575] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:05:42.575] Browser LOG     [AuthContext] role found: owner
-[00:05:42.575] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:05:42.575] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:05:42.575] Browser LOG     [authenticatedFetch] Authorization header set
-[00:05:42.575] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:05:43.145] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:05:46.530] Browser LOG     [authenticatedFetch] Starting, url: /api/products/a6b494eb-a68a-45af-b868-9eb9ac03add7
-[00:05:46.530] Browser LOG     [authenticatedFetch] Getting session...
-[00:05:46.530] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:05:46.530] Browser LOG     [authenticatedFetch] Authorization header set
-[00:05:46.530] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products/a6b494eb-a68a-45af-b868-9eb9ac03add7
-[00:05:47.068] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:05:47.791] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:05:55.730] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:05:55.817] Browser LOG     [authenticatedFetch] Starting, url: /api/products/a6b494eb-a68a-45af-b868-9eb9ac03add7
-[00:05:55.817] Browser LOG     [authenticatedFetch] Getting session...
-[00:05:55.817] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:05:55.817] Browser LOG     [authenticatedFetch] Authorization header set
-[00:05:55.817] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products/a6b494eb-a68a-45af-b868-9eb9ac03add7
-[00:05:56.454] Server  LOG     [PATCH /api/products/:id] Received body: "{\n  \"name\": \"ウールコート\",\n  \"externalProductId\": \"a6b494eb-a68a-45af-b868-9eb9ac03add7\",\n  \"category\": \"コート\",\n  \"thumbnailUrl\": \"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/images/1769615551714-eqouu77auq6.png\",\n  \"description\": \"春にぴったりのコートです。\"\n}"
-[00:05:56.455] Server  LOG     [PATCH /api/products/:id] Body without shopId: "{\n  \"name\": \"ウールコート\",\n  \"externalProductId\": \"a6b494eb-a68a-45af-b868-9eb9ac03add7\",\n  \"category\": \"コート\",\n  \"thumbnailUrl\": \"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/images/1769615551714-eqouu77auq6.png\",\n  \"description\": \"春にぴったりのコートです。\"\n}"
-[00:05:56.459] Server  LOG     [PATCH /api/products/:id] Validation passed: "{\n  \"externalProductId\": \"a6b494eb-a68a-45af-b868-9eb9ac03add7\",\n  \"name\": \"ウールコート\",\n  \"category\": \"コート\",\n  \"thumbnailUrl\": \"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/images/1769615551714-eqouu77auq6.png\",\n  \"description\": \"春にぴったりのコートです。\"\n}"
-[00:05:56.460] Server  LOG     [PATCH /api/products/:id] Update data: "{\n  \"name\": \"ウールコート\",\n  \"external_product_id\": \"a6b494eb-a68a-45af-b868-9eb9ac03add7\",\n  \"category\": \"コート\",\n  \"thumbnail_url\": \"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/images/1769615551714-eqouu77auq6.png\",\n  \"description\": \"春にぴったりのコートです。\",\n  \"updated_at\": \"2026-01-30T14:03:53.980Z\"\n}"
-[00:05:56.460] Server  LOG     [PATCH /api/products/:id] Product ID: "a6b494eb-a68a-45af-b868-9eb9ac03add7"
-[00:05:56.461] Server  LOG     [PATCH /api/products/:id] Shop ID: "abb54fb0-9119-4d9d-b979-1ea20b2f9f56"
-[00:05:56.763] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:05:56.771] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:05:56.856] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:05:56.856] Browser LOG     [authenticatedFetch] Starting, url: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:05:56.856] Browser LOG     [authenticatedFetch] Getting session...
-[00:05:56.856] Browser LOG     [authenticatedFetch] Starting, url: /api/products/a6b494eb-a68a-45af-b868-9eb9ac03add7
-[00:05:56.856] Browser LOG     [authenticatedFetch] Getting session...
-[00:05:56.856] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:05:56.856] Browser LOG     [authenticatedFetch] Authorization header set
-[00:05:56.856] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:05:56.856] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:05:56.856] Browser LOG     [authenticatedFetch] Authorization header set
-[00:05:56.856] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products/a6b494eb-a68a-45af-b868-9eb9ac03add7
-[00:05:57.449] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:05:57.449] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:06:01.695] Server  LOG     [shop-id API] GET request received
-[00:06:01.695] Server  LOG     [shop-id API] Auth header: "present"
-[00:06:01.695] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:06:01.695] Server  LOG     [shop-id API] Verifying token...
-[00:06:01.799] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:06:01.799] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:06:01.799] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:06:01.799] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:06:01.799] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:06:01.925] Server  LOG     [shop-id API] Token verification result: {}
-[00:06:01.926] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:06:02.100] Server  LOG     [shop-id API] Query result: {}
-[00:06:02.100] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:06:02.206] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:06:02.206] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:06:02.206] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:06:02.206] Browser LOG     [AuthContext] role found: owner
-[00:06:02.206] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:06:07.138] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:06:07.224] Browser LOG     [authenticatedFetch] Starting, url: /api/products/e489b59b-e06e-4e3f-b403-823c85efd6f7
-[00:06:07.224] Browser LOG     [authenticatedFetch] Getting session...
-[00:06:07.224] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:06:07.224] Browser LOG     [authenticatedFetch] Authorization header set
-[00:06:07.224] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products/e489b59b-e06e-4e3f-b403-823c85efd6f7
-[00:06:07.860] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:06:13.252] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:06:13.342] Browser LOG     [authenticatedFetch] Starting, url: /api/products/e489b59b-e06e-4e3f-b403-823c85efd6f7
-[00:06:13.342] Browser LOG     [authenticatedFetch] Getting session...
-[00:06:13.342] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:06:13.342] Browser LOG     [authenticatedFetch] Authorization header set
-[00:06:13.342] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products/e489b59b-e06e-4e3f-b403-823c85efd6f7
-[00:06:13.673] Server  LOG     [PATCH /api/products/:id] Received body: "{\n  \"name\": \"ダブルジャケット\",\n  \"externalProductId\": \"e489b59b-e06e-4e3f-b403-823c85efd6f7\",\n  \"category\": \"ジャケット\",\n  \"thumbnailUrl\": \"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/images/1769605538241-sb86tami8v.png\",\n  \"description\": \"豪華なダブルジャケットです。\"\n}"
-[00:06:13.673] Server  LOG     [PATCH /api/products/:id] Body without shopId: "{\n  \"name\": \"ダブルジャケット\",\n  \"externalProductId\": \"e489b59b-e06e-4e3f-b403-823c85efd6f7\",\n  \"category\": \"ジャケット\",\n  \"thumbnailUrl\": \"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/images/1769605538241-sb86tami8v.png\",\n  \"description\": \"豪華なダブルジャケットです。\"\n}"
-[00:06:13.674] Server  LOG     [PATCH /api/products/:id] Validation passed: "{\n  \"externalProductId\": \"e489b59b-e06e-4e3f-b403-823c85efd6f7\",\n  \"name\": \"ダブルジャケット\",\n  \"category\": \"ジャケット\",\n  \"thumbnailUrl\": \"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/images/1769605538241-sb86tami8v.png\",\n  \"description\": \"豪華なダブルジャケットです。\"\n}"
-[00:06:13.674] Server  LOG     [PATCH /api/products/:id] Update data: "{\n  \"name\": \"ダブルジャケット\",\n  \"external_product_id\": \"e489b59b-e06e-4e3f-b403-823c85efd6f7\",\n  \"category\": \"ジャケット\",\n  \"thumbnail_url\": \"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/images/1769605538241-sb86tami8v.png\",\n  \"description\": \"豪華なダブルジャケットです。\",\n  \"updated_at\": \"2026-01-30T14:04:11.195Z\"\n}"
-[00:06:13.674] Server  LOG     [PATCH /api/products/:id] Product ID: "e489b59b-e06e-4e3f-b403-823c85efd6f7"
-[00:06:13.674] Server  LOG     [PATCH /api/products/:id] Shop ID: "abb54fb0-9119-4d9d-b979-1ea20b2f9f56"
-[00:06:13.941] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:06:13.947] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:06:14.036] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:06:14.036] Browser LOG     [authenticatedFetch] Starting, url: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:06:14.036] Browser LOG     [authenticatedFetch] Getting session...
-[00:06:14.036] Browser LOG     [authenticatedFetch] Starting, url: /api/products/e489b59b-e06e-4e3f-b403-823c85efd6f7
-[00:06:14.036] Browser LOG     [authenticatedFetch] Getting session...
-[00:06:14.036] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:06:14.036] Browser LOG     [authenticatedFetch] Authorization header set
-[00:06:14.036] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:06:14.036] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:06:14.036] Browser LOG     [authenticatedFetch] Authorization header set
-[00:06:14.036] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products/e489b59b-e06e-4e3f-b403-823c85efd6f7
-[00:06:14.600] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:06:14.600] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:06:26.614] Server  LOG     [shop-id API] GET request received
-[00:06:26.614] Server  LOG     [shop-id API] Auth header: "present"
-[00:06:26.614] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:06:26.614] Server  LOG     [shop-id API] Verifying token...
-[00:06:26.720] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:06:26.720] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:06:26.720] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:06:26.720] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:06:26.720] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:06:26.848] Server  LOG     [shop-id API] Token verification result: {}
-[00:06:26.848] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:06:27.024] Server  LOG     [shop-id API] Query result: {}
-[00:06:27.025] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:06:27.130] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:06:27.130] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:06:27.130] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:06:27.130] Browser LOG     [AuthContext] role found: owner
-[00:06:27.130] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:06:29.386] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:06:31.067] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:06:31.071] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:06:40.229] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:06:42.945] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:06:47.457] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "PRODUCT_1"
-[00:06:47.461] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "PRODUCT_1"
-[00:06:49.329] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "PRODUCT_1"
-[00:06:49.367] Server  LOG     [widget-config API] GET request: {}
-[00:06:49.546] Server  LOG     [widget-config API] Widget key found: {}
-[00:06:49.549] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:06:49.549] Server  WARN    [widget-config API] Domain not allowed: "localhost:5174"
-[00:06:49.559] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "PRODUCT_1"
-[00:06:51.382] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:07:37.662] Server  LOG     [shop-id API] GET request received
-[00:07:37.662] Server  LOG     [shop-id API] Auth header: "present"
-[00:07:37.662] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:07:37.663] Server  LOG     [shop-id API] Verifying token...
-[00:07:37.766] Browser LOG     [authenticatedFetch] Starting, url: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:07:37.766] Browser LOG     [authenticatedFetch] Getting session...
-[00:07:37.766] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:07:37.766] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:07:37.766] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:07:37.766] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:07:37.766] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:07:37.914] Server  LOG     [shop-id API] Token verification result: {}
-[00:07:37.914] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:07:38.100] Server  LOG     [shop-id API] Query result: {}
-[00:07:38.100] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:07:38.108] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:07:38.205] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:07:38.205] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:07:38.205] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:07:38.205] Browser LOG     [AuthContext] role found: owner
-[00:07:38.205] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:07:38.205] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:07:38.205] Browser LOG     [authenticatedFetch] Authorization header set
-[00:07:38.205] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:07:38.836] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:08:40.508] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:08:40.539] Server  LOG     ✓ Compiled in 40ms
-[00:08:40.975] Browser LOG     [authenticatedFetch] Starting, url: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:08:40.975] Browser LOG     [authenticatedFetch] Getting session...
-[00:08:40.975] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:08:40.975] Browser LOG     [authenticatedFetch] Authorization header set
-[00:08:40.975] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:08:41.978] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:09:21.369] Server  LOG     [shop-id API] GET request received
-[00:09:21.369] Server  LOG     [shop-id API] Auth header: "present"
-[00:09:21.370] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:09:21.370] Server  LOG     [shop-id API] Verifying token...
-[00:09:21.473] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:09:21.473] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:09:21.473] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:09:21.473] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:09:21.473] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:09:21.639] Server  LOG     [shop-id API] Token verification result: {}
-[00:09:21.639] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:09:21.831] Server  LOG     [shop-id API] Query result: {}
-[00:09:21.831] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:09:21.936] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:09:21.936] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:09:21.936] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:09:21.936] Browser LOG     [AuthContext] role found: owner
-[00:09:21.936] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:09:25.871] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:09:25.874] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:09:27.388] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:09:48.183] Server  LOG     [shop-id API] GET request received
-[00:09:48.183] Server  LOG     [shop-id API] Auth header: "present"
-[00:09:48.183] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:09:48.183] Server  LOG     [shop-id API] Verifying token...
-[00:09:48.287] Browser LOG     [authenticatedFetch] Starting, url: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:09:48.287] Browser LOG     [authenticatedFetch] Getting session...
-[00:09:48.287] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:09:48.287] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:09:48.287] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:09:48.287] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:09:48.287] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:09:48.424] Server  LOG     [shop-id API] Token verification result: {}
-[00:09:48.425] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:09:48.630] Server  LOG     [shop-id API] Query result: {}
-[00:09:48.631] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:09:48.639] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:09:48.735] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:09:48.735] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:09:48.735] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:09:48.735] Browser LOG     [AuthContext] role found: owner
-[00:09:48.735] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:09:48.735] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:09:48.735] Browser LOG     [authenticatedFetch] Authorization header set
-[00:09:48.735] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:09:49.312] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:19:28.989] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:19:29.010] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "PRODUCT_1"
-[00:19:29.012] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "PRODUCT_1"
-[00:25:14.965] Browser LOG     [authenticatedFetch] Starting, url: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:25:14.965] Browser LOG     [authenticatedFetch] Getting session...
-[00:25:15.685] Server  LOG     [shop-id API] GET request received
-[00:25:15.685] Server  LOG     [shop-id API] Auth header: "present"
-[00:25:15.685] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:25:15.685] Server  LOG     [shop-id API] Verifying token...
-[00:25:15.795] Browser LOG     [AuthContext] Auth state changed: TOKEN_REFRESHED {"hasSession":true}
-[00:25:15.795] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:25:15.796] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:25:15.796] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:25:15.796] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:25:15.897] Server  LOG     [shop-id API] Token verification result: {}
-[00:25:15.899] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:25:16.122] Server  LOG     [shop-id API] Query result: {}
-[00:25:16.123] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:25:16.136] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:25:16.230] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:25:16.230] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:25:16.230] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:25:16.230] Browser LOG     [AuthContext] role found: owner
-[00:25:16.230] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:25:16.230] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:25:16.230] Browser LOG     [authenticatedFetch] Authorization header set
-[00:25:16.230] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:25:17.461] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:25:21.859] Server  LOG     [shop-id API] GET request received
-[00:25:21.859] Server  LOG     [shop-id API] Auth header: "present"
-[00:25:21.859] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:25:21.859] Server  LOG     [shop-id API] Verifying token...
-[00:25:21.970] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:25:21.970] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:25:21.970] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:25:21.970] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:25:21.970] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:25:22.170] Server  LOG     [shop-id API] Token verification result: {}
-[00:25:22.171] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:25:22.348] Server  LOG     [shop-id API] Query result: {}
-[00:25:22.349] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:25:22.455] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:25:22.455] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:25:22.455] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:25:22.455] Browser LOG     [AuthContext] role found: owner
-[00:25:22.455] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:25:32.517] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:25:32.531] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "PRODUCT_1"
-[00:25:34.292] Server  LOG     [shop-id API] GET request received
-[00:25:34.292] Server  LOG     [shop-id API] Auth header: "present"
-[00:25:34.292] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:25:34.292] Server  LOG     [shop-id API] Verifying token...
-[00:25:34.399] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:25:34.399] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:25:34.399] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:25:34.399] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:25:34.399] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:25:34.475] Server  LOG     [shop-id API] Token verification result: {}
-[00:25:34.475] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:25:34.486] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:25:34.672] Server  LOG     [shop-id API] Query result: {}
-[00:25:34.672] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:25:34.775] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:25:34.775] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:25:34.775] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:25:34.775] Browser LOG     [AuthContext] role found: owner
-[00:25:34.775] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:25:37.238] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:25:40.151] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:25:41.249] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:25:43.290] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:25:46.207] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:25:49.104] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:25:54.192] Server  LOG     [widget-config API] GET request: {}
-[00:25:54.377] Server  LOG     [widget-config API] Widget key found: {}
-[00:25:54.378] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:25:54.378] Server  WARN    [widget-config API] Domain not allowed: "localhost:5174"
-[00:25:55.218] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:26:04.431] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:26:08.653] Server  LOG     [widget-config API] GET request: {}
-[00:26:08.822] Server  LOG     [widget-config API] Widget key found: {}
-[00:26:08.822] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:26:08.823] Server  WARN    [widget-config API] Domain not allowed: "localhost:5174"
-[00:26:10.460] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:26:20.502] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:26:53.515] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:26:53.519] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:27:41.523] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:27:41.527] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:27:46.082] Server  LOG     [shop-id API] GET request received
-[00:27:46.082] Server  LOG     [shop-id API] Auth header: "present"
-[00:27:46.082] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:27:46.082] Server  LOG     [shop-id API] Verifying token...
-[00:27:46.188] Browser LOG     [authenticatedFetch] Starting, url: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:27:46.188] Browser LOG     [authenticatedFetch] Getting session...
-[00:27:46.188] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:27:46.188] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:27:46.188] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:27:46.188] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:27:46.188] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:27:46.351] Server  LOG     [shop-id API] Token verification result: {}
-[00:27:46.351] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:27:46.529] Server  LOG     [shop-id API] Query result: {}
-[00:27:46.529] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:27:46.538] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:27:47.461] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:27:47.461] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:27:47.461] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:27:47.461] Browser LOG     [AuthContext] role found: owner
-[00:27:47.461] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:27:47.461] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:27:47.461] Browser LOG     [authenticatedFetch] Authorization header set
-[00:27:47.461] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:27:47.461] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:27:49.503] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:27:49.513] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:28:03.512] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:28:03.517] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:28:10.049] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:28:13.345] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:28:38.405] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:28:38.409] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:28:39.352] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:29:13.322] Server  LOG     [widget-config API] GET request: {}
-[00:29:13.523] Server  LOG     [widget-config API] Widget key found: {}
-[00:29:13.524] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:29:13.524] Server  WARN    [widget-config API] Domain not allowed: "localhost:5174"
-[00:29:16.068] Server  LOG     [widget-config API] GET request: {}
-[00:29:16.273] Server  LOG     [widget-config API] Widget key found: {}
-[00:29:16.274] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:29:16.274] Server  WARN    [widget-config API] Domain not allowed: "localhost:5174"
-[00:30:24.920] Server  LOG     [widget-config API] GET request: {}
-[00:30:25.145] Server  LOG     [widget-config API] Widget key found: {}
-[00:30:25.146] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:30:25.146] Server  WARN    [widget-config API] Domain not allowed: "localhost:5174"
-[00:30:25.157] Server  LOG     [widget-config API] GET request: {}
-[00:30:25.357] Server  LOG     [widget-config API] Widget key found: {}
-[00:30:25.358] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:30:25.358] Server  WARN    [widget-config API] Domain not allowed: "localhost:5174"
-[00:31:00.521] Server  LOG     [widget-config API] GET request: {}
-[00:31:00.747] Server  LOG     [widget-config API] Widget key found: {}
-[00:31:00.747] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:31:00.747] Server  WARN    [widget-config API] Domain not allowed: "localhost:5174"
-[00:31:07.489] Server  LOG     [shop-id API] GET request received
-[00:31:07.489] Server  LOG     [shop-id API] Auth header: "present"
-[00:31:07.489] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:31:07.489] Server  LOG     [shop-id API] Verifying token...
-[00:31:07.593] Browser LOG     [authenticatedFetch] Starting, url: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:31:07.594] Browser LOG     [authenticatedFetch] Getting session...
-[00:31:07.594] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:31:07.594] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:31:07.594] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:31:07.594] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:31:07.594] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:31:07.739] Server  LOG     [shop-id API] Token verification result: {}
-[00:31:07.740] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:31:07.908] Server  LOG     [shop-id API] Query result: {}
-[00:31:07.909] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:31:07.924] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:31:08.020] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:31:08.020] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:31:08.020] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:31:08.020] Browser LOG     [AuthContext] role found: owner
-[00:31:08.020] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:31:08.020] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:31:08.020] Browser LOG     [authenticatedFetch] Authorization header set
-[00:31:08.020] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:31:08.597] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:31:47.633] Server  LOG     [widget-config API] GET request: {}
-[00:31:47.895] Server  LOG     [widget-config API] Widget key found: {}
-[00:31:47.895] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:31:47.896] Server  LOG     [widget-config API] Domain verified: "localhost:5174"
-[00:31:48.092] Server  LOG     [widget-config API] Product found: "a6b494eb-a68a-45af-b868-9eb9ac03add7"
-[00:31:48.353] Server  LOG     [widget-config API] Assets found: {}
-[00:31:48.368] Server  LOG     [widget-config API] GET request: {}
-[00:31:48.543] Server  LOG     [widget-config API] Widget key found: {}
-[00:31:48.543] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:31:48.544] Server  LOG     [widget-config API] Domain verified: "localhost:5174"
-[00:31:48.734] Server  LOG     [widget-config API] Product found: "e489b59b-e06e-4e3f-b403-823c85efd6f7"
-[00:31:48.917] Server  LOG     [widget-config API] Assets found: {}
-[00:32:16.550] Server  LOG     [shop-id API] GET request received
-[00:32:16.550] Server  LOG     [shop-id API] Auth header: "present"
-[00:32:16.550] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:32:16.550] Server  LOG     [shop-id API] Verifying token...
-[00:32:16.657] Browser LOG     [authenticatedFetch] Starting, url: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:32:16.657] Browser LOG     [authenticatedFetch] Getting session...
-[00:32:16.657] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:32:16.657] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:32:16.657] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:32:16.657] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:32:16.657] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:32:16.818] Server  LOG     [shop-id API] Token verification result: {}
-[00:32:16.818] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:32:17.010] Server  LOG     [shop-id API] Query result: {}
-[00:32:17.011] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:32:17.022] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:32:17.118] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:32:17.118] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:32:17.118] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:32:17.118] Browser LOG     [AuthContext] role found: owner
-[00:32:17.118] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:32:17.118] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:32:17.118] Browser LOG     [authenticatedFetch] Authorization header set
-[00:32:17.118] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:32:17.789] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:32:19.810] Server  LOG     [widget-config API] GET request: {}
-[00:32:20.020] Server  LOG     [widget-config API] Widget key found: {}
-[00:32:20.021] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:32:20.021] Server  LOG     [widget-config API] Domain verified: "localhost:5174"
-[00:32:20.197] Server  LOG     [widget-config API] Product found: "a6b494eb-a68a-45af-b868-9eb9ac03add7"
-[00:32:20.388] Server  LOG     [widget-config API] Assets found: {}
-[00:32:25.386] Server  LOG     [widget-config API] GET request: {}
-[00:32:25.588] Server  LOG     [widget-config API] Widget key found: {}
-[00:32:25.589] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:32:25.589] Server  LOG     [widget-config API] Domain verified: "localhost:5174"
-[00:32:25.766] Server  LOG     [widget-config API] Product found: "e489b59b-e06e-4e3f-b403-823c85efd6f7"
-[00:32:25.968] Server  LOG     [widget-config API] Assets found: {}
-[00:32:29.166] Server  LOG     [widget-config API] GET request: {}
-[00:32:29.359] Server  LOG     [widget-config API] Widget key found: {}
-[00:32:29.360] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:32:29.360] Server  LOG     [widget-config API] Domain verified: "localhost:5174"
-[00:32:29.533] Server  LOG     [widget-config API] Product found: "a6b494eb-a68a-45af-b868-9eb9ac03add7"
-[00:32:29.728] Server  LOG     [widget-config API] Assets found: {}
-[00:33:01.793] Server  LOG     [widget-config API] GET request: {}
-[00:33:02.058] Server  LOG     [widget-config API] Widget key found: {}
-[00:33:02.059] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:33:02.059] Server  LOG     [widget-config API] Domain verified: "localhost:5174"
-[00:33:02.227] Server  LOG     [widget-config API] Product found: "e489b59b-e06e-4e3f-b403-823c85efd6f7"
-[00:33:02.429] Server  LOG     [widget-config API] Assets found: {}
-[00:33:15.432] Server  LOG     [widget-config API] GET request: {}
-[00:33:15.659] Server  LOG     [widget-config API] Widget key found: {}
-[00:33:15.660] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:33:15.660] Server  LOG     [widget-config API] Domain verified: "localhost:5174"
-[00:33:15.837] Server  LOG     [widget-config API] Product found: "a6b494eb-a68a-45af-b868-9eb9ac03add7"
-[00:33:16.089] Server  LOG     [widget-config API] Assets found: {}
-[00:33:18.001] Server  LOG     [widget-config API] GET request: {}
-[00:33:18.184] Server  LOG     [widget-config API] Widget key found: {}
-[00:33:18.184] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:33:18.184] Server  LOG     [widget-config API] Domain verified: "localhost:5174"
-[00:33:18.351] Server  LOG     [widget-config API] Product found: "e489b59b-e06e-4e3f-b403-823c85efd6f7"
-[00:33:18.542] Server  LOG     [widget-config API] Assets found: {}
-[00:33:55.789] Server  LOG     [widget-config API] GET request: {}
-[00:33:56.003] Server  LOG     [widget-config API] Widget key found: {}
-[00:33:56.003] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:33:56.003] Server  LOG     [widget-config API] Domain verified: "localhost:5174"
-[00:33:56.189] Server  LOG     [widget-config API] Product found: "a6b494eb-a68a-45af-b868-9eb9ac03add7"
-[00:33:56.379] Server  LOG     [widget-config API] Assets found: {}
-[00:33:56.498] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:33:57.622] Server  LOG     [widget-config API] GET request: {}
-[00:33:57.808] Server  LOG     [widget-config API] Widget key found: {}
-[00:33:57.808] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:33:57.809] Server  LOG     [widget-config API] Domain verified: "localhost:5174"
-[00:33:58.003] Server  LOG     [widget-config API] Product found: "a6b494eb-a68a-45af-b868-9eb9ac03add7"
-[00:33:58.221] Server  LOG     [widget-config API] Assets found: {}
-[00:33:58.231] Server  LOG     [widget-config API] GET request: {}
-[00:33:58.439] Server  LOG     [widget-config API] Widget key found: {}
-[00:33:58.439] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:33:58.439] Server  LOG     [widget-config API] Domain verified: "localhost:5174"
-[00:33:58.632] Server  LOG     [widget-config API] Product found: "a6b494eb-a68a-45af-b868-9eb9ac03add7"
-[00:33:58.809] Server  LOG     [widget-config API] Assets found: {}
-[00:33:58.821] Server  LOG     [widget-config API] GET request: {}
-[00:33:59.008] Server  LOG     [widget-config API] Widget key found: {}
-[00:33:59.009] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:33:59.009] Server  LOG     [widget-config API] Domain verified: "localhost:5174"
-[00:33:59.189] Server  LOG     [widget-config API] Product found: "a6b494eb-a68a-45af-b868-9eb9ac03add7"
-[00:33:59.387] Server  LOG     [widget-config API] Assets found: {}
-[00:34:00.904] Server  LOG     [widget-config API] GET request: {}
-[00:34:01.108] Server  LOG     [widget-config API] Widget key found: {}
-[00:34:01.109] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:34:01.110] Server  LOG     [widget-config API] Domain verified: "localhost:5174"
-[00:34:01.279] Server  LOG     [widget-config API] Product found: "e489b59b-e06e-4e3f-b403-823c85efd6f7"
-[00:34:01.459] Server  LOG     [widget-config API] Assets found: {}
-[00:34:13.479] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:34:22.133] Server  LOG     [widget-config API] GET request: {}
-[00:34:22.313] Server  LOG     [widget-config API] Widget key found: {}
-[00:34:22.314] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:34:22.314] Server  LOG     [widget-config API] Domain verified: "localhost:5174"
-[00:34:22.491] Server  LOG     [widget-config API] Product found: "e489b59b-e06e-4e3f-b403-823c85efd6f7"
-[00:34:22.753] Server  LOG     [widget-config API] Assets found: {}
-[00:34:23.475] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:34:24.656] Server  LOG     [widget-config API] GET request: {}
-[00:34:24.827] Server  LOG     [widget-config API] Widget key found: {}
-[00:34:24.827] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:34:24.827] Server  LOG     [widget-config API] Domain verified: "localhost:5174"
-[00:34:25.003] Server  LOG     [widget-config API] Product found: "e489b59b-e06e-4e3f-b403-823c85efd6f7"
-[00:34:25.193] Server  LOG     [widget-config API] Assets found: {}
-[00:34:32.858] Server  LOG     [widget-config API] GET request: {}
-[00:34:33.042] Server  LOG     [widget-config API] Widget key found: {}
-[00:34:33.043] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:34:33.043] Server  LOG     [widget-config API] Domain verified: "localhost:5174"
-[00:34:33.209] Server  LOG     [widget-config API] Product found: "a6b494eb-a68a-45af-b868-9eb9ac03add7"
-[00:34:33.399] Server  LOG     [widget-config API] Assets found: {}
-[00:34:46.768] Server  LOG     [widget-config API] GET request: {}
-[00:34:47.018] Server  LOG     [widget-config API] Widget key found: {}
-[00:34:47.019] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:34:47.019] Server  LOG     [widget-config API] Domain verified: "localhost:5174"
-[00:34:47.186] Server  LOG     [widget-config API] Product found: "e489b59b-e06e-4e3f-b403-823c85efd6f7"
-[00:34:47.379] Server  LOG     [widget-config API] Assets found: {}
-[00:34:56.750] Server  LOG     [widget-config API] GET request: {}
-[00:34:56.993] Server  LOG     [widget-config API] Widget key found: {}
-[00:34:56.993] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:34:56.994] Server  LOG     [widget-config API] Domain verified: "localhost:5174"
-[00:34:57.155] Server  LOG     [widget-config API] Product found: "e489b59b-e06e-4e3f-b403-823c85efd6f7"
-[00:34:57.349] Server  LOG     [widget-config API] Assets found: {}
-[00:35:08.385] Server  LOG     [widget-config API] GET request: {}
-[00:35:08.580] Server  LOG     [widget-config API] Widget key found: {}
-[00:35:08.581] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:35:08.581] Server  LOG     [widget-config API] Domain verified: "localhost:5174"
-[00:35:08.827] Server  LOG     [widget-config API] Product found: "e489b59b-e06e-4e3f-b403-823c85efd6f7"
-[00:35:09.019] Server  LOG     [widget-config API] Assets found: {}
-[00:37:49.255] Server  LOG     [shop-id API] GET request received
-[00:37:49.256] Server  LOG     [shop-id API] Auth header: "present"
-[00:37:49.256] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:37:49.256] Server  LOG     [shop-id API] Verifying token...
-[00:37:49.359] Browser LOG     [authenticatedFetch] Starting, url: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:37:49.359] Browser LOG     [authenticatedFetch] Getting session...
-[00:37:49.359] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:37:49.359] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:37:49.359] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:37:49.359] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:37:49.359] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:37:50.021] Server  LOG     [shop-id API] Token verification result: {}
-[00:37:50.022] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:37:50.226] Server  LOG     [shop-id API] Query result: {}
-[00:37:50.227] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:37:50.244] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:37:50.461] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:37:50.461] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:37:50.461] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:37:50.461] Browser LOG     [AuthContext] role found: owner
-[00:37:50.461] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:37:50.461] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:37:50.461] Browser LOG     [authenticatedFetch] Authorization header set
-[00:37:50.461] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:37:51.460] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:37:56.345] Server  LOG     [widget-config API] GET request: {}
-[00:37:56.551] Server  LOG     [widget-config API] Widget key found: {}
-[00:37:56.554] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:37:56.554] Server  LOG     [widget-config API] Domain verified: "localhost:5174"
-[00:37:56.725] Server  LOG     [widget-config API] Product found: "e489b59b-e06e-4e3f-b403-823c85efd6f7"
-[00:37:56.919] Server  LOG     [widget-config API] Assets found: {}
-[00:38:14.721] Server  LOG     [widget-config API] GET request: {}
-[00:38:14.922] Server  LOG     [widget-config API] Widget key found: {}
-[00:38:14.922] Server  LOG     [widget-config API] Request origin host: "localhost:5174"
-[00:38:14.923] Server  LOG     [widget-config API] Domain verified: "localhost:5174"
-[00:38:15.095] Server  LOG     [widget-config API] Product found: "a6b494eb-a68a-45af-b868-9eb9ac03add7"
-[00:38:15.310] Server  LOG     [widget-config API] Assets found: {}
-[00:38:42.519] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:41:51.430] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "1"
-[00:43:25.115] Server  LOG     [shop-id API] GET request received
-[00:43:25.115] Server  LOG     [shop-id API] Auth header: "present"
-[00:43:25.115] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:43:25.115] Server  LOG     [shop-id API] Verifying token...
-[00:43:25.224] Browser LOG     [authenticatedFetch] Starting, url: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:43:25.224] Browser LOG     [authenticatedFetch] Getting session...
-[00:43:25.224] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:43:25.224] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:43:25.224] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:43:25.224] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:43:25.224] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:43:25.388] Server  LOG     [shop-id API] Token verification result: {}
-[00:43:25.389] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:43:25.586] Server  LOG     [shop-id API] Query result: {}
-[00:43:25.587] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:43:25.598] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:43:25.691] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:43:25.691] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:43:25.691] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:43:25.691] Browser LOG     [AuthContext] role found: owner
-[00:43:25.691] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:43:25.691] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:43:25.691] Browser LOG     [authenticatedFetch] Authorization header set
-[00:43:25.691] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:43:27.120] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:44:31.656] Server  LOG     [shop-id API] GET request received
-[00:44:31.656] Server  LOG     [shop-id API] Auth header: "present"
-[00:44:31.656] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:44:31.656] Server  LOG     [shop-id API] Verifying token...
-[00:44:31.760] Browser LOG     [authenticatedFetch] Starting, url: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:44:31.760] Browser LOG     [authenticatedFetch] Getting session...
-[00:44:31.760] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:44:31.760] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:44:31.760] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:44:31.760] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:44:31.760] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:44:32.188] Server  LOG     [shop-id API] Token verification result: {}
-[00:44:32.189] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:44:32.407] Server  LOG     [shop-id API] Query result: {}
-[00:44:32.408] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:44:32.419] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:44:32.512] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:44:32.512] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:44:32.512] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:44:32.512] Browser LOG     [AuthContext] role found: owner
-[00:44:32.512] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:44:32.512] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:44:32.512] Browser LOG     [authenticatedFetch] Authorization header set
-[00:44:32.512] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:44:33.216] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:47:57.562] Server  LOG     [shop-id API] GET request received
-[00:47:57.562] Server  LOG     [shop-id API] Auth header: "present"
-[00:47:57.563] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:47:57.563] Server  LOG     [shop-id API] Verifying token...
-[00:47:57.661] Browser LOG     [authenticatedFetch] Starting, url: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:47:57.661] Browser LOG     [authenticatedFetch] Getting session...
-[00:47:57.661] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:47:57.661] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:47:57.661] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:47:57.661] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:47:57.661] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:47:58.379] Server  LOG     [shop-id API] Token verification result: {}
-[00:47:58.380] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:47:58.849] Server  LOG     [shop-id API] Query result: {}
-[00:47:58.850] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:47:58.864] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:47:58.957] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:47:58.957] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:47:58.957] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:47:58.957] Browser LOG     [AuthContext] role found: owner
-[00:47:58.957] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:47:58.957] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:47:58.957] Browser LOG     [authenticatedFetch] Authorization header set
-[00:47:58.957] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:47:59.914] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:50:10.483] Server  LOG     [shop-id API] GET request received
-[00:50:10.483] Server  LOG     [shop-id API] Auth header: "present"
-[00:50:10.483] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:50:10.483] Server  LOG     [shop-id API] Verifying token...
-[00:50:10.581] Browser LOG     [authenticatedFetch] Starting, url: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:50:10.581] Browser LOG     [authenticatedFetch] Getting session...
-[00:50:10.581] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:50:10.581] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:50:10.581] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:50:10.581] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:50:10.581] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:50:11.092] Server  LOG     [shop-id API] Token verification result: {}
-[00:50:11.092] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:50:11.304] Server  LOG     [shop-id API] Query result: {}
-[00:50:11.305] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:50:11.320] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:50:11.410] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:50:11.410] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:50:11.410] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:50:11.410] Browser LOG     [AuthContext] role found: owner
-[00:50:11.410] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:50:11.410] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:50:11.410] Browser LOG     [authenticatedFetch] Authorization header set
-[00:50:11.410] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:50:12.019] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:50:18.083] Server  LOG     [shop-id API] GET request received
-[00:50:18.084] Server  LOG     [shop-id API] Auth header: "present"
-[00:50:18.084] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:50:18.084] Server  LOG     [shop-id API] Verifying token...
-[00:50:18.192] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:50:18.192] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:50:18.192] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:50:18.192] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:50:18.192] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:50:18.326] Server  LOG     [shop-id API] Token verification result: {}
-[00:50:18.326] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:50:18.536] Server  LOG     [shop-id API] Query result: {}
-[00:50:18.537] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:50:18.642] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:50:18.642] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:50:18.642] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:50:18.642] Browser LOG     [AuthContext] role found: owner
-[00:50:18.642] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:51:04.118] Server  LOG     [shop-id API] GET request received
-[00:51:04.118] Server  LOG     [shop-id API] Auth header: "present"
-[00:51:04.118] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:51:04.118] Server  LOG     [shop-id API] Verifying token...
-[00:51:04.224] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:51:04.224] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:51:04.224] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:51:04.224] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:51:04.224] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:51:04.339] Server  LOG     [shop-id API] Token verification result: {}
-[00:51:04.340] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:51:04.521] Server  LOG     [shop-id API] Query result: {}
-[00:51:04.521] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:51:04.627] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:51:04.627] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:51:04.627] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:51:04.627] Browser LOG     [AuthContext] role found: owner
-[00:51:04.627] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:51:11.386] Server  LOG     [shop-id API] GET request received
-[00:51:11.386] Server  LOG     [shop-id API] Auth header: "present"
-[00:51:11.386] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:51:11.386] Server  LOG     [shop-id API] Verifying token...
-[00:51:11.492] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:51:11.492] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:51:11.492] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:51:11.492] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:51:11.492] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:51:11.646] Server  LOG     [shop-id API] Token verification result: {}
-[00:51:11.647] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:51:11.876] Server  LOG     [shop-id API] Query result: {}
-[00:51:11.877] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:51:11.982] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:51:11.982] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:51:11.982] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:51:11.982] Browser LOG     [AuthContext] role found: owner
-[00:51:11.982] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:52:12.543] Server  LOG     [shop-id API] GET request received
-[00:52:12.543] Server  LOG     [shop-id API] Auth header: "present"
-[00:52:12.543] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:52:12.543] Server  LOG     [shop-id API] Verifying token...
-[00:52:12.650] Browser LOG     [authenticatedFetch] Starting, url: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:52:12.650] Browser LOG     [authenticatedFetch] Getting session...
-[00:52:12.650] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:52:12.650] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:52:12.650] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:52:12.650] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:52:12.650] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:52:13.148] Server  LOG     [shop-id API] Token verification result: {}
-[00:52:13.149] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:52:13.448] Server  LOG     [shop-id API] Query result: {}
-[00:52:13.449] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:52:13.464] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:52:13.557] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:52:13.557] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:52:13.557] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:52:13.557] Browser LOG     [AuthContext] role found: owner
-[00:52:13.557] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:52:13.557] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:52:13.557] Browser LOG     [authenticatedFetch] Authorization header set
-[00:52:13.557] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:52:14.291] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:52:20.717] Server  LOG     [shop-id API] GET request received
-[00:52:20.717] Server  LOG     [shop-id API] Auth header: "present"
-[00:52:20.717] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:52:20.717] Server  LOG     [shop-id API] Verifying token...
-[00:52:20.822] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:52:20.822] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:52:20.822] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:52:20.822] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:52:20.822] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:52:21.208] Server  LOG     [shop-id API] Token verification result: {}
-[00:52:21.209] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:52:21.413] Server  LOG     [shop-id API] Query result: {}
-[00:52:21.413] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:52:21.518] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:52:21.518] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:52:21.518] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:52:21.518] Browser LOG     [AuthContext] role found: owner
-[00:52:21.518] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:55:51.952] Server  LOG     [shop-id API] GET request received
-[00:55:51.952] Server  LOG     [shop-id API] Auth header: "present"
-[00:55:51.952] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:55:51.952] Server  LOG     [shop-id API] Verifying token...
-[00:55:52.055] Browser LOG     [authenticatedFetch] Starting, url: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:55:52.055] Browser LOG     [authenticatedFetch] Getting session...
-[00:55:52.055] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:55:52.055] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:55:52.055] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:55:52.055] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:55:52.055] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:55:52.607] Server  LOG     [shop-id API] Token verification result: {}
-[00:55:52.608] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:55:52.840] Server  LOG     [shop-id API] Query result: {}
-[00:55:52.841] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:55:52.856] Server  LOG     [getAuthenticatedUser] Starting authentication check
-[00:55:52.947] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:55:52.947] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:55:52.947] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:55:52.947] Browser LOG     [AuthContext] role found: owner
-[00:55:52.947] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
-[00:55:52.947] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
-[00:55:52.947] Browser LOG     [authenticatedFetch] Authorization header set
-[00:55:52.947] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:55:53.698] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
-[00:55:53.709] Server  LOG     [shop-id API] GET request received
-[00:55:53.710] Server  LOG     [shop-id API] Auth header: "present"
-[00:55:53.710] Server  LOG     [shop-id API] Token extracted, length: 796
-[00:55:53.710] Server  LOG     [shop-id API] Verifying token...
-[00:55:53.816] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
-[00:55:53.816] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
-[00:55:53.816] Browser LOG     [AuthContext] Using provided access token, calling API...
-[00:55:53.816] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
-[00:55:53.817] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
-[00:55:53.888] Server  LOG     [shop-id API] Token verification result: {}
-[00:55:53.889] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
-[00:55:54.086] Server  LOG     [shop-id API] Query result: {}
-[00:55:54.086] Server  LOG     [shop-id API] Returning shopId and role: {}
-[00:55:54.188] Browser LOG     [AuthContext] Fetch completed, status: 200
-[00:55:54.188] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
-[00:55:54.188] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
-[00:55:54.188] Browser LOG     [AuthContext] role found: owner
-[00:55:54.188] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:00:00.883] Server  LOG     ✓ Ready in 699ms
+[00:00:01.487] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:00:01.605] Browser LOG     [AuthContext] State update: {"hasUser":false,"isAuthenticated":false,"isLoading":true,"shopId":"default_shop"}
+[00:00:01.605] Browser LOG     [AuthContext] Initial session retrieved: {"hasError":false,"hasSession":false}
+[00:00:01.605] Browser LOG     [AuthContext] State update: {"hasUser":false,"isAuthenticated":false,"isLoading":false,"shopId":"default_shop"}
+[00:00:01.605] Browser LOG     [AuthContext] Auth state changed: INITIAL_SESSION {"hasSession":false}
+[00:00:01.865] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:00:02.071] Browser LOG     [AuthContext] State update: {"hasUser":false,"isAuthenticated":false,"isLoading":true,"shopId":"default_shop"}
+[00:00:02.071] Browser LOG     [AuthContext] Initial session retrieved: {"hasError":false,"hasSession":false}
+[00:00:02.071] Browser LOG     [AuthContext] State update: {"hasUser":false,"isAuthenticated":false,"isLoading":false,"shopId":"default_shop"}
+[00:00:02.071] Browser LOG     [AuthContext] Auth state changed: INITIAL_SESSION {"hasSession":false}
+[00:00:02.071] Browser LOG     [LoginPage] useEffect triggered: {"authLoading":false,"isAuthenticated":false,"shouldRedirect":false}
+[00:00:02.071] Browser LOG     [LoginPage] useEffect triggered: {"authLoading":false,"isAuthenticated":false,"shouldRedirect":false}
+[00:00:02.242] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:00:02.375] Browser LOG     [AuthContext] State update: {"hasUser":false,"isAuthenticated":false,"isLoading":true,"shopId":"default_shop"}
+[00:00:02.375] Browser LOG     [AuthContext] Initial session retrieved: {"hasError":false,"hasSession":false}
+[00:00:02.375] Browser LOG     [AuthContext] State update: {"hasUser":false,"isAuthenticated":false,"isLoading":false,"shopId":"default_shop"}
+[00:00:02.375] Browser LOG     [AuthContext] Auth state changed: INITIAL_SESSION {"hasSession":false}
+[00:00:02.375] Browser LOG     [LoginPage] useEffect triggered: {"authLoading":false,"isAuthenticated":false,"shouldRedirect":false}
+[00:00:02.375] Browser LOG     [LoginPage] useEffect triggered: {"authLoading":false,"isAuthenticated":false,"shouldRedirect":false}
+[00:00:03.960] Browser LOG     [AuthContext] State update: {"hasUser":false,"isAuthenticated":false,"isLoading":true,"shopId":"default_shop"}
+[00:00:05.608] Server  LOG     [shop-id API] GET request received
+[00:00:05.608] Server  LOG     [shop-id API] Auth header: "present"
+[00:00:05.608] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:00:05.608] Server  LOG     [shop-id API] Verifying token...
+[00:00:05.634] Browser LOG     [AuthContext] Auth state changed: TOKEN_REFRESHED {"hasSession":true}
+[00:00:05.634] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:00:05.634] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:00:05.634] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:00:05.634] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":true,"shopId":"default_shop","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:00:06.356] Server  LOG     [shop-id API] Token verification result: {}
+[00:00:06.358] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:00:06.949] Server  LOG     [shop-id API] Query result: {}
+[00:00:06.949] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:00:07.000] Server  LOG     [shop-id API] GET request received
+[00:00:07.000] Server  LOG     [shop-id API] Auth header: "present"
+[00:00:07.000] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:00:07.000] Server  LOG     [shop-id API] Verifying token...
+[00:00:07.025] Server  LOG     [post-login API] POST request received
+[00:00:07.025] Server  LOG     [post-login API] Auth header: "present"
+[00:00:07.025] Server  LOG     [post-login API] Token extracted, length: 796
+[00:00:07.026] Server  LOG     [post-login API] Verifying token...
+[00:00:07.098] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:00:07.098] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:00:07.098] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:00:07.098] Browser LOG     [AuthContext] role found: owner
+[00:00:07.098] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:00:07.098] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:00:07.098] Browser LOG     [AuthContext] Initial session retrieved: {"hasError":false,"hasSession":true}
+[00:00:07.098] Browser LOG     [AuthContext] Calling post-login API to ensure profile exists...
+[00:00:07.098] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:00:07.098] Browser LOG     [AuthContext] Auth state changed: INITIAL_SESSION {"hasSession":true}
+[00:00:07.098] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:00:07.098] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:00:07.098] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:00:07.098] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:00:07.185] Server  LOG     [shop-id API] Token verification result: {}
+[00:00:07.185] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:00:07.365] Server  LOG     [shop-id API] Query result: {}
+[00:00:07.366] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:00:07.555] Server  LOG     [post-login API] Token verification result: {}
+[00:00:07.558] Server  LOG     [post-login API] Looking up pending_invites for email: "y62h34yh@gmail.com"
+[00:00:07.750] Server  WARN    [post-login API] No pending invite found for: "y62h34yh@gmail.com"
+[00:00:07.762] Server  LOG     [shop-id API] GET request received
+[00:00:07.762] Server  LOG     [shop-id API] Auth header: "present"
+[00:00:07.762] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:00:07.762] Server  LOG     [shop-id API] Verifying token...
+[00:00:07.946] Server  LOG     [shop-id API] Token verification result: {}
+[00:00:07.946] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:00:08.123] Server  LOG     [shop-id API] Query result: {}
+[00:00:08.124] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:00:08.536] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:00:08.536] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:00:08.536] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:00:08.536] Browser LOG     [AuthContext] role found: owner
+[00:00:08.536] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:00:08.536] Browser LOG     [AuthContext] post-login not needed or already completed
+[00:00:08.536] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:00:08.536] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:00:08.536] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:00:08.536] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:00:08.536] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:00:08.536] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:00:08.536] Browser LOG     [AuthContext] role found: owner
+[00:00:08.536] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:00:08.558] Server  LOG     [shop-id API] GET request received
+[00:00:08.559] Server  LOG     [shop-id API] Auth header: "present"
+[00:00:08.559] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:00:08.559] Server  LOG     [shop-id API] Verifying token...
+[00:00:08.651] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[00:00:08.651] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:00:08.651] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:00:08.651] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:00:08.651] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:00:08.751] Server  LOG     [shop-id API] Token verification result: {}
+[00:00:08.752] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:00:08.923] Server  LOG     [shop-id API] Query result: {}
+[00:00:08.923] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:00:09.029] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:00:09.029] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:00:09.029] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:00:09.029] Browser LOG     [AuthContext] role found: owner
+[00:00:09.029] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:00:11.831] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:00:11.831] Browser LOG     [AuthContext] State update: {"hasUser":false,"isAuthenticated":false,"isLoading":true,"shopId":"default_shop"}
+[00:00:11.831] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[00:00:11.831] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:00:11.831] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:00:11.831] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:00:11.839] Server  LOG     [shop-id API] GET request received
+[00:00:11.839] Server  LOG     [shop-id API] Auth header: "present"
+[00:00:11.839] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:00:11.839] Server  LOG     [shop-id API] Verifying token...
+[00:00:11.842] Server  LOG     [shop-id API] GET request received
+[00:00:11.842] Server  LOG     [shop-id API] Auth header: "present"
+[00:00:11.842] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:00:11.842] Server  LOG     [shop-id API] Verifying token...
+[00:00:11.932] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":true,"shopId":"default_shop","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:00:12.029] Server  LOG     [shop-id API] Token verification result: {}
+[00:00:12.029] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:00:12.172] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[00:00:12.172] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:00:12.173] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:00:12.173] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:00:12.173] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:00:12.195] Server  LOG     [shop-id API] Query result: {}
+[00:00:12.196] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:00:12.271] Server  LOG     [post-login API] POST request received
+[00:00:12.271] Server  LOG     [post-login API] Auth header: "present"
+[00:00:12.271] Server  LOG     [post-login API] Token extracted, length: 796
+[00:00:12.272] Server  LOG     [post-login API] Verifying token...
+[00:00:12.325] Server  LOG     [getAuthenticatedUser] Starting authentication check
+[00:00:12.341] Server  LOG     [profile API] GET request received
+[00:00:12.341] Server  LOG     [profile API] Getting authenticated user...
+[00:00:12.341] Server  LOG     [getAuthenticatedUser] Starting authentication check
+[00:00:12.345] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:00:12.345] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:00:12.345] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:00:12.345] Browser LOG     [AuthContext] role found: owner
+[00:00:12.345] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:00:12.345] Browser LOG     [authenticatedFetch] Starting, url: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:00:12.345] Browser LOG     [authenticatedFetch] Getting session...
+[00:00:12.345] Browser LOG     [authenticatedFetch] Starting, url: /api/auth/profile
+[00:00:12.345] Browser LOG     [authenticatedFetch] Getting session...
+[00:00:12.345] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:00:12.345] Browser LOG     [authenticatedFetch] Starting, url: /api/auth/profile
+[00:00:12.345] Browser LOG     [authenticatedFetch] Getting session...
+[00:00:12.345] Browser LOG     [AuthContext] Initial session retrieved: {"hasError":false,"hasSession":true}
+[00:00:12.345] Browser LOG     [AuthContext] Calling post-login API to ensure profile exists...
+[00:00:12.345] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:00:12.345] Browser LOG     [AuthContext] Auth state changed: INITIAL_SESSION {"hasSession":true}
+[00:00:12.345] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:00:12.345] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:00:12.345] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:00:12.345] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:00:12.345] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
+[00:00:12.345] Browser LOG     [authenticatedFetch] Authorization header set
+[00:00:12.345] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:00:12.345] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
+[00:00:12.345] Browser LOG     [authenticatedFetch] Authorization header set
+[00:00:12.345] Browser LOG     [authenticatedFetch] Making fetch request to: /api/auth/profile
+[00:00:12.345] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
+[00:00:12.345] Browser LOG     [authenticatedFetch] Authorization header set
+[00:00:12.345] Browser LOG     [authenticatedFetch] Making fetch request to: /api/auth/profile
+[00:00:12.357] Server  LOG     [shop-id API] Token verification result: {}
+[00:00:12.357] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:00:12.556] Server  LOG     [shop-id API] Query result: {}
+[00:00:12.556] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:00:12.561] Server  LOG     [shop-id API] GET request received
+[00:00:12.561] Server  LOG     [shop-id API] Auth header: "present"
+[00:00:12.562] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:00:12.562] Server  LOG     [shop-id API] Verifying token...
+[00:00:12.726] Server  LOG     [profile API] Authenticated user: {}
+[00:00:12.728] Server  LOG     [profile API] Fetching user data from database...
+[00:00:12.745] Server  LOG     [shop-id API] Token verification result: {}
+[00:00:12.746] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:00:12.796] Server  LOG     [post-login API] Token verification result: {}
+[00:00:12.796] Server  LOG     [post-login API] Looking up pending_invites for email: "y62h34yh@gmail.com"
+[00:00:12.921] Server  LOG     [shop-id API] Query result: {}
+[00:00:12.921] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:00:12.997] Server  WARN    [post-login API] No pending invite found for: "y62h34yh@gmail.com"
+[00:00:13.010] Server  LOG     [shop-id API] GET request received
+[00:00:13.010] Server  LOG     [shop-id API] Auth header: "present"
+[00:00:13.010] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:00:13.010] Server  LOG     [shop-id API] Verifying token...
+[00:00:13.101] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:00:13.101] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:00:13.101] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:00:13.101] Browser LOG     [AuthContext] role found: owner
+[00:00:13.101] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:00:13.101] Browser LOG     [AuthContext] post-login not needed or already completed
+[00:00:13.101] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:00:13.101] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:00:13.101] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:00:13.173] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:00:13.174] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:00:13.174] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:00:13.174] Browser LOG     [AuthContext] role found: owner
+[00:00:13.174] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:00:13.201] Server  LOG     [profile API] Database query result: {}
+[00:00:13.202] Server  LOG     [profile API] Returning profile data
+[00:00:13.205] Server  LOG     [shop-id API] Token verification result: {}
+[00:00:13.206] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:00:13.214] Server  LOG     [profile API] GET request received
+[00:00:13.214] Server  LOG     [profile API] Getting authenticated user...
+[00:00:13.214] Server  LOG     [getAuthenticatedUser] Starting authentication check
+[00:00:13.308] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
+[00:00:13.308] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
+[00:00:13.308] Browser LOG     [authenticatedFetch] Starting, url: /api/shops/abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:00:13.308] Browser LOG     [authenticatedFetch] Getting session...
+[00:00:13.308] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
+[00:00:13.308] Browser LOG     [authenticatedFetch] Authorization header set
+[00:00:13.308] Browser LOG     [authenticatedFetch] Making fetch request to: /api/shops/abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:00:13.388] Server  LOG     [shop-id API] Query result: {}
+[00:00:13.388] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:00:13.491] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:00:13.491] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:00:13.491] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:00:13.491] Browser LOG     [AuthContext] role found: owner
+[00:00:13.491] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:00:13.566] Server  LOG     [profile API] Authenticated user: {}
+[00:00:13.566] Server  LOG     [profile API] Fetching user data from database...
+[00:00:13.625] Server  LOG     [shop API] GET request received for: "abb54fb0-9119-4d9d-b979-1ea20b2f9f56"
+[00:00:13.738] Server  LOG     [profile API] Database query result: {}
+[00:00:13.738] Server  LOG     [profile API] Returning profile data
+[00:00:13.843] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
+[00:00:13.843] Browser LOG     [authenticatedFetch] Starting, url: /api/shops/abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:00:13.843] Browser LOG     [authenticatedFetch] Getting session...
+[00:00:13.843] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
+[00:00:13.843] Browser LOG     [authenticatedFetch] Authorization header set
+[00:00:13.843] Browser LOG     [authenticatedFetch] Making fetch request to: /api/shops/abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:00:14.177] Server  LOG     [shop API] GET request received for: "abb54fb0-9119-4d9d-b979-1ea20b2f9f56"
+[00:00:14.269] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
+[00:00:14.819] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
+[00:00:19.787] Server  LOG     [getAuthenticatedUser] Starting authentication check
+[00:00:19.867] Browser LOG     [authenticatedFetch] Starting, url: /api/widget-keys?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:00:19.867] Browser LOG     [authenticatedFetch] Getting session...
+[00:00:19.867] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
+[00:00:19.867] Browser LOG     [authenticatedFetch] Authorization header set
+[00:00:19.867] Browser LOG     [authenticatedFetch] Making fetch request to: /api/widget-keys?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:00:20.830] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
+[00:01:17.384] Server  LOG     [getAuthenticatedUser] Starting authentication check
+[00:01:17.388] Server  LOG     [shop-id API] GET request received
+[00:01:17.388] Server  LOG     [shop-id API] Auth header: "present"
+[00:01:17.389] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:01:17.389] Server  LOG     [shop-id API] Verifying token...
+[00:01:17.391] Server  LOG     [shop-id API] GET request received
+[00:01:17.391] Server  LOG     [shop-id API] Auth header: "present"
+[00:01:17.391] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:01:17.391] Server  LOG     [shop-id API] Verifying token...
+[00:01:17.486] Browser LOG     [authenticatedFetch] Starting, url: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:01:17.486] Browser LOG     [authenticatedFetch] Getting session...
+[00:01:17.486] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
+[00:01:17.486] Browser LOG     [authenticatedFetch] Authorization header set
+[00:01:17.486] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:01:17.486] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[00:01:17.486] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:01:17.486] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:01:17.486] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:01:17.486] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:01:17.616] Server  LOG     [shop-id API] Token verification result: {}
+[00:01:17.616] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:01:17.668] Server  LOG     [shop-id API] Token verification result: {}
+[00:01:17.669] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:01:17.840] Server  LOG     [shop-id API] Query result: {}
+[00:01:17.841] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:01:17.906] Server  LOG     [shop-id API] Query result: {}
+[00:01:17.906] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:01:17.948] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:01:17.948] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:01:17.948] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:01:17.948] Browser LOG     [AuthContext] role found: owner
+[00:01:17.948] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:01:18.142] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
+[00:01:18.172] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[00:01:18.172] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:01:18.172] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:01:18.172] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:01:18.172] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:01:18.172] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:01:18.172] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:01:18.172] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:01:18.172] Browser LOG     [AuthContext] role found: owner
+[00:01:18.172] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:01:24.631] Server  LOG     [profile API] GET request received
+[00:01:24.631] Server  LOG     [profile API] Getting authenticated user...
+[00:01:24.631] Server  LOG     [getAuthenticatedUser] Starting authentication check
+[00:01:24.726] Browser LOG     [authenticatedFetch] Starting, url: /api/auth/profile
+[00:01:24.726] Browser LOG     [authenticatedFetch] Getting session...
+[00:01:24.726] Browser LOG     [authenticatedFetch] Starting, url: /api/auth/profile
+[00:01:24.726] Browser LOG     [authenticatedFetch] Getting session...
+[00:01:24.726] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
+[00:01:24.726] Browser LOG     [authenticatedFetch] Authorization header set
+[00:01:24.726] Browser LOG     [authenticatedFetch] Making fetch request to: /api/auth/profile
+[00:01:24.726] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
+[00:01:24.726] Browser LOG     [authenticatedFetch] Authorization header set
+[00:01:24.726] Browser LOG     [authenticatedFetch] Making fetch request to: /api/auth/profile
+[00:01:25.063] Server  LOG     [profile API] Authenticated user: {}
+[00:01:25.064] Server  LOG     [profile API] Fetching user data from database...
+[00:01:25.225] Server  LOG     [profile API] Database query result: {}
+[00:01:25.226] Server  LOG     [profile API] Returning profile data
+[00:01:25.229] Server  LOG     [profile API] GET request received
+[00:01:25.229] Server  LOG     [profile API] Getting authenticated user...
+[00:01:25.229] Server  LOG     [getAuthenticatedUser] Starting authentication check
+[00:01:25.233] Server  LOG     [shop API] GET request received for: "abb54fb0-9119-4d9d-b979-1ea20b2f9f56"
+[00:01:25.329] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
+[00:01:25.329] Browser LOG     [authenticatedFetch] Starting, url: /api/shops/abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:01:25.329] Browser LOG     [authenticatedFetch] Getting session...
+[00:01:25.329] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
+[00:01:25.329] Browser LOG     [authenticatedFetch] Authorization header set
+[00:01:25.329] Browser LOG     [authenticatedFetch] Making fetch request to: /api/shops/abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:01:25.602] Server  LOG     [profile API] Authenticated user: {}
+[00:01:25.602] Server  LOG     [profile API] Fetching user data from database...
+[00:01:25.764] Server  LOG     [profile API] Database query result: {}
+[00:01:25.764] Server  LOG     [profile API] Returning profile data
+[00:01:25.785] Server  LOG     [shop API] GET request received for: "abb54fb0-9119-4d9d-b979-1ea20b2f9f56"
+[00:01:25.884] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
+[00:01:25.884] Browser LOG     [authenticatedFetch] Starting, url: /api/shops/abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:01:25.884] Browser LOG     [authenticatedFetch] Getting session...
+[00:01:25.884] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
+[00:01:25.884] Browser LOG     [authenticatedFetch] Authorization header set
+[00:01:25.884] Browser LOG     [authenticatedFetch] Making fetch request to: /api/shops/abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:01:25.884] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
+[00:01:26.417] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
+[00:01:32.624] Server  LOG     [shop-id API] GET request received
+[00:01:32.624] Server  LOG     [shop-id API] Auth header: "present"
+[00:01:32.624] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:01:32.624] Server  LOG     [shop-id API] Verifying token...
+[00:01:32.627] Server  LOG     [shop-id API] GET request received
+[00:01:32.627] Server  LOG     [shop-id API] Auth header: "present"
+[00:01:32.627] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:01:32.627] Server  LOG     [shop-id API] Verifying token...
+[00:01:32.728] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[00:01:32.728] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:01:32.728] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:01:32.728] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:01:32.728] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:01:32.855] Server  LOG     [shop-id API] Token verification result: {}
+[00:01:32.855] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:01:32.875] Server  LOG     [shop-id API] Token verification result: {}
+[00:01:32.876] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:01:33.028] Server  LOG     [shop-id API] Query result: {}
+[00:01:33.028] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:01:33.070] Server  LOG     [shop-id API] Query result: {}
+[00:01:33.071] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:01:33.172] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[00:01:33.172] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:01:33.172] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:01:33.172] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:01:33.172] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:01:33.172] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:01:33.172] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:01:33.172] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:01:33.172] Browser LOG     [AuthContext] role found: owner
+[00:01:33.172] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:01:33.175] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:01:33.175] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:01:33.175] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:01:33.175] Browser LOG     [AuthContext] role found: owner
+[00:01:33.175] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:02:04.556] Server  LOG     [shop-id API] GET request received
+[00:02:04.556] Server  LOG     [shop-id API] Auth header: "present"
+[00:02:04.556] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:02:04.556] Server  LOG     [shop-id API] Verifying token...
+[00:02:04.558] Server  LOG     [shop-id API] GET request received
+[00:02:04.558] Server  LOG     [shop-id API] Auth header: "present"
+[00:02:04.559] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:02:04.559] Server  LOG     [shop-id API] Verifying token...
+[00:02:04.660] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[00:02:04.660] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:02:04.660] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:02:04.660] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:02:04.660] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:02:05.046] Server  LOG     [shop-id API] Token verification result: {}
+[00:02:05.047] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:02:05.172] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[00:02:05.173] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:02:05.173] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:02:05.173] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:02:05.173] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:02:05.238] Server  LOG     [shop-id API] Query result: {}
+[00:02:05.239] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:02:05.296] Server  LOG     [shop-id API] Token verification result: {}
+[00:02:05.297] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:02:05.345] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:02:05.345] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:02:05.345] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:02:05.345] Browser LOG     [AuthContext] role found: owner
+[00:02:05.345] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:02:05.493] Server  LOG     [shop-id API] Query result: {}
+[00:02:05.494] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:02:06.172] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:02:06.172] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:02:06.172] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:02:06.172] Browser LOG     [AuthContext] role found: owner
+[00:02:06.172] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:02:19.547] Server  LOG     [getAuthenticatedUser] Starting authentication check
+[00:02:19.552] Server  LOG     [shop-id API] GET request received
+[00:02:19.552] Server  LOG     [shop-id API] Auth header: "present"
+[00:02:19.552] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:02:19.552] Server  LOG     [shop-id API] Verifying token...
+[00:02:19.557] Server  LOG     [shop-id API] GET request received
+[00:02:19.557] Server  LOG     [shop-id API] Auth header: "present"
+[00:02:19.557] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:02:19.557] Server  LOG     [shop-id API] Verifying token...
+[00:02:19.651] Browser LOG     [authenticatedFetch] Starting, url: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:02:19.651] Browser LOG     [authenticatedFetch] Getting session...
+[00:02:19.651] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
+[00:02:19.651] Browser LOG     [authenticatedFetch] Authorization header set
+[00:02:19.651] Browser LOG     [authenticatedFetch] Making fetch request to: /api/products?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:02:19.651] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[00:02:19.651] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:02:19.651] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:02:19.651] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:02:19.651] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:02:19.781] Server  LOG     [shop-id API] Token verification result: {}
+[00:02:19.782] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:02:19.783] Server  LOG     [shop-id API] Token verification result: {}
+[00:02:19.783] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:02:19.942] Server  LOG     [shop-id API] Query result: {}
+[00:02:19.943] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:02:19.958] Server  LOG     [shop-id API] Query result: {}
+[00:02:19.959] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:02:20.048] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:02:20.048] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:02:20.048] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:02:20.048] Browser LOG     [AuthContext] role found: owner
+[00:02:20.048] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:02:20.172] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[00:02:20.172] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:02:20.172] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:02:20.172] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:02:20.172] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:02:20.172] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:02:20.172] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:02:20.172] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:02:20.172] Browser LOG     [AuthContext] role found: owner
+[00:02:20.172] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:02:20.216] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
+[00:02:31.711] Server  LOG     [shop-id API] GET request received
+[00:02:31.712] Server  LOG     [shop-id API] Auth header: "present"
+[00:02:31.712] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:02:31.712] Server  LOG     [shop-id API] Verifying token...
+[00:02:31.717] Server  LOG     [shop-id API] GET request received
+[00:02:31.717] Server  LOG     [shop-id API] Auth header: "present"
+[00:02:31.717] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:02:31.717] Server  LOG     [shop-id API] Verifying token...
+[00:02:31.816] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[00:02:31.817] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:02:31.817] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:02:31.817] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:02:31.817] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:02:31.926] Server  LOG     [shop-id API] Token verification result: {}
+[00:02:31.926] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:02:32.099] Server  LOG     [shop-id API] Query result: {}
+[00:02:32.100] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:02:32.172] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[00:02:32.172] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:02:32.172] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:02:32.172] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:02:32.172] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:02:32.206] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:02:32.206] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:02:32.206] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:02:32.206] Browser LOG     [AuthContext] role found: owner
+[00:02:32.206] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:02:32.237] Server  LOG     [shop-id API] Token verification result: {}
+[00:02:32.237] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:02:32.406] Server  LOG     [shop-id API] Query result: {}
+[00:02:32.407] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:02:33.175] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:02:33.175] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:02:33.175] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:02:33.175] Browser LOG     [AuthContext] role found: owner
+[00:02:33.175] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:02:43.327] Server  LOG     [shop-id API] GET request received
+[00:02:43.327] Server  LOG     [shop-id API] Auth header: "present"
+[00:02:43.327] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:02:43.327] Server  LOG     [shop-id API] Verifying token...
+[00:02:43.330] Server  LOG     [shop-id API] GET request received
+[00:02:43.330] Server  LOG     [shop-id API] Auth header: "present"
+[00:02:43.330] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:02:43.330] Server  LOG     [shop-id API] Verifying token...
+[00:02:43.428] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[00:02:43.428] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:02:43.428] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:02:43.428] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:02:43.428] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:02:43.639] Server  LOG     [shop-id API] Token verification result: {}
+[00:02:43.640] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:02:43.642] Server  LOG     [shop-id API] Token verification result: {}
+[00:02:43.642] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:02:43.809] Server  LOG     [shop-id API] Query result: {}
+[00:02:43.810] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:02:43.835] Server  LOG     [shop-id API] Query result: {}
+[00:02:43.836] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:02:43.916] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:02:43.917] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:02:43.917] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:02:43.917] Browser LOG     [AuthContext] role found: owner
+[00:02:43.917] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:02:44.176] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[00:02:44.176] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:02:44.176] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:02:44.176] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:02:44.176] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:02:44.176] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:02:44.176] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:02:44.176] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:02:44.176] Browser LOG     [AuthContext] role found: owner
+[00:02:44.177] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:02:50.045] Server  LOG     [shop-id API] GET request received
+[00:02:50.045] Server  LOG     [shop-id API] Auth header: "present"
+[00:02:50.045] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:02:50.045] Server  LOG     [shop-id API] Verifying token...
+[00:02:50.048] Server  LOG     [shop-id API] GET request received
+[00:02:50.048] Server  LOG     [shop-id API] Auth header: "present"
+[00:02:50.048] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:02:50.048] Server  LOG     [shop-id API] Verifying token...
+[00:02:50.151] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[00:02:50.151] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:02:50.151] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:02:50.151] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:02:50.151] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:02:50.175] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[00:02:50.175] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:02:50.175] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:02:50.175] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:02:50.175] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:02:50.256] Server  LOG     [shop-id API] Token verification result: {}
+[00:02:50.256] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:02:50.267] Server  LOG     [shop-id API] Token verification result: {}
+[00:02:50.267] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:02:50.417] Server  LOG     [shop-id API] Query result: {}
+[00:02:50.418] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:02:50.429] Server  LOG     [shop-id API] Query result: {}
+[00:02:50.429] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:02:50.525] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:02:50.525] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:02:50.525] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:02:50.525] Browser LOG     [AuthContext] role found: owner
+[00:02:50.525] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:02:51.171] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:02:51.171] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:02:51.171] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:02:51.171] Browser LOG     [AuthContext] role found: owner
+[00:02:51.171] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:03:06.533] Server  LOG     [shop-id API] GET request received
+[00:03:06.534] Server  LOG     [shop-id API] Auth header: "present"
+[00:03:06.534] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:03:06.534] Server  LOG     [shop-id API] Verifying token...
+[00:03:06.538] Server  LOG     [shop-id API] GET request received
+[00:03:06.538] Server  LOG     [shop-id API] Auth header: "present"
+[00:03:06.538] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:03:06.538] Server  LOG     [shop-id API] Verifying token...
+[00:03:06.640] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[00:03:06.640] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:03:06.640] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:03:06.640] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:03:06.640] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:03:06.786] Server  LOG     [shop-id API] Token verification result: {}
+[00:03:06.786] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:03:06.973] Server  LOG     [shop-id API] Query result: {}
+[00:03:06.974] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:03:07.026] Server  LOG     [shop-id API] Token verification result: {}
+[00:03:07.027] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:03:07.175] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[00:03:07.175] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:03:07.175] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:03:07.175] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:03:07.175] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:03:07.175] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:03:07.175] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:03:07.175] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:03:07.176] Browser LOG     [AuthContext] role found: owner
+[00:03:07.176] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:03:07.198] Server  LOG     [shop-id API] Query result: {}
+[00:03:07.199] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:03:07.305] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:03:07.305] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:03:07.305] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:03:07.305] Browser LOG     [AuthContext] role found: owner
+[00:03:07.305] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:03:15.380] Server  LOG     [getAuthenticatedUser] Starting authentication check
+[00:03:15.399] Server  LOG     [members API] GET request received
+[00:03:15.477] Browser LOG     [authenticatedFetch] Starting, url: /api/admin/members
+[00:03:15.477] Browser LOG     [authenticatedFetch] Getting session...
+[00:03:15.477] Browser LOG     [authenticatedFetch] Starting, url: /api/widget-keys?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:03:15.477] Browser LOG     [authenticatedFetch] Getting session...
+[00:03:15.477] Browser LOG     [authenticatedFetch] Starting, url: /api/admin/members
+[00:03:15.477] Browser LOG     [authenticatedFetch] Getting session...
+[00:03:15.477] Browser LOG     [authenticatedFetch] Starting, url: /api/widget-keys?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:03:15.477] Browser LOG     [authenticatedFetch] Getting session...
+[00:03:15.477] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
+[00:03:15.477] Browser LOG     [authenticatedFetch] Authorization header set
+[00:03:15.477] Browser LOG     [authenticatedFetch] Making fetch request to: /api/admin/members
+[00:03:15.477] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
+[00:03:15.477] Browser LOG     [authenticatedFetch] Authorization header set
+[00:03:15.477] Browser LOG     [authenticatedFetch] Making fetch request to: /api/widget-keys?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:03:15.477] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
+[00:03:15.477] Browser LOG     [authenticatedFetch] Authorization header set
+[00:03:15.477] Browser LOG     [authenticatedFetch] Making fetch request to: /api/admin/members
+[00:03:15.477] Browser LOG     [authenticatedFetch] Session retrieved: {"hasError":false,"hasSession":true}
+[00:03:15.477] Browser LOG     [authenticatedFetch] Authorization header set
+[00:03:15.477] Browser LOG     [authenticatedFetch] Making fetch request to: /api/widget-keys?shopId=abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:03:16.047] Server  LOG     [members API] GET request received
+[00:03:16.056] Server  LOG     [getAuthenticatedUser] Starting authentication check
+[00:03:16.161] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
+[00:03:16.161] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
+[00:03:16.696] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
+[00:03:16.696] Browser LOG     [authenticatedFetch] Fetch completed, status: 200
+[00:24:17.213] Server  LOG     [shop-id API] GET request received
+[00:24:17.213] Server  LOG     [shop-id API] Auth header: "present"
+[00:24:17.213] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:24:17.213] Server  LOG     [shop-id API] Verifying token...
+[00:24:17.217] Server  LOG     [shop-id API] GET request received
+[00:24:17.217] Server  LOG     [shop-id API] Auth header: "present"
+[00:24:17.217] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:24:17.218] Server  LOG     [shop-id API] Verifying token...
+[00:24:17.312] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[00:24:17.312] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:24:17.312] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:24:17.312] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:24:17.312] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:24:17.339] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[00:24:17.339] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:24:17.339] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:24:17.339] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:24:17.339] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:24:18.284] Server  LOG     [shop-id API] Token verification result: {}
+[00:24:18.284] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:24:18.285] Server  LOG     [shop-id API] Token verification result: {}
+[00:24:18.285] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:24:18.842] Server  LOG     [shop-id API] Query result: {}
+[00:24:18.843] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:24:18.886] Server  LOG     [shop-id API] Query result: {}
+[00:24:18.887] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:24:18.948] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:24:18.948] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:24:18.948] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:24:18.948] Browser LOG     [AuthContext] role found: owner
+[00:24:18.948] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[00:24:19.339] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:24:19.339] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:24:19.340] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:24:19.340] Browser LOG     [AuthContext] role found: owner
+[00:24:19.340] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false

@@ -71,7 +71,11 @@ export function PreviewPanel({
   useEffect(() => {
     if (!previewContainerRef.current) return;
 
+    // modelUrlを優先、なければglbUrlを使用（後方互換性）
+    const modelUrl = selectedAsset?.modelUrl || selectedAsset?.glbUrl;
+    
     console.log("[PreviewPanel] Initializing preview panel:", {
+      modelUrl,
       glbUrl: selectedAsset?.glbUrl,
       hasAsset: !!selectedAsset,
       assetsCount: assets.length,
@@ -110,7 +114,7 @@ export function PreviewPanel({
     }
 
     // アセットがない場合は初期化しない
-    if (!selectedAsset?.glbUrl) {
+    if (!modelUrl) {
       console.warn("[PreviewPanel] No asset available, skipping initialization");
       return;
     }
@@ -118,7 +122,8 @@ export function PreviewPanel({
     // 新しいインスタンスを初期化
     const instance = initPreviewPanel({
       container: previewContainerRef.current,
-      glbUrl: selectedAsset.glbUrl,
+      glbUrl: selectedAsset?.glbUrl, // 後方互換性のため
+      modelUrl: modelUrl, // GLBとFBXの両方をサポート
       textureUrl: selectedProduct?.thumbnailUrl,
       initialHeight: height,
       minHeight: 150,
@@ -187,12 +192,12 @@ export function PreviewPanel({
           setIsSendingMessage(false);
         }
       },
-      onModelLoad: () => {
-        console.log("[PreviewPanel] 3D model loaded:", selectedAsset.glbUrl);
-      },
-      onModelError: (error) => {
-        console.error("[PreviewPanel] Failed to load 3D model:", error, selectedAsset.glbUrl);
-      },
+        onModelLoad: () => {
+          console.log("[PreviewPanel] 3D model loaded:", modelUrl);
+        },
+        onModelError: (error) => {
+          console.error("[PreviewPanel] Failed to load 3D model:", error, modelUrl);
+        },
     });
 
     previewInstanceRef.current = instance;
@@ -212,14 +217,16 @@ export function PreviewPanel({
     // 依存配列を最小限に（isSendingMessageは削除 - コールバック内で最新の値を取得）
     // availableSizesはuseMemoでメモ化されているので、参照が変わったときだけ再初期化される
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAsset?.glbUrl, selectedProduct?.thumbnailUrl, availableSizes, currentSize, height]);
+  }, [selectedAsset?.modelUrl, selectedAsset?.glbUrl, selectedProduct?.thumbnailUrl, availableSizes, currentSize, height]);
 
   // サイズが変更されたときに、対応するアセットのGLB URLを更新
   useEffect(() => {
-    if (previewInstanceRef.current && selectedAsset?.glbUrl) {
-      previewInstanceRef.current.updateGlbUrl(selectedAsset.glbUrl);
+    // modelUrlを優先、なければglbUrlを使用（後方互換性）
+    const modelUrl = selectedAsset?.modelUrl || selectedAsset?.glbUrl;
+    if (previewInstanceRef.current && modelUrl) {
+      previewInstanceRef.current.updateModelUrl(modelUrl);
     }
-  }, [selectedAsset?.glbUrl, currentSize]);
+  }, [selectedAsset?.modelUrl, selectedAsset?.glbUrl, currentSize]);
 
   // 身長が変更されたときに更新
   useEffect(() => {
@@ -335,7 +342,7 @@ export function PreviewPanel({
             }}
           >
             {/* Content area - widgetのcontentAreaと同じ */}
-            {selectedAsset?.glbUrl ? (
+            {(selectedAsset?.modelUrl || selectedAsset?.glbUrl) ? (
               <div 
                 ref={previewContainerRef}
                 className="flex-1 flex flex-col overflow-hidden"

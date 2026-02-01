@@ -913,6 +913,8 @@ __turbopack_context__.s([
     ()=>conversationSchema,
     "createAssetSchema",
     ()=>createAssetSchema,
+    "createAssetSchemaBase",
+    ()=>createAssetSchemaBase,
     "createConversationSchema",
     ()=>createConversationSchema,
     "createEventSchema",
@@ -974,20 +976,34 @@ const assetSchema = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$n
     id: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().uuid(),
     productId: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().uuid(),
     size: productSizeSchema,
-    glbUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url(),
+    glbUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url().optional(),
+    modelUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url().optional(),
     thumbnailUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url().optional(),
     version: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].number().int().positive().default(1),
     isActive: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].boolean().optional().default(true),
     createdAt: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().datetime(),
     updatedAt: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().datetime()
 });
-const createAssetSchema = assetSchema.omit({
+const createAssetSchemaBase = assetSchema.omit({
     id: true,
     createdAt: true,
     updatedAt: true
 });
-const updateAssetSchema = createAssetSchema.partial().omit({
+const createAssetSchema = createAssetSchemaBase.refine((data)=>data.modelUrl || data.glbUrl, {
+    message: "modelUrl or glbUrl is required"
+});
+const updateAssetSchema = createAssetSchemaBase.partial().omit({
     productId: true
+}).refine((data)=>{
+    // 更新時は、modelUrlまたはglbUrlが提供されている場合のみ検証
+    // 両方がundefinedの場合は既存の値が保持されるため、検証をスキップ
+    if (data.modelUrl === undefined && data.glbUrl === undefined) {
+        return true; // 既存の値が保持される
+    }
+    // どちらかが提供されている場合は、有効なURLである必要がある
+    return data.modelUrl || data.glbUrl;
+}, {
+    message: "modelUrl or glbUrl must be provided if updating"
 });
 const eventTypeSchema = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].enum([
     "cube_view",
@@ -1017,7 +1033,10 @@ const widgetConfigSchema = __TURBOPACK__imported__module__$5b$project$5d2f$ateli
     asset: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].object({
         defaultSize: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().min(1),
         sizes: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].record(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().min(1), __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].object({
-            glbUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url()
+            glbUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url().optional(),
+            modelUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url().optional()
+        }).refine((data)=>data.modelUrl || data.glbUrl, {
+            message: "modelUrl or glbUrl is required"
         }))
     }).optional()
 });
@@ -2384,9 +2403,11 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2
 ;
 ;
 // versionは自動設定されるため、フォームから除外
-// createAssetSchemaからversionを除外
-const assetFormSchema = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$shared$2f$src$2f$schemas$2f$product$2e$schema$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["createAssetSchema"].omit({
+// createAssetSchemaBaseからversionを除外（refinementなしのベーススキーマを使用）
+const assetFormSchema = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$shared$2f$src$2f$schemas$2f$product$2e$schema$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["createAssetSchemaBase"].omit({
     version: true
+}).refine((data)=>data.modelUrl || data.glbUrl, {
+    message: "modelUrl or glbUrl is required"
 });
 function AssetManagementDialog({ productId, productName, onAssetAdded }) {
     const [open, setOpen] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
@@ -2402,17 +2423,22 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
             productId,
             size: "M",
             glbUrl: "",
+            modelUrl: "",
             isActive: true
         }
     });
     const selectedSize = watch("size");
     const glbUrl = watch("glbUrl");
+    const modelUrl = watch("modelUrl");
+    // 表示用：modelUrlを優先、なければglbUrlを使用
+    const displayUrl = modelUrl || glbUrl;
     const handleGlbFileUpload = async (file)=>{
         setUploadingGlb(true);
         try {
             const formData = new FormData();
             formData.append("file", file);
-            formData.append("folder", "glb");
+            // GLBとFBXの両方を受け付けるため、フォルダ名を"models"に変更
+            formData.append("folder", "models");
             const response = await fetch("/api/upload", {
                 method: "POST",
                 body: formData
@@ -2427,10 +2453,29 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                 throw new Error(errorMessage);
             }
             const data = await response.json();
-            setValue("glbUrl", data.url, {
-                shouldValidate: true
-            });
-            __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$sonner$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["toast"].success("GLBファイルをアップロードしました");
+            // ファイル拡張子に基づいて、glbUrlまたはmodelUrlを設定
+            const fileExtension = file.name.toLowerCase().split('.').pop();
+            if (fileExtension === 'fbx') {
+                // FBXの場合はmodelUrlに設定
+                setValue("modelUrl", data.url, {
+                    shouldValidate: true
+                });
+                // UI表示用にglbUrlにも設定（入力フィールドがglbUrlを表示しているため）
+                setValue("glbUrl", data.url, {
+                    shouldValidate: true
+                });
+                __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$sonner$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["toast"].success("FBXファイルをアップロードしました");
+            } else {
+                // GLB/GLTFの場合はglbUrlに設定（後方互換性）
+                setValue("glbUrl", data.url, {
+                    shouldValidate: true
+                });
+                // modelUrlにも設定（API側でmodelUrlを優先的に使用するため）
+                setValue("modelUrl", data.url, {
+                    shouldValidate: true
+                });
+                __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$sonner$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["toast"].success("GLBファイルをアップロードしました");
+            }
         } catch (error) {
             console.error("Failed to upload GLB file:", error);
             const errorMessage = error instanceof Error ? error.message : "アップロードに失敗しました";
@@ -2582,19 +2627,19 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                             className: "h-4 w-4"
                         }, void 0, false, {
                             fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                            lineNumber: 279,
+                            lineNumber: 301,
                             columnNumber: 11
                         }, this),
                         "アセット管理"
                     ]
                 }, void 0, true, {
                     fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                    lineNumber: 278,
+                    lineNumber: 300,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                lineNumber: 277,
+                lineNumber: 299,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$dialog$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DialogContent"], {
@@ -2609,20 +2654,20 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                lineNumber: 285,
+                                lineNumber: 307,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$dialog$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DialogDescription"], {
                                 children: "商品の3Dモデル（GLBファイル）をサイズ別に管理します"
                             }, void 0, false, {
                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                lineNumber: 286,
+                                lineNumber: 308,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                        lineNumber: 284,
+                        lineNumber: 306,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2636,7 +2681,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                         children: "新しいアセットを追加"
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                        lineNumber: 294,
+                                        lineNumber: 316,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
@@ -2654,7 +2699,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                 children: "サイズ"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                lineNumber: 298,
+                                                                lineNumber: 320,
                                                                 columnNumber: 19
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Select"], {
@@ -2666,12 +2711,12 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectTrigger"], {
                                                                         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectValue"], {}, void 0, false, {
                                                                             fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                            lineNumber: 306,
+                                                                            lineNumber: 328,
                                                                             columnNumber: 23
                                                                         }, this)
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                        lineNumber: 305,
+                                                                        lineNumber: 327,
                                                                         columnNumber: 21
                                                                     }, this),
                                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectContent"], {
@@ -2681,7 +2726,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "XS"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 310,
+                                                                                lineNumber: 332,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2689,7 +2734,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "S"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 311,
+                                                                                lineNumber: 333,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2697,7 +2742,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "M"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 312,
+                                                                                lineNumber: 334,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2705,7 +2750,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "L"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 313,
+                                                                                lineNumber: 335,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2713,7 +2758,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "XL"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 314,
+                                                                                lineNumber: 336,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2721,7 +2766,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "XXL"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 315,
+                                                                                lineNumber: 337,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2729,7 +2774,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "1"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 317,
+                                                                                lineNumber: 339,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2737,7 +2782,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "2"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 318,
+                                                                                lineNumber: 340,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2745,7 +2790,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "3"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 319,
+                                                                                lineNumber: 341,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2753,7 +2798,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "4"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 320,
+                                                                                lineNumber: 342,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2761,7 +2806,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "5"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 321,
+                                                                                lineNumber: 343,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2769,7 +2814,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "28"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 323,
+                                                                                lineNumber: 345,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2777,7 +2822,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "30"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 324,
+                                                                                lineNumber: 346,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2785,7 +2830,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "32"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 325,
+                                                                                lineNumber: 347,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2793,7 +2838,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "34"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 326,
+                                                                                lineNumber: 348,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2801,7 +2846,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "36"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 327,
+                                                                                lineNumber: 349,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2809,7 +2854,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "38"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 328,
+                                                                                lineNumber: 350,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2817,7 +2862,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "FREE"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 330,
+                                                                                lineNumber: 352,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2825,7 +2870,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "F"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 331,
+                                                                                lineNumber: 353,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2833,7 +2878,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "39"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 333,
+                                                                                lineNumber: 355,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2841,7 +2886,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "40"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 334,
+                                                                                lineNumber: 356,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2849,7 +2894,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "41"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 335,
+                                                                                lineNumber: 357,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2857,7 +2902,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "42"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 336,
+                                                                                lineNumber: 358,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2865,7 +2910,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "43"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 337,
+                                                                                lineNumber: 359,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2873,7 +2918,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "44"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 338,
+                                                                                lineNumber: 360,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -2881,19 +2926,19 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 children: "45"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 339,
+                                                                                lineNumber: 361,
                                                                                 columnNumber: 23
                                                                             }, this)
                                                                         ]
                                                                     }, void 0, true, {
                                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                        lineNumber: 308,
+                                                                        lineNumber: 330,
                                                                         columnNumber: 21
                                                                     }, this)
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                lineNumber: 299,
+                                                                lineNumber: 321,
                                                                 columnNumber: 19
                                                             }, this),
                                                             errors.size && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2901,13 +2946,13 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                 children: errors.size.message
                                                             }, void 0, false, {
                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                lineNumber: 343,
+                                                                lineNumber: 365,
                                                                 columnNumber: 21
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                        lineNumber: 297,
+                                                        lineNumber: 319,
                                                         columnNumber: 17
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2915,10 +2960,10 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                         children: [
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Label"], {
                                                                 htmlFor: "glbUrl",
-                                                                children: "GLB URL"
+                                                                children: "3DモデルURL（GLB/FBX）"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                lineNumber: 348,
+                                                                lineNumber: 370,
                                                                 columnNumber: 19
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2926,12 +2971,20 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                 children: [
                                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
                                                                         id: "glbUrl",
-                                                                        placeholder: "https://example.com/model.glb またはファイルをアップロード",
+                                                                        placeholder: "https://example.com/model.glb または https://example.com/model.fbx またはファイルをアップロード",
                                                                         ...register("glbUrl"),
                                                                         className: "flex-1"
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                        lineNumber: 350,
+                                                                        lineNumber: 372,
+                                                                        columnNumber: 21
+                                                                    }, this),
+                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                                                        type: "hidden",
+                                                                        ...register("modelUrl")
+                                                                    }, void 0, false, {
+                                                                        fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
+                                                                        lineNumber: 379,
                                                                         columnNumber: 21
                                                                     }, this),
                                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2940,7 +2993,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
                                                                                 id: "glbFile",
                                                                                 type: "file",
-                                                                                accept: ".glb,model/gltf-binary",
+                                                                                accept: ".glb,.gltf,.fbx,model/gltf-binary,application/octet-stream",
                                                                                 className: "hidden",
                                                                                 onChange: (e)=>{
                                                                                     const file = e.target.files?.[0];
@@ -2950,7 +3003,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 }
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 357,
+                                                                                lineNumber: 381,
                                                                                 columnNumber: 23
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
@@ -2958,7 +3011,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                 variant: "outline",
                                                                                 disabled: uploadingGlb,
                                                                                 size: "icon",
-                                                                                title: uploadingGlb ? "アップロード中..." : "GLBファイルをアップロード",
+                                                                                title: uploadingGlb ? "アップロード中..." : "3Dモデルファイル（GLB/FBX）をアップロード",
                                                                                 onClick: ()=>{
                                                                                     document.getElementById("glbFile")?.click();
                                                                                 },
@@ -2966,24 +3019,24 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                     className: "h-4 w-4"
                                                                                 }, void 0, false, {
                                                                                     fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                    lineNumber: 379,
+                                                                                    lineNumber: 403,
                                                                                     columnNumber: 25
                                                                                 }, this)
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 369,
+                                                                                lineNumber: 393,
                                                                                 columnNumber: 23
                                                                             }, this)
                                                                         ]
                                                                     }, void 0, true, {
                                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                        lineNumber: 356,
+                                                                        lineNumber: 380,
                                                                         columnNumber: 21
                                                                     }, this)
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                lineNumber: 349,
+                                                                lineNumber: 371,
                                                                 columnNumber: 19
                                                             }, this),
                                                             errors.glbUrl && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2991,30 +3044,30 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                 children: errors.glbUrl.message
                                                             }, void 0, false, {
                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                lineNumber: 384,
+                                                                lineNumber: 408,
                                                                 columnNumber: 21
                                                             }, this),
-                                                            glbUrl && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                            displayUrl && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                                                 className: "text-xs text-gray-500 truncate",
                                                                 children: [
                                                                     "アップロード済み: ",
-                                                                    glbUrl
+                                                                    displayUrl
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                lineNumber: 389,
+                                                                lineNumber: 413,
                                                                 columnNumber: 21
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                        lineNumber: 347,
+                                                        lineNumber: 369,
                                                         columnNumber: 17
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                lineNumber: 296,
+                                                lineNumber: 318,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$dialog$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DialogFooter"], {
@@ -3028,31 +3081,31 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                             className: "h-4 w-4"
                                                         }, void 0, false, {
                                                             fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                            lineNumber: 398,
+                                                            lineNumber: 422,
                                                             columnNumber: 19
                                                         }, this),
                                                         isSubmitting ? "追加中..." : "アセットを追加"
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                    lineNumber: 397,
+                                                    lineNumber: 421,
                                                     columnNumber: 17
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                lineNumber: 396,
+                                                lineNumber: 420,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                        lineNumber: 295,
+                                        lineNumber: 317,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                lineNumber: 293,
+                                lineNumber: 315,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3065,12 +3118,12 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                             children: "登録済みアセット"
                                         }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                            lineNumber: 408,
+                                            lineNumber: 432,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                        lineNumber: 407,
+                                        lineNumber: 431,
                                         columnNumber: 13
                                     }, this),
                                     isLoading ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3078,14 +3131,14 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                         children: "読み込み中..."
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                        lineNumber: 411,
+                                        lineNumber: 435,
                                         columnNumber: 15
                                     }, this) : assets.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                         className: "p-8 text-center text-gray-500",
                                         children: "アセットが登録されていません"
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                        lineNumber: 415,
+                                        lineNumber: 439,
                                         columnNumber: 15
                                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                         className: "overflow-x-auto",
@@ -3099,7 +3152,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                 children: "サイズ"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                lineNumber: 423,
+                                                                lineNumber: 447,
                                                                 columnNumber: 23
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$table$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["TableHead"], {
@@ -3107,7 +3160,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                 children: "バージョン"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                lineNumber: 424,
+                                                                lineNumber: 448,
                                                                 columnNumber: 23
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$table$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["TableHead"], {
@@ -3115,7 +3168,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                 children: "GLB URL"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                lineNumber: 425,
+                                                                lineNumber: 449,
                                                                 columnNumber: 23
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$table$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["TableHead"], {
@@ -3123,7 +3176,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                 children: "状態"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                lineNumber: 426,
+                                                                lineNumber: 450,
                                                                 columnNumber: 23
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$table$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["TableHead"], {
@@ -3131,7 +3184,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                 children: "作成日時"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                lineNumber: 427,
+                                                                lineNumber: 451,
                                                                 columnNumber: 23
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$table$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["TableHead"], {
@@ -3139,18 +3192,18 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                 children: "操作"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                lineNumber: 428,
+                                                                lineNumber: 452,
                                                                 columnNumber: 23
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                        lineNumber: 422,
+                                                        lineNumber: 446,
                                                         columnNumber: 21
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                    lineNumber: 421,
+                                                    lineNumber: 445,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$table$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["TableBody"], {
@@ -3166,7 +3219,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                     children: asset.size
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                    lineNumber: 441,
+                                                                    lineNumber: 465,
                                                                     columnNumber: 27
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$table$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["TableCell"], {
@@ -3176,7 +3229,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                    lineNumber: 444,
+                                                                    lineNumber: 468,
                                                                     columnNumber: 27
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$table$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["TableCell"], {
@@ -3201,7 +3254,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                         autoFocus: true
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                        lineNumber: 447,
+                                                                        lineNumber: 471,
                                                                         columnNumber: 31
                                                                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
                                                                         href: asset.glbUrl,
@@ -3211,12 +3264,12 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                         children: asset.glbUrl
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                        lineNumber: 466,
+                                                                        lineNumber: 490,
                                                                         columnNumber: 31
                                                                     }, this)
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                    lineNumber: 445,
+                                                                    lineNumber: 469,
                                                                     columnNumber: 27
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$table$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["TableCell"], {
@@ -3225,19 +3278,19 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                         children: "有効"
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                        lineNumber: 478,
+                                                                        lineNumber: 502,
                                                                         columnNumber: 31
                                                                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                                         className: "text-sm text-gray-400",
                                                                         children: "無効"
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                        lineNumber: 480,
+                                                                        lineNumber: 504,
                                                                         columnNumber: 31
                                                                     }, this)
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                    lineNumber: 476,
+                                                                    lineNumber: 500,
                                                                     columnNumber: 27
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$table$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["TableCell"], {
@@ -3245,7 +3298,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                     children: new Date(asset.createdAt).toLocaleString("ja-JP")
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                    lineNumber: 483,
+                                                                    lineNumber: 507,
                                                                     columnNumber: 27
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$table$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["TableCell"], {
@@ -3269,14 +3322,14 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                         className: "h-3 w-3"
                                                                                     }, void 0, false, {
                                                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                        lineNumber: 500,
+                                                                                        lineNumber: 524,
                                                                                         columnNumber: 33
                                                                                     }, this),
                                                                                     editingAssetId === asset.id ? "キャンセル" : "編集"
                                                                                 ]
                                                                             }, void 0, true, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 488,
+                                                                                lineNumber: 512,
                                                                                 columnNumber: 31
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
@@ -3290,47 +3343,47 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                                         className: "h-3 w-3"
                                                                                     }, void 0, false, {
                                                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                        lineNumber: 510,
+                                                                                        lineNumber: 534,
                                                                                         columnNumber: 33
                                                                                     }, this),
                                                                                     deletingAssetId === asset.id ? "削除中..." : "削除"
                                                                                 ]
                                                                             }, void 0, true, {
                                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                                lineNumber: 503,
+                                                                                lineNumber: 527,
                                                                                 columnNumber: 31
                                                                             }, this)
                                                                         ]
                                                                     }, void 0, true, {
                                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                        lineNumber: 487,
+                                                                        lineNumber: 511,
                                                                         columnNumber: 29
                                                                     }, this)
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                    lineNumber: 486,
+                                                                    lineNumber: 510,
                                                                     columnNumber: 27
                                                                 }, this)
                                                             ]
                                                         }, asset.id, true, {
                                                             fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                            lineNumber: 440,
+                                                            lineNumber: 464,
                                                             columnNumber: 25
                                                         }, this))
                                                 }, void 0, false, {
                                                     fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                    lineNumber: 431,
+                                                    lineNumber: 455,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                            lineNumber: 420,
+                                            lineNumber: 444,
                                             columnNumber: 17
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                        lineNumber: 419,
+                                        lineNumber: 443,
                                         columnNumber: 15
                                     }, this),
                                     latestAssets.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3341,7 +3394,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                 children: "最新バージョン（サイズ別）"
                                             }, void 0, false, {
                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                lineNumber: 525,
+                                                lineNumber: 549,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3357,7 +3410,7 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                                lineNumber: 532,
+                                                                lineNumber: 556,
                                                                 columnNumber: 23
                                                             }, this),
                                                             " v",
@@ -3365,42 +3418,42 @@ function AssetManagementDialog({ productId, productName, onAssetAdded }) {
                                                         ]
                                                     }, size, true, {
                                                         fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                        lineNumber: 528,
+                                                        lineNumber: 552,
                                                         columnNumber: 21
                                                     }, this))
                                             }, void 0, false, {
                                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                                lineNumber: 526,
+                                                lineNumber: 550,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                        lineNumber: 524,
+                                        lineNumber: 548,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                                lineNumber: 406,
+                                lineNumber: 430,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                        lineNumber: 291,
+                        lineNumber: 313,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-                lineNumber: 283,
+                lineNumber: 305,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/atelier/apps/console/src/features/products/components/AssetManagementDialog.tsx",
-        lineNumber: 276,
+        lineNumber: 298,
         columnNumber: 5
     }, this);
 }

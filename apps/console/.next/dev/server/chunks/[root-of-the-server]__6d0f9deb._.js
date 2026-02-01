@@ -197,7 +197,7 @@ async function GET(request) {
         }
         console.log("[widget-config API] Product found:", product.id);
         // 4. assets を (shop_id, product_id) で取得（サイズごとに最新バージョン）
-        const { data: allAssets, error: assetsError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("assets").select("size, glb_url, version, created_at, is_active").eq("shop_id", widgetKey.shop_id).eq("product_id", product.id).order("size", {
+        const { data: allAssets, error: assetsError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("assets").select("size, glb_url, model_url, version, created_at, is_active").eq("shop_id", widgetKey.shop_id).eq("product_id", product.id).order("size", {
             ascending: true
         }).order("created_at", {
             ascending: false
@@ -223,8 +223,11 @@ async function GET(request) {
             const existing = assetsBySize.get(size);
             // まだ登録されていない、またはより新しいバージョン、またはis_activeがtrueの場合
             if (!existing || asset.version > existing.version || asset.is_active && !existing.isActive) {
+                // model_urlを優先、なければglb_urlを使用
+                const modelUrl = asset.model_url || asset.glb_url;
                 assetsBySize.set(size, {
                     glbUrl: asset.glb_url,
+                    modelUrl: modelUrl,
                     version: asset.version,
                     isActive: asset.is_active ?? true
                 });
@@ -237,12 +240,13 @@ async function GET(request) {
             });
             return setCorsHeaders(response, request);
         }
-        // サイズごとのGLB URLを構築
+        // サイズごとのモデルURLを構築（GLBとFBXの両方をサポート）
         const sizes = {};
         let defaultSize;
         for (const [size, asset] of assetsBySize.entries()){
             sizes[size] = {
-                glbUrl: asset.glbUrl
+                glbUrl: asset.glbUrl,
+                modelUrl: asset.modelUrl
             };
             // デフォルトサイズは最初に見つかったサイズ、または"M"があれば"M"
             if (!defaultSize || size === "M") {

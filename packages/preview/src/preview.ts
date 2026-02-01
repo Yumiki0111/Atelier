@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import type { PreviewPanelOptions, PreviewPanelInstance, ChatMessage } from "./types";
 import type { ProductSize } from "@atelier/shared";
 
@@ -13,6 +14,7 @@ export function initPreviewPanel(
   const {
     container,
     glbUrl,
+    modelUrl,
     textureUrl,
     initialHeight = 170,
     minHeight = 150,
@@ -25,6 +27,9 @@ export function initPreviewPanel(
     onModelLoad,
     onModelError,
   } = options;
+  
+  // modelUrlを優先、なければglbUrlを使用（後方互換性）
+  const currentModelUrl = modelUrl || glbUrl;
 
   let currentSize = initialSize;
   const chatHistory: ChatMessage[] = [];
@@ -649,6 +654,7 @@ export function initPreviewPanel(
   // 3Dビューアを初期化
   const viewerInstance = init3DViewer(viewerContainer, {
     glbUrl,
+    modelUrl,
     textureUrl,
     onLoad: onModelLoad,
     onError: onModelError,
@@ -659,7 +665,12 @@ export function initPreviewPanel(
 
   return {
     updateGlbUrl(newGlbUrl: string | undefined) {
-      viewerInstance.updateModel(newGlbUrl);
+      // 後方互換性のため
+      viewerInstance.updateGlbUrl(newGlbUrl);
+    },
+    updateModelUrl(newModelUrl: string | undefined) {
+      // GLBとFBXの両方をサポート
+      viewerInstance.updateModelUrl(newModelUrl);
     },
     updateHeight(height: number) {
       if (sliderInstance) {
@@ -863,14 +874,16 @@ function createHeightSlider(
  * 3Dビューアの初期化（PreviewPanelのModelViewerと同じ設定）
  */
 interface ViewerOptions {
-  glbUrl?: string;
+  glbUrl?: string; // 後方互換性のため残す
+  modelUrl?: string; // GLBとFBXの両方をサポート（優先的に使用）
   textureUrl?: string;
   onLoad?: () => void;
   onError?: (error: Error) => void;
 }
 
 interface ViewerInstance {
-  updateModel(glbUrl: string | undefined): void;
+  updateGlbUrl(glbUrl: string | undefined): void;
+  updateModelUrl(modelUrl: string | undefined): void;
   destroy(): void;
 }
 
@@ -878,7 +891,9 @@ function init3DViewer(
   container: HTMLElement,
   options: ViewerOptions
 ): ViewerInstance {
-  const { glbUrl, textureUrl, onLoad, onError } = options;
+  const { glbUrl, modelUrl, textureUrl, onLoad, onError } = options;
+  // modelUrlを優先、なければglbUrlを使用（後方互換性）
+  const currentModelUrl = modelUrl || glbUrl;
 
   // コンテナのサイズを取得（初期化時に0の場合はデフォルト値を使用）
   const getContainerSize = () => {
@@ -1025,7 +1040,19 @@ function init3DViewer(
 
   // Load model
   let currentModel: THREE.Group | null = null;
-  const loader = new GLTFLoader();
+  const gltfLoader = new GLTFLoader();
+  const fbxLoader = new FBXLoader();
+
+  // ファイル拡張子からモデル形式を判定
+  function getModelFormat(url: string): "glb" | "fbx" | "unknown" {
+    const lowerUrl = url.toLowerCase();
+    if (lowerUrl.endsWith(".glb") || lowerUrl.endsWith(".gltf")) {
+      return "glb";
+    } else if (lowerUrl.endsWith(".fbx")) {
+      return "fbx";
+    }
+    return "unknown";
+  }
 
   function loadModel(url: string | undefined) {
     if (currentModel) {
@@ -1065,76 +1092,147 @@ function init3DViewer(
     }
 
     console.log("[Atelier Preview] Loading 3D model:", url);
+    const format = getModelFormat(url);
 
-    loader.load(
-      url,
-      (gltf) => {
-        console.log("[Atelier Preview] 3D model loaded successfully:", url);
-        currentModel = gltf.scene;
-        // PreviewPanelのModelViewerと同じ: scale: [3.5, 3.5, 3.5], rotation: [0, -Math.PI / 2, 0]
-        currentModel.scale.set(3.5, 3.5, 3.5);
-        currentModel.rotation.y = -Math.PI / 2;
-        scene.add(currentModel);
-        
-        // 成功したらメッセージを削除（安全な方法）
-        const existingMessage = container.querySelector("[data-atelier-message]");
-        if (existingMessage) {
-          try {
-            // remove()メソッドを使用（親子関係を確認する必要がない）
-            existingMessage.remove();
-          } catch (error) {
-            // エラーが発生した場合は、display: noneで非表示にする
-            (existingMessage as HTMLElement).style.display = "none";
+    // モデル形式に応じて適切なローダーを使用
+    if (format === "fbx") {
+      fbxLoader.load(
+        url,
+        (fbx) => {
+          console.log("[Atelier Preview] FBX model loaded successfully:", url);
+          currentModel = fbx;
+          
+          // まずスケールを適用（バウンディングボックス計算前に）
+          // FBXファイルは通常メートル単位なので、より大きなスケールを試す
+          // まずは大きめのスケールで表示を確認
+          const initialScale = 0.02; // より大きなスケールを試す
+          currentModel.scale.set(initialScale, initialScale, initialScale);
+          
+          // スケール適用後にバウンディングボックスを計算
+          const box = new THREE.Box3().setFromObject(currentModel);
+          const center = box.getCenter(new THREE.Vector3());
+          const size = box.getSize(new THREE.Vector3());
+          const maxSize = Math.max(size.x, size.y, size.z);
+          console.log("[Atelier Preview] FBX bounding box (after scale):", { center, size, maxSize, initialScale });
+          
+          // 原点を中心に移動
+          currentModel.position.set(-center.x, -center.y, -center.z);
+          
+          // 回転は一旦なし（表示確認後、必要に応じて調整）
+          currentModel.rotation.set(0, 0, 0);
+          
+          console.log("[Atelier Preview] FBX model settings:", {
+            position: currentModel.position,
+            scale: currentModel.scale,
+            rotation: currentModel.rotation,
+            maxSize,
+            initialScale,
+            boundingBoxCenter: center,
+            boundingBoxSize: size,
+          });
+          
+          scene.add(currentModel);
+          
+          // モデルがシーンに追加されたことを確認
+          console.log("[Atelier Preview] FBX model added to scene. Scene children count:", scene.children.length);
+          
+          // カメラをモデルに向ける（念のため）
+          if (camera) {
+            camera.lookAt(0, 0, 0);
+            console.log("[Atelier Preview] Camera positioned at:", camera.position, "looking at:", [0, 0, 0]);
           }
+          
+          // 成功したらメッセージを削除（安全な方法）
+          const existingMessage = container.querySelector("[data-atelier-message]");
+          if (existingMessage) {
+            try {
+              existingMessage.remove();
+            } catch (error) {
+              (existingMessage as HTMLElement).style.display = "none";
+            }
+          }
+          
+          onLoad?.();
+        },
+        undefined,
+        (error) => {
+          handleModelError(error, url);
         }
-        
-        onLoad?.();
-      },
-      undefined,
-      (error) => {
-        // 接続エラーの場合は、コンソールログを抑制（ブラウザのネットワークエラーは表示されるが、JavaScript側では抑制）
-        const isConnectionError =
-          error instanceof Error &&
-          (error.message === "Failed to fetch" ||
-            error.message.includes("network") ||
-            error.message.includes("connection"));
-        
-        if (!isConnectionError) {
-          console.error("[Atelier Preview] Failed to load 3D model:", error, url);
+      );
+    } else {
+      // GLB/GLTFの場合はGLTFLoaderを使用
+      gltfLoader.load(
+        url,
+        (gltf) => {
+          console.log("[Atelier Preview] GLB model loaded successfully:", url);
+          currentModel = gltf.scene;
+          // PreviewPanelのModelViewerと同じ: scale: [3.5, 3.5, 3.5], rotation: [0, -Math.PI / 2, 0]
+          currentModel.scale.set(3.5, 3.5, 3.5);
+          currentModel.rotation.y = -Math.PI / 2;
+          scene.add(currentModel);
+          
+          // 成功したらメッセージを削除（安全な方法）
+          const existingMessage = container.querySelector("[data-atelier-message]");
+          if (existingMessage) {
+            try {
+              existingMessage.remove();
+            } catch (error) {
+              (existingMessage as HTMLElement).style.display = "none";
+            }
+          }
+          
+          onLoad?.();
+        },
+        undefined,
+        (error) => {
+          handleModelError(error, url);
         }
-        
-        // エラーメッセージを表示
-        const errorDiv = document.createElement("div");
-        errorDiv.setAttribute("data-atelier-message", "true");
-        
-        // 接続エラーの場合は、より詳細なメッセージを表示
-        let errorMessage = "3Dモデルの読み込みに失敗しました";
-        if (isConnectionError) {
-          errorMessage = "consoleサーバーが起動していません\nnpm run dev:console を実行してください";
-        }
-        
-        errorDiv.textContent = errorMessage;
-        errorDiv.style.cssText = `
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          color: #ef4444;
-          font-size: 14px;
-          pointer-events: none;
-          z-index: 10;
-          text-align: center;
-          white-space: pre-line;
-        `;
-        container.appendChild(errorDiv);
-        
-        onError?.(error instanceof Error ? error : new Error(String(error)));
-      }
-    );
+      );
+    }
+  }
+
+  function handleModelError(error: unknown, url: string) {
+    // 接続エラーの場合は、コンソールログを抑制（ブラウザのネットワークエラーは表示されるが、JavaScript側では抑制）
+    const isConnectionError =
+      error instanceof Error &&
+      (error.message === "Failed to fetch" ||
+        error.message.includes("network") ||
+        error.message.includes("connection"));
+    
+    if (!isConnectionError) {
+      console.error("[Atelier Preview] Failed to load 3D model:", error, url);
+    }
+    
+    // エラーメッセージを表示
+    const errorDiv = document.createElement("div");
+    errorDiv.setAttribute("data-atelier-message", "true");
+    
+    // 接続エラーの場合は、より詳細なメッセージを表示
+    let errorMessage = "3Dモデルの読み込みに失敗しました";
+    if (isConnectionError) {
+      errorMessage = "consoleサーバーが起動していません\nnpm run dev:console を実行してください";
+    }
+    
+    errorDiv.textContent = errorMessage;
+    errorDiv.style.cssText = `
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #ef4444;
+      font-size: 14px;
+      pointer-events: none;
+      z-index: 10;
+      text-align: center;
+      white-space: pre-line;
+    `;
+    container.appendChild(errorDiv);
+    
+    onError?.(error instanceof Error ? error : new Error(String(error)));
   }
 
   // Load initial model
-  loadModel(glbUrl);
+  loadModel(currentModelUrl);
 
   // Animation loop
   let animationId: number;
@@ -1157,8 +1255,13 @@ function init3DViewer(
   resizeObserver.observe(container);
 
   return {
-    updateModel(newGlbUrl: string | undefined) {
+    updateGlbUrl(newGlbUrl: string | undefined) {
+      // 後方互換性のため
       loadModel(newGlbUrl);
+    },
+    updateModelUrl(newModelUrl: string | undefined) {
+      // GLBとFBXの両方をサポート
+      loadModel(newModelUrl);
     },
     destroy() {
       cancelAnimationFrame(animationId);

@@ -155,6 +155,8 @@ __turbopack_context__.s([
     ()=>conversationSchema,
     "createAssetSchema",
     ()=>createAssetSchema,
+    "createAssetSchemaBase",
+    ()=>createAssetSchemaBase,
     "createConversationSchema",
     ()=>createConversationSchema,
     "createEventSchema",
@@ -216,20 +218,34 @@ const assetSchema = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$n
     id: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().uuid(),
     productId: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().uuid(),
     size: productSizeSchema,
-    glbUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url(),
+    glbUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url().optional(),
+    modelUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url().optional(),
     thumbnailUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url().optional(),
     version: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].number().int().positive().default(1),
     isActive: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].boolean().optional().default(true),
     createdAt: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().datetime(),
     updatedAt: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().datetime()
 });
-const createAssetSchema = assetSchema.omit({
+const createAssetSchemaBase = assetSchema.omit({
     id: true,
     createdAt: true,
     updatedAt: true
 });
-const updateAssetSchema = createAssetSchema.partial().omit({
+const createAssetSchema = createAssetSchemaBase.refine((data)=>data.modelUrl || data.glbUrl, {
+    message: "modelUrl or glbUrl is required"
+});
+const updateAssetSchema = createAssetSchemaBase.partial().omit({
     productId: true
+}).refine((data)=>{
+    // 更新時は、modelUrlまたはglbUrlが提供されている場合のみ検証
+    // 両方がundefinedの場合は既存の値が保持されるため、検証をスキップ
+    if (data.modelUrl === undefined && data.glbUrl === undefined) {
+        return true; // 既存の値が保持される
+    }
+    // どちらかが提供されている場合は、有効なURLである必要がある
+    return data.modelUrl || data.glbUrl;
+}, {
+    message: "modelUrl or glbUrl must be provided if updating"
 });
 const eventTypeSchema = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].enum([
     "cube_view",
@@ -259,7 +275,10 @@ const widgetConfigSchema = __TURBOPACK__imported__module__$5b$project$5d2f$ateli
     asset: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].object({
         defaultSize: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().min(1),
         sizes: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].record(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().min(1), __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].object({
-            glbUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url()
+            glbUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url().optional(),
+            modelUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url().optional()
+        }).refine((data)=>data.modelUrl || data.glbUrl, {
+            message: "modelUrl or glbUrl is required"
         }))
     }).optional()
 });
@@ -480,6 +499,7 @@ async function GET(request) {
                 productId: a.product_id,
                 size: a.size,
                 glbUrl: a.glb_url,
+                modelUrl: a.model_url || a.glb_url,
                 thumbnailUrl: a.thumbnail_url,
                 version: a.version,
                 isActive: a.is_active ?? true,
@@ -530,11 +550,14 @@ async function POST(request) {
             ascending: false
         }).limit(1);
         const nextVersion = existingAssets && existingAssets.length > 0 ? existingAssets[0].version + 1 : 1;
+        // modelUrlを優先、なければglbUrlを使用（後方互換性）
+        const modelUrl = validated.modelUrl || validated.glbUrl;
         const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("assets").insert({
             shop_id: product.shop_id,
             product_id: validated.productId,
             size: validated.size,
-            glb_url: validated.glbUrl,
+            glb_url: validated.glbUrl || null,
+            model_url: modelUrl || null,
             thumbnail_url: validated.thumbnailUrl || null,
             version: nextVersion,
             is_active: validated.isActive ?? true
@@ -552,6 +575,7 @@ async function POST(request) {
             productId: data.product_id,
             size: data.size,
             glbUrl: data.glb_url,
+            modelUrl: data.model_url || data.glb_url,
             thumbnailUrl: data.thumbnail_url,
             version: data.version,
             isActive: data.is_active ?? true,

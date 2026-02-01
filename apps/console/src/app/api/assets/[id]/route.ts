@@ -41,40 +41,61 @@ export async function GET(
       );
     }
 
-    const { data, error } = await supabaseAdmin
+    // まずアセットを取得
+    const { data: assetData, error: assetError } = await supabaseAdmin
       .from("assets")
-      .select(`
-        *,
-        products!inner(shop_id)
-      `)
+      .select("*")
       .eq("id", id)
-      .eq("products.shop_id", auth.shopId)
       .single();
 
-    if (error) {
-      if (error.code === "PGRST116") {
+    if (assetError || !assetData) {
+      if (assetError?.code === "PGRST116") {
         return NextResponse.json(
           { error: "Asset not found", message: "アセットが見つかりませんでした" },
           { status: 404 }
         );
       }
-      console.error("Error fetching asset:", error);
+      console.error("Error fetching asset:", assetError);
       return NextResponse.json(
-        { error: "Failed to fetch asset", message: error.message },
-        { status: 500 }
+        { error: "Asset not found", message: "アセットが見つかりませんでした" },
+        { status: 404 }
+      );
+    }
+
+    // アセットのproduct_idを使って、productsテーブルからshop_idを確認
+    const { data: product, error: productError } = await supabaseAdmin
+      .from("products")
+      .select("shop_id")
+      .eq("id", assetData.product_id)
+      .single();
+
+    if (productError || !product) {
+      console.error("Error fetching product:", productError);
+      return NextResponse.json(
+        { error: "Asset not found", message: "アセットが見つかりませんでした" },
+        { status: 404 }
+      );
+    }
+
+    // shop_idが一致するか確認
+    if (product.shop_id !== auth.shopId) {
+      return NextResponse.json(
+        { error: "Asset not found", message: "アセットが見つかりませんでした" },
+        { status: 404 }
       );
     }
 
     const asset = {
-      id: data.id,
-      productId: data.product_id,
-      size: data.size,
-      glbUrl: data.glb_url,
-      thumbnailUrl: data.thumbnail_url,
-      version: data.version,
-      isActive: data.is_active ?? true,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
+      id: assetData.id,
+      productId: assetData.product_id,
+      size: assetData.size,
+      glbUrl: assetData.glb_url, // 後方互換性のため残す
+      modelUrl: assetData.model_url || assetData.glb_url, // model_urlを優先、なければglb_urlを使用
+      thumbnailUrl: assetData.thumbnail_url,
+      version: assetData.version,
+      isActive: assetData.is_active ?? true,
+      createdAt: assetData.created_at,
+      updatedAt: assetData.updated_at,
     };
 
     return NextResponse.json(asset);
@@ -142,18 +163,44 @@ export async function PATCH(
       throw validationError;
     }
 
-    // アセットが存在し、shop_idが一致するか確認
+    // まずアセットを取得
     const { data: existingAsset, error: fetchError } = await supabaseAdmin
       .from("assets")
-      .select(`
-        *,
-        products!inner(shop_id)
-      `)
+      .select("*")
       .eq("id", id)
-      .eq("products.shop_id", auth.shopId)
       .single();
 
     if (fetchError || !existingAsset) {
+      if (fetchError?.code === "PGRST116") {
+        return NextResponse.json(
+          { error: "Asset not found", message: "アセットが見つかりませんでした" },
+          { status: 404 }
+        );
+      }
+      console.error("Error fetching asset:", fetchError);
+      return NextResponse.json(
+        { error: "Asset not found", message: "アセットが見つかりませんでした" },
+        { status: 404 }
+      );
+    }
+
+    // アセットのproduct_idを使って、productsテーブルからshop_idを確認
+    const { data: product, error: productError } = await supabaseAdmin
+      .from("products")
+      .select("shop_id")
+      .eq("id", existingAsset.product_id)
+      .single();
+
+    if (productError || !product) {
+      console.error("Error fetching product:", productError);
+      return NextResponse.json(
+        { error: "Asset not found", message: "アセットが見つかりませんでした" },
+        { status: 404 }
+      );
+    }
+
+    // shop_idが一致するか確認
+    if (product.shop_id !== auth.shopId) {
       return NextResponse.json(
         { error: "Asset not found", message: "アセットが見つかりませんでした" },
         { status: 404 }
@@ -165,6 +212,10 @@ export async function PATCH(
     if (validated.size !== undefined) updateData.size = validated.size;
     if (validated.glbUrl !== undefined) {
       updateData.glb_url = validated.glbUrl === "" ? null : validated.glbUrl;
+    }
+    if (validated.modelUrl !== undefined) {
+      // modelUrlを優先的に使用
+      updateData.model_url = validated.modelUrl === "" ? null : validated.modelUrl;
     }
     if (validated.thumbnailUrl !== undefined) {
       updateData.thumbnail_url = validated.thumbnailUrl === "" ? null : validated.thumbnailUrl;
@@ -198,7 +249,8 @@ export async function PATCH(
       id: data.id,
       productId: data.product_id,
       size: data.size,
-      glbUrl: data.glb_url,
+      glbUrl: data.glb_url, // 後方互換性のため残す
+      modelUrl: data.model_url || data.glb_url, // model_urlを優先、なければglb_urlを使用
       thumbnailUrl: data.thumbnail_url,
       version: data.version,
       isActive: data.is_active ?? true,
@@ -266,18 +318,44 @@ export async function DELETE(
       );
     }
 
-    // アセットが存在し、shop_idが一致するか確認
+    // まずアセットを取得
     const { data: existingAsset, error: fetchError } = await supabaseAdmin
       .from("assets")
-      .select(`
-        *,
-        products!inner(shop_id)
-      `)
+      .select("id, product_id")
       .eq("id", id)
-      .eq("products.shop_id", auth.shopId)
       .single();
 
     if (fetchError || !existingAsset) {
+      if (fetchError?.code === "PGRST116") {
+        return NextResponse.json(
+          { error: "Asset not found", message: "アセットが見つかりませんでした" },
+          { status: 404 }
+        );
+      }
+      console.error("Error fetching asset:", fetchError);
+      return NextResponse.json(
+        { error: "Asset not found", message: "アセットが見つかりませんでした" },
+        { status: 404 }
+      );
+    }
+
+    // アセットのproduct_idを使って、productsテーブルからshop_idを確認
+    const { data: product, error: productError } = await supabaseAdmin
+      .from("products")
+      .select("shop_id")
+      .eq("id", existingAsset.product_id)
+      .single();
+
+    if (productError || !product) {
+      console.error("Error fetching product:", productError);
+      return NextResponse.json(
+        { error: "Asset not found", message: "アセットが見つかりませんでした" },
+        { status: 404 }
+      );
+    }
+
+    // shop_idが一致するか確認
+    if (product.shop_id !== auth.shopId) {
       return NextResponse.json(
         { error: "Asset not found", message: "アセットが見つかりませんでした" },
         { status: 404 }

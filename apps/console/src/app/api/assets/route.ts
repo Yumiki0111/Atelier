@@ -63,7 +63,8 @@ export async function GET(request: NextRequest) {
       id: a.id,
       productId: a.product_id,
       size: a.size,
-      glbUrl: a.glb_url,
+      glbUrl: a.glb_url, // 後方互換性のため残す
+      modelUrl: a.model_url || a.glb_url, // model_urlを優先、なければglb_urlを使用
       thumbnailUrl: a.thumbnail_url,
       version: a.version,
       isActive: a.is_active ?? true,
@@ -132,13 +133,17 @@ export async function POST(request: NextRequest) {
         ? existingAssets[0].version + 1
         : 1;
 
+    // modelUrlを優先、なければglbUrlを使用（後方互換性）
+    const modelUrl = validated.modelUrl || validated.glbUrl;
+    
     const { data, error } = await supabaseAdmin
       .from("assets")
       .insert({
         shop_id: product.shop_id, // shop_id を明示的に付与
         product_id: validated.productId,
         size: validated.size,
-        glb_url: validated.glbUrl,
+        glb_url: validated.glbUrl || null, // 後方互換性のため残す
+        model_url: modelUrl || null, // model_urlを優先的に使用
         thumbnail_url: validated.thumbnailUrl || null,
         version: nextVersion,
         is_active: validated.isActive ?? true,
@@ -158,7 +163,8 @@ export async function POST(request: NextRequest) {
       id: data.id,
       productId: data.product_id,
       size: data.size,
-      glbUrl: data.glb_url,
+      glbUrl: data.glb_url, // 後方互換性のため残す
+      modelUrl: data.model_url || data.glb_url, // model_urlを優先、なければglb_urlを使用
       thumbnailUrl: data.thumbnail_url,
       version: data.version,
       isActive: data.is_active ?? true,

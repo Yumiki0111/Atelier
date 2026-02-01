@@ -281,6 +281,7 @@ function useUpdateProduct() {
         }["useUpdateProduct.useMutation"],
         onSuccess: {
             "useUpdateProduct.useMutation": (_, variables)=>{
+                // すべてのproductsクエリを無効化（shopIdに関係なく）
                 queryClient.invalidateQueries({
                     queryKey: [
                         "products"
@@ -290,6 +291,12 @@ function useUpdateProduct() {
                     queryKey: [
                         "product",
                         variables.id
+                    ]
+                });
+                // 明示的にrefetchも実行
+                queryClient.refetchQueries({
+                    queryKey: [
+                        "products"
                     ]
                 });
             }

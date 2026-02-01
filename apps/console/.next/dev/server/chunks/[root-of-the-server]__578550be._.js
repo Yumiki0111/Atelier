@@ -97,19 +97,19 @@ async function getAuthenticatedUser(request) {
             console.error("Error verifying token:", error);
             return null;
         }
-        // usersテーブルからshop_idを取得（RLSをバイパスするためsupabaseAdminを使用）
+        // profiles テーブルから shop_id を取得（RLSをバイパスするためsupabaseAdminを使用）
         if (!__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"]) {
             console.error("supabaseAdmin not initialized");
             return null;
         }
-        const { data: userData, error: userError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("users").select("shop_id").eq("id", user.id).single();
-        if (userError || !userData) {
-            console.error("Error fetching shop_id:", userError);
+        const { data: profileData, error: profileError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("profiles").select("shop_id").eq("id", user.id).single();
+        if (profileError || !profileData) {
+            console.error("Error fetching shop_id from profiles:", profileError);
             return null;
         }
         return {
             userId: user.id,
-            shopId: userData.shop_id
+            shopId: profileData.shop_id
         };
     } catch (error) {
         console.error("Error in getAuthenticatedUser:", error);
@@ -155,6 +155,8 @@ __turbopack_context__.s([
     ()=>conversationSchema,
     "createAssetSchema",
     ()=>createAssetSchema,
+    "createAssetSchemaBase",
+    ()=>createAssetSchemaBase,
     "createConversationSchema",
     ()=>createConversationSchema,
     "createEventSchema",
@@ -194,24 +196,11 @@ const productCategorySchema = __TURBOPACK__imported__module__$5b$project$5d2f$at
 const productSchema = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].object({
     id: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().uuid(),
     shopId: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().min(1),
+    externalProductId: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().optional(),
     name: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().min(1),
     brand: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().optional(),
     category: productCategorySchema.optional(),
-    sku: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().optional(),
-    handle: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().optional(),
-    url: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].union([
-        __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url(),
-        __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].literal("")
-    ]).optional(),
-    sizeTypeId: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].union([
-        __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().uuid(),
-        __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].literal("")
-    ]).optional(),
     thumbnailUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].union([
-        __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url(),
-        __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].literal("")
-    ]).optional(),
-    previewImageUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].union([
         __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url(),
         __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].literal("")
     ]).optional(),
@@ -229,20 +218,34 @@ const assetSchema = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$n
     id: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().uuid(),
     productId: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().uuid(),
     size: productSizeSchema,
-    glbUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url(),
+    glbUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url().optional(),
+    modelUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url().optional(),
     thumbnailUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url().optional(),
     version: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].number().int().positive().default(1),
     isActive: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].boolean().optional().default(true),
     createdAt: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().datetime(),
     updatedAt: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().datetime()
 });
-const createAssetSchema = assetSchema.omit({
+const createAssetSchemaBase = assetSchema.omit({
     id: true,
     createdAt: true,
     updatedAt: true
 });
-const updateAssetSchema = createAssetSchema.partial().omit({
+const createAssetSchema = createAssetSchemaBase.refine((data)=>data.modelUrl || data.glbUrl, {
+    message: "modelUrl or glbUrl is required"
+});
+const updateAssetSchema = createAssetSchemaBase.partial().omit({
     productId: true
+}).refine((data)=>{
+    // 更新時は、modelUrlまたはglbUrlが提供されている場合のみ検証
+    // 両方がundefinedの場合は既存の値が保持されるため、検証をスキップ
+    if (data.modelUrl === undefined && data.glbUrl === undefined) {
+        return true; // 既存の値が保持される
+    }
+    // どちらかが提供されている場合は、有効なURLである必要がある
+    return data.modelUrl || data.glbUrl;
+}, {
+    message: "modelUrl or glbUrl must be provided if updating"
 });
 const eventTypeSchema = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].enum([
     "cube_view",
@@ -272,7 +275,10 @@ const widgetConfigSchema = __TURBOPACK__imported__module__$5b$project$5d2f$ateli
     asset: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].object({
         defaultSize: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().min(1),
         sizes: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].record(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().min(1), __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].object({
-            glbUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url()
+            glbUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url().optional(),
+            modelUrl: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url().optional()
+        }).refine((data)=>data.modelUrl || data.glbUrl, {
+            message: "modelUrl or glbUrl is required"
         }))
     }).optional()
 });
@@ -477,12 +483,10 @@ async function GET(request, { params }) {
                 status: 400
             });
         }
-        const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("assets").select(`
-        *,
-        products!inner(shop_id)
-      `).eq("id", id).eq("products.shop_id", auth.shopId).single();
-        if (error) {
-            if (error.code === "PGRST116") {
+        // まずアセットを取得
+        const { data: assetData, error: assetError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("assets").select("*").eq("id", id).single();
+        if (assetError || !assetData) {
+            if (assetError?.code === "PGRST116") {
                 return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
                     error: "Asset not found",
                     message: "アセットが見つかりませんでした"
@@ -490,24 +494,45 @@ async function GET(request, { params }) {
                     status: 404
                 });
             }
-            console.error("Error fetching asset:", error);
+            console.error("Error fetching asset:", assetError);
             return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-                error: "Failed to fetch asset",
-                message: error.message
+                error: "Asset not found",
+                message: "アセットが見つかりませんでした"
             }, {
-                status: 500
+                status: 404
+            });
+        }
+        // アセットのproduct_idを使って、productsテーブルからshop_idを確認
+        const { data: product, error: productError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("products").select("shop_id").eq("id", assetData.product_id).single();
+        if (productError || !product) {
+            console.error("Error fetching product:", productError);
+            return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+                error: "Asset not found",
+                message: "アセットが見つかりませんでした"
+            }, {
+                status: 404
+            });
+        }
+        // shop_idが一致するか確認
+        if (product.shop_id !== auth.shopId) {
+            return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+                error: "Asset not found",
+                message: "アセットが見つかりませんでした"
+            }, {
+                status: 404
             });
         }
         const asset = {
-            id: data.id,
-            productId: data.product_id,
-            size: data.size,
-            glbUrl: data.glb_url,
-            thumbnailUrl: data.thumbnail_url,
-            version: data.version,
-            isActive: data.is_active ?? true,
-            createdAt: data.created_at,
-            updatedAt: data.updated_at
+            id: assetData.id,
+            productId: assetData.product_id,
+            size: assetData.size,
+            glbUrl: assetData.glb_url,
+            modelUrl: assetData.model_url || assetData.glb_url,
+            thumbnailUrl: assetData.thumbnail_url,
+            version: assetData.version,
+            isActive: assetData.is_active ?? true,
+            createdAt: assetData.created_at,
+            updatedAt: assetData.updated_at
         };
         return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json(asset);
     } catch (error) {
@@ -566,12 +591,38 @@ async function PATCH(request, { params }) {
             }
             throw validationError;
         }
-        // アセットが存在し、shop_idが一致するか確認
-        const { data: existingAsset, error: fetchError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("assets").select(`
-        *,
-        products!inner(shop_id)
-      `).eq("id", id).eq("products.shop_id", auth.shopId).single();
+        // まずアセットを取得
+        const { data: existingAsset, error: fetchError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("assets").select("*").eq("id", id).single();
         if (fetchError || !existingAsset) {
+            if (fetchError?.code === "PGRST116") {
+                return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+                    error: "Asset not found",
+                    message: "アセットが見つかりませんでした"
+                }, {
+                    status: 404
+                });
+            }
+            console.error("Error fetching asset:", fetchError);
+            return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+                error: "Asset not found",
+                message: "アセットが見つかりませんでした"
+            }, {
+                status: 404
+            });
+        }
+        // アセットのproduct_idを使って、productsテーブルからshop_idを確認
+        const { data: product, error: productError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("products").select("shop_id").eq("id", existingAsset.product_id).single();
+        if (productError || !product) {
+            console.error("Error fetching product:", productError);
+            return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+                error: "Asset not found",
+                message: "アセットが見つかりませんでした"
+            }, {
+                status: 404
+            });
+        }
+        // shop_idが一致するか確認
+        if (product.shop_id !== auth.shopId) {
             return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
                 error: "Asset not found",
                 message: "アセットが見つかりませんでした"
@@ -584,6 +635,10 @@ async function PATCH(request, { params }) {
         if (validated.size !== undefined) updateData.size = validated.size;
         if (validated.glbUrl !== undefined) {
             updateData.glb_url = validated.glbUrl === "" ? null : validated.glbUrl;
+        }
+        if (validated.modelUrl !== undefined) {
+            // modelUrlを優先的に使用
+            updateData.model_url = validated.modelUrl === "" ? null : validated.modelUrl;
         }
         if (validated.thumbnailUrl !== undefined) {
             updateData.thumbnail_url = validated.thumbnailUrl === "" ? null : validated.thumbnailUrl;
@@ -608,6 +663,7 @@ async function PATCH(request, { params }) {
             productId: data.product_id,
             size: data.size,
             glbUrl: data.glb_url,
+            modelUrl: data.model_url || data.glb_url,
             thumbnailUrl: data.thumbnail_url,
             version: data.version,
             isActive: data.is_active ?? true,
@@ -665,12 +721,38 @@ async function DELETE(request, { params }) {
                 status: 400
             });
         }
-        // アセットが存在し、shop_idが一致するか確認
-        const { data: existingAsset, error: fetchError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("assets").select(`
-        *,
-        products!inner(shop_id)
-      `).eq("id", id).eq("products.shop_id", auth.shopId).single();
+        // まずアセットを取得
+        const { data: existingAsset, error: fetchError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("assets").select("id, product_id").eq("id", id).single();
         if (fetchError || !existingAsset) {
+            if (fetchError?.code === "PGRST116") {
+                return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+                    error: "Asset not found",
+                    message: "アセットが見つかりませんでした"
+                }, {
+                    status: 404
+                });
+            }
+            console.error("Error fetching asset:", fetchError);
+            return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+                error: "Asset not found",
+                message: "アセットが見つかりませんでした"
+            }, {
+                status: 404
+            });
+        }
+        // アセットのproduct_idを使って、productsテーブルからshop_idを確認
+        const { data: product, error: productError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("products").select("shop_id").eq("id", existingAsset.product_id).single();
+        if (productError || !product) {
+            console.error("Error fetching product:", productError);
+            return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+                error: "Asset not found",
+                message: "アセットが見つかりませんでした"
+            }, {
+                status: 404
+            });
+        }
+        // shop_idが一致するか確認
+        if (product.shop_id !== auth.shopId) {
             return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
                 error: "Asset not found",
                 message: "アセットが見つかりませんでした"

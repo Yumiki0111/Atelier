@@ -410,14 +410,18 @@ __turbopack_context__.s([
 ]);
 var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/atelier/packages/preview/node_modules/three/build/three.module.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$examples$2f$jsm$2f$loaders$2f$GLTFLoader$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/atelier/packages/preview/node_modules/three/examples/jsm/loaders/GLTFLoader.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$examples$2f$jsm$2f$loaders$2f$FBXLoader$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/atelier/packages/preview/node_modules/three/examples/jsm/loaders/FBXLoader.js [app-client] (ecmascript)");
+;
 ;
 ;
 function initPreviewPanel(options) {
-    const { container, glbUrl, textureUrl, initialHeight = 170, minHeight = 150, maxHeight = 190, availableSizes = [
+    const { container, glbUrl, modelUrl, textureUrl, initialHeight = 170, minHeight = 150, maxHeight = 190, availableSizes = [
         "S",
         "M",
         "L"
     ], initialSize = "M", onHeightChange, onSizeChange, onMessageSend, onModelLoad, onModelError } = options;
+    // modelUrlを優先、なければglbUrlを使用（後方互換性）
+    const currentModelUrl = modelUrl || glbUrl;
     let currentSize = initialSize;
     const chatHistory = [];
     let isKeyboardVisible = false;
@@ -973,6 +977,7 @@ function initPreviewPanel(options) {
     // 3Dビューアを初期化
     const viewerInstance = init3DViewer(viewerContainer, {
         glbUrl,
+        modelUrl,
         textureUrl,
         onLoad: onModelLoad,
         onError: onModelError
@@ -985,7 +990,12 @@ function initPreviewPanel(options) {
     ];
     return {
         updateGlbUrl (newGlbUrl) {
-            viewerInstance.updateModel(newGlbUrl);
+            // 後方互換性のため
+            viewerInstance.updateGlbUrl(newGlbUrl);
+        },
+        updateModelUrl (newModelUrl) {
+            // GLBとFBXの両方をサポート
+            viewerInstance.updateModelUrl(newModelUrl);
         },
         updateHeight (height) {
             if (sliderInstance) {
@@ -1160,7 +1170,9 @@ function initPreviewPanel(options) {
     };
 }
 function init3DViewer(container, options) {
-    const { glbUrl, textureUrl, onLoad, onError } = options;
+    const { glbUrl, modelUrl, textureUrl, onLoad, onError } = options;
+    // modelUrlを優先、なければglbUrlを使用（後方互換性）
+    const currentModelUrl = modelUrl || glbUrl;
     // コンテナのサイズを取得（初期化時に0の場合はデフォルト値を使用）
     const getContainerSize = ()=>{
         const width = container.clientWidth || 800;
@@ -1292,7 +1304,18 @@ function init3DViewer(container, options) {
     canvasElement.style.cursor = "grab";
     // Load model
     let currentModel = null;
-    const loader = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$examples$2f$jsm$2f$loaders$2f$GLTFLoader$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["GLTFLoader"]();
+    const gltfLoader = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$examples$2f$jsm$2f$loaders$2f$GLTFLoader$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["GLTFLoader"]();
+    const fbxLoader = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$examples$2f$jsm$2f$loaders$2f$FBXLoader$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["FBXLoader"]();
+    // ファイル拡張子からモデル形式を判定
+    function getModelFormat(url) {
+        const lowerUrl = url.toLowerCase();
+        if (lowerUrl.endsWith(".glb") || lowerUrl.endsWith(".gltf")) {
+            return "glb";
+        } else if (lowerUrl.endsWith(".fbx")) {
+            return "fbx";
+        }
+        return "unknown";
+    }
     function loadModel(url) {
         if (currentModel) {
             scene.remove(currentModel);
@@ -1328,58 +1351,122 @@ function init3DViewer(container, options) {
             return;
         }
         console.log("[Atelier Preview] Loading 3D model:", url);
-        loader.load(url, (gltf)=>{
-            console.log("[Atelier Preview] 3D model loaded successfully:", url);
-            currentModel = gltf.scene;
-            // PreviewPanelのModelViewerと同じ: scale: [3.5, 3.5, 3.5], rotation: [0, -Math.PI / 2, 0]
-            currentModel.scale.set(3.5, 3.5, 3.5);
-            currentModel.rotation.y = -Math.PI / 2;
-            scene.add(currentModel);
-            // 成功したらメッセージを削除（安全な方法）
-            const existingMessage = container.querySelector("[data-atelier-message]");
-            if (existingMessage) {
-                try {
-                    // remove()メソッドを使用（親子関係を確認する必要がない）
-                    existingMessage.remove();
-                } catch (error) {
-                    // エラーが発生した場合は、display: noneで非表示にする
-                    existingMessage.style.display = "none";
+        const format = getModelFormat(url);
+        // モデル形式に応じて適切なローダーを使用
+        if (format === "fbx") {
+            fbxLoader.load(url, (fbx)=>{
+                console.log("[Atelier Preview] FBX model loaded successfully:", url);
+                currentModel = fbx;
+                // まずスケールを適用（バウンディングボックス計算前に）
+                // FBXファイルは通常メートル単位なので、より大きなスケールを試す
+                // まずは大きめのスケールで表示を確認
+                const initialScale = 0.02; // より大きなスケールを試す
+                currentModel.scale.set(initialScale, initialScale, initialScale);
+                // スケール適用後にバウンディングボックスを計算
+                const box = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Box3"]().setFromObject(currentModel);
+                const center = box.getCenter(new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vector3"]());
+                const size = box.getSize(new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Vector3"]());
+                const maxSize = Math.max(size.x, size.y, size.z);
+                console.log("[Atelier Preview] FBX bounding box (after scale):", {
+                    center,
+                    size,
+                    maxSize,
+                    initialScale
+                });
+                // 原点を中心に移動
+                currentModel.position.set(-center.x, -center.y, -center.z);
+                // 回転は一旦なし（表示確認後、必要に応じて調整）
+                currentModel.rotation.set(0, 0, 0);
+                console.log("[Atelier Preview] FBX model settings:", {
+                    position: currentModel.position,
+                    scale: currentModel.scale,
+                    rotation: currentModel.rotation,
+                    maxSize,
+                    initialScale,
+                    boundingBoxCenter: center,
+                    boundingBoxSize: size
+                });
+                scene.add(currentModel);
+                // モデルがシーンに追加されたことを確認
+                console.log("[Atelier Preview] FBX model added to scene. Scene children count:", scene.children.length);
+                // カメラをモデルに向ける（念のため）
+                if (camera) {
+                    camera.lookAt(0, 0, 0);
+                    console.log("[Atelier Preview] Camera positioned at:", camera.position, "looking at:", [
+                        0,
+                        0,
+                        0
+                    ]);
                 }
-            }
-            onLoad?.();
-        }, undefined, (error)=>{
-            // 接続エラーの場合は、コンソールログを抑制（ブラウザのネットワークエラーは表示されるが、JavaScript側では抑制）
-            const isConnectionError = error instanceof Error && (error.message === "Failed to fetch" || error.message.includes("network") || error.message.includes("connection"));
-            if (!isConnectionError) {
-                console.error("[Atelier Preview] Failed to load 3D model:", error, url);
-            }
-            // エラーメッセージを表示
-            const errorDiv = document.createElement("div");
-            errorDiv.setAttribute("data-atelier-message", "true");
-            // 接続エラーの場合は、より詳細なメッセージを表示
-            let errorMessage = "3Dモデルの読み込みに失敗しました";
-            if (isConnectionError) {
-                errorMessage = "consoleサーバーが起動していません\nnpm run dev:console を実行してください";
-            }
-            errorDiv.textContent = errorMessage;
-            errorDiv.style.cssText = `
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          color: #ef4444;
-          font-size: 14px;
-          pointer-events: none;
-          z-index: 10;
-          text-align: center;
-          white-space: pre-line;
-        `;
-            container.appendChild(errorDiv);
-            onError?.(error instanceof Error ? error : new Error(String(error)));
-        });
+                // 成功したらメッセージを削除（安全な方法）
+                const existingMessage = container.querySelector("[data-atelier-message]");
+                if (existingMessage) {
+                    try {
+                        existingMessage.remove();
+                    } catch (error) {
+                        existingMessage.style.display = "none";
+                    }
+                }
+                onLoad?.();
+            }, undefined, (error)=>{
+                handleModelError(error, url);
+            });
+        } else {
+            // GLB/GLTFの場合はGLTFLoaderを使用
+            gltfLoader.load(url, (gltf)=>{
+                console.log("[Atelier Preview] GLB model loaded successfully:", url);
+                currentModel = gltf.scene;
+                // PreviewPanelのModelViewerと同じ: scale: [3.5, 3.5, 3.5], rotation: [0, -Math.PI / 2, 0]
+                currentModel.scale.set(3.5, 3.5, 3.5);
+                currentModel.rotation.y = -Math.PI / 2;
+                scene.add(currentModel);
+                // 成功したらメッセージを削除（安全な方法）
+                const existingMessage = container.querySelector("[data-atelier-message]");
+                if (existingMessage) {
+                    try {
+                        existingMessage.remove();
+                    } catch (error) {
+                        existingMessage.style.display = "none";
+                    }
+                }
+                onLoad?.();
+            }, undefined, (error)=>{
+                handleModelError(error, url);
+            });
+        }
+    }
+    function handleModelError(error, url) {
+        // 接続エラーの場合は、コンソールログを抑制（ブラウザのネットワークエラーは表示されるが、JavaScript側では抑制）
+        const isConnectionError = error instanceof Error && (error.message === "Failed to fetch" || error.message.includes("network") || error.message.includes("connection"));
+        if (!isConnectionError) {
+            console.error("[Atelier Preview] Failed to load 3D model:", error, url);
+        }
+        // エラーメッセージを表示
+        const errorDiv = document.createElement("div");
+        errorDiv.setAttribute("data-atelier-message", "true");
+        // 接続エラーの場合は、より詳細なメッセージを表示
+        let errorMessage = "3Dモデルの読み込みに失敗しました";
+        if (isConnectionError) {
+            errorMessage = "consoleサーバーが起動していません\nnpm run dev:console を実行してください";
+        }
+        errorDiv.textContent = errorMessage;
+        errorDiv.style.cssText = `
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #ef4444;
+      font-size: 14px;
+      pointer-events: none;
+      z-index: 10;
+      text-align: center;
+      white-space: pre-line;
+    `;
+        container.appendChild(errorDiv);
+        onError?.(error instanceof Error ? error : new Error(String(error)));
     }
     // Load initial model
-    loadModel(glbUrl);
+    loadModel(currentModelUrl);
     // Animation loop
     let animationId;
     function animate() {
@@ -1402,8 +1489,13 @@ function init3DViewer(container, options) {
     });
     resizeObserver.observe(container);
     return {
-        updateModel (newGlbUrl) {
+        updateGlbUrl (newGlbUrl) {
+            // 後方互換性のため
             loadModel(newGlbUrl);
+        },
+        updateModelUrl (newModelUrl) {
+            // GLBとFBXの両方をサポート
+            loadModel(newModelUrl);
         },
         destroy () {
             cancelAnimationFrame(animationId);
@@ -1591,7 +1683,10 @@ function PreviewPanel({ selectedProduct, selectedSize }) {
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "PreviewPanel.useEffect": ()=>{
             if (!previewContainerRef.current) return;
+            // modelUrlを優先、なければglbUrlを使用（後方互換性）
+            const modelUrl = selectedAsset?.modelUrl || selectedAsset?.glbUrl;
             console.log("[PreviewPanel] Initializing preview panel:", {
+                modelUrl,
                 glbUrl: selectedAsset?.glbUrl,
                 hasAsset: !!selectedAsset,
                 assetsCount: assets.length,
@@ -1627,14 +1722,15 @@ function PreviewPanel({ selectedProduct, selectedSize }) {
                 }
             }
             // アセットがない場合は初期化しない
-            if (!selectedAsset?.glbUrl) {
+            if (!modelUrl) {
                 console.warn("[PreviewPanel] No asset available, skipping initialization");
                 return;
             }
             // 新しいインスタンスを初期化
             const instance = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$src$2f$preview$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["initPreviewPanel"])({
                 container: previewContainerRef.current,
-                glbUrl: selectedAsset.glbUrl,
+                glbUrl: selectedAsset?.glbUrl,
+                modelUrl: modelUrl,
                 textureUrl: selectedProduct?.thumbnailUrl,
                 initialHeight: height,
                 minHeight: 150,
@@ -1705,12 +1801,12 @@ function PreviewPanel({ selectedProduct, selectedSize }) {
                 }["PreviewPanel.useEffect.instance"],
                 onModelLoad: {
                     "PreviewPanel.useEffect.instance": ()=>{
-                        console.log("[PreviewPanel] 3D model loaded:", selectedAsset.glbUrl);
+                        console.log("[PreviewPanel] 3D model loaded:", modelUrl);
                     }
                 }["PreviewPanel.useEffect.instance"],
                 onModelError: {
                     "PreviewPanel.useEffect.instance": (error)=>{
-                        console.error("[PreviewPanel] Failed to load 3D model:", error, selectedAsset.glbUrl);
+                        console.error("[PreviewPanel] Failed to load 3D model:", error, modelUrl);
                     }
                 }["PreviewPanel.useEffect.instance"]
             });
@@ -1734,6 +1830,7 @@ function PreviewPanel({ selectedProduct, selectedSize }) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
         }
     }["PreviewPanel.useEffect"], [
+        selectedAsset?.modelUrl,
         selectedAsset?.glbUrl,
         selectedProduct?.thumbnailUrl,
         availableSizes,
@@ -1743,11 +1840,14 @@ function PreviewPanel({ selectedProduct, selectedSize }) {
     // サイズが変更されたときに、対応するアセットのGLB URLを更新
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "PreviewPanel.useEffect": ()=>{
-            if (previewInstanceRef.current && selectedAsset?.glbUrl) {
-                previewInstanceRef.current.updateGlbUrl(selectedAsset.glbUrl);
+            // modelUrlを優先、なければglbUrlを使用（後方互換性）
+            const modelUrl = selectedAsset?.modelUrl || selectedAsset?.glbUrl;
+            if (previewInstanceRef.current && modelUrl) {
+                previewInstanceRef.current.updateModelUrl(modelUrl);
             }
         }
     }["PreviewPanel.useEffect"], [
+        selectedAsset?.modelUrl,
         selectedAsset?.glbUrl,
         currentSize
     ]);
@@ -1829,7 +1929,7 @@ function PreviewPanel({ selectedProduct, selectedSize }) {
                         children: "プレビュー"
                     }, void 0, false, {
                         fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                        lineNumber: 297,
+                        lineNumber: 304,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1840,18 +1940,18 @@ function PreviewPanel({ selectedProduct, selectedSize }) {
                             className: "h-5 w-5"
                         }, void 0, false, {
                             fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                            lineNumber: 303,
+                            lineNumber: 310,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                        lineNumber: 298,
+                        lineNumber: 305,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                lineNumber: 296,
+                lineNumber: 303,
                 columnNumber: 7
             }, this),
             selectedProduct && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1861,12 +1961,12 @@ function PreviewPanel({ selectedProduct, selectedSize }) {
                     children: selectedProduct.name
                 }, void 0, false, {
                     fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                    lineNumber: 310,
+                    lineNumber: 317,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                lineNumber: 309,
+                lineNumber: 316,
                 columnNumber: 9
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1886,7 +1986,7 @@ function PreviewPanel({ selectedProduct, selectedSize }) {
                             padding: '24px 4px',
                             boxSizing: 'border-box'
                         },
-                        children: selectedAsset?.glbUrl ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        children: selectedAsset?.modelUrl || selectedAsset?.glbUrl ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                             ref: previewContainerRef,
                             className: "flex-1 flex flex-col overflow-hidden",
                             style: {
@@ -1894,7 +1994,7 @@ function PreviewPanel({ selectedProduct, selectedSize }) {
                             }
                         }, void 0, false, {
                             fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                            lineNumber: 339,
+                            lineNumber: 346,
                             columnNumber: 15
                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                             className: "flex-1 flex items-center justify-center text-gray-400",
@@ -1906,7 +2006,7 @@ function PreviewPanel({ selectedProduct, selectedSize }) {
                                         children: "アセットがありません"
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                                        lineNumber: 349,
+                                        lineNumber: 356,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1914,39 +2014,39 @@ function PreviewPanel({ selectedProduct, selectedSize }) {
                                         children: "アセット管理から3Dモデルを追加してください"
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                                        lineNumber: 350,
+                                        lineNumber: 357,
                                         columnNumber: 19
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                                lineNumber: 348,
+                                lineNumber: 355,
                                 columnNumber: 17
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                            lineNumber: 347,
+                            lineNumber: 354,
                             columnNumber: 15
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                        lineNumber: 330,
+                        lineNumber: 337,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                    lineNumber: 319,
+                    lineNumber: 326,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                lineNumber: 315,
+                lineNumber: 322,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-        lineNumber: 272,
+        lineNumber: 279,
         columnNumber: 5
     }, this);
 }

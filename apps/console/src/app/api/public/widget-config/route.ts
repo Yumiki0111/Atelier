@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
     // 4. assets を (shop_id, product_id) で取得（サイズごとに最新バージョン）
     const { data: allAssets, error: assetsError } = await supabaseAdmin
       .from("assets")
-      .select("size, glb_url, version, created_at, is_active")
+      .select("size, glb_url, model_url, version, created_at, is_active")
       .eq("shop_id", widgetKey.shop_id)
       .eq("product_id", product.id)
       .order("size", { ascending: true })
@@ -159,7 +159,7 @@ export async function GET(request: NextRequest) {
     }
 
     // サイズごとに最新バージョンのアセットを取得（is_activeがtrueのものを優先）
-    const assetsBySize = new Map<string, { glbUrl: string; version: number; isActive: boolean }>();
+    const assetsBySize = new Map<string, { glbUrl?: string; modelUrl?: string; version: number; isActive: boolean }>();
     
     for (const asset of allAssets) {
       const size = asset.size;
@@ -171,8 +171,11 @@ export async function GET(request: NextRequest) {
         asset.version > existing.version ||
         (asset.is_active && !existing.isActive)
       ) {
+        // model_urlを優先、なければglb_urlを使用
+        const modelUrl = asset.model_url || asset.glb_url;
         assetsBySize.set(size, {
-          glbUrl: asset.glb_url,
+          glbUrl: asset.glb_url, // 後方互換性のため残す
+          modelUrl: modelUrl, // GLBとFBXの両方をサポート
           version: asset.version,
           isActive: asset.is_active ?? true,
         });
@@ -185,12 +188,15 @@ export async function GET(request: NextRequest) {
       return setCorsHeaders(response, request);
     }
 
-    // サイズごとのGLB URLを構築
-    const sizes: Record<string, { glbUrl: string }> = {};
+    // サイズごとのモデルURLを構築（GLBとFBXの両方をサポート）
+    const sizes: Record<string, { glbUrl?: string; modelUrl?: string }> = {};
     let defaultSize: string | undefined;
     
     for (const [size, asset] of assetsBySize.entries()) {
-      sizes[size] = { glbUrl: asset.glbUrl };
+      sizes[size] = {
+        glbUrl: asset.glbUrl, // 後方互換性のため残す
+        modelUrl: asset.modelUrl, // GLBとFBXの両方をサポート
+      };
       // デフォルトサイズは最初に見つかったサイズ、または"M"があれば"M"
       if (!defaultSize || size === "M") {
         defaultSize = size;

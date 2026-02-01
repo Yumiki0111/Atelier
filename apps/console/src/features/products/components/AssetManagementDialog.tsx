@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { createAssetSchema, type ProductSize, type Asset } from "@atelier/shared";
+import { createAssetSchemaBase, type ProductSize, type Asset } from "@atelier/shared";
 import { Package, Plus, Trash2, Upload, Edit, X } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -37,10 +37,13 @@ import {
 } from "@/components/ui/table";
 
 // versionは自動設定されるため、フォームから除外
-// createAssetSchemaからversionを除外
-const assetFormSchema = createAssetSchema.omit({ 
+// createAssetSchemaBaseからversionを除外（refinementなしのベーススキーマを使用）
+const assetFormSchema = createAssetSchemaBase.omit({ 
   version: true,
-});
+}).refine(
+  (data) => data.modelUrl || data.glbUrl,
+  { message: "modelUrl or glbUrl is required" }
+);
 
 type AssetFormData = z.infer<typeof assetFormSchema>;
 
@@ -76,12 +79,16 @@ export function AssetManagementDialog({
       productId,
       size: "M",
       glbUrl: "",
+      modelUrl: "",
       isActive: true,
     } as AssetFormData,
   });
 
   const selectedSize = watch("size");
   const glbUrl = watch("glbUrl");
+  const modelUrl = watch("modelUrl");
+  // 表示用：modelUrlを優先、なければglbUrlを使用
+  const displayUrl = modelUrl || glbUrl;
 
   const handleGlbFileUpload = async (file: File) => {
     setUploadingGlb(true);
@@ -89,7 +96,8 @@ export function AssetManagementDialog({
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("folder", "glb");
+      // GLBとFBXの両方を受け付けるため、フォルダ名を"models"に変更
+      formData.append("folder", "models");
 
       const response = await fetch("/api/upload", {
         method: "POST",
@@ -111,8 +119,22 @@ export function AssetManagementDialog({
       }
 
       const data = await response.json();
-      setValue("glbUrl", data.url, { shouldValidate: true });
-      toast.success("GLBファイルをアップロードしました");
+      
+      // ファイル拡張子に基づいて、glbUrlまたはmodelUrlを設定
+      const fileExtension = file.name.toLowerCase().split('.').pop();
+      if (fileExtension === 'fbx') {
+        // FBXの場合はmodelUrlに設定
+        setValue("modelUrl", data.url, { shouldValidate: true });
+        // UI表示用にglbUrlにも設定（入力フィールドがglbUrlを表示しているため）
+        setValue("glbUrl", data.url, { shouldValidate: true });
+        toast.success("FBXファイルをアップロードしました");
+      } else {
+        // GLB/GLTFの場合はglbUrlに設定（後方互換性）
+        setValue("glbUrl", data.url, { shouldValidate: true });
+        // modelUrlにも設定（API側でmodelUrlを優先的に使用するため）
+        setValue("modelUrl", data.url, { shouldValidate: true });
+        toast.success("GLBファイルをアップロードしました");
+      }
     } catch (error) {
       console.error("Failed to upload GLB file:", error);
       const errorMessage = error instanceof Error ? error.message : "アップロードに失敗しました";
@@ -345,19 +367,21 @@ export function AssetManagementDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="glbUrl">GLB URL</Label>
+                  <Label htmlFor="glbUrl">3DモデルURL（GLB/FBX）</Label>
                   <div className="flex gap-2">
                     <Input
                       id="glbUrl"
-                      placeholder="https://example.com/model.glb またはファイルをアップロード"
+                      placeholder="https://example.com/model.glb または https://example.com/model.fbx またはファイルをアップロード"
                       {...register("glbUrl")}
                       className="flex-1"
                     />
+                    {/* modelUrlも登録（非表示） */}
+                    <input type="hidden" {...register("modelUrl")} />
                     <div className="flex-shrink-0">
                       <input
                         id="glbFile"
                         type="file"
-                        accept=".glb,model/gltf-binary"
+                        accept=".glb,.gltf,.fbx,model/gltf-binary,application/octet-stream"
                         className="hidden"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
@@ -371,7 +395,7 @@ export function AssetManagementDialog({
                         variant="outline"
                         disabled={uploadingGlb}
                         size="icon"
-                        title={uploadingGlb ? "アップロード中..." : "GLBファイルをアップロード"}
+                        title={uploadingGlb ? "アップロード中..." : "3Dモデルファイル（GLB/FBX）をアップロード"}
                         onClick={() => {
                           document.getElementById("glbFile")?.click();
                         }}
@@ -385,9 +409,9 @@ export function AssetManagementDialog({
                       {errors.glbUrl.message}
                     </p>
                   )}
-                  {glbUrl && (
+                  {displayUrl && (
                     <p className="text-xs text-gray-500 truncate">
-                      アップロード済み: {glbUrl}
+                      アップロード済み: {displayUrl}
                     </p>
                   )}
                 </div>

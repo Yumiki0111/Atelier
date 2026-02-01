@@ -8,7 +8,8 @@ export interface ChatMessage {
 
 export interface PreviewPanelOptions {
   container: HTMLElement;
-  glbUrl?: string;
+  glbUrl?: string; // 後方互換性のため残す
+  modelUrl?: string; // GLBとFBXの両方をサポート（優先的に使用）
   textureUrl?: string;
   initialHeight?: number;
   minHeight?: number;
@@ -23,7 +24,8 @@ export interface PreviewPanelOptions {
 }
 
 export interface PreviewPanelInstance {
-  updateGlbUrl(glbUrl: string | undefined): void;
+  updateGlbUrl(glbUrl: string | undefined): void; // 後方互換性のため残す
+  updateModelUrl(modelUrl: string | undefined): void; // GLBとFBXの両方をサポート
   updateHeight(height: number): void;
   updateSize(size: ProductSize): void;
   addChatMessage(message: ChatMessage): void;

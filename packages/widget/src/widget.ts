@@ -508,30 +508,32 @@ function renderModal(
     ? Object.keys(config.asset.sizes)
     : ["S", "M", "L"];
   let currentSize = defaultSize;
-  let glbUrl = config.asset?.sizes[currentSize]?.glbUrl;
+  // modelUrlを優先、なければglbUrlを使用（後方互換性）
+  let modelUrl = config.asset?.sizes[currentSize]?.modelUrl || config.asset?.sizes[currentSize]?.glbUrl;
   
   // 会話管理用の変数
   let conversationId: string | undefined;
   let sessionId: string | undefined;
   
-  // 開発モードでglbUrlがundefinedの場合、デフォルトのGLBファイルを使用
-  if (isDevelopmentMode() && !glbUrl) {
-    console.warn("[Atelier Widget] glbUrl is undefined, using fallback");
-    glbUrl = "http://localhost:3000/3d/model_men.glb";
+  // 開発モードでmodelUrlがundefinedの場合、デフォルトのGLBファイルを使用
+  if (isDevelopmentMode() && !modelUrl) {
+    console.warn("[Atelier Widget] modelUrl is undefined, using fallback");
+    modelUrl = "http://localhost:3000/3d/model_men.glb";
   }
   
   console.log("[Atelier Widget] Initializing preview panel:", {
-    glbUrl,
+    modelUrl,
     hasConfig: !!config.asset,
     defaultSize,
     availableSizes,
     allSizes: config.asset?.sizes ? Object.keys(config.asset.sizes) : [],
-    allGlbUrls: config.asset?.sizes ? Object.entries(config.asset.sizes).map(([size, data]: [string, any]) => `${size}: ${data.glbUrl}`) : [],
+    allModelUrls: config.asset?.sizes ? Object.entries(config.asset.sizes).map(([size, data]: [string, any]) => `${size}: ${data.modelUrl || data.glbUrl}`) : [],
   });
   
   const previewInstance = initPreviewPanel({
     container: contentArea,
-    glbUrl: glbUrl,
+    glbUrl: modelUrl, // 後方互換性のため
+    modelUrl: modelUrl, // GLBとFBXの両方をサポート
     textureUrl: undefined,
     initialHeight: 170,
     minHeight: 150,
@@ -540,9 +542,9 @@ function renderModal(
     initialSize: currentSize,
     onSizeChange: (size) => {
       currentSize = size;
-      const newGlbUrl = config.asset?.sizes[size]?.glbUrl || 
+      const newModelUrl = config.asset?.sizes[size]?.modelUrl || config.asset?.sizes[size]?.glbUrl || 
         (isDevelopmentMode() ? "http://localhost:3000/3d/model_men.glb" : undefined);
-      previewInstance.updateGlbUrl(newGlbUrl);
+      previewInstance.updateModelUrl(newModelUrl);
       const eventShopId = params.shopId || "unknown"; // 後方互換性のため
       sendEvent({
         shopId: eventShopId,
@@ -650,7 +652,7 @@ function renderModal(
       }
     },
     onModelLoad: () => {
-      console.log("[Atelier Widget] 3D model loaded:", glbUrl);
+      console.log("[Atelier Widget] 3D model loaded:", modelUrl);
     },
     onModelError: (error) => {
       // 開発環境では接続エラーを抑制（consoleサーバーが起動していない場合）
@@ -663,7 +665,7 @@ function renderModal(
         // 開発環境ではエラーログを出さない
         return;
       }
-      console.error("[Atelier Widget] Failed to load 3D model:", error, glbUrl);
+      console.error("[Atelier Widget] Failed to load 3D model:", error, modelUrl);
     },
   });
 }
