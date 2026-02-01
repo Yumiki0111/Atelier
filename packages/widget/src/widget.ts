@@ -669,6 +669,10 @@ function renderModal(
   });
   
   const previewInstance = initPreviewPanel({
+    onBackClick: () => {
+      // ナビゲーションバーの戻るボタンがクリックされたらモーダルを閉じる
+      shadowRoot.removeChild(overlay);
+    },
     container: contentArea,
     glbUrl: modelUrl, // 後方互換性のため
     modelUrl: modelUrl, // GLBとFBXの両方をサポート

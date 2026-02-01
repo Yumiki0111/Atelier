@@ -16,6 +16,32 @@ export async function POST(request: NextRequest) {
   try {
     console.log("[invite-member API] POST request received");
     
+    // アプリのベースURLを取得（環境変数またはリクエストから）
+    const getAppUrl = () => {
+      // 1. 環境変数から取得（優先）
+      if (process.env.NEXT_PUBLIC_APP_URL) {
+        return process.env.NEXT_PUBLIC_APP_URL;
+      }
+      
+      // 2. リクエストから取得
+      const host = request.headers.get("host");
+      const protocol = request.headers.get("x-forwarded-proto") || "http";
+      if (host) {
+        // localhostの場合は開発環境と判断
+        if (host.includes("localhost") || host.includes("127.0.0.1")) {
+          return `http://${host}`;
+        }
+        // 本番環境の場合はhttpsを使用
+        return `${protocol}://${host}`;
+      }
+      
+      // 3. フォールバック
+      return "http://localhost:3000";
+    };
+    
+    const appUrl = getAppUrl();
+    console.log("[invite-member API] App URL:", appUrl);
+    
     // Authorizationヘッダーからトークンを取得
     const authHeader = request.headers.get("authorization");
     console.log("[invite-member API] Auth header:", authHeader ? "present" : "missing");
@@ -172,7 +198,7 @@ export async function POST(request: NextRequest) {
                 shop_id: profile.shop_id,
                 role: "member",
               },
-              redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/auth/set-password`,
+              redirectTo: `${appUrl}/auth/set-password`,
             }
           );
 

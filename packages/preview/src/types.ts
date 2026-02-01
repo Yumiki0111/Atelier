@@ -16,11 +16,13 @@ export interface PreviewPanelOptions {
   maxHeight?: number;
   availableSizes?: ProductSize[];
   initialSize?: ProductSize;
+  productName?: string; // 商品名
   onHeightChange?: (height: number) => void;
   onSizeChange?: (size: ProductSize) => void;
   onMessageSend?: (message: string) => Promise<string | null>; // レスポンスを返すように変更
   onModelLoad?: () => void;
   onModelError?: (error: Error) => void;
+  onBackClick?: () => void; // ナビゲーションバーの戻るボタンがクリックされたときのコールバック
 }
 
 export interface PreviewPanelInstance {

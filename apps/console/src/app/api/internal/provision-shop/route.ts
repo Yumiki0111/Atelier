@@ -113,6 +113,32 @@ export async function POST(request: NextRequest) {
       console.log("[provision-shop API] Widget keys created:", widgetKey.id);
     }
 
+    // アプリのベースURLを取得（環境変数またはリクエストから）
+    const getAppUrl = () => {
+      // 1. 環境変数から取得（優先）
+      if (process.env.NEXT_PUBLIC_APP_URL) {
+        return process.env.NEXT_PUBLIC_APP_URL;
+      }
+      
+      // 2. リクエストから取得
+      const host = request.headers.get("host");
+      const protocol = request.headers.get("x-forwarded-proto") || "http";
+      if (host) {
+        // localhostの場合は開発環境と判断
+        if (host.includes("localhost") || host.includes("127.0.0.1")) {
+          return `http://${host}`;
+        }
+        // 本番環境の場合はhttpsを使用
+        return `${protocol}://${host}`;
+      }
+      
+      // 3. フォールバック
+      return "http://localhost:3000";
+    };
+    
+    const appUrl = getAppUrl();
+    console.log("[provision-shop API] App URL:", appUrl);
+
     // 3. pending_invites を作成
     const { data: invite, error: inviteError } = await supabaseAdmin
       .from("pending_invites")
@@ -143,7 +169,7 @@ export async function POST(request: NextRequest) {
             shop_id: shop.id,
             role: "owner",
           },
-          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/auth/set-password`,
+          redirectTo: `${appUrl}/auth/set-password`,
         }
       );
 

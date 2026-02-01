@@ -130,6 +130,10 @@ export function PreviewPanel({
       maxHeight: 190,
       availableSizes: availableSizes as ProductSize[],
       initialSize: currentSize,
+      onBackClick: () => {
+        // PreviewPanel.tsxでは、ナビゲーションバーの戻るボタンは不要
+        // （既に独自のヘッダーがあるため）
+      },
       onSizeChange: (newSize) => {
         setCurrentSize(newSize);
       },

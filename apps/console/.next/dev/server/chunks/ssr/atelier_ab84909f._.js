@@ -356,12 +356,26 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$previ
 ;
 ;
 ;
+;
+/**
+ * 背景画像のURLを取得する
+ * 開発環境と本番環境で異なるパスを返す
+ */ function getBackgroundImageUrl() {
+    if ("TURBOPACK compile-time truthy", 1) {
+        return "";
+    }
+    //TURBOPACK unreachable
+    ;
+    // 本番環境では、widget.jsが読み込まれたドメインから取得
+    // widget.jsのスクリプトタグのsrcから取得を試みる
+    const scriptTag = undefined;
+}
 function initPreviewPanel(options) {
     const { container, glbUrl, modelUrl, textureUrl, initialHeight = 170, minHeight = 150, maxHeight = 190, availableSizes = [
         "S",
         "M",
         "L"
-    ], initialSize = "M", onHeightChange, onSizeChange, onMessageSend, onModelLoad, onModelError } = options;
+    ], initialSize = "M", productName, onHeightChange, onSizeChange, onMessageSend, onModelLoad, onModelError, onBackClick } = options;
     // modelUrlを優先、なければglbUrlを使用（後方互換性）
     const currentModelUrl = modelUrl || glbUrl;
     let currentSize = initialSize;
@@ -393,18 +407,29 @@ function initPreviewPanel(options) {
     flex-direction: column !important;
     overflow: hidden !important;
     background: transparent !important;
-    gap: 3px !important;
+    gap: 0 !important;
   `.trim();
-    // サイズ選択エリア（上部）
+    // ナビゲーションバーは削除
+    // サイズ選択エリア（ナビゲーションバーの下、3Dモデルの下に配置）
     const sizeArea = document.createElement("div");
     sizeArea.style.cssText = `
     flex-shrink: 0;
     display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px;
+    gap: 8px;
+  `;
+    // サイズ選択ボタンコンテナ
+    const sizeButtonsContainer = document.createElement("div");
+    sizeButtonsContainer.style.cssText = `
+    display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0 12px;
-    gap: 12px;
+    gap: 8px;
   `;
+    // サイズボタン配列（先に宣言）
+    const sizeButtons = [];
     // 左矢印ボタン
     const prevButton = document.createElement("button");
     prevButton.innerHTML = "&lt;";
@@ -451,28 +476,16 @@ function initPreviewPanel(options) {
         const currentIndex = availableSizes.indexOf(currentSize);
         if (currentIndex > 0) {
             currentSize = availableSizes[currentIndex - 1];
-            sizeLabel.textContent = currentSize;
+            // すべてのボタンのスタイルを更新
+            sizeButtons.forEach((btn, idx)=>{
+                const btnSize = availableSizes[idx];
+                const selected = btnSize === currentSize;
+                btn.style.background = selected ? "black" : "white";
+                btn.style.color = selected ? "white" : "black";
+            });
             onSizeChange?.(currentSize);
         }
     });
-    // サイズ表示（背景黒、文字白）
-    const sizeLabel = document.createElement("div");
-    sizeLabel.textContent = currentSize;
-    sizeLabel.style.cssText = `
-    background: black;
-    color: white;
-    font-size: 14px;
-    font-weight: 600;
-    padding: 6px 12px;
-    border-radius: 4px;
-    width: 40px;
-    height: 32px;
-    text-align: center;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  `;
     // 右矢印ボタン
     const nextButton = document.createElement("button");
     nextButton.innerHTML = "&gt;";
@@ -519,13 +532,68 @@ function initPreviewPanel(options) {
         const currentIndex = availableSizes.indexOf(currentSize);
         if (currentIndex < availableSizes.length - 1) {
             currentSize = availableSizes[currentIndex + 1];
-            sizeLabel.textContent = currentSize;
+            // すべてのボタンのスタイルを更新
+            sizeButtons.forEach((btn, idx)=>{
+                const btnSize = availableSizes[idx];
+                const selected = btnSize === currentSize;
+                btn.style.background = selected ? "black" : "white";
+                btn.style.color = selected ? "white" : "black";
+            });
             onSizeChange?.(currentSize);
         }
     });
-    sizeArea.appendChild(prevButton);
-    sizeArea.appendChild(sizeLabel);
-    sizeArea.appendChild(nextButton);
+    // サイズボタンを横並びで表示（S, M, L, XLなど）
+    availableSizes.forEach((size)=>{
+        const sizeBtn = document.createElement("button");
+        sizeBtn.textContent = size;
+        const isSelected = size === currentSize;
+        sizeBtn.style.cssText = `
+      background: ${isSelected ? "black" : "white"};
+      color: ${isSelected ? "white" : "black"};
+      border: 1px solid black;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      min-width: 40px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+    `;
+        sizeBtn.addEventListener("click", ()=>{
+            currentSize = size;
+            // すべてのボタンのスタイルを更新
+            sizeButtons.forEach((btn, idx)=>{
+                const btnSize = availableSizes[idx];
+                const selected = btnSize === currentSize;
+                btn.style.background = selected ? "black" : "white";
+                btn.style.color = selected ? "white" : "black";
+            });
+            onSizeChange?.(currentSize);
+        });
+        sizeButtons.push(sizeBtn);
+        sizeButtonsContainer.appendChild(sizeBtn);
+    });
+    sizeButtonsContainer.appendChild(prevButton);
+    sizeButtonsContainer.appendChild(nextButton);
+    sizeArea.appendChild(sizeButtonsContainer);
+    // 商品名表示
+    if (productName) {
+        const productNameDiv = document.createElement("div");
+        productNameDiv.textContent = productName;
+        productNameDiv.style.cssText = `
+      font-size: 16px;
+      font-weight: 700;
+      color: black;
+      text-align: center;
+      margin-top: 4px;
+    `;
+        sizeArea.appendChild(productNameDiv);
+    }
     // 3Dモデルエリア（中央、広く取る）
     const viewerContainer = document.createElement("div");
     viewerContainer.style.cssText = `
@@ -535,23 +603,143 @@ function initPreviewPanel(options) {
     overflow: hidden;
     transition: flex 0.3s ease;
   `;
-    // チャット履歴エリア（3Dモデルの上にオーバーレイ）
-    const chatHistoryArea = document.createElement("div");
-    chatHistoryArea.style.cssText = `
+    // 右側フローティングアクションボタン
+    const floatingButtons = document.createElement("div");
+    floatingButtons.style.cssText = `
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 5;
+  `;
+    // ジャケットアイコンボタン
+    const jacketButton = document.createElement("button");
+    jacketButton.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 7h-3M4 7h3m13 0v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7m13 0V5a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2"/>
+    </svg>
+  `;
+    jacketButton.style.cssText = `
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: white;
+    border: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s;
+    color: black;
+  `;
+    jacketButton.addEventListener("mouseenter", ()=>{
+        jacketButton.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.15)";
+        jacketButton.style.transform = "scale(1.05)";
+    });
+    jacketButton.addEventListener("mouseleave", ()=>{
+        jacketButton.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.1)";
+        jacketButton.style.transform = "scale(1)";
+    });
+    // ユーザーアイコンボタン
+    const userButton = document.createElement("button");
+    userButton.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </svg>
+  `;
+    userButton.style.cssText = `
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: white;
+    border: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s;
+    color: black;
+  `;
+    userButton.addEventListener("mouseenter", ()=>{
+        userButton.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.15)";
+        userButton.style.transform = "scale(1.05)";
+    });
+    userButton.addEventListener("mouseleave", ()=>{
+        userButton.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.1)";
+        userButton.style.transform = "scale(1)";
+    });
+    // チャットアイコンボタン
+    const chatButton = document.createElement("button");
+    chatButton.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+  `;
+    chatButton.style.cssText = `
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: white;
+    border: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s;
+    color: black;
+  `;
+    chatButton.addEventListener("mouseenter", ()=>{
+        chatButton.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.15)";
+        chatButton.style.transform = "scale(1.05)";
+    });
+    chatButton.addEventListener("mouseleave", ()=>{
+        chatButton.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.1)";
+        chatButton.style.transform = "scale(1)";
+    });
+    // チャットモーダルの状態管理
+    let isChatModalOpen = false;
+    chatButton.addEventListener("click", ()=>{
+        if (isChatModalOpen) {
+            closeChatModal();
+        } else {
+            openChatModal();
+        }
+    });
+    floatingButtons.appendChild(jacketButton);
+    floatingButtons.appendChild(userButton);
+    floatingButtons.appendChild(chatButton);
+    viewerContainer.appendChild(floatingButtons);
+    // チャットモーダル（viewerContainer内に配置）
+    const chatModal = document.createElement("div");
+    chatModal.style.cssText = `
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(4px);
+    background: white;
     display: none;
     flex-direction: column;
-    overflow-y: auto;
-    z-index: 10;
-    padding: 8px;
-    gap: 8px;
+    z-index: 20;
     transition: opacity 0.3s ease;
+  `;
+    // チャット履歴エリア（モーダル内）
+    const chatHistoryArea = document.createElement("div");
+    chatHistoryArea.style.cssText = `
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 16px;
+    gap: 12px;
+    min-height: 0;
   `;
     // チャット履歴のスクロールコンテナ
     const chatMessagesContainer = document.createElement("div");
@@ -563,48 +751,68 @@ function initPreviewPanel(options) {
     overflow-y: auto;
     min-height: 0;
   `;
-    // チャット履歴を閉じるボタン（キーボード表示時のみ表示）
+    // チャットモーダルヘッダーは削除（閉じるボタンのみ右上に配置）
     const closeChatButton = document.createElement("button");
     closeChatButton.innerHTML = "×";
     closeChatButton.style.cssText = `
     position: absolute;
-    top: 8px;
-    right: 8px;
+    top: 12px;
+    right: 12px;
     background: rgba(0, 0, 0, 0.1);
     border: none;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    display: none;
+    font-size: 24px;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 4px;
+    width: 32px;
+    height: 32px;
+    display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
-    font-size: 16px;
-    color: #000;
-    z-index: 11;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+    z-index: 21;
   `;
-    closeChatButton.addEventListener("click", ()=>{
-        hideChatHistory();
-        messageInput.blur(); // キーボードを閉じる
+    closeChatButton.addEventListener("mouseenter", ()=>{
+        closeChatButton.style.backgroundColor = "rgba(0, 0, 0, 0.2)";
     });
-    chatHistoryArea.appendChild(closeChatButton);
+    closeChatButton.addEventListener("mouseleave", ()=>{
+        closeChatButton.style.backgroundColor = "rgba(0, 0, 0, 0.1)";
+    });
+    closeChatButton.addEventListener("click", ()=>{
+        closeChatModal();
+    });
     chatHistoryArea.appendChild(chatMessagesContainer);
-    viewerContainer.appendChild(chatHistoryArea);
-    // チャット履歴を表示/非表示する関数
+    chatModal.appendChild(closeChatButton);
+    chatModal.appendChild(chatHistoryArea);
+    viewerContainer.appendChild(chatModal);
+    // チャットモーダルを開く関数
+    const openChatModal = ()=>{
+        isChatModalOpen = true;
+        chatModal.style.display = "flex";
+        chatModal.style.opacity = "1";
+        // 3Dモデルエリアを縮小
+        viewerContainer.style.flex = "0.5";
+        // 最新のメッセージにスクロール
+        setTimeout(()=>{
+            chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+        }, 100);
+    };
+    // チャットモーダルを閉じる関数
+    const closeChatModal = ()=>{
+        isChatModalOpen = false;
+        chatModal.style.opacity = "0";
+        messageInput.blur(); // キーボードを閉じる
+        setTimeout(()=>{
+            chatModal.style.display = "none";
+            viewerContainer.style.flex = "1"; // 3Dモデルを元のサイズに
+        }, 300);
+    };
+    // チャット履歴を表示する関数（メッセージ追加時に使用）
     const showChatHistory = (force = false)=>{
-        // デバッグモードまたは強制表示の場合は、メッセージがなくても表示
-        if (!force && chatHistory.length === 0) return;
-        console.log("[Atelier Preview] showChatHistory called, force:", force, "chatHistory.length:", chatHistory.length);
-        chatHistoryArea.style.display = "flex";
-        chatHistoryArea.style.opacity = "1";
-        if (isKeyboardVisible) {
-            // キーボード表示時は3Dモデルを縮小
-            viewerContainer.style.flex = "0.4";
-            closeChatButton.style.display = "flex";
-        } else {
-            // キーボード非表示時は3Dモデルを少し縮小（チャット履歴を表示）
-            viewerContainer.style.flex = "0.6";
-            closeChatButton.style.display = "flex";
+        // モーダルが開いていない場合は開く
+        if (!isChatModalOpen) {
+            openChatModal();
         }
         // 最新のメッセージにスクロール
         setTimeout(()=>{
@@ -612,14 +820,8 @@ function initPreviewPanel(options) {
         }, 100);
     };
     const hideChatHistory = ()=>{
-        chatHistoryArea.style.opacity = "0";
-        setTimeout(()=>{
-            if (!isKeyboardVisible) {
-                chatHistoryArea.style.display = "none";
-                viewerContainer.style.flex = "1"; // 3Dモデルを元のサイズに
-                closeChatButton.style.display = "none";
-            }
-        }, 300);
+        // モーダルを閉じる
+        closeChatModal();
     };
     // チャット履歴にメッセージを追加する関数
     const addChatMessage = (message)=>{
@@ -645,67 +847,28 @@ function initPreviewPanel(options) {
             chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
         }, 100);
     };
-    // 下部コントロールエリア（身長 + チャット）をグループ化
+    // チャットモーダル下部のチャットボックスエリア
+    const chatInputArea = document.createElement("div");
+    chatInputArea.style.cssText = `
+    flex-shrink: 0;
+    padding: 12px 16px;
+    background: white;
+    transition: transform 0.3s ease;
+  `;
+    // 下部コントロールエリア（通常時は非表示）
     const bottomControls = document.createElement("div");
     bottomControls.style.cssText = `
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 0;
   `;
-    // スライダーエリア（身長調整）
-    const sliderArea = document.createElement("div");
-    sliderArea.style.cssText = `
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    padding: 0 12px;
-  `;
-    const sliderWrapper = document.createElement("div");
-    sliderWrapper.style.cssText = `
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  `;
-    const sliderLabelRow = document.createElement("div");
-    sliderLabelRow.style.cssText = `
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 11px;
-    line-height: 1.2;
-    margin-bottom: 4px;
-  `;
-    const sliderLabel = document.createElement("label");
-    sliderLabel.textContent = "身長";
-    sliderLabel.style.cssText = `
-    font-weight: 500;
-    color: #000;
-  `;
-    const sliderValue = document.createElement("span");
-    sliderValue.textContent = `${initialHeight}cm`;
-    sliderValue.style.cssText = `
-    color: #6b7280;
-  `;
-    sliderLabelRow.appendChild(sliderLabel);
-    sliderLabelRow.appendChild(sliderValue);
-    let sliderInstance = null;
-    const slider = createHeightSlider(initialHeight, minHeight, maxHeight, (value)=>{
-        sliderValue.textContent = `${value}cm`;
-        onHeightChange?.(value);
-    });
-    sliderInstance = slider;
-    sliderWrapper.appendChild(sliderLabelRow);
-    sliderWrapper.appendChild(slider.element);
-    sliderArea.appendChild(sliderWrapper);
-    // 質問入力エリア（最下部）
+    // 質問入力エリア（通常時は非表示）
     const messageArea = document.createElement("div");
     messageArea.style.cssText = `
     flex-shrink: 0;
     padding: 0 12px;
+    display: none;
   `;
     const messageForm = document.createElement("form");
     messageForm.style.cssText = `
@@ -743,8 +906,13 @@ function initPreviewPanel(options) {
     align-items: center;
     justify-content: center;
   `;
+    // チャットモーダル用のメッセージフォーム（先に定義）
+    let chatMessageInput = null;
+    let chatSendButton = null;
     const handleSend = async ()=>{
-        const message = messageInput.value.trim();
+        // チャットモーダルが開いている場合はchatMessageInputを使用
+        const input = isChatModalOpen && chatMessageInput ? chatMessageInput : messageInput;
+        const message = input.value.trim();
         if (!message || !onMessageSend) return;
         // ユーザーメッセージを履歴に追加
         const userMessage = {
@@ -753,7 +921,7 @@ function initPreviewPanel(options) {
             timestamp: Date.now()
         };
         addChatMessage(userMessage);
-        messageInput.value = "";
+        input.value = "";
         // 送信ボタンを無効化
         sendButton.disabled = true;
         sendButton.style.opacity = "0.5";
@@ -849,23 +1017,50 @@ function initPreviewPanel(options) {
     document.addEventListener("keydown", handleDocumentKeyDown);
     messageForm.appendChild(messageInput);
     messageForm.appendChild(sendButton);
-    messageArea.appendChild(messageForm);
+    messageArea.appendChild(messageForm.cloneNode(true));
+    // チャットモーダル用のメッセージフォーム（別インスタンス）
+    const chatMessageForm = messageForm.cloneNode(true);
+    chatMessageInput = chatMessageForm.querySelector('input');
+    chatSendButton = chatMessageForm.querySelector('button');
+    // チャットモーダル用のイベントリスナー
+    chatMessageForm.addEventListener("submit", handleFormSubmit, true);
+    chatMessageForm.addEventListener("submit", handleFormSubmit, false);
+    chatSendButton.type = "button";
+    chatSendButton.addEventListener("click", (e)=>{
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        handleSend();
+    });
+    const handleChatKeyDown = (e)=>{
+        if (e.key === "Enter") {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            handleSend();
+            return false;
+        }
+    };
+    chatMessageInput.addEventListener("keydown", handleChatKeyDown, true);
+    chatMessageInput.addEventListener("keydown", handleChatKeyDown, false);
+    chatInputArea.appendChild(chatMessageForm);
     // キーボード表示検出（Visual Viewport API）
     let handleViewportChange = null;
     if ("TURBOPACK compile-time falsy", 0) //TURBOPACK unreachable
     ;
-    // 下部コントロールに身長とチャットを追加
-    bottomControls.appendChild(sliderArea);
+    // 下部コントロールにチャットを追加
     bottomControls.appendChild(messageArea);
     // 全要素を追加
-    container.appendChild(sizeArea);
     container.appendChild(viewerContainer);
+    container.appendChild(sizeArea);
     container.appendChild(bottomControls);
-    // 3Dビューアを初期化
+    // 3Dビューアを初期化（背景画像を指定）
+    const backgroundImageUrl = getBackgroundImageUrl();
     const viewerInstance = init3DViewer(viewerContainer, {
         glbUrl,
         modelUrl,
         textureUrl,
+        backgroundImageUrl,
         onLoad: onModelLoad,
         onError: onModelError
     });
@@ -885,14 +1080,18 @@ function initPreviewPanel(options) {
             viewerInstance.updateModelUrl(newModelUrl);
         },
         updateHeight (height) {
-            if (sliderInstance) {
-                sliderInstance.updateValue(height);
-            }
-            sliderValue.textContent = `${height}cm`;
+            // 身長スライダーは削除されたため、コールバックのみ呼び出す
+            onHeightChange?.(height);
         },
         updateSize (size) {
             currentSize = size;
-            sizeLabel.textContent = size;
+            // すべてのボタンのスタイルを更新
+            sizeButtons.forEach((btn, idx)=>{
+                const btnSize = availableSizes[idx];
+                const selected = btnSize === currentSize;
+                btn.style.background = selected ? "black" : "white";
+                btn.style.color = selected ? "white" : "black";
+            });
         },
         addChatMessage (message) {
             addChatMessage(message);
@@ -1055,7 +1254,7 @@ function initPreviewPanel(options) {
     };
 }
 function init3DViewer(container, options) {
-    const { glbUrl, modelUrl, textureUrl, onLoad, onError } = options;
+    const { glbUrl, modelUrl, textureUrl, backgroundImageUrl, onLoad, onError } = options;
     // modelUrlを優先、なければglbUrlを使用（後方互換性）
     const currentModelUrl = modelUrl || glbUrl;
     // コンテナのサイズを取得（初期化時に0の場合はデフォルト値を使用）
@@ -1074,34 +1273,91 @@ function init3DViewer(container, options) {
         initialWidth,
         initialHeight
     });
-    // Scene setup（背景なし、透明）
-    const scene = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Scene"]();
-    scene.background = null; // 背景なし（透明）
+    // Scene setup（背景画像を設定）
+    const scene = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.Scene();
+    // 背景画像を読み込む
+    if (backgroundImageUrl) {
+        console.log("[Atelier Preview] Loading background image:", backgroundImageUrl);
+        // 読み込み中は一時的に白背景を設定
+        scene.background = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.Color(0xffffff);
+        const textureLoader = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["TextureLoader"]();
+        textureLoader.load(backgroundImageUrl, (texture)=>{
+            console.log("[Atelier Preview] Background image loaded successfully");
+            // テクスチャの色空間を設定
+            if ('colorSpace' in texture) {
+                texture.colorSpace = 'srgb';
+            } else if ('encoding' in texture) {
+                texture.encoding = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.sRGBEncoding;
+            }
+            // テクスチャの繰り返しを無効化
+            texture.wrapS = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.ClampToEdgeWrapping;
+            texture.wrapT = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.ClampToEdgeWrapping;
+            scene.background = texture;
+        }, undefined, (error)=>{
+            console.warn("[Atelier Preview] Failed to load background image:", error, backgroundImageUrl);
+            // 背景画像の読み込みに失敗した場合は白背景を維持
+            scene.background = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.Color(0xffffff);
+        });
+    } else {
+        console.log("[Atelier Preview] No background image URL provided");
+        scene.background = null; // 背景なし（透明）
+    }
     // Camera（PreviewPanelのModelViewerと同じ: position: [0, 0, 5], fov: 50）
-    const camera = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["PerspectiveCamera"](50, initialWidth / initialHeight, 0.1, 1000);
+    const camera = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.PerspectiveCamera(50, initialWidth / initialHeight, 0.1, 1000);
     camera.position.set(0, 0, 5);
-    // Renderer（背景透明）
-    const renderer = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["WebGLRenderer"]({
+    // Renderer（背景画像がある場合は不透明、ない場合は透明）
+    // 背景画像のURLが提供されている場合は不透明、ない場合は透明
+    const hasBackground = !!backgroundImageUrl;
+    const renderer = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.WebGLRenderer({
         antialias: true,
-        alpha: true
+        alpha: !hasBackground,
+        powerPreference: "high-performance"
     });
+    // 高解像度レンダリング（Retinaディスプレイ対応）
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 2); // 最大2倍まで
+    renderer.setPixelRatio(pixelRatio);
     renderer.setSize(initialWidth, initialHeight);
+    // 色の再現性を向上（sRGB色空間）
+    // Three.js r152以降ではoutputColorSpaceを使用
+    if ('outputColorSpace' in renderer) {
+        renderer.outputColorSpace = 'srgb';
+    } else if ('outputEncoding' in renderer) {
+        // 古いバージョンのThree.js用
+        renderer.outputEncoding = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.sRGBEncoding;
+    }
+    renderer.toneMapping = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2; // 露出を少し上げて明るく
     renderer.shadowMap.enabled = true;
-    renderer.setClearColor(0x000000, 0); // 背景を透明にする
+    renderer.shadowMap.type = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.PCFSoftShadowMap; // ソフトシャドウ
+    if (hasBackground) {
+        renderer.setClearColor(0xffffff, 1); // 背景画像がある場合は白背景
+    } else {
+        renderer.setClearColor(0x000000, 0); // 背景を透明にする
+    }
     const canvasElement = renderer.domElement;
     canvasElement.style.touchAction = "none"; // タッチイベントを有効化
     container.appendChild(canvasElement);
-    // Lights（PreviewPanelのModelViewerと同じ）
-    const ambientLight = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["AmbientLight"](0xffffff, 1);
+    // Lights（彩度を向上させるため、ライトの強度を調整）
+    const ambientLight = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.AmbientLight(0xffffff, 1.2); // 環境光を少し強く
     scene.add(ambientLight);
-    const directionalLight1 = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DirectionalLight"](0xffffff, 1.5);
+    const directionalLight1 = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.DirectionalLight(0xffffff, 2.0); // メインライトを強く
     directionalLight1.position.set(10, 10, 5);
     directionalLight1.castShadow = true;
+    // 影の設定
+    directionalLight1.shadow.mapSize.width = 2048;
+    directionalLight1.shadow.mapSize.height = 2048;
+    directionalLight1.shadow.camera.near = 0.5;
+    directionalLight1.shadow.camera.far = 50;
+    directionalLight1.shadow.camera.left = -10;
+    directionalLight1.shadow.camera.right = 10;
+    directionalLight1.shadow.camera.top = 10;
+    directionalLight1.shadow.camera.bottom = -10;
+    directionalLight1.shadow.bias = -0.0001;
     scene.add(directionalLight1);
-    const directionalLight2 = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DirectionalLight"](0xffffff, 0.8);
+    const directionalLight2 = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.DirectionalLight(0xffffff, 0.8);
     directionalLight2.position.set(-10, -10, -5);
     scene.add(directionalLight2);
-    const directionalLight3 = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DirectionalLight"](0xffffff, 0.5);
+    const directionalLight3 = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.DirectionalLight(0xffffff, 0.5);
     directionalLight3.position.set(0, 10, 0);
     scene.add(directionalLight3);
     // OrbitControls（PreviewPanelのModelViewerと同じ制約）
@@ -1114,6 +1370,10 @@ function init3DViewer(container, options) {
     };
     const minPolarAngle = Math.PI / 4; // 45度（上方向の限界）
     const maxPolarAngle = Math.PI * 3 / 4; // 135度（下方向の限界）
+    // 初期のphi（上下回転）を保存して固定
+    const initialSpherical = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.Spherical();
+    initialSpherical.setFromVector3(camera.position);
+    const fixedPhi = initialSpherical.phi; // 上下回転を固定
     // canvas要素にイベントリスナーを追加
     canvasElement.addEventListener("mousedown", (e)=>{
         e.preventDefault();
@@ -1129,13 +1389,13 @@ function init3DViewer(container, options) {
         e.preventDefault();
         const deltaX = e.clientX - previousMousePosition.x;
         const deltaY = e.clientY - previousMousePosition.y;
-        // Rotate camera around the model（OrbitControlsと同じロジック）
-        const spherical = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Spherical"]();
+        // Rotate camera around the model（z軸回転のみ許可）
+        const spherical = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.Spherical();
         spherical.setFromVector3(camera.position);
-        spherical.theta -= deltaX * 0.01;
-        spherical.phi -= deltaY * 0.01; // 上にドラッグ→カメラが下を向く（phiを増やす）= モデルが上に見える
-        // minPolarAngle, maxPolarAngleの制約を適用
-        spherical.phi = Math.max(minPolarAngle, Math.min(maxPolarAngle, spherical.phi));
+        // z軸回転（theta）のみ変更可能、水平方向のドラッグで回転
+        spherical.theta -= deltaX * 0.01; // 横方向のドラッグでz軸回転
+        // 上下回転（phi）は固定
+        spherical.phi = fixedPhi; // 上下回転を固定
         // z軸方向（前後方向）の動きを制限：radiusを固定（5に固定）
         spherical.radius = 5;
         camera.position.setFromSpherical(spherical);
@@ -1169,11 +1429,12 @@ function init3DViewer(container, options) {
         e.preventDefault();
         const deltaX = e.touches[0].clientX - previousMousePosition.x;
         const deltaY = e.touches[0].clientY - previousMousePosition.y;
-        const spherical = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Spherical"]();
+        const spherical = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.Spherical();
         spherical.setFromVector3(camera.position);
-        spherical.theta -= deltaX * 0.01;
-        spherical.phi -= deltaY * 0.01; // 上にドラッグ→カメラが下を向く（phiを増やす）= モデルが上に見える
-        spherical.phi = Math.max(minPolarAngle, Math.min(maxPolarAngle, spherical.phi));
+        // z軸回転（theta）のみ変更可能、水平方向のドラッグで回転
+        spherical.theta -= deltaX * 0.01; // 横方向のドラッグでz軸回転
+        // 上下回転（phi）は固定
+        spherical.phi = fixedPhi; // 上下回転を固定
         // z軸方向（前後方向）の動きを制限：radiusを固定（5に固定）
         spherical.radius = 5;
         camera.position.setFromSpherical(spherical);
@@ -1187,10 +1448,41 @@ function init3DViewer(container, options) {
         isDragging = false;
     });
     canvasElement.style.cursor = "grab";
+    // 地面を追加（影を受けるため）
+    const groundGeometry = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.PlaneGeometry(20, 20);
+    const groundMaterial = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.MeshStandardMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0 // 透明だが影を受ける
+    });
+    const ground = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2; // 地面を水平にする
+    ground.position.y = -3; // モデルの下に配置
+    ground.receiveShadow = true;
+    scene.add(ground);
     // Load model
     let currentModel = null;
     const gltfLoader = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$examples$2f$jsm$2f$loaders$2f$GLTFLoader$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["GLTFLoader"]();
     const fbxLoader = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$examples$2f$jsm$2f$loaders$2f$FBXLoader$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["FBXLoader"]();
+    // モデルのすべてのメッシュにcastShadowを設定し、マテリアルの色空間を設定する関数
+    const enableShadow = (object)=>{
+        object.traverse((child)=>{
+            if (child instanceof __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.Mesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+                // マテリアルの色空間を設定（彩度向上）
+                if (child.material) {
+                    const material = child.material;
+                    if ('colorSpace' in material) {
+                        material.colorSpace = 'srgb';
+                    } else if ('encoding' in material) {
+                        // 古いバージョンのThree.js用
+                        material.encoding = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.sRGBEncoding;
+                    }
+                }
+            }
+        });
+    };
     // ファイル拡張子からモデル形式を判定
     function getModelFormat(url) {
         const lowerUrl = url.toLowerCase();
@@ -1248,9 +1540,9 @@ function init3DViewer(container, options) {
                 const initialScale = 0.02; // より大きなスケールを試す
                 currentModel.scale.set(initialScale, initialScale, initialScale);
                 // スケール適用後にバウンディングボックスを計算
-                const box = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Box3"]().setFromObject(currentModel);
-                const center = box.getCenter(new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Vector3"]());
-                const size = box.getSize(new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Vector3"]());
+                const box = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.Box3().setFromObject(currentModel);
+                const center = box.getCenter(new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.Vector3());
+                const size = box.getSize(new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__.Vector3());
                 const maxSize = Math.max(size.x, size.y, size.z);
                 console.log("[Atelier Preview] FBX bounding box (after scale):", {
                     center,
@@ -1262,6 +1554,8 @@ function init3DViewer(container, options) {
                 currentModel.position.set(-center.x, -center.y, -center.z);
                 // 回転は一旦なし（表示確認後、必要に応じて調整）
                 currentModel.rotation.set(0, 0, 0);
+                // 影を有効化
+                enableShadow(currentModel);
                 console.log("[Atelier Preview] FBX model settings:", {
                     position: currentModel.position,
                     scale: currentModel.scale,
@@ -1304,6 +1598,8 @@ function init3DViewer(container, options) {
                 // PreviewPanelのModelViewerと同じ: scale: [3.5, 3.5, 3.5], rotation: [0, -Math.PI / 2, 0]
                 currentModel.scale.set(3.5, 3.5, 3.5);
                 currentModel.rotation.y = -Math.PI / 2;
+                // 影を有効化
+                enableShadow(currentModel);
                 scene.add(currentModel);
                 // 成功したらメッセージを削除（安全な方法）
                 const existingMessage = container.querySelector("[data-atelier-message]");
@@ -1388,6 +1684,10 @@ function init3DViewer(container, options) {
             if (currentModel) {
                 scene.remove(currentModel);
             }
+            // 地面を削除
+            scene.remove(ground);
+            groundGeometry.dispose();
+            groundMaterial.dispose();
             // renderer.domElementを削除（安全な方法）
             try {
                 // DOMに接続されているか確認してから削除
@@ -1596,6 +1896,10 @@ function PreviewPanel({ selectedProduct, selectedSize }) {
             maxHeight: 190,
             availableSizes: availableSizes,
             initialSize: currentSize,
+            onBackClick: ()=>{
+            // PreviewPanel.tsxでは、ナビゲーションバーの戻るボタンは不要
+            // （既に独自のヘッダーがあるため）
+            },
             onSizeChange: (newSize)=>{
                 setCurrentSize(newSize);
             },
@@ -1765,7 +2069,7 @@ function PreviewPanel({ selectedProduct, selectedSize }) {
                         children: "プレビュー"
                     }, void 0, false, {
                         fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                        lineNumber: 304,
+                        lineNumber: 308,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1776,18 +2080,18 @@ function PreviewPanel({ selectedProduct, selectedSize }) {
                             className: "h-5 w-5"
                         }, void 0, false, {
                             fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                            lineNumber: 310,
+                            lineNumber: 314,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                        lineNumber: 305,
+                        lineNumber: 309,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                lineNumber: 303,
+                lineNumber: 307,
                 columnNumber: 7
             }, this),
             selectedProduct && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1797,12 +2101,12 @@ function PreviewPanel({ selectedProduct, selectedSize }) {
                     children: selectedProduct.name
                 }, void 0, false, {
                     fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                    lineNumber: 317,
+                    lineNumber: 321,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                lineNumber: 316,
+                lineNumber: 320,
                 columnNumber: 9
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1830,7 +2134,7 @@ function PreviewPanel({ selectedProduct, selectedSize }) {
                             }
                         }, void 0, false, {
                             fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                            lineNumber: 346,
+                            lineNumber: 350,
                             columnNumber: 15
                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                             className: "flex-1 flex items-center justify-center text-gray-400",
@@ -1842,7 +2146,7 @@ function PreviewPanel({ selectedProduct, selectedSize }) {
                                         children: "アセットがありません"
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                                        lineNumber: 356,
+                                        lineNumber: 360,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1850,39 +2154,39 @@ function PreviewPanel({ selectedProduct, selectedSize }) {
                                         children: "アセット管理から3Dモデルを追加してください"
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                                        lineNumber: 357,
+                                        lineNumber: 361,
                                         columnNumber: 19
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                                lineNumber: 355,
+                                lineNumber: 359,
                                 columnNumber: 17
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                            lineNumber: 354,
+                            lineNumber: 358,
                             columnNumber: 15
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                        lineNumber: 337,
+                        lineNumber: 341,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                    lineNumber: 326,
+                    lineNumber: 330,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                lineNumber: 322,
+                lineNumber: 326,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-        lineNumber: 279,
+        lineNumber: 283,
         columnNumber: 5
     }, this);
 }
