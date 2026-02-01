@@ -129,3 +129,31 @@ export function useDeleteProduct() {
     },
   });
 }
+
+async function bulkDeleteProducts(productIds: string[]): Promise<{ deletedCount: number }> {
+  const response = await authenticatedFetch("/api/products/bulk-delete", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ productIds }),
+  });
+
+  if (!response.ok) {
+    const errorMessage = await extractErrorMessage(response);
+    throw new Error(translateErrorMessage(errorMessage));
+  }
+
+  return response.json();
+}
+
+export function useBulkDeleteProducts() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: bulkDeleteProducts,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+    },
+  });
+}

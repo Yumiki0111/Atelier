@@ -1318,6 +1318,10 @@ function WidgetSettings({ shopId }) {
     const [isLoading, setIsLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(true);
     const [showPublicKey, setShowPublicKey] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     const [copiedField, setCopiedField] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [isEditingDomains, setIsEditingDomains] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const [domainInput, setDomainInput] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("");
+    const [domainList, setDomainList] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])([]);
+    const [isUpdating, setIsUpdating] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "WidgetSettings.useEffect": ()=>{
             fetchWidgetKeys();
@@ -1332,13 +1336,135 @@ function WidgetSettings({ shopId }) {
             const response = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$auth$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["authenticatedFetch"])(`/api/widget-keys?shopId=${shopId}`);
             if (response.ok) {
                 const data = await response.json();
-                setWidgetKeys(data[0]); // 最初のキーを取得
+                const key = data[0]; // 最初のキーを取得
+                console.log("[WidgetSettings] Fetched widget key:", key);
+                console.log("[WidgetSettings] allowed_domains:", key?.allowed_domains);
+                setWidgetKeys(key);
+                // allowed_domainsがnullの場合は空配列に変換
+                const domains = key?.allowed_domains || [];
+                setDomainList(Array.isArray(domains) ? domains : []);
             }
         } catch (error) {
             console.error("Failed to fetch widget keys:", error);
         } finally{
             setIsLoading(false);
         }
+    };
+    // URLからドメインを抽出する関数
+    const extractDomain = (input)=>{
+        const trimmed = input.trim();
+        if (!trimmed) return null;
+        try {
+            // URL形式（http://, https://を含む）の場合
+            if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+                const url = new URL(trimmed);
+                return url.hostname; // ポート番号を除いたホスト名を返す
+            }
+            // ドメイン形式の場合（例: example.com, localhost:3000）
+            // ポート番号を含む場合の処理
+            if (trimmed.includes(":")) {
+                const [host, port] = trimmed.split(":");
+                // localhost:3000 のような形式の場合
+                if (host === "localhost" || /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/.test(host)) {
+                    return trimmed.toLowerCase(); // ポート番号を含めて返す
+                }
+            }
+            // 通常のドメイン形式のチェック
+            const domainRegex = /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$|^localhost(:\d+)?$/;
+            if (domainRegex.test(trimmed)) {
+                return trimmed.toLowerCase();
+            }
+            return null;
+        } catch (error) {
+            // URL解析に失敗した場合、ドメイン形式として再試行
+            const domainRegex = /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$|^localhost(:\d+)?$/;
+            if (domainRegex.test(trimmed)) {
+                return trimmed.toLowerCase();
+            }
+            return null;
+        }
+    };
+    const handleAddDomain = (e)=>{
+        e.preventDefault();
+        const trimmedDomain = domainInput.trim();
+        if (!trimmedDomain) return;
+        // カンマ区切りで複数入力された場合
+        const domains = trimmedDomain.split(",").map((d)=>d.trim()).filter((d)=>d.length > 0);
+        console.log("[WidgetSettings] handleAddDomain - input:", trimmedDomain, "parsed domains:", domains);
+        let addedCount = 0;
+        for (const domainInput of domains){
+            // URLからドメインを抽出
+            const extractedDomain = extractDomain(domainInput);
+            if (!extractedDomain) {
+                __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$sonner$2f$dist$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["toast"].error(`無効なドメイン: ${domainInput}`);
+                continue;
+            }
+            if (domainList.includes(extractedDomain)) {
+                __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$sonner$2f$dist$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["toast"].error(`既に追加済み: ${extractedDomain}`);
+                continue;
+            }
+            setDomainList((prev)=>{
+                const newList = [
+                    ...prev,
+                    extractedDomain
+                ];
+                console.log("[WidgetSettings] handleAddDomain - updated domainList:", newList);
+                return newList;
+            });
+            addedCount++;
+        }
+        if (addedCount > 0) {
+            __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$sonner$2f$dist$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["toast"].success(`${addedCount}件のドメインを追加しました`);
+        }
+        setDomainInput("");
+    };
+    const handleRemoveDomain = (domainToRemove)=>{
+        setDomainList((prev)=>prev.filter((domain)=>domain !== domainToRemove));
+    };
+    const handleSaveDomains = async ()=>{
+        if (!widgetKeys) return;
+        console.log("[WidgetSettings] handleSaveDomains - domainList:", domainList);
+        console.log("[WidgetSettings] handleSaveDomains - domainList length:", domainList.length);
+        setIsUpdating(true);
+        try {
+            const requestBody = {
+                allowed_domains: domainList
+            };
+            console.log("[WidgetSettings] Sending request body:", requestBody);
+            const response = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$auth$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["authenticatedFetch"])(`/api/widget-keys/${widgetKeys.id}`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(requestBody)
+            });
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || "許可ドメインの更新に失敗しました");
+            }
+            const updatedData = await response.json();
+            console.log("[WidgetSettings] Updated widget key:", updatedData);
+            console.log("[WidgetSettings] Updated allowed_domains:", updatedData?.allowed_domains);
+            // 更新されたデータを直接反映
+            setWidgetKeys(updatedData);
+            const domains = updatedData?.allowed_domains || [];
+            setDomainList(Array.isArray(domains) ? domains : []);
+            __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$sonner$2f$dist$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["toast"].success("許可ドメインを更新しました");
+            setIsEditingDomains(false);
+            // 念のため再取得も実行
+            await fetchWidgetKeys();
+        } catch (error) {
+            console.error("Update domains error:", error);
+            const errorMessage = error instanceof Error ? error.message : "許可ドメインの更新に失敗しました";
+            __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$sonner$2f$dist$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["toast"].error(errorMessage);
+        } finally{
+            setIsUpdating(false);
+        }
+    };
+    const handleCancelEdit = ()=>{
+        setDomainList(widgetKeys?.allowed_domains || []);
+        setDomainInput("");
+        setIsEditingDomains(false);
     };
     const copyToClipboard = async (text, field)=>{
         try {
@@ -1362,27 +1488,27 @@ function WidgetSettings({ shopId }) {
                                     className: "h-5 w-5"
                                 }, void 0, false, {
                                     fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                    lineNumber: 344,
+                                    lineNumber: 492,
                                     columnNumber: 13
                                 }, this),
                                 "Widget 設定"
                             ]
                         }, void 0, true, {
                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                            lineNumber: 343,
+                            lineNumber: 491,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardDescription"], {
                             children: "公開APIキーとドメイン設定"
                         }, void 0, false, {
                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                            lineNumber: 347,
+                            lineNumber: 495,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                    lineNumber: 342,
+                    lineNumber: 490,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -1391,18 +1517,18 @@ function WidgetSettings({ shopId }) {
                         children: "読み込み中..."
                     }, void 0, false, {
                         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                        lineNumber: 352,
+                        lineNumber: 500,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                    lineNumber: 351,
+                    lineNumber: 499,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-            lineNumber: 341,
+            lineNumber: 489,
             columnNumber: 7
         }, this);
     }
@@ -1418,27 +1544,27 @@ function WidgetSettings({ shopId }) {
                                     className: "h-5 w-5"
                                 }, void 0, false, {
                                     fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                    lineNumber: 363,
+                                    lineNumber: 511,
                                     columnNumber: 13
                                 }, this),
                                 "Widget 設定"
                             ]
                         }, void 0, true, {
                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                            lineNumber: 362,
+                            lineNumber: 510,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardDescription"], {
                             children: "公開APIキーとドメイン設定"
                         }, void 0, false, {
                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                            lineNumber: 366,
+                            lineNumber: 514,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                    lineNumber: 361,
+                    lineNumber: 509,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -1451,7 +1577,7 @@ function WidgetSettings({ shopId }) {
                                     className: "h-4 w-4 text-yellow-600 mt-0.5"
                                 }, void 0, false, {
                                     fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                    lineNumber: 373,
+                                    lineNumber: 521,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1462,42 +1588,42 @@ function WidgetSettings({ shopId }) {
                                             children: "Widget キーが見つかりません"
                                         }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                            lineNumber: 375,
+                                            lineNumber: 523,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                             children: "管理者に連絡して、Widget キーを発行してもらってください。"
                                         }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                            lineNumber: 376,
+                                            lineNumber: 524,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                    lineNumber: 374,
+                                    lineNumber: 522,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                            lineNumber: 372,
+                            lineNumber: 520,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                        lineNumber: 371,
+                        lineNumber: 519,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                    lineNumber: 370,
+                    lineNumber: 518,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-            lineNumber: 360,
+            lineNumber: 508,
             columnNumber: 7
         }, this);
     }
@@ -1512,27 +1638,27 @@ function WidgetSettings({ shopId }) {
                                 className: "h-5 w-5"
                             }, void 0, false, {
                                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                lineNumber: 389,
+                                lineNumber: 537,
                                 columnNumber: 11
                             }, this),
                             "Widget 設定"
                         ]
                     }, void 0, true, {
                         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                        lineNumber: 388,
+                        lineNumber: 536,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardDescription"], {
                         children: "公開APIキーとドメイン設定"
                     }, void 0, false, {
                         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                        lineNumber: 392,
+                        lineNumber: 540,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                lineNumber: 387,
+                lineNumber: 535,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -1546,7 +1672,7 @@ function WidgetSettings({ shopId }) {
                                 children: "Public Key（クライアント用）"
                             }, void 0, false, {
                                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                lineNumber: 399,
+                                lineNumber: 547,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1558,7 +1684,7 @@ function WidgetSettings({ shopId }) {
                                         className: "font-mono text-sm bg-gray-50"
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                        lineNumber: 401,
+                                        lineNumber: 549,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
@@ -1569,18 +1695,18 @@ function WidgetSettings({ shopId }) {
                                             className: "h-4 w-4"
                                         }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                            lineNumber: 412,
+                                            lineNumber: 560,
                                             columnNumber: 17
                                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$eye$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Eye$3e$__["Eye"], {
                                             className: "h-4 w-4"
                                         }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                            lineNumber: 414,
+                                            lineNumber: 562,
                                             columnNumber: 17
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                        lineNumber: 406,
+                                        lineNumber: 554,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
@@ -1591,24 +1717,24 @@ function WidgetSettings({ shopId }) {
                                             className: "h-4 w-4 text-green-600"
                                         }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                            lineNumber: 423,
+                                            lineNumber: 571,
                                             columnNumber: 17
                                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$copy$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Copy$3e$__["Copy"], {
                                             className: "h-4 w-4"
                                         }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                            lineNumber: 425,
+                                            lineNumber: 573,
                                             columnNumber: 17
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                        lineNumber: 417,
+                                        lineNumber: 565,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                lineNumber: 400,
+                                lineNumber: 548,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1616,79 +1742,240 @@ function WidgetSettings({ shopId }) {
                                 children: "このキーをウェブサイトに埋め込んで、Widget APIを使用します"
                             }, void 0, false, {
                                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                lineNumber: 429,
+                                lineNumber: 577,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                        lineNumber: 398,
+                        lineNumber: 546,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: "space-y-2",
                         children: [
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Label"], {
-                                className: "text-sm text-gray-600 flex items-center gap-2",
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "flex items-center justify-between",
                                 children: [
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$globe$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Globe$3e$__["Globe"], {
-                                        className: "h-4 w-4"
-                                    }, void 0, false, {
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Label"], {
+                                        className: "text-sm text-gray-600 flex items-center gap-2",
+                                        children: [
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$globe$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Globe$3e$__["Globe"], {
+                                                className: "h-4 w-4"
+                                            }, void 0, false, {
+                                                fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
+                                                lineNumber: 586,
+                                                columnNumber: 15
+                                            }, this),
+                                            "許可ドメイン"
+                                        ]
+                                    }, void 0, true, {
                                         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                        lineNumber: 437,
+                                        lineNumber: 585,
                                         columnNumber: 13
                                     }, this),
-                                    "許可ドメイン"
+                                    !isEditingDomains ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
+                                        variant: "outline",
+                                        size: "sm",
+                                        onClick: ()=>{
+                                            console.log("[WidgetSettings] Entering edit mode - widgetKeys.allowed_domains:", widgetKeys?.allowed_domains);
+                                            console.log("[WidgetSettings] Entering edit mode - current domainList:", domainList);
+                                            // 編集モードに入る時に、最新のallowed_domainsでdomainListを初期化
+                                            const domains = widgetKeys?.allowed_domains || [];
+                                            const normalizedDomains = Array.isArray(domains) ? domains : [];
+                                            console.log("[WidgetSettings] Initializing domainList with:", normalizedDomains);
+                                            setDomainList(normalizedDomains);
+                                            setIsEditingDomains(true);
+                                        },
+                                        children: "編集"
+                                    }, void 0, false, {
+                                        fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
+                                        lineNumber: 590,
+                                        columnNumber: 15
+                                    }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        className: "flex gap-2",
+                                        children: [
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
+                                                variant: "outline",
+                                                size: "sm",
+                                                onClick: handleCancelEdit,
+                                                disabled: isUpdating,
+                                                children: "キャンセル"
+                                            }, void 0, false, {
+                                                fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
+                                                lineNumber: 608,
+                                                columnNumber: 17
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
+                                                size: "sm",
+                                                onClick: handleSaveDomains,
+                                                disabled: isUpdating,
+                                                children: isUpdating ? "保存中..." : "保存"
+                                            }, void 0, false, {
+                                                fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
+                                                lineNumber: 616,
+                                                columnNumber: 17
+                                            }, this)
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
+                                        lineNumber: 607,
+                                        columnNumber: 15
+                                    }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                lineNumber: 436,
+                                lineNumber: 584,
                                 columnNumber: 11
                             }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "p-3 bg-gray-50 border rounded-md",
-                                children: widgetKeys.allowed_domains && widgetKeys.allowed_domains.length > 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
-                                    className: "space-y-1",
-                                    children: widgetKeys.allowed_domains.map((domain, index)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
-                                            className: "text-sm font-mono",
-                                            children: [
-                                                "• ",
-                                                domain
-                                            ]
-                                        }, index, true, {
+                            isEditingDomains ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "space-y-2",
+                                children: [
+                                    domainList.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        className: "flex flex-wrap gap-2 p-3 border rounded-md bg-gray-50 min-h-[60px]",
+                                        children: domainList.map((domain)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                className: "flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 text-blue-800 rounded-md text-sm font-mono",
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$globe$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Globe$3e$__["Globe"], {
+                                                        className: "h-3.5 w-3.5"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
+                                                        lineNumber: 637,
+                                                        columnNumber: 23
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                        children: domain
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
+                                                        lineNumber: 638,
+                                                        columnNumber: 23
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                                        type: "button",
+                                                        onClick: ()=>handleRemoveDomain(domain),
+                                                        className: "ml-1 hover:bg-blue-200 rounded-full p-0.5 transition-colors",
+                                                        disabled: isUpdating,
+                                                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$x$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__X$3e$__["X"], {
+                                                            className: "h-3.5 w-3.5"
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
+                                                            lineNumber: 645,
+                                                            columnNumber: 25
+                                                        }, this)
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
+                                                        lineNumber: 639,
+                                                        columnNumber: 23
+                                                    }, this)
+                                                ]
+                                            }, domain, true, {
+                                                fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
+                                                lineNumber: 633,
+                                                columnNumber: 21
+                                            }, this))
+                                    }, void 0, false, {
+                                        fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
+                                        lineNumber: 631,
+                                        columnNumber: 17
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        className: "relative",
+                                        children: [
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$globe$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Globe$3e$__["Globe"], {
+                                                className: "absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+                                            }, void 0, false, {
+                                                fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
+                                                lineNumber: 654,
+                                                columnNumber: 17
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Input"], {
+                                                type: "text",
+                                                placeholder: "example.com と入力して Enter またはカンマ（,）で確定",
+                                                value: domainInput,
+                                                onChange: (e)=>setDomainInput(e.target.value),
+                                                onKeyDown: (e)=>{
+                                                    if (e.key === "Enter") {
+                                                        e.preventDefault();
+                                                        handleAddDomain(e);
+                                                    } else if (e.key === ",") {
+                                                        e.preventDefault();
+                                                        handleAddDomain(e);
+                                                    }
+                                                },
+                                                className: "pl-9",
+                                                disabled: isUpdating
+                                            }, void 0, false, {
+                                                fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
+                                                lineNumber: 655,
+                                                columnNumber: 17
+                                            }, this)
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
+                                        lineNumber: 653,
+                                        columnNumber: 15
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                        className: "text-xs text-gray-500",
+                                        children: "Enter キーまたはカンマ（,）でドメインを確定します。複数のドメインを一度に追加できます。"
+                                    }, void 0, false, {
+                                        fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
+                                        lineNumber: 673,
+                                        columnNumber: 15
+                                    }, this)
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
+                                lineNumber: 628,
+                                columnNumber: 13
+                            }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
+                                children: [
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        className: "p-3 bg-gray-50 border rounded-md",
+                                        children: domainList && domainList.length > 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
+                                            className: "space-y-1",
+                                            children: domainList.map((domain, index)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
+                                                    className: "text-sm font-mono",
+                                                    children: [
+                                                        "• ",
+                                                        domain
+                                                    ]
+                                                }, index, true, {
+                                                    fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
+                                                    lineNumber: 683,
+                                                    columnNumber: 23
+                                                }, this))
+                                        }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                            lineNumber: 444,
+                                            lineNumber: 681,
                                             columnNumber: 19
-                                        }, this))
-                                }, void 0, false, {
-                                    fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                    lineNumber: 442,
-                                    columnNumber: 15
-                                }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                    className: "text-sm text-gray-500",
-                                    children: "ドメインが設定されていません"
-                                }, void 0, false, {
-                                    fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                    lineNumber: 450,
-                                    columnNumber: 15
-                                }, this)
-                            }, void 0, false, {
-                                fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                lineNumber: 440,
-                                columnNumber: 11
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                className: "text-xs text-gray-500",
-                                children: "これらのドメインからのみ Widget API を使用できます"
-                            }, void 0, false, {
-                                fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                lineNumber: 453,
-                                columnNumber: 11
-                            }, this)
+                                        }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                            className: "text-sm text-gray-500",
+                                            children: "ドメインが設定されていません"
+                                        }, void 0, false, {
+                                            fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
+                                            lineNumber: 689,
+                                            columnNumber: 19
+                                        }, this)
+                                    }, void 0, false, {
+                                        fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
+                                        lineNumber: 679,
+                                        columnNumber: 15
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                        className: "text-xs text-gray-500",
+                                        children: "これらのドメインからのみ Widget API を使用できます"
+                                    }, void 0, false, {
+                                        fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
+                                        lineNumber: 692,
+                                        columnNumber: 15
+                                    }, this)
+                                ]
+                            }, void 0, true)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                        lineNumber: 435,
+                        lineNumber: 583,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1699,7 +1986,7 @@ function WidgetSettings({ shopId }) {
                                 children: "ステータス"
                             }, void 0, false, {
                                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                lineNumber: 460,
+                                lineNumber: 701,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1709,7 +1996,7 @@ function WidgetSettings({ shopId }) {
                                         className: `h-2 w-2 rounded-full ${widgetKeys.enabled ? "bg-green-500" : "bg-gray-300"}`
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                        lineNumber: 462,
+                                        lineNumber: 703,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1717,19 +2004,19 @@ function WidgetSettings({ shopId }) {
                                         children: widgetKeys.enabled ? "有効" : "無効"
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                        lineNumber: 467,
+                                        lineNumber: 708,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                lineNumber: 461,
+                                lineNumber: 702,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                        lineNumber: 459,
+                        lineNumber: 700,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1741,7 +2028,7 @@ function WidgetSettings({ shopId }) {
                                     className: "h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0"
                                 }, void 0, false, {
                                     fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                    lineNumber: 475,
+                                    lineNumber: 716,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1752,7 +2039,7 @@ function WidgetSettings({ shopId }) {
                                             children: "Widget API の使い方:"
                                         }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                            lineNumber: 477,
+                                            lineNumber: 718,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1766,45 +2053,45 @@ function WidgetSettings({ shopId }) {
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                                lineNumber: 479,
+                                                lineNumber: 720,
                                                 columnNumber: 17
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                            lineNumber: 478,
+                                            lineNumber: 719,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                    lineNumber: 476,
+                                    lineNumber: 717,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                            lineNumber: 474,
+                            lineNumber: 715,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                        lineNumber: 473,
+                        lineNumber: 714,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                lineNumber: 396,
+                lineNumber: 544,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-        lineNumber: 386,
+        lineNumber: 534,
         columnNumber: 5
     }, this);
 }
-_s1(WidgetSettings, "V7zWSqJ6rYsGigQFCUl3C4d0Pxk=");
+_s1(WidgetSettings, "waBy2hNgkk/tRAGWUQCRPZeRYF4=");
 _c1 = WidgetSettings;
 function SettingsPage() {
     _s2();
@@ -1911,7 +2198,7 @@ function SettingsPage() {
                         children: "設定"
                     }, void 0, false, {
                         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                        lineNumber: 603,
+                        lineNumber: 844,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1919,13 +2206,13 @@ function SettingsPage() {
                         children: "アカウントとショップの設定を管理します"
                     }, void 0, false, {
                         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                        lineNumber: 604,
+                        lineNumber: 845,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                lineNumber: 602,
+                lineNumber: 843,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Card"], {
@@ -1939,27 +2226,27 @@ function SettingsPage() {
                                         className: "h-5 w-5"
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                        lineNumber: 613,
+                                        lineNumber: 854,
                                         columnNumber: 13
                                     }, this),
                                     "アカウント情報"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                lineNumber: 612,
+                                lineNumber: 853,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardDescription"], {
                                 children: "現在ログイン中のアカウント情報"
                             }, void 0, false, {
                                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                lineNumber: 616,
+                                lineNumber: 857,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                        lineNumber: 611,
+                        lineNumber: 852,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -1974,7 +2261,7 @@ function SettingsPage() {
                                             children: "メールアドレス"
                                         }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                            lineNumber: 623,
+                                            lineNumber: 864,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1982,13 +2269,13 @@ function SettingsPage() {
                                             children: user?.email || "-"
                                         }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                            lineNumber: 624,
+                                            lineNumber: 865,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                    lineNumber: 622,
+                                    lineNumber: 863,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1998,7 +2285,7 @@ function SettingsPage() {
                                             children: "ショップID"
                                         }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                            lineNumber: 627,
+                                            lineNumber: 868,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2006,30 +2293,30 @@ function SettingsPage() {
                                             children: shopId || "-"
                                         }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                            lineNumber: 628,
+                                            lineNumber: 869,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                    lineNumber: 626,
+                                    lineNumber: 867,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                            lineNumber: 621,
+                            lineNumber: 862,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                        lineNumber: 620,
+                        lineNumber: 861,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                lineNumber: 610,
+                lineNumber: 851,
                 columnNumber: 7
             }, this),
             isOwner && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Card"], {
@@ -2043,27 +2330,27 @@ function SettingsPage() {
                                         className: "h-5 w-5"
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                        lineNumber: 639,
+                                        lineNumber: 880,
                                         columnNumber: 13
                                     }, this),
                                     "メンバー招待"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                lineNumber: 638,
+                                lineNumber: 879,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardDescription"], {
                                 children: "新しいメンバーをこのショップに招待します（オーナーのみ、複数人一括招待可能）"
                             }, void 0, false, {
                                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                lineNumber: 642,
+                                lineNumber: 883,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                        lineNumber: 637,
+                        lineNumber: 878,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -2079,7 +2366,7 @@ function SettingsPage() {
                                             children: "招待するメールアドレス"
                                         }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                            lineNumber: 649,
+                                            lineNumber: 890,
                                             columnNumber: 15
                                         }, this),
                                         emailList.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2091,14 +2378,14 @@ function SettingsPage() {
                                                             className: "h-3.5 w-3.5"
                                                         }, void 0, false, {
                                                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                                            lineNumber: 659,
+                                                            lineNumber: 900,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                             children: email
                                                         }, void 0, false, {
                                                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                                            lineNumber: 660,
+                                                            lineNumber: 901,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2110,23 +2397,23 @@ function SettingsPage() {
                                                                 className: "h-3.5 w-3.5"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                                                lineNumber: 667,
+                                                                lineNumber: 908,
                                                                 columnNumber: 25
                                                             }, this)
                                                         }, void 0, false, {
                                                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                                            lineNumber: 661,
+                                                            lineNumber: 902,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, email, true, {
                                                     fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                                    lineNumber: 655,
+                                                    lineNumber: 896,
                                                     columnNumber: 21
                                                 }, this))
                                         }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                            lineNumber: 653,
+                                            lineNumber: 894,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2136,7 +2423,7 @@ function SettingsPage() {
                                                     className: "absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
                                                 }, void 0, false, {
                                                     fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                                    lineNumber: 676,
+                                                    lineNumber: 917,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Input"], {
@@ -2158,13 +2445,13 @@ function SettingsPage() {
                                                     disabled: isInviting
                                                 }, void 0, false, {
                                                     fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                                    lineNumber: 677,
+                                                    lineNumber: 918,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                            lineNumber: 675,
+                                            lineNumber: 916,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
@@ -2174,7 +2461,7 @@ function SettingsPage() {
                                             children: isInviting ? "送信中..." : `${emailList.length}件の招待を送信`
                                         }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                            lineNumber: 696,
+                                            lineNumber: 937,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2182,13 +2469,13 @@ function SettingsPage() {
                                             children: "Enter キーまたはカンマ（,）でメールアドレスを確定します。複数人を一度に招待できます。"
                                         }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                            lineNumber: 703,
+                                            lineNumber: 944,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                    lineNumber: 648,
+                                    lineNumber: 889,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2200,7 +2487,7 @@ function SettingsPage() {
                                                 className: "h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0"
                                             }, void 0, false, {
                                                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                                lineNumber: 710,
+                                                lineNumber: 951,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2211,7 +2498,7 @@ function SettingsPage() {
                                                         children: "招待の流れ:"
                                                     }, void 0, false, {
                                                         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                                        lineNumber: 712,
+                                                        lineNumber: 953,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("ol", {
@@ -2221,75 +2508,75 @@ function SettingsPage() {
                                                                 children: "メールアドレスを入力して Enter または「追加」ボタンをクリック"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                                                lineNumber: 714,
+                                                                lineNumber: 955,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
                                                                 children: "複数のメールアドレスを追加できます"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                                                lineNumber: 715,
+                                                                lineNumber: 956,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
                                                                 children: "「招待を送信」ボタンで一括送信"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                                                lineNumber: 716,
+                                                                lineNumber: 957,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
                                                                 children: "メンバーがメールのリンクからパスワードを設定"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                                                lineNumber: 717,
+                                                                lineNumber: 958,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
                                                                 children: "ログイン後、このショップにアクセス可能になります"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                                                lineNumber: 718,
+                                                                lineNumber: 959,
                                                                 columnNumber: 21
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                                        lineNumber: 713,
+                                                        lineNumber: 954,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                                lineNumber: 711,
+                                                lineNumber: 952,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                        lineNumber: 709,
+                                        lineNumber: 950,
                                         columnNumber: 15
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                                    lineNumber: 708,
+                                    lineNumber: 949,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                            lineNumber: 647,
+                            lineNumber: 888,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                        lineNumber: 646,
+                        lineNumber: 887,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                lineNumber: 636,
+                lineNumber: 877,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(MemberManagement, {
@@ -2297,20 +2584,20 @@ function SettingsPage() {
                 userRole: userRole
             }, void 0, false, {
                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                lineNumber: 729,
+                lineNumber: 970,
                 columnNumber: 7
             }, this),
             isOwner && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(WidgetSettings, {
                 shopId: shopId
             }, void 0, false, {
                 fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-                lineNumber: 732,
+                lineNumber: 973,
                 columnNumber: 19
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/atelier/apps/console/src/app/(main)/settings/page.tsx",
-        lineNumber: 601,
+        lineNumber: 842,
         columnNumber: 5
     }, this);
 }

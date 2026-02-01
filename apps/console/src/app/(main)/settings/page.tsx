@@ -303,6 +303,10 @@ function WidgetSettings({ shopId }: { shopId: string }) {
   const [isLoading, setIsLoading] = useState(true);
   const [showPublicKey, setShowPublicKey] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [isEditingDomains, setIsEditingDomains] = useState(false);
+  const [domainInput, setDomainInput] = useState("");
+  const [domainList, setDomainList] = useState<string[]>([]);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     fetchWidgetKeys();
@@ -316,13 +320,157 @@ function WidgetSettings({ shopId }: { shopId: string }) {
       const response = await authenticatedFetch(`/api/widget-keys?shopId=${shopId}`);
       if (response.ok) {
         const data = await response.json();
-        setWidgetKeys(data[0]); // 最初のキーを取得
+        const key = data[0]; // 最初のキーを取得
+        console.log("[WidgetSettings] Fetched widget key:", key);
+        console.log("[WidgetSettings] allowed_domains:", key?.allowed_domains);
+        setWidgetKeys(key);
+        // allowed_domainsがnullの場合は空配列に変換
+        const domains = key?.allowed_domains || [];
+        setDomainList(Array.isArray(domains) ? domains : []);
       }
     } catch (error) {
       console.error("Failed to fetch widget keys:", error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // URLからドメインを抽出する関数
+  const extractDomain = (input: string): string | null => {
+    const trimmed = input.trim();
+    if (!trimmed) return null;
+
+    try {
+      // URL形式（http://, https://を含む）の場合
+      if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+        const url = new URL(trimmed);
+        return url.hostname; // ポート番号を除いたホスト名を返す
+      }
+      
+      // ドメイン形式の場合（例: example.com, localhost:3000）
+      // ポート番号を含む場合の処理
+      if (trimmed.includes(":")) {
+        const [host, port] = trimmed.split(":");
+        // localhost:3000 のような形式の場合
+        if (host === "localhost" || /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/.test(host)) {
+          return trimmed.toLowerCase(); // ポート番号を含めて返す
+        }
+      }
+      
+      // 通常のドメイン形式のチェック
+      const domainRegex = /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$|^localhost(:\d+)?$/;
+      if (domainRegex.test(trimmed)) {
+        return trimmed.toLowerCase();
+      }
+      
+      return null;
+    } catch (error) {
+      // URL解析に失敗した場合、ドメイン形式として再試行
+      const domainRegex = /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$|^localhost(:\d+)?$/;
+      if (domainRegex.test(trimmed)) {
+        return trimmed.toLowerCase();
+      }
+      return null;
+    }
+  };
+
+  const handleAddDomain = (e: React.KeyboardEvent<HTMLInputElement> | React.MouseEvent) => {
+    e.preventDefault();
+    const trimmedDomain = domainInput.trim();
+
+    if (!trimmedDomain) return;
+
+    // カンマ区切りで複数入力された場合
+    const domains = trimmedDomain.split(",").map(d => d.trim()).filter(d => d.length > 0);
+    console.log("[WidgetSettings] handleAddDomain - input:", trimmedDomain, "parsed domains:", domains);
+
+    let addedCount = 0;
+    for (const domainInput of domains) {
+      // URLからドメインを抽出
+      const extractedDomain = extractDomain(domainInput);
+      
+      if (!extractedDomain) {
+        toast.error(`無効なドメイン: ${domainInput}`);
+        continue;
+      }
+
+      if (domainList.includes(extractedDomain)) {
+        toast.error(`既に追加済み: ${extractedDomain}`);
+        continue;
+      }
+
+      setDomainList((prev) => {
+        const newList = [...prev, extractedDomain];
+        console.log("[WidgetSettings] handleAddDomain - updated domainList:", newList);
+        return newList;
+      });
+      addedCount++;
+    }
+
+    if (addedCount > 0) {
+      toast.success(`${addedCount}件のドメインを追加しました`);
+    }
+
+    setDomainInput("");
+  };
+
+  const handleRemoveDomain = (domainToRemove: string) => {
+    setDomainList((prev) => prev.filter((domain) => domain !== domainToRemove));
+  };
+
+  const handleSaveDomains = async () => {
+    if (!widgetKeys) return;
+
+    console.log("[WidgetSettings] handleSaveDomains - domainList:", domainList);
+    console.log("[WidgetSettings] handleSaveDomains - domainList length:", domainList.length);
+
+    setIsUpdating(true);
+    try {
+      const requestBody = {
+        allowed_domains: domainList,
+      };
+      console.log("[WidgetSettings] Sending request body:", requestBody);
+      
+      const response = await authenticatedFetch(`/api/widget-keys/${widgetKeys.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "許可ドメインの更新に失敗しました");
+      }
+
+      const updatedData = await response.json();
+      console.log("[WidgetSettings] Updated widget key:", updatedData);
+      console.log("[WidgetSettings] Updated allowed_domains:", updatedData?.allowed_domains);
+      
+      // 更新されたデータを直接反映
+      setWidgetKeys(updatedData);
+      const domains = updatedData?.allowed_domains || [];
+      setDomainList(Array.isArray(domains) ? domains : []);
+      
+      toast.success("許可ドメインを更新しました");
+      setIsEditingDomains(false);
+      
+      // 念のため再取得も実行
+      await fetchWidgetKeys();
+    } catch (error) {
+      console.error("Update domains error:", error);
+      const errorMessage = error instanceof Error ? error.message : "許可ドメインの更新に失敗しました";
+      toast.error(errorMessage);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setDomainList(widgetKeys?.allowed_domains || []);
+    setDomainInput("");
+    setIsEditingDomains(false);
   };
 
   const copyToClipboard = async (text: string, field: string) => {
@@ -433,26 +581,119 @@ function WidgetSettings({ shopId }: { shopId: string }) {
 
         {/* Allowed Domains */}
           <div className="space-y-2">
-          <Label className="text-sm text-gray-600 flex items-center gap-2">
-            <Globe className="h-4 w-4" />
-            許可ドメイン
-          </Label>
-          <div className="p-3 bg-gray-50 border rounded-md">
-            {widgetKeys.allowed_domains && widgetKeys.allowed_domains.length > 0 ? (
-              <ul className="space-y-1">
-                {widgetKeys.allowed_domains.map((domain: string, index: number) => (
-                  <li key={index} className="text-sm font-mono">
-                    • {domain}
-                  </li>
-                ))}
-              </ul>
+          <div className="flex items-center justify-between">
+            <Label className="text-sm text-gray-600 flex items-center gap-2">
+              <Globe className="h-4 w-4" />
+              許可ドメイン
+            </Label>
+            {!isEditingDomains ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  console.log("[WidgetSettings] Entering edit mode - widgetKeys.allowed_domains:", widgetKeys?.allowed_domains);
+                  console.log("[WidgetSettings] Entering edit mode - current domainList:", domainList);
+                  // 編集モードに入る時に、最新のallowed_domainsでdomainListを初期化
+                  const domains = widgetKeys?.allowed_domains || [];
+                  const normalizedDomains = Array.isArray(domains) ? domains : [];
+                  console.log("[WidgetSettings] Initializing domainList with:", normalizedDomains);
+                  setDomainList(normalizedDomains);
+                  setIsEditingDomains(true);
+                }}
+              >
+                編集
+              </Button>
             ) : (
-              <p className="text-sm text-gray-500">ドメインが設定されていません</p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCancelEdit}
+                  disabled={isUpdating}
+                >
+                  キャンセル
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSaveDomains}
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? "保存中..." : "保存"}
+                </Button>
+              </div>
             )}
           </div>
-          <p className="text-xs text-gray-500">
-            これらのドメインからのみ Widget API を使用できます
-          </p>
+          
+          {isEditingDomains ? (
+            <div className="space-y-2">
+              {/* ドメインリスト表示エリア */}
+              {domainList.length > 0 && (
+                <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-gray-50 min-h-[60px]">
+                  {domainList.map((domain) => (
+                    <div
+                      key={domain}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 text-blue-800 rounded-md text-sm font-mono"
+                    >
+                      <Globe className="h-3.5 w-3.5" />
+                      <span>{domain}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveDomain(domain)}
+                        className="ml-1 hover:bg-blue-200 rounded-full p-0.5 transition-colors"
+                        disabled={isUpdating}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* 入力ボックス */}
+              <div className="relative">
+                <Globe className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="example.com と入力して Enter またはカンマ（,）で確定"
+                  value={domainInput}
+                  onChange={(e) => setDomainInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddDomain(e);
+                    } else if (e.key === ",") {
+                      e.preventDefault();
+                      handleAddDomain(e);
+                    }
+                  }}
+                  className="pl-9"
+                  disabled={isUpdating}
+                />
+              </div>
+              <p className="text-xs text-gray-500">
+                Enter キーまたはカンマ（,）でドメインを確定します。複数のドメインを一度に追加できます。
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="p-3 bg-gray-50 border rounded-md">
+                {domainList && domainList.length > 0 ? (
+                  <ul className="space-y-1">
+                    {domainList.map((domain: string, index: number) => (
+                      <li key={index} className="text-sm font-mono">
+                        • {domain}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-gray-500">ドメインが設定されていません</p>
+                )}
+              </div>
+              <p className="text-xs text-gray-500">
+                これらのドメインからのみ Widget API を使用できます
+              </p>
+            </>
+          )}
           </div>
 
         {/* Status */}

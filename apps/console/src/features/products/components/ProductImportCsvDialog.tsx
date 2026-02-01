@@ -103,10 +103,10 @@ export function ProductImportCsvDialog({ onImportComplete }: { onImportComplete?
   };
 
   const downloadSampleCsv = () => {
-    const sample = `external_product_id,name
-SKU-001,サンプル商品A
-SKU-002,サンプル商品B
-SKU-003,サンプル商品C`;
+    const sample = `external_product_id,name,thumbnail_url,brand,category,description
+SKU-001,サンプル商品A,https://example.com/image1.jpg,ブランドA,ジャケット,カジュアルなデニムジャケットです
+SKU-002,サンプル商品B,https://example.com/image2.jpg,ブランドB,コート,暖かいウールコートです
+SKU-003,サンプル商品C,https://example.com/image3.jpg,ブランドC,トップス,シンプルなTシャツです`;
 
     const blob = new Blob([sample], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
@@ -143,11 +143,15 @@ SKU-003,サンプル商品C`;
             <div className="mt-3">
               <p className="text-sm text-blue-800 font-medium mb-1">必須カラム:</p>
               <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside ml-4">
-                <li><code className="bg-blue-100 px-1 rounded">external_product_id</code> - 商品ID（必須）</li>
+                <li><code className="bg-blue-100 px-1 rounded">external_product_id</code> - 外部商品ID（必須）</li>
               </ul>
               <p className="text-sm text-blue-800 font-medium mb-1 mt-2">任意カラム:</p>
               <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside ml-4">
                 <li><code className="bg-blue-100 px-1 rounded">name</code> - 商品名</li>
+                <li><code className="bg-blue-100 px-1 rounded">thumbnail_url</code> - サムネイル画像URL</li>
+                <li><code className="bg-blue-100 px-1 rounded">brand</code> - ブランド名</li>
+                <li><code className="bg-blue-100 px-1 rounded">category</code> - カテゴリ（ジャケット、コート、トップス、ボトムス）</li>
+                <li><code className="bg-blue-100 px-1 rounded">description</code> - 商品説明</li>
               </ul>
             </div>
             <Button

@@ -335,6 +335,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../../src/app/api/products/bulk-delete/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/products/bulk-delete">> = Specific
+  const handler = {} as typeof import("../../../src/app/api/products/bulk-delete/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../../src/app/api/products/import-csv/route.ts
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/products/import-csv">> = Specific
@@ -375,6 +384,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/upload">> = Specific
   const handler = {} as typeof import("../../../src/app/api/upload/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../src/app/api/widget-keys/[id]/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/widget-keys/[id]">> = Specific
+  const handler = {} as typeof import("../../../src/app/api/widget-keys/[id]/route.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check

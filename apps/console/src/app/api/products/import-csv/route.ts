@@ -8,6 +8,10 @@ import { createClient } from "@supabase/supabase-js";
  * CSVフォーマット（UTF-8、ヘッダー必須）:
  * - external_product_id（必須）
  * - name（任意）
+ * - thumbnail_url（任意）- サムネイル画像URL
+ * - brand（任意）- ブランド名
+ * - category（任意）- カテゴリ（ジャケット、コート、トップス、ボトムス）
+ * - description（任意）- 商品説明
  * 
  * 既存商品（同一shop_id + external_product_id）は更新せずスキップ
  * 最大5000行まで処理
@@ -121,12 +125,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ヘッダー行をパース
+    // ヘッダー行をパース（引用符で囲まれた値にも対応）
+    const parseCsvLine = (line: string): string[] => {
+      const result: string[] = [];
+      let current = "";
+      let inQuotes = false;
+      
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          result.push(current.trim());
+          current = "";
+        } else {
+          current += char;
+        }
+      }
+      result.push(current.trim());
+      return result;
+    };
+
     const headerLine = lines[0];
-    const headers = headerLine.split(",").map((h) => h.trim());
+    const headers = parseCsvLine(headerLine).map((h) => h.replace(/^"|"$/g, "").trim());
 
     const externalProductIdIndex = headers.indexOf("external_product_id");
     const nameIndex = headers.indexOf("name");
+    const thumbnailUrlIndex = headers.indexOf("thumbnail_url");
+    const brandIndex = headers.indexOf("brand");
+    const categoryIndex = headers.indexOf("category");
+    const descriptionIndex = headers.indexOf("description");
 
     if (externalProductIdIndex === -1) {
       return NextResponse.json(
@@ -136,6 +165,14 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("[import-csv API] CSV headers:", headers);
+    console.log("[import-csv API] Found columns:", {
+      external_product_id: externalProductIdIndex !== -1,
+      name: nameIndex !== -1,
+      thumbnail_url: thumbnailUrlIndex !== -1,
+      brand: brandIndex !== -1,
+      category: categoryIndex !== -1,
+      description: descriptionIndex !== -1,
+    });
 
     // データ行を処理
     const dataLines = lines.slice(1);
@@ -146,14 +183,26 @@ export async function POST(request: NextRequest) {
 
     for (let i = 0; i < dataLines.length; i++) {
       const line = dataLines[i];
-      const values = line.split(",").map((v) => v.trim());
+      const values = parseCsvLine(line).map((v) => v.replace(/^"|"$/g, "").trim());
 
-      const externalProductId = values[externalProductIdIndex];
-      const name = nameIndex !== -1 ? values[nameIndex] : null;
+      const externalProductId = values[externalProductIdIndex] || "";
+      const name = nameIndex !== -1 ? (values[nameIndex]?.trim() || null) : null;
+      const thumbnailUrl = thumbnailUrlIndex !== -1 ? (values[thumbnailUrlIndex]?.trim() || null) : null;
+      const brand = brandIndex !== -1 ? (values[brandIndex]?.trim() || null) : null;
+      const category = categoryIndex !== -1 ? (values[categoryIndex]?.trim() || null) : null;
+      const description = descriptionIndex !== -1 ? (values[descriptionIndex]?.trim() || null) : null;
 
       if (!externalProductId) {
         failedCount++;
         errors.push(`Row ${i + 2}: external_product_id is missing`);
+        continue;
+      }
+
+      // カテゴリの検証
+      const validCategories = ["ジャケット", "コート", "トップス", "ボトムス"];
+      if (category && !validCategories.includes(category)) {
+        failedCount++;
+        errors.push(`Row ${i + 2}: Invalid category "${category}". Must be one of: ${validCategories.join(", ")}`);
         continue;
       }
 
@@ -179,13 +228,32 @@ export async function POST(request: NextRequest) {
         }
 
         // 新規商品を追加
+        const insertData: any = {
+          shop_id: shopId,
+          external_product_id: externalProductId,
+          name: name || externalProductId,
+        };
+
+        // オプション項目を追加（空文字列はnullに変換）
+        if (thumbnailUrl && thumbnailUrl.trim() !== "") {
+          insertData.thumbnail_url = thumbnailUrl.trim();
+          console.log(`[import-csv API] Row ${i + 2}: Setting thumbnail_url = "${thumbnailUrl.trim()}"`);
+        } else {
+          console.log(`[import-csv API] Row ${i + 2}: thumbnail_url is empty or missing`);
+        }
+        if (brand && brand.trim() !== "") {
+          insertData.brand = brand.trim();
+        }
+        if (category && category.trim() !== "") {
+          insertData.category = category.trim();
+        }
+        if (description && description.trim() !== "") {
+          insertData.description = description.trim();
+        }
+
         const { error: insertError } = await supabaseAdmin
           .from("products")
-          .insert({
-            shop_id: shopId,
-            external_product_id: externalProductId,
-            name: name || externalProductId,
-          });
+          .insert(insertData);
 
         if (insertError) {
           failedCount++;

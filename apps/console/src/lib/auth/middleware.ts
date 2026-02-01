@@ -18,7 +18,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
  */
 export async function getAuthenticatedUser(
   request: NextRequest
-): Promise<{ userId: string; shopId: string } | null> {
+): Promise<{ userId: string; shopId: string; userRole: "owner" | "member" | null } | null> {
   console.log("[getAuthenticatedUser] Starting authentication check");
   try {
     // Authorizationヘッダーからトークンを取得
@@ -54,7 +54,7 @@ export async function getAuthenticatedUser(
 
     const { data: profileData, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .select("shop_id")
+      .select("shop_id, role")
       .eq("id", user.id)
       .single();
 
@@ -66,6 +66,7 @@ export async function getAuthenticatedUser(
     return {
       userId: user.id,
       shopId: profileData.shop_id,
+      userRole: profileData.role as "owner" | "member" | null,
     };
   } catch (error) {
     console.error("Error in getAuthenticatedUser:", error);
@@ -79,7 +80,7 @@ export async function getAuthenticatedUser(
 export function requireAuth(
   handler: (
     request: NextRequest,
-    context: { userId: string; shopId: string }
+    context: { userId: string; shopId: string; userRole: "owner" | "member" | null }
   ) => Promise<NextResponse>
 ) {
   return async (request: NextRequest) => {

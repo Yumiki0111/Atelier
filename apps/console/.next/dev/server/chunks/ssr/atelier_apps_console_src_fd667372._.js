@@ -141,6 +141,8 @@ function translateErrorMessage(message) {
 __turbopack_context__.s([
     "useAddProduct",
     ()=>useAddProduct,
+    "useBulkDeleteProducts",
+    ()=>useBulkDeleteProducts,
     "useDeleteProduct",
     ()=>useDeleteProduct,
     "useProduct",
@@ -278,6 +280,35 @@ function useDeleteProduct() {
     const queryClient = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$QueryClientProvider$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useQueryClient"])();
     return (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useMutation$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMutation"])({
         mutationFn: deleteProduct,
+        onSuccess: ()=>{
+            queryClient.invalidateQueries({
+                queryKey: [
+                    "products"
+                ]
+            });
+        }
+    });
+}
+async function bulkDeleteProducts(productIds) {
+    const response = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$auth$2f$api$2d$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["authenticatedFetch"])("/api/products/bulk-delete", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            productIds
+        })
+    });
+    if (!response.ok) {
+        const errorMessage = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$errors$2f$error$2d$handler$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["extractErrorMessage"])(response);
+        throw new Error((0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$errors$2f$error$2d$handler$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["translateErrorMessage"])(errorMessage));
+    }
+    return response.json();
+}
+function useBulkDeleteProducts() {
+    const queryClient = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$QueryClientProvider$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useQueryClient"])();
+    return (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f40$tanstack$2f$react$2d$query$2f$build$2f$modern$2f$useMutation$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMutation"])({
+        mutationFn: bulkDeleteProducts,
         onSuccess: ()=>{
             queryClient.invalidateQueries({
                 queryKey: [

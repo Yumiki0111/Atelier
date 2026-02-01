@@ -17,10 +17,10 @@ import { ProductAddDialog } from "./ProductAddDialog";
 import { ProductEditDialog } from "./ProductEditDialog";
 import { AssetManagementDialog } from "./AssetManagementDialog";
 import { ProductImportCsvDialog } from "./ProductImportCsvDialog";
-import { Search, Eye, Edit, Trash2 } from "lucide-react";
+import { Search, Eye, Edit, Trash2, Trash } from "lucide-react";
 import { useProductSelection } from "@/contexts/ProductSelectionContext";
 import { Button } from "@/components/ui/button";
-import { useDeleteProduct } from "../useProducts";
+import { useDeleteProduct, useBulkDeleteProducts } from "../useProducts";
 import { toast } from "sonner";
 import { getErrorMessage, translateErrorMessage } from "@/lib/errors/error-handler";
 import {
@@ -51,6 +51,7 @@ export function ProductsTable({
   const [descriptionModalOpen, setDescriptionModalOpen] = useState(false);
   const [selectedDescription, setSelectedDescription] = useState<string>("");
   const deleteProduct = useDeleteProduct();
+  const bulkDeleteProducts = useBulkDeleteProducts();
 
   const handleDelete = async (productId: string) => {
     if (!confirm("この商品を削除してもよろしいですか？")) {
@@ -61,6 +62,29 @@ export function ProductsTable({
       toast.success("商品を削除しました");
     } catch (error) {
       console.error("Failed to delete product:", error);
+      const errorMessage = getErrorMessage(error);
+      toast.error(translateErrorMessage(errorMessage));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedRowIds.size === 0) {
+      toast.error("削除する商品を選択してください");
+      return;
+    }
+
+    const count = selectedRowIds.size;
+    if (!confirm(`選択した${count}件の商品を削除してもよろしいですか？\nこの操作は取り消せません。`)) {
+      return;
+    }
+
+    try {
+      const productIds = Array.from(selectedRowIds);
+      const result = await bulkDeleteProducts.mutateAsync(productIds);
+      toast.success(`${result.deletedCount}件の商品を削除しました`);
+      setSelectedRowIds(new Set()); // 選択をクリア
+    } catch (error) {
+      console.error("Failed to bulk delete products:", error);
       const errorMessage = getErrorMessage(error);
       toast.error(translateErrorMessage(errorMessage));
     }
@@ -117,6 +141,16 @@ export function ProductsTable({
           />
         </div>
         <div className="flex gap-2">
+          {selectedRowIds.size > 0 && (
+            <Button
+              onClick={handleBulkDelete}
+              disabled={bulkDeleteProducts.isPending}
+              className="gap-2 bg-black text-white hover:bg-gray-800"
+            >
+              <Trash className="h-4 w-4" />
+              {bulkDeleteProducts.isPending ? "削除中..." : `選択した${selectedRowIds.size}件を削除`}
+            </Button>
+          )}
           <ProductImportCsvDialog />
           <ProductAddDialog />
         </div>
