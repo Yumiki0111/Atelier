@@ -11,6 +11,7 @@
     "dev:widget": "npm run dev --workspace=@atelier/widget",
     "build:console": "npm run build --workspace=@atelier/console",
     "build:widget": "npm run build --workspace=@atelier/widget",
+    "copy:widget": "cp packages/widget/dist/widget.iife.js apps/console/public/widget.js",
     "build:all": "npm run build --workspaces",
     "vercel-build": "npm run build:console",
     "lint": "npm run lint --workspaces",

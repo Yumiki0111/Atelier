@@ -11,7 +11,6 @@ import { createClient } from "@supabase/supabase-js";
  * - thumbnail_url（任意）- サムネイル画像URL
  * - brand（任意）- ブランド名
  * - category（任意）- カテゴリ（ジャケット、コート、トップス、ボトムス）
- * - description（任意）- 商品説明
  * 
  * 既存商品（同一shop_id + external_product_id）は更新せずスキップ
  * 最大5000行まで処理
@@ -155,7 +154,6 @@ export async function POST(request: NextRequest) {
     const thumbnailUrlIndex = headers.indexOf("thumbnail_url");
     const brandIndex = headers.indexOf("brand");
     const categoryIndex = headers.indexOf("category");
-    const descriptionIndex = headers.indexOf("description");
 
     if (externalProductIdIndex === -1) {
       return NextResponse.json(
@@ -171,7 +169,6 @@ export async function POST(request: NextRequest) {
       thumbnail_url: thumbnailUrlIndex !== -1,
       brand: brandIndex !== -1,
       category: categoryIndex !== -1,
-      description: descriptionIndex !== -1,
     });
 
     // データ行を処理
@@ -190,7 +187,6 @@ export async function POST(request: NextRequest) {
       const thumbnailUrl = thumbnailUrlIndex !== -1 ? (values[thumbnailUrlIndex]?.trim() || null) : null;
       const brand = brandIndex !== -1 ? (values[brandIndex]?.trim() || null) : null;
       const category = categoryIndex !== -1 ? (values[categoryIndex]?.trim() || null) : null;
-      const description = descriptionIndex !== -1 ? (values[descriptionIndex]?.trim() || null) : null;
 
       if (!externalProductId) {
         failedCount++;
@@ -246,9 +242,6 @@ export async function POST(request: NextRequest) {
         }
         if (category && category.trim() !== "") {
           insertData.category = category.trim();
-        }
-        if (description && description.trim() !== "") {
-          insertData.description = description.trim();
         }
 
         const { error: insertError } = await supabaseAdmin

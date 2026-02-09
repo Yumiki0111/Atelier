@@ -50,7 +50,7 @@ const navigationItems = [
     {
         href: "/database/products",
         label: "商品データベース",
-        icon: "/icon/jaclet.png"
+        icon: "/icon/jacket.png"
     },
     {
         href: "/analytics",
@@ -288,55 +288,78 @@ function ProductSelectionProvider({ children }) {
             };
         }
     }["ProductSelectionProvider.useState"]);
-    const selectProduct = (product, size)=>{
-        // 既に同じ商品とサイズが選択されている場合は何もしない
-        if (selectedProduct?.id === product.id && selectedSize === size) {
-            return;
-        }
-        setSelectedProduct(product);
-        setSelectedSize(size);
-    };
-    const togglePreview = ()=>{
-        setIsPreviewOpen((prev)=>{
-            const newState = !prev;
-            // プレビューが開かれたときにカウントを増やす
-            if (newState && selectedProduct) {
-                setViewStats((stats)=>{
-                    const newStats = {
-                        totalViews: stats.totalViews + 1,
-                        productViews: {
-                            ...stats.productViews,
-                            [selectedProduct.id]: (stats.productViews[selectedProduct.id] || 0) + 1
-                        },
-                        lastViewedAt: new Date()
-                    };
-                    // ローカルストレージに保存
-                    if ("TURBOPACK compile-time truthy", 1) {
-                        localStorage.setItem("productViewStats", JSON.stringify(newStats));
-                    }
-                    return newStats;
-                });
+    const selectProduct = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
+        "ProductSelectionProvider.useCallback[selectProduct]": (product, size)=>{
+            // 既に同じ商品とサイズが選択されている場合は何もしない
+            if (selectedProduct?.id === product.id && selectedSize === size) {
+                return;
             }
-            return newState;
-        });
-    };
+            setSelectedProduct(product);
+            setSelectedSize(size);
+        }
+    }["ProductSelectionProvider.useCallback[selectProduct]"], [
+        selectedProduct?.id,
+        selectedSize
+    ]);
+    const togglePreview = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
+        "ProductSelectionProvider.useCallback[togglePreview]": ()=>{
+            setIsPreviewOpen({
+                "ProductSelectionProvider.useCallback[togglePreview]": (prev)=>{
+                    const newState = !prev;
+                    // プレビューが開かれたときにカウントを増やす
+                    if (newState && selectedProduct) {
+                        setViewStats({
+                            "ProductSelectionProvider.useCallback[togglePreview]": (stats)=>{
+                                const newStats = {
+                                    totalViews: stats.totalViews + 1,
+                                    productViews: {
+                                        ...stats.productViews,
+                                        [selectedProduct.id]: (stats.productViews[selectedProduct.id] || 0) + 1
+                                    },
+                                    lastViewedAt: new Date()
+                                };
+                                // ローカルストレージに保存
+                                if ("TURBOPACK compile-time truthy", 1) {
+                                    localStorage.setItem("productViewStats", JSON.stringify(newStats));
+                                }
+                                return newStats;
+                            }
+                        }["ProductSelectionProvider.useCallback[togglePreview]"]);
+                    }
+                    return newState;
+                }
+            }["ProductSelectionProvider.useCallback[togglePreview]"]);
+        }
+    }["ProductSelectionProvider.useCallback[togglePreview]"], [
+        selectedProduct
+    ]);
+    const contextValue = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMemo"])({
+        "ProductSelectionProvider.useMemo[contextValue]": ()=>({
+                selectedProduct,
+                selectedSize,
+                selectProduct,
+                isPreviewOpen,
+                togglePreview,
+                viewStats
+            })
+    }["ProductSelectionProvider.useMemo[contextValue]"], [
+        selectedProduct,
+        selectedSize,
+        selectProduct,
+        isPreviewOpen,
+        togglePreview,
+        viewStats
+    ]);
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ProductSelectionContext.Provider, {
-        value: {
-            selectedProduct,
-            selectedSize,
-            selectProduct,
-            isPreviewOpen,
-            togglePreview,
-            viewStats
-        },
+        value: contextValue,
         children: children
     }, void 0, false, {
         fileName: "[project]/atelier/apps/console/src/contexts/ProductSelectionContext.tsx",
-        lineNumber: 91,
+        lineNumber: 100,
         columnNumber: 5
     }, this);
 }
-_s(ProductSelectionProvider, "wnoA/ZCwGjBIwRjPgpxSJiA07OM=");
+_s(ProductSelectionProvider, "SpXGTPA8Ilm+52y61YXMRptC2Lc=");
 _c = ProductSelectionProvider;
 function useProductSelection() {
     _s1();

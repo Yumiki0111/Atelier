@@ -46,7 +46,7 @@ const navigationItems = [
     {
         href: "/database/products",
         label: "商品データベース",
-        icon: "/icon/jaclet.png"
+        icon: "/icon/jacket.png"
     },
     {
         href: "/analytics",
@@ -252,15 +252,18 @@ function ProductSelectionProvider({ children }) {
             productViews: {}
         };
     });
-    const selectProduct = (product, size)=>{
+    const selectProduct = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"])((product, size)=>{
         // 既に同じ商品とサイズが選択されている場合は何もしない
         if (selectedProduct?.id === product.id && selectedSize === size) {
             return;
         }
         setSelectedProduct(product);
         setSelectedSize(size);
-    };
-    const togglePreview = ()=>{
+    }, [
+        selectedProduct?.id,
+        selectedSize
+    ]);
+    const togglePreview = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"])(()=>{
         setIsPreviewOpen((prev)=>{
             const newState = !prev;
             // プレビューが開かれたときにカウントを増やす
@@ -282,20 +285,30 @@ function ProductSelectionProvider({ children }) {
             }
             return newState;
         });
-    };
-    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(ProductSelectionContext.Provider, {
-        value: {
+    }, [
+        selectedProduct
+    ]);
+    const contextValue = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMemo"])(()=>({
             selectedProduct,
             selectedSize,
             selectProduct,
             isPreviewOpen,
             togglePreview,
             viewStats
-        },
+        }), [
+        selectedProduct,
+        selectedSize,
+        selectProduct,
+        isPreviewOpen,
+        togglePreview,
+        viewStats
+    ]);
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(ProductSelectionContext.Provider, {
+        value: contextValue,
         children: children
     }, void 0, false, {
         fileName: "[project]/atelier/apps/console/src/contexts/ProductSelectionContext.tsx",
-        lineNumber: 91,
+        lineNumber: 100,
         columnNumber: 5
     }, this);
 }

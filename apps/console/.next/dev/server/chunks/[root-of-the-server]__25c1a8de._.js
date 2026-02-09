@@ -205,7 +205,6 @@ const productSchema = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f
         __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().url(),
         __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].literal("")
     ]).optional(),
-    description: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().optional(),
     createdAt: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().datetime(),
     updatedAt: __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().datetime()
 });
@@ -495,7 +494,11 @@ async function GET(request) {
                 status: 500
             });
         }
-        const assets = data?.map((a)=>({
+        // アセットと関連する商品情報を取得（カテゴリー情報を含める）
+        const assetsWithProducts = await Promise.all((data || []).map(async (a)=>{
+            // 商品情報を取得してカテゴリーを取得
+            const { data: product } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("products").select("category").eq("id", a.product_id).single();
+            return {
                 id: a.id,
                 productId: a.product_id,
                 size: a.size,
@@ -505,8 +508,11 @@ async function GET(request) {
                 version: a.version,
                 isActive: a.is_active ?? true,
                 createdAt: a.created_at,
-                updatedAt: a.updated_at
-            }));
+                updatedAt: a.updated_at,
+                category: product?.category || undefined
+            };
+        }));
+        const assets = assetsWithProducts;
         return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json(assets || []);
     } catch (error) {
         console.error("Error in GET /api/assets:", error);

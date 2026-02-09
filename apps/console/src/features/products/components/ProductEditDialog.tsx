@@ -78,7 +78,6 @@ export function ProductEditDialog({
       setValue("brand", product.brand || "");
       setValue("category", product.category);
       setValue("thumbnailUrl", product.thumbnailUrl || "");
-      setValue("description", product.description || "");
     }
   }, [product, setValue]);
 
@@ -142,7 +141,6 @@ export function ProductEditDialog({
         brand: data.brand && data.brand.trim() !== "" ? data.brand : undefined,
         category: data.category || undefined,
         thumbnailUrl: data.thumbnailUrl && data.thumbnailUrl.trim() !== "" ? data.thumbnailUrl : undefined,
-        description: data.description && data.description.trim() !== "" ? data.description : undefined,
       };
       
       await updateProduct.mutateAsync({ id: productId, updates: cleanedData });
@@ -295,17 +293,6 @@ export function ProductEditDialog({
                 </button>
               </div>
             )}
-          </div>
-
-          <div className="space-y-2 min-w-0">
-            <Label htmlFor="description">商品説明（任意）</Label>
-            <Textarea
-              id="description"
-              {...register("description")}
-              placeholder="商品の詳細な説明を入力してください"
-              className="min-h-[100px]"
-              rows={4}
-            />
           </div>
 
           <DialogFooter>

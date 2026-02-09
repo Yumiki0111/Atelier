@@ -61,7 +61,6 @@ export async function GET(request: NextRequest) {
       brand: p.brand,
       category: p.category,
       thumbnailUrl: p.thumbnail_url,
-      description: p.description,
       createdAt: p.created_at,
       updatedAt: p.updated_at,
     }));
@@ -117,7 +116,6 @@ export async function POST(request: NextRequest) {
         brand: validated.brand || null,
         category: validated.category || null,
         thumbnail_url: validated.thumbnailUrl || null,
-        description: validated.description || null,
       })
       .select()
       .single();
@@ -148,7 +146,6 @@ export async function POST(request: NextRequest) {
       sizeTypeId: data.size_type_id,
       thumbnailUrl: data.thumbnail_url,
       previewImageUrl: data.preview_image_url,
-      description: data.description,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };

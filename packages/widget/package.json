@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && npm run copy-to-console",
+    "copy-to-console": "cp dist/widget.iife.js ../../apps/console/public/widget.js",
     "preview": "vite preview"
   },
   "dependencies": {

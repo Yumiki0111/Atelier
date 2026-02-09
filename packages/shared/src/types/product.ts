@@ -13,7 +13,6 @@ export interface Product {
   brand?: string;
   category?: ProductCategory;
   thumbnailUrl?: string;
-  description?: string; // 商品説明
   createdAt: string;
   updatedAt: string;
 }
@@ -29,6 +28,8 @@ export interface Asset {
   isActive?: boolean; // アクティブなアセットかどうか（最新バージョンのみtrue推奨）
   createdAt: string;
   updatedAt: string;
+  // 着せ替え用のカテゴリー情報（Productから取得）
+  category?: ProductCategory;
 }
 
 export interface Event {

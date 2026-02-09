@@ -414,7 +414,6 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$previ
 ;
 ;
 ;
-;
 function init3DViewer(container, options) {
     const { glbUrl, modelUrl, textureUrl, backgroundImageUrl, onLoad, onError } = options;
     // modelUrlを優先、なければglbUrlを使用（後方互換性）
@@ -435,44 +434,17 @@ function init3DViewer(container, options) {
         initialWidth,
         initialHeight
     });
-    // Scene setup（背景画像を設定）
+    // Scene setup（背景画像はフレームの背面に配置するため、3Dシーンでは透明にする）
     const scene = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__.Scene();
-    // 背景画像を読み込む
-    if (backgroundImageUrl) {
-        console.log("[Atelier Preview] Loading background image:", backgroundImageUrl);
-        // 読み込み中は一時的に白背景を設定
-        scene.background = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__.Color(0xffffff);
-        const textureLoader = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TextureLoader"]();
-        textureLoader.load(backgroundImageUrl, (texture)=>{
-            console.log("[Atelier Preview] Background image loaded successfully");
-            // テクスチャの色空間を設定
-            if ('colorSpace' in texture) {
-                texture.colorSpace = 'srgb';
-            } else if ('encoding' in texture) {
-                texture.encoding = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__.sRGBEncoding;
-            }
-            // テクスチャの繰り返しを無効化
-            texture.wrapS = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__.ClampToEdgeWrapping;
-            texture.wrapT = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__.ClampToEdgeWrapping;
-            scene.background = texture;
-        }, undefined, (error)=>{
-            console.warn("[Atelier Preview] Failed to load background image:", error, backgroundImageUrl);
-            // 背景画像の読み込みに失敗した場合は白背景を維持
-            scene.background = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__.Color(0xffffff);
-        });
-    } else {
-        console.log("[Atelier Preview] No background image URL provided");
-        scene.background = null; // 背景なし（透明）
-    }
+    // 背景画像はフレームの背面に配置するため、3Dシーンでは透明にする
+    scene.background = null; // 透明
     // Camera（PreviewPanelのModelViewerと同じ: position: [0, 0, 5], fov: 50）
     const camera = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__.PerspectiveCamera(50, initialWidth / initialHeight, 0.1, 1000);
-    camera.position.set(0, 0, 5);
-    // Renderer（背景画像がある場合は不透明、ない場合は透明）
-    // 背景画像のURLが提供されている場合は不透明、ない場合は透明
-    const hasBackground = !!backgroundImageUrl;
+    camera.position.set(0, 0, 4); // モデルを大きく見せるためにカメラを近づける
+    // Renderer（背景画像はフレームの背面に配置するため、常に透明）
     const renderer = new __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__.WebGLRenderer({
         antialias: true,
-        alpha: !hasBackground,
+        alpha: true,
         powerPreference: "high-performance"
     });
     // 高解像度レンダリング（Retinaディスプレイ対応）
@@ -491,11 +463,8 @@ function init3DViewer(container, options) {
     renderer.toneMappingExposure = 1.2; // 露出を少し上げて明るく
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$node_modules$2f$three$2f$build$2f$three$2e$module$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__.PCFSoftShadowMap; // ソフトシャドウ
-    if (hasBackground) {
-        renderer.setClearColor(0xffffff, 1); // 背景画像がある場合は白背景
-    } else {
-        renderer.setClearColor(0x000000, 0); // 背景を透明にする
-    }
+    // 背景画像はフレームの背面に配置するため、常に透明
+    renderer.setClearColor(0x000000, 0); // 背景を透明にする
     const canvasElement = renderer.domElement;
     canvasElement.style.touchAction = "none"; // タッチイベントを有効化
     canvasElement.style.pointerEvents = "auto"; // ポインターイベントを有効化
@@ -900,19 +869,21 @@ __turbopack_context__.s([
     ()=>createViewerContainer
 ]);
 function createSizeArea(availableSizes, initialSize, productName) {
-    // サイズ選択エリア（下に配置するため、絶対配置用のコンテナ）
+    // サイズ選択エリア（下に配置、フレームに対して相対的な位置）
     const sizeArea = document.createElement("div");
     sizeArea.style.cssText = `
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 8px;
+    position: relative;
+    width: 100%;
+    flex-shrink: 0;
     z-index: 20;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
-    padding: 0 16px;
+    gap: 2%;
+    padding: 0 6%;
+    padding-bottom: 1%;
+    box-sizing: border-box;
+    margin-top: auto;
   `;
     // サイズ選択ボタン全体のコンテナ（矢印ボタンとサイズボタンを含む）
     const sizeSelectorWrapper = document.createElement("div");
@@ -924,45 +895,51 @@ function createSizeArea(availableSizes, initialSize, productName) {
     min-width: 0;
     overflow: visible;
   `;
-    // 左矢印ボタン（画面左端に固定）
+    // 左矢印ボタン（相対配置）
     const prevButton = document.createElement("button");
     prevButton.innerHTML = "&lt;";
     prevButton.style.cssText = `
-    position: absolute;
-    left: 0;
-    background: transparent;
-    border: none;
-    font-size: 18px;
-    color: black;
+    position: relative;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    font-size: 1.5%;
+    color: #374151;
     cursor: pointer;
-    padding: 6px 10px;
+    padding: 0;
     outline: none;
-    transition: all 0.15s ease;
-    font-weight: 500;
-    height: 36px;
+    transition: all 0.2s ease;
+    font-weight: 600;
+    width: 3.3%;
+    height: 3.3%;
+    min-width: 28px;
+    min-height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
     z-index: 10;
     flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-right: -1.7%;
   `;
     // サイズ選択ボタンコンテナ（横スクロール可能、中央に配置）
     const sizeButtonsContainer = document.createElement("div");
     sizeButtonsContainer.style.cssText = `
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 0.9%;
     overflow-x: auto;
     overflow-y: hidden;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* IE and Edge */
-    justify-content: flex-start;
+    justify-content: center;
     flex: 1;
-    min-width: 200px;
-    padding: 0 48px;
+    min-width: 0;
+    padding: 0 4.6%;
     margin: 0 auto;
   `;
     // スクロールバーを非表示（Chrome, Safari, Edge）
@@ -977,107 +954,129 @@ function createSizeArea(availableSizes, initialSize, productName) {
     // サイズボタン配列
     const sizeButtons = [];
     // サイズボタンを横並びで表示（S, M, L, XLなど）
-    console.log("[Atelier Preview] Creating size buttons:", availableSizes, "initialSize:", initialSize);
-    console.log("[Atelier Preview] availableSizes length:", availableSizes.length);
     availableSizes.forEach((size, index)=>{
         const sizeBtn = document.createElement("button");
         sizeBtn.textContent = size;
         const isSelected = size === initialSize;
         sizeBtn.style.cssText = `
-      background: ${isSelected ? "black" : "#d1d5db"};
-      color: white;
-      border: none;
-      font-size: 14px;
-      font-weight: 600;
-      padding: 6px 12px;
-      border-radius: 8px;
+      background: ${isSelected ? "#000000" : "rgba(255, 255, 255, 0.95)"};
+      color: ${isSelected ? "#ffffff" : "#374151"};
+      border: ${isSelected ? "1px solid #000000" : "1px solid rgba(0, 0, 0, 0.15)"};
+      font-size: 1.2%;
+      font-weight: ${isSelected ? "700" : "600"};
+      padding: 0.7% 1.5%;
+      border-radius: 20px;
       cursor: pointer;
-      transition: all 0.15s ease;
-      min-width: 40px;
-      height: 28px;
+      transition: all 0.2s ease;
+      min-width: 4%;
+      height: 3.3%;
+      min-height: 32px;
       display: flex;
       align-items: center;
       justify-content: center;
       box-sizing: border-box;
       flex-shrink: 0;
       white-space: nowrap;
+      box-shadow: ${isSelected ? "0 2px 8px rgba(0, 0, 0, 0.15)" : "0 1px 3px rgba(0, 0, 0, 0.1)"};
+      backdrop-filter: blur(8px);
     `;
         sizeButtons.push(sizeBtn);
         sizeButtonsContainer.appendChild(sizeBtn);
-        console.log("[Atelier Preview] Added size button:", size, "selected:", isSelected, "index:", index);
-        console.log("[Atelier Preview] Button element:", sizeBtn, "parent:", sizeButtonsContainer);
     });
-    console.log("[Atelier Preview] Total size buttons created:", sizeButtons.length);
-    console.log("[Atelier Preview] sizeButtonsContainer children:", sizeButtonsContainer.children.length);
-    console.log("[Atelier Preview] sizeButtonsContainer computed width:", sizeButtonsContainer.offsetWidth);
-    // 右矢印ボタン（画面右端に固定）
+    // 右矢印ボタン（相対配置）
     const nextButton = document.createElement("button");
     nextButton.innerHTML = "&gt;";
     nextButton.style.cssText = `
-    position: absolute;
-    right: 0;
-    background: transparent;
-    border: none;
-    font-size: 18px;
-    color: black;
+    position: relative;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    font-size: 1.5%;
+    color: #374151;
     cursor: pointer;
-    padding: 4px 8px;
+    padding: 0;
     outline: none;
-    transition: all 0.15s ease;
-    font-weight: 500;
-    height: 28px;
+    transition: all 0.2s ease;
+    font-weight: 600;
+    width: 3.3%;
+    height: 3.3%;
+    min-width: 28px;
+    min-height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
     z-index: 10;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-left: -1.7%;
   `;
-    // レイアウト: 左矢印（絶対配置） → サイズボタンコンテナ（中央） → 右矢印（絶対配置）
+    // ホバーエフェクト
+    prevButton.addEventListener("mouseenter", ()=>{
+        prevButton.style.background = "rgba(255, 255, 255, 1)";
+        prevButton.style.transform = "scale(1.1)";
+    });
+    prevButton.addEventListener("mouseleave", ()=>{
+        prevButton.style.background = "rgba(255, 255, 255, 0.9)";
+        prevButton.style.transform = "scale(1)";
+    });
+    nextButton.addEventListener("mouseenter", ()=>{
+        nextButton.style.background = "rgba(255, 255, 255, 1)";
+        nextButton.style.transform = "scale(1.1)";
+    });
+    nextButton.addEventListener("mouseleave", ()=>{
+        nextButton.style.background = "rgba(255, 255, 255, 0.9)";
+        nextButton.style.transform = "scale(1)";
+    });
+    // レイアウト: 左矢印（相対配置） → サイズボタンコンテナ（中央） → 右矢印（相対配置）
     sizeSelectorWrapper.appendChild(prevButton);
     sizeSelectorWrapper.appendChild(sizeButtonsContainer);
     sizeSelectorWrapper.appendChild(nextButton);
     sizeArea.appendChild(sizeSelectorWrapper);
-    // 商品名をサイズ選択の下に追加
-    console.log("[Atelier Preview] Product name:", productName);
+    // 商品名は別の要素として返す（サイズ選択の下に配置するため）
+    let productNameDiv = null;
     if (productName) {
-        const productNameDiv = document.createElement("div");
-        productNameDiv.textContent = productName;
+        productNameDiv = document.createElement("div");
+        productNameDiv.textContent = productName.toUpperCase();
         productNameDiv.style.cssText = `
-      font-size: 16px;
+      font-size: 2.5%;
       font-weight: 700;
-      color: #374151;
-      margin-top: 8px;
+      letter-spacing: 0.1em;
+      color: #1f2937;
       text-align: center;
       width: 100%;
+      padding-bottom: 2%;
+      box-sizing: border-box;
     `;
-        sizeArea.appendChild(productNameDiv);
-        console.log("[Atelier Preview] Product name div added to sizeArea");
-    } else {
-        console.warn("[Atelier Preview] No product name provided");
     }
     return {
         sizeArea,
         sizeButtons,
         sizeButtonsContainer,
         prevButton,
-        nextButton
+        nextButton,
+        productNameDiv
     };
 }
 function createViewerContainer(productName) {
-    // 3Dモデルエリア（中央、広く取る）
+    // 3Dモデルエリア（中央、flex: 1で残りのスペースを埋める）
     const viewerContainer = document.createElement("div");
     viewerContainer.style.cssText = `
     position: relative;
     flex: 1;
     min-height: 0;
     overflow: hidden;
-    transform-origin: center top;
+    transform-origin: center center;
     pointer-events: auto;
     will-change: transform;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
   `;
     // 3Dモデルを表示するためのラッパー
     const modelWrapper = document.createElement("div");
@@ -1089,41 +1088,43 @@ function createViewerContainer(productName) {
     bottom: 0;
   `;
     viewerContainer.appendChild(modelWrapper);
-    // 右側フローティングアクションボタン
+    // 左側フローティングアクションボタン
     const floatingButtons = document.createElement("div");
     floatingButtons.style.cssText = `
     position: absolute;
-    right: 16px;
-    bottom: 120px;
+    left: 2.8%;
+    bottom: 20%;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 0.9%;
     z-index: 25;
     pointer-events: none;
   `;
-    // アイコン画像のURLを取得する関数
     const getIconUrl = (iconName)=>{
         if ("TURBOPACK compile-time falsy", 0) //TURBOPACK unreachable
         ;
-        // 開発環境では、consoleサーバーのpublicフォルダから取得
+        // 開発環境では常にconsoleサーバー（3000）から取得
         if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-            const port = window.location.port || "3000";
-            return `http://localhost:${port}/icon/${iconName}.png`;
+            return `http://localhost:3000/icon/${iconName}.png`;
         }
-        // 本番環境では、widget.jsが読み込まれたドメインから取得
+        // data-atelier-api-url属性から取得
+        const apiUrl = document.querySelector('[data-atelier-api-url]')?.getAttribute('data-atelier-api-url');
+        if (apiUrl) {
+            return `${apiUrl}/icon/${iconName}.png`;
+        }
+        // widget.jsのスクリプトタグから取得（getApiBaseUrlと同じロジック）
         const scriptTag = document.querySelector('script[src*="widget.js"]');
         if (scriptTag) {
-            const src = scriptTag.getAttribute("src");
+            const src = scriptTag.getAttribute('src');
             if (src) {
                 try {
                     const url = new URL(src, window.location.href);
-                    return `${url.protocol}//${url.host}/icon/${iconName}.png`;
+                    return `${url.origin}/icon/${iconName}.png`;
                 } catch (e) {
-                // URL解析に失敗した場合は現在のオリジンを使用
+                // URL解析に失敗
                 }
             }
         }
-        // フォールバック: 現在のオリジンを使用
         return `${window.location.origin}/icon/${iconName}.png`;
     };
     // ジャケットアイコンボタン
@@ -1132,23 +1133,28 @@ function createViewerContainer(productName) {
     jacketIcon.src = getIconUrl("jaclet");
     jacketIcon.alt = "ジャケット";
     jacketIcon.style.cssText = `
-    width: 24px;
-    height: 24px;
+    width: 2.2%;
+    height: 2.2%;
+    min-width: 20px;
+    min-height: 20px;
     object-fit: contain;
   `;
     jacketButton.appendChild(jacketIcon);
     jacketButton.style.cssText = `
-    width: 48px;
-    height: 48px;
+    width: 4.6%;
+    height: 4.6%;
+    min-width: 44px;
+    min-height: 44px;
     border-radius: 50%;
-    background: white;
-    border: 1px solid #e5e7eb;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0, 0, 0, 0.1);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    transition: all 0.2s ease;
     color: black;
   `;
     // ユーザーアイコンボタン
@@ -1157,23 +1163,28 @@ function createViewerContainer(productName) {
     userIcon.src = getIconUrl("person");
     userIcon.alt = "ユーザー";
     userIcon.style.cssText = `
-    width: 24px;
-    height: 24px;
+    width: 2.2%;
+    height: 2.2%;
+    min-width: 20px;
+    min-height: 20px;
     object-fit: contain;
   `;
     userButton.appendChild(userIcon);
     userButton.style.cssText = `
-    width: 48px;
-    height: 48px;
+    width: 4.6%;
+    height: 4.6%;
+    min-width: 44px;
+    min-height: 44px;
     border-radius: 50%;
-    background: white;
-    border: 1px solid #e5e7eb;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0, 0, 0, 0.1);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    transition: all 0.2s ease;
     color: black;
   `;
     floatingButtons.appendChild(jacketButton);
@@ -1266,32 +1277,31 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$previ
 var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$src$2f$ui$2d$elements$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/atelier/packages/preview/src/ui-elements.ts [app-client] (ecmascript)");
 ;
 ;
-/**
- * 背景画像のURLを取得する
- * 開発環境と本番環境で異なるパスを返す
- */ function getBackgroundImageUrl() {
+function getBackgroundImageUrl() {
     if ("TURBOPACK compile-time falsy", 0) //TURBOPACK unreachable
     ;
-    // 開発環境では、consoleサーバーのpublicフォルダから取得
+    // 開発環境では常にconsoleサーバー（3000）から取得
     if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-        const port = window.location.port || "3000";
-        return `http://localhost:${port}/model_background.png`;
+        return `http://localhost:3000/model_background.png`;
     }
-    // 本番環境では、widget.jsが読み込まれたドメインから取得
-    // widget.jsのスクリプトタグのsrcから取得を試みる
+    // data-atelier-api-url属性から取得
+    const apiUrl = document.querySelector('[data-atelier-api-url]')?.getAttribute('data-atelier-api-url');
+    if (apiUrl) {
+        return `${apiUrl}/model_background.png`;
+    }
+    // widget.jsのスクリプトタグから取得（getApiBaseUrlと同じロジック）
     const scriptTag = document.querySelector('script[src*="widget.js"]');
     if (scriptTag) {
-        const src = scriptTag.getAttribute("src");
+        const src = scriptTag.getAttribute('src');
         if (src) {
             try {
                 const url = new URL(src, window.location.href);
-                return `${url.protocol}//${url.host}/model_background.png`;
+                return `${url.origin}/model_background.png`;
             } catch (e) {
-            // URL解析に失敗した場合は現在のオリジンを使用
+            // URL解析に失敗
             }
         }
     }
-    // フォールバック: 現在のオリジンを使用
     return `${window.location.origin}/model_background.png`;
 }
 function initPreviewPanel(options) {
@@ -1322,20 +1332,24 @@ function initPreviewPanel(options) {
         // エラーは無視（既にクリアされている可能性がある）
         console.warn("[Atelier Preview] Could not clear container, continuing anyway:", error);
     }
-    // コンテナのスタイルを設定
-    const currentStyle = container.style.cssText || "";
+    // コンテナのスタイルを完全にリセットして設定（親要素の影響を受けないように）
     container.style.cssText = `
-    ${currentStyle}
     display: flex !important;
     flex-direction: column !important;
     overflow: hidden !important;
     background: transparent !important;
     gap: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-sizing: border-box !important;
   `.trim();
     // UI要素を作成
     console.log("[Atelier Preview] initPreviewPanel - availableSizes:", availableSizes, "length:", availableSizes.length);
     const sizeAreaElements = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$src$2f$ui$2d$elements$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["createSizeArea"])(availableSizes, initialSize, productName);
-    const { sizeArea, sizeButtons, sizeButtonsContainer, prevButton, nextButton } = sizeAreaElements;
+    const { sizeArea, sizeButtons, sizeButtonsContainer, prevButton, nextButton, productNameDiv } = sizeAreaElements;
     console.log("[Atelier Preview] initPreviewPanel - sizeButtons length:", sizeButtons.length);
     console.log("[Atelier Preview] initPreviewPanel - sizeButtonsContainer children:", sizeButtonsContainer.children.length);
     // 選択されたサイズボタンを中央にスクロールする関数
@@ -1370,28 +1384,41 @@ function initPreviewPanel(options) {
     setButtonPointerEvents(userButton);
     // フローティングボタンのホバーエフェクト
     jacketButton.addEventListener("mouseenter", ()=>{
-        jacketButton.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.15)";
-        jacketButton.style.transform = "scale(1.05)";
+        jacketButton.style.boxShadow = "0 4px 16px rgba(0, 0, 0, 0.18)";
+        jacketButton.style.transform = "scale(1.08)";
+        jacketButton.style.background = "rgba(255, 255, 255, 1)";
     });
     jacketButton.addEventListener("mouseleave", ()=>{
-        jacketButton.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.1)";
+        jacketButton.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.12)";
         jacketButton.style.transform = "scale(1)";
+        jacketButton.style.background = "rgba(255, 255, 255, 0.95)";
     });
     userButton.addEventListener("mouseenter", ()=>{
-        userButton.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.15)";
-        userButton.style.transform = "scale(1.05)";
+        userButton.style.boxShadow = "0 4px 16px rgba(0, 0, 0, 0.18)";
+        userButton.style.transform = "scale(1.08)";
+        userButton.style.background = "rgba(255, 255, 255, 1)";
     });
     userButton.addEventListener("mouseleave", ()=>{
-        userButton.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.1)";
+        userButton.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.12)";
         userButton.style.transform = "scale(1)";
+        userButton.style.background = "rgba(255, 255, 255, 0.95)";
     });
     // サイズボタンのイベントハンドラー
     const updateSizeButtons = ()=>{
         sizeButtons.forEach((btn, idx)=>{
             const btnSize = availableSizes[idx];
             const selected = btnSize === currentSize;
-            btn.style.background = selected ? "black" : "#d1d5db";
-            btn.style.color = "white";
+            btn.style.background = selected ? "#000000" : "rgba(255, 255, 255, 0.95)";
+            btn.style.color = selected ? "#ffffff" : "#374151";
+            btn.style.border = selected ? "1px solid #000000" : "1px solid rgba(0, 0, 0, 0.15)";
+            btn.style.fontWeight = selected ? "700" : "600";
+            btn.style.fontSize = "1.2%";
+            btn.style.padding = "0.7% 1.5%";
+            btn.style.minWidth = "4%";
+            btn.style.height = "3.3%";
+            btn.style.minHeight = "32px";
+            btn.style.borderRadius = "20px";
+            btn.style.boxShadow = selected ? "0 2px 8px rgba(0, 0, 0, 0.15)" : "0 1px 3px rgba(0, 0, 0, 0.1)";
         });
         // 選択されたサイズを中央にスクロール
         scrollToSelectedSize();
@@ -1539,9 +1566,12 @@ function initPreviewPanel(options) {
         }
     }, true);
     // 全要素を追加
+    // コンテナの構造: モデル（中央、flex: 1） → サイズ選択（下） → 商品名（下）
     container.appendChild(viewerContainer);
-    // sizeAreaはviewerContainer内に絶対配置されるため、viewerContainerに追加
-    viewerContainer.appendChild(sizeArea);
+    container.appendChild(sizeArea);
+    if (productNameDiv) {
+        container.appendChild(productNameDiv);
+    }
     container.appendChild(bottomControls);
     // 3Dビューアを初期化（背景画像を指定）
     const backgroundImageUrl = getBackgroundImageUrl();
@@ -1559,6 +1589,9 @@ function initPreviewPanel(options) {
         viewerContainer,
         bottomControls
     ];
+    if (productNameDiv) {
+        createdElements.push(productNameDiv);
+    }
     return {
         updateGlbUrl (newGlbUrl) {
             // 後方互換性のため
@@ -1685,9 +1718,15 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2
 var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$src$2f$index$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/atelier/packages/preview/src/index.ts [app-client] (ecmascript) <locals>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$packages$2f$preview$2f$src$2f$preview$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/atelier/packages/preview/src/preview.ts [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$auth$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/atelier/apps/console/src/lib/auth/api-client.ts [app-client] (ecmascript)");
+(()=>{
+    const e = new Error("Cannot find module './PhoneFrame'");
+    e.code = 'MODULE_NOT_FOUND';
+    throw e;
+})();
 ;
 var _s = __turbopack_context__.k.signature();
 "use client";
+;
 ;
 ;
 ;
@@ -1994,7 +2033,7 @@ function PreviewPanel({ selectedProduct, selectedSize }) {
         ref: rootRef,
         className: "flex h-screen flex-col shadow-lg overflow-hidden",
         style: {
-            width: '390px'
+            width: '400px'
         },
         onKeyDownCapture: (e)=>{
             // captureフェーズでイベントをキャッチ（他のイベントリスナーより先に処理）
@@ -2020,7 +2059,7 @@ function PreviewPanel({ selectedProduct, selectedSize }) {
                         children: "プレビュー"
                     }, void 0, false, {
                         fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                        lineNumber: 318,
+                        lineNumber: 320,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2031,18 +2070,18 @@ function PreviewPanel({ selectedProduct, selectedSize }) {
                             className: "h-5 w-5"
                         }, void 0, false, {
                             fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                            lineNumber: 324,
+                            lineNumber: 326,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                        lineNumber: 319,
+                        lineNumber: 321,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                lineNumber: 317,
+                lineNumber: 319,
                 columnNumber: 7
             }, this),
             selectedProduct && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2052,92 +2091,33 @@ function PreviewPanel({ selectedProduct, selectedSize }) {
                     children: selectedProduct.name
                 }, void 0, false, {
                     fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                    lineNumber: 331,
+                    lineNumber: 333,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                lineNumber: 330,
+                lineNumber: 332,
                 columnNumber: 9
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "flex-1 flex items-center justify-center p-6 bg-gray-100 overflow-hidden",
-                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                    className: "flex flex-col relative overflow-hidden",
-                    style: {
-                        width: '300px',
-                        height: '600px',
-                        border: '3px solid black',
-                        borderRadius: '16px',
-                        background: 'white'
-                    },
-                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "flex-1 flex flex-col relative overflow-hidden",
-                        style: {
-                            padding: '24px 4px',
-                            boxSizing: 'border-box'
-                        },
-                        children: selectedAsset?.modelUrl || selectedAsset?.glbUrl ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            ref: previewContainerRef,
-                            className: "flex-1 flex flex-col overflow-hidden",
-                            style: {
-                                minHeight: 0
-                            }
-                        }, void 0, false, {
-                            fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                            lineNumber: 360,
-                            columnNumber: 15
-                        }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: "flex-1 flex items-center justify-center text-gray-400",
-                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "text-center",
-                                children: [
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                        className: "text-sm font-medium mb-1",
-                                        children: "アセットがありません"
-                                    }, void 0, false, {
-                                        fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                                        lineNumber: 370,
-                                        columnNumber: 19
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                        className: "text-xs",
-                                        children: "アセット管理から3Dモデルを追加してください"
-                                    }, void 0, false, {
-                                        fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                                        lineNumber: 371,
-                                        columnNumber: 19
-                                    }, this)
-                                ]
-                            }, void 0, true, {
-                                fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                                lineNumber: 369,
-                                columnNumber: 17
-                            }, this)
-                        }, void 0, false, {
-                            fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                            lineNumber: 368,
-                            columnNumber: 15
-                        }, this)
-                    }, void 0, false, {
-                        fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                        lineNumber: 351,
-                        columnNumber: 11
-                    }, this)
+                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(PhoneFrame, {
+                    previewContainerRef: previewContainerRef,
+                    selectedAsset: selectedAsset
                 }, void 0, false, {
                     fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                    lineNumber: 340,
+                    lineNumber: 341,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-                lineNumber: 336,
+                lineNumber: 338,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/atelier/apps/console/src/features/preview/PreviewPanel.tsx",
-        lineNumber: 293,
+        lineNumber: 295,
         columnNumber: 5
     }, this);
 }
@@ -2184,7 +2164,7 @@ function DatabaseLayoutContent({ children }) {
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("main", {
-                className: `overflow-y-auto bg-gray-50 p-6 transition-all duration-300 ease-in-out ${isPreviewOpen ? "flex-1 mr-96" : "flex-1"}`,
+                className: `overflow-y-auto bg-gray-50 p-6 transition-all duration-300 ease-in-out ${isPreviewOpen ? "flex-1 mr-[400px]" : "flex-1"}`,
                 children: children
             }, void 0, false, {
                 fileName: "[project]/atelier/apps/console/src/app/database/layout.tsx",

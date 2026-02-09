@@ -77,6 +77,7 @@ __turbopack_context__.s([
     "useAuth",
     ()=>useAuth
 ]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$build$2f$polyfills$2f$process$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = /*#__PURE__*/ __turbopack_context__.i("[project]/atelier/node_modules/next/dist/build/polyfills/process.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/atelier/node_modules/next/dist/compiled/react/jsx-dev-runtime.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/atelier/node_modules/next/dist/compiled/react/index.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/atelier/node_modules/next/navigation.js [app-client] (ecmascript)");
@@ -103,28 +104,36 @@ function AuthProvider({ children }) {
             __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["supabase"].auth.getSession().then({
                 "AuthProvider.useEffect": async ({ data: { session }, error: sessionError })=>{
                     if (!isMounted) return;
-                    console.log("[AuthContext] Initial session retrieved:", {
-                        hasSession: !!session,
-                        hasError: !!sessionError
-                    });
+                    if ("TURBOPACK compile-time truthy", 1) {
+                        console.log("[AuthContext] Initial session retrieved:", {
+                            hasSession: !!session,
+                            hasError: !!sessionError
+                        });
+                    }
                     setUser(session?.user ?? null);
                     if (session?.user && session?.access_token) {
                         // 初回ログイン確定処理（招待メールからのリダイレクト時など）
                         try {
-                            console.log("[AuthContext] Calling post-login API to ensure profile exists...");
+                            if ("TURBOPACK compile-time truthy", 1) {
+                                console.log("[AuthContext] Calling post-login API to ensure profile exists...");
+                            }
                             const postLoginResponse = await fetch("/api/auth/post-login", {
                                 method: "POST",
                                 headers: {
                                     Authorization: `Bearer ${session.access_token}`
                                 }
                             });
-                            if (postLoginResponse.ok) {
-                                console.log("[AuthContext] post-login success");
-                            } else {
-                                console.log("[AuthContext] post-login not needed or already completed");
+                            if ("TURBOPACK compile-time truthy", 1) {
+                                if (postLoginResponse.ok) {
+                                    console.log("[AuthContext] post-login success");
+                                } else {
+                                    console.log("[AuthContext] post-login not needed or already completed");
+                                }
                             }
                         } catch (postLoginError) {
-                            console.log("[AuthContext] post-login error (may be expected):", postLoginError);
+                            if ("TURBOPACK compile-time truthy", 1) {
+                                console.log("[AuthContext] post-login error (may be expected):", postLoginError);
+                            }
                         }
                         // shop_id を取得
                         fetchShopId(session.user.id, session.access_token);
@@ -137,9 +146,11 @@ function AuthProvider({ children }) {
             const { data: { subscription } } = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["supabase"].auth.onAuthStateChange({
                 "AuthProvider.useEffect": async (event, session)=>{
                     if (!isMounted) return;
-                    console.log("[AuthContext] Auth state changed:", event, {
-                        hasSession: !!session
-                    });
+                    if ("TURBOPACK compile-time truthy", 1) {
+                        console.log("[AuthContext] Auth state changed:", event, {
+                            hasSession: !!session
+                        });
+                    }
                     setUser(session?.user ?? null);
                     if (session?.user && session?.access_token) {
                         try {
@@ -167,24 +178,34 @@ function AuthProvider({ children }) {
     }["AuthProvider.useEffect"], []);
     // APIエンドポイント経由でshop_idを取得（RLSをバイパス）
     const fetchShopId = async (userId, accessToken)=>{
-        console.log("[AuthContext] fetchShopId called for userId:", userId);
+        if ("TURBOPACK compile-time truthy", 1) {
+            console.log("[AuthContext] fetchShopId called for userId:", userId);
+        }
         try {
             if (!accessToken) {
-                console.warn("[AuthContext] No access token provided, using default shop_id");
+                if ("TURBOPACK compile-time truthy", 1) {
+                    console.warn("[AuthContext] No access token provided, using default shop_id");
+                }
                 setShopId("default_shop");
                 setIsLoading(false);
                 return;
             }
-            console.log("[AuthContext] Using provided access token, calling API...");
+            if ("TURBOPACK compile-time truthy", 1) {
+                console.log("[AuthContext] Using provided access token, calling API...");
+            }
             // タイムアウト付きでAPIエンドポイントを呼び出し
             const controller = new AbortController();
             const timeoutId = setTimeout(()=>{
-                console.error("[AuthContext] Request timeout, aborting...");
+                if ("TURBOPACK compile-time truthy", 1) {
+                    console.error("[AuthContext] Request timeout, aborting...");
+                }
                 controller.abort();
             }, 10000); // 10秒でタイムアウト
             let response;
             try {
-                console.log("[AuthContext] Making fetch request to /api/auth/shop-id");
+                if ("TURBOPACK compile-time truthy", 1) {
+                    console.log("[AuthContext] Making fetch request to /api/auth/shop-id");
+                }
                 response = await fetch("/api/auth/shop-id", {
                     method: "GET",
                     headers: {
@@ -192,13 +213,17 @@ function AuthProvider({ children }) {
                     },
                     signal: controller.signal
                 });
-                console.log("[AuthContext] Fetch completed, status:", response.status);
+                if ("TURBOPACK compile-time truthy", 1) {
+                    console.log("[AuthContext] Fetch completed, status:", response.status);
+                }
                 clearTimeout(timeoutId);
             } catch (fetchError) {
                 clearTimeout(timeoutId);
                 console.error("[AuthContext] Fetch error:", fetchError);
                 if (fetchError.name === "AbortError") {
-                    console.error("[AuthContext] fetchShopId timeout after 10 seconds");
+                    if ("TURBOPACK compile-time truthy", 1) {
+                        console.error("[AuthContext] fetchShopId timeout after 10 seconds");
+                    }
                     setShopId("default_shop");
                     setIsLoading(false);
                     return;
@@ -232,20 +257,30 @@ function AuthProvider({ children }) {
                 throw error;
             }
             const data = await response.json();
-            console.log("[AuthContext] API response:", data);
+            if ("TURBOPACK compile-time truthy", 1) {
+                console.log("[AuthContext] API response:", data);
+            }
             if (data.shopId) {
-                console.log("[AuthContext] shop_id found:", data.shopId);
+                if ("TURBOPACK compile-time truthy", 1) {
+                    console.log("[AuthContext] shop_id found:", data.shopId);
+                }
                 setShopId(String(data.shopId));
             } else {
-                console.warn("[AuthContext] No shop_id found in response, data:", data);
+                if ("TURBOPACK compile-time truthy", 1) {
+                    console.warn("[AuthContext] No shop_id found in response, data:", data);
+                }
                 setShopId("default_shop");
             }
             // role を設定
             if (data.role && (data.role === "owner" || data.role === "member")) {
-                console.log("[AuthContext] role found:", data.role);
+                if ("TURBOPACK compile-time truthy", 1) {
+                    console.log("[AuthContext] role found:", data.role);
+                }
                 setUserRole(data.role);
             } else {
-                console.warn("[AuthContext] No valid role found in response");
+                if ("TURBOPACK compile-time truthy", 1) {
+                    console.warn("[AuthContext] No valid role found in response");
+                }
                 setUserRole(null);
             }
         } catch (error) {
@@ -256,14 +291,18 @@ function AuthProvider({ children }) {
             setUserRole(null);
         } finally{
             // 必ずローディング状態を解除
-            console.log("[AuthContext] fetchShopId completed, setting isLoading to false");
+            if ("TURBOPACK compile-time truthy", 1) {
+                console.log("[AuthContext] fetchShopId completed, setting isLoading to false");
+            }
             setIsLoading(false);
         }
     };
     const login = async (email, password)=>{
         setIsLoading(true);
         try {
-            console.log("[AuthContext] Attempting login for email:", email);
+            if ("TURBOPACK compile-time truthy", 1) {
+                console.log("[AuthContext] Attempting login for email:", email);
+            }
             const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["supabase"].auth.signInWithPassword({
                 email,
                 password
@@ -286,12 +325,16 @@ function AuthProvider({ children }) {
                 setIsLoading(false);
                 throw new Error("ログインに失敗しました: ユーザー情報が取得できませんでした");
             }
-            console.log("[AuthContext] Login successful, user ID:", data.user.id);
+            if ("TURBOPACK compile-time truthy", 1) {
+                console.log("[AuthContext] Login successful, user ID:", data.user.id);
+            }
             // ユーザー情報を明示的に設定（isAuthenticatedを即座に更新するため）
             setUser(data.user);
             // 初回ログイン確定処理（pending_invites → profiles）
             try {
-                console.log("[AuthContext] Calling post-login API to confirm invite...");
+                if ("TURBOPACK compile-time truthy", 1) {
+                    console.log("[AuthContext] Calling post-login API to confirm invite...");
+                }
                 const postLoginResponse = await fetch("/api/auth/post-login", {
                     method: "POST",
                     headers: {
@@ -307,10 +350,14 @@ function AuthProvider({ children }) {
                         throw new Error(postLoginError.message || "このメールアドレスは招待されていません。管理者に連絡してください。");
                     }
                     // その他のエラーは警告だけ出して続行
-                    console.warn("[AuthContext] post-login failed, trying to fetch shop_id directly...");
+                    if ("TURBOPACK compile-time truthy", 1) {
+                        console.warn("[AuthContext] post-login failed, trying to fetch shop_id directly...");
+                    }
                 } else {
-                    const postLoginData = await postLoginResponse.json();
-                    console.log("[AuthContext] post-login success:", postLoginData);
+                    if ("TURBOPACK compile-time truthy", 1) {
+                        const postLoginData = await postLoginResponse.json();
+                        console.log("[AuthContext] post-login success:", postLoginData);
+                    }
                 }
             } catch (postLoginError) {
                 console.error("[AuthContext] post-login exception:", postLoginError);
@@ -322,7 +369,9 @@ function AuthProvider({ children }) {
                 await fetchShopId(data.user.id, data.session.access_token);
             } catch (shopIdError) {
                 // shop_idの取得に失敗してもログインは成功させる
-                console.warn("[AuthContext] Failed to fetch shop_id, but login succeeded:", shopIdError);
+                if ("TURBOPACK compile-time truthy", 1) {
+                    console.warn("[AuthContext] Failed to fetch shop_id, but login succeeded:", shopIdError);
+                }
                 // profiles が存在しない場合は警告を出す
                 if (shopIdError?.status === 404 || shopIdError?.response?.status === 404) {
                     console.error("[AuthContext] Profile not found. " + "This may indicate that the user was not invited.");
@@ -333,7 +382,9 @@ function AuthProvider({ children }) {
             // ローディング状態を確実に解除
             setIsLoading(false);
             // ログイン成功後、即座にリダイレクト
-            console.log("[AuthContext] Redirecting to home page");
+            if ("TURBOPACK compile-time truthy", 1) {
+                console.log("[AuthContext] Redirecting to home page");
+            }
             // window.locationを使用して確実にリダイレクト
             if ("TURBOPACK compile-time truthy", 1) {
                 window.location.href = '/';
@@ -371,7 +422,9 @@ function AuthProvider({ children }) {
             let error;
             try {
                 const text = await response.text();
-                console.log("[AuthContext] Signup error response text:", text);
+                if ("TURBOPACK compile-time truthy", 1) {
+                    console.log("[AuthContext] Signup error response text:", text);
+                }
                 error = text ? JSON.parse(text) : {
                     error: "Failed to sign up"
                 };
@@ -410,16 +463,18 @@ function AuthProvider({ children }) {
         router.push("/login");
     };
     const isAuthenticated = !!user;
-    // デバッグ用ログ
+    // デバッグ用ログ（開発環境のみ）
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "AuthProvider.useEffect": ()=>{
-            console.log("[AuthContext] State update:", {
-                hasUser: !!user,
-                userId: user?.id,
-                isAuthenticated,
-                isLoading,
-                shopId
-            });
+            if ("TURBOPACK compile-time truthy", 1) {
+                console.log("[AuthContext] State update:", {
+                    hasUser: !!user,
+                    userId: user?.id,
+                    isAuthenticated,
+                    isLoading,
+                    shopId
+                });
+            }
         }
     }["AuthProvider.useEffect"], [
         user,
@@ -441,7 +496,7 @@ function AuthProvider({ children }) {
         children: children
     }, void 0, false, {
         fileName: "[project]/atelier/apps/console/src/contexts/AuthContext.tsx",
-        lineNumber: 377,
+        lineNumber: 431,
         columnNumber: 5
     }, this);
 }

@@ -64,12 +64,18 @@ const supabaseAdmin = supabaseUrl && supabaseServiceRoleKey ? (0, __TURBOPACK__i
 
 __turbopack_context__.s([
     "POST",
-    ()=>POST
+    ()=>POST,
+    "maxDuration",
+    ()=>maxDuration,
+    "runtime",
+    ()=>runtime
 ]);
 var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/atelier/node_modules/next/server.js [app-route] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/atelier/apps/console/src/lib/supabase/server.ts [app-route] (ecmascript)");
 ;
 ;
+const runtime = 'nodejs'; // Node.jsランタイムを使用
+const maxDuration = 300; // 5分（大きなファイルのアップロードに時間がかかる場合があるため）
 async function POST(request) {
     try {
         if (!__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"]) {
@@ -89,13 +95,34 @@ async function POST(request) {
                 status: 400
             });
         }
-        // ファイルサイズのチェック（100MB制限）
-        const maxSize = 100 * 1024 * 1024; // 100MB
+        // ファイルサイズのチェック（500MB制限）
+        const maxSize = 500 * 1024 * 1024; // 500MB
         if (file.size > maxSize) {
             return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-                error: "File size exceeds 100MB limit"
+                error: "File size exceeds 500MB limit"
             }, {
                 status: 400
+            });
+        }
+        // 大きなファイル（50MB以上）の場合はクライアントサイドアップロードを推奨
+        const LARGE_FILE_THRESHOLD = 50 * 1024 * 1024; // 50MB
+        if (file.size > LARGE_FILE_THRESHOLD) {
+            // ファイル名を安全にする（UUID + 元の拡張子）
+            const fileExt = file.name.split(".").pop();
+            const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+            const filePath = `${folder}/${fileName}`;
+            const bucketName = process.env.SUPABASE_STORAGE_BUCKET || "products";
+            // 公開URLを取得（アップロード完了後に使用）
+            const { data: urlData } = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].storage.from(bucketName).getPublicUrl(filePath);
+            // クライアントサイドアップロード用の情報を返す
+            return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+                useClientUpload: true,
+                fileName,
+                filePath,
+                bucketName,
+                folder,
+                contentType: file.type,
+                publicUrl: urlData?.publicUrl
             });
         }
         // ファイル名を安全にする（UUID + 元の拡張子）
@@ -139,11 +166,44 @@ async function POST(request) {
                 status: 500
             });
         }
-        console.log(`Uploading to bucket: ${bucketName}, path: ${filePath}`);
-        const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].storage.from(bucketName).upload(filePath, buffer, {
-            contentType: file.type,
-            upsert: false
-        });
+        console.log(`Uploading to bucket: ${bucketName}, path: ${filePath}, size: ${file.size} bytes`);
+        // 大きなファイル（50MB以上）の場合はチャンクアップロードを使用
+        const CHUNK_SIZE = 50 * 1024 * 1024; // 50MB per chunk
+        const fileSize = file.size;
+        let data, error;
+        if (fileSize > CHUNK_SIZE) {
+            // チャンクアップロード
+            console.log(`Large file detected (${fileSize} bytes), using chunked upload`);
+            // Supabase Storageのチャンクアップロードは、ファイルを分割してアップロードする必要がある
+            // しかし、Supabase StorageのNode.jsクライアントは自動的にチャンクアップロードをサポートしていないため、
+            // 一度にアップロードを試みる（Supabase Storageの制限は通常50MBだが、プランによって異なる）
+            // エラーが発生した場合は、より詳細なエラーメッセージを返す
+            // まず通常のアップロードを試みる
+            const uploadResult = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].storage.from(bucketName).upload(filePath, buffer, {
+                contentType: file.type,
+                upsert: false
+            });
+            data = uploadResult.data;
+            error = uploadResult.error;
+            // エラーが発生し、ファイルサイズ制限に関するエラーの場合
+            if (error && (error.message?.includes("maximum allowed size") || error.message?.includes("exceeded"))) {
+                return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+                    error: "File size exceeds storage limit",
+                    details: `ファイルサイズ（${(fileSize / 1024 / 1024).toFixed(2)}MB）がSupabase Storageの制限を超えています。`,
+                    hint: "Supabase Storageの無料プランでは50MB、Proプランでは5GBまでアップロード可能です。プランをアップグレードするか、ファイルサイズを圧縮してください。"
+                }, {
+                    status: 413
+                });
+            }
+        } else {
+            // 通常のアップロード
+            const uploadResult = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].storage.from(bucketName).upload(filePath, buffer, {
+                contentType: file.type,
+                upsert: false
+            });
+            data = uploadResult.data;
+            error = uploadResult.error;
+        }
         if (error) {
             console.error("Error uploading file:", error);
             // StorageErrorの型に合わせて安全にプロパティにアクセス

@@ -14,10 +14,13 @@
 # next.js
 /.next/
 /out/
+apps/console/.next/
 
 # production
 /build
 /dist
+# widget.jsはビルド時に生成されるためGitから除外
+apps/console/public/widget.js
 
 # misc
 .DS_Store

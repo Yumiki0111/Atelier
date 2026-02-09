@@ -2,13 +2,14 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { X } from "lucide-react";
-import type { Product, ProductSize } from "@atelier/shared";
+import type { Product, ProductSize, Asset } from "@atelier/shared";
 import { useProductSelection } from "@/contexts/ProductSelectionContext";
 import { useAssets } from "../products/useAssets";
 import { useAuth } from "@/contexts/AuthContext";
 import { initPreviewPanel } from "@atelier/preview";
 import type { PreviewPanelInstance } from "@atelier/preview";
 import { authenticatedFetch } from "@/lib/auth/api-client";
+import { PhoneFrame } from "./PhoneFrame";
 
 interface PreviewPanelProps {
   selectedProduct?: Product;
@@ -28,15 +29,15 @@ export function PreviewPanel({
   const { data: assets = [] } = useAssets(selectedProduct?.id);
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const previewInstanceRef = useRef<PreviewPanelInstance | null>(null);
-  const [isSendingMessage, setIsSendingMessage] = useState(false);
-  const conversationIdRef = useRef<string | undefined>(undefined);
-  const sessionIdRef = useRef<string | undefined>(undefined);
+  const [frameBounds, setFrameBounds] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  const previewWrapperRef = useRef<HTMLDivElement>(null);
+  const phoneFrameRef = useRef<HTMLDivElement>(null);
+  const borderRef = useRef<HTMLDivElement>(null);
 
-  // 選択されたサイズに応じたアセットの最新バージョンを取得
-  const selectedAsset = useMemo(() => {
+  // 選択されたサイズに応じたアセットをカテゴリーごとに取得
+  const assetsByCategory = useMemo(() => {
     if (assets.length === 0) {
-      // アセットがない場合はnullを返す（モックデータは使用しない）
-      return null;
+      return new Map<string, Asset>();
     }
     
     // 現在選択されているサイズのアセットをフィルタ
@@ -44,105 +45,100 @@ export function PreviewPanel({
       .filter((asset) => asset.size === currentSize && asset.isActive !== false)
       .sort((a, b) => b.version - a.version);
     
-    // 該当サイズのアセットがない場合、他のサイズから最新のものを取得
-    if (sizeAssets.length === 0) {
-      const allAssets = assets
-        .filter((asset) => asset.isActive !== false)
-        .sort((a, b) => b.version - a.version);
-      return allAssets.length > 0 ? allAssets[0] : null;
-    }
-    
-    return sizeAssets[0];
-  }, [assets, currentSize]);
-
-  // 利用可能なサイズを取得（デフォルトでS、M、L、XLを表示）
-  const availableSizes = useMemo(() => {
-    // 常にデフォルトサイズを返す（アセットの有無に関わらず）
-    const defaultSizes = ["S", "M", "L", "XL"];
-    
-    // アセットから実際に存在するサイズを取得
-    const assetSizes = new Set<string>();
-    assets.forEach((asset) => {
-      if (asset.isActive !== false) {
-        assetSizes.add(asset.size);
+    // カテゴリーごとに最新のアセットを取得
+    const categoryMap = new Map<string, Asset>();
+    sizeAssets.forEach((asset) => {
+      if (asset.category) {
+        // 既にカテゴリーにアセットがない場合、またはより新しいバージョンの場合
+        const existing = categoryMap.get(asset.category);
+        if (!existing || asset.version > existing.version) {
+          categoryMap.set(asset.category, asset);
+        }
       }
     });
     
-    // デフォルトサイズを返す（アセットが存在するサイズも含む）
-    return defaultSizes;
-  }, [assets]);
+    return categoryMap;
+  }, [assets, currentSize]);
+  
+  // 後方互換性のため、selectedAssetも保持（最初のアセット）
+  const selectedAsset = useMemo(() => {
+    if (assetsByCategory.size === 0) {
+      return null;
+    }
+    // 最初のアセットを返す（後方互換性のため）
+    return Array.from(assetsByCategory.values())[0];
+  }, [assetsByCategory]);
+
+  // 利用可能なサイズ（固定値のためメモ化不要）
+  const availableSizes: ProductSize[] = ["S", "M", "L", "XL"];
 
   // Vanilla JSのプレビューパネルを初期化
   useEffect(() => {
     if (!previewContainerRef.current) return;
 
-    // modelUrlを優先、なければglbUrlを使用（後方互換性）
+    // modelUrlを優先、なければglbUrlを使用
     const modelUrl = selectedAsset?.modelUrl || selectedAsset?.glbUrl;
     
-    console.log("[PreviewPanel] Initializing preview panel:", {
-      modelUrl,
-      glbUrl: selectedAsset?.glbUrl,
-      hasAsset: !!selectedAsset,
-      assetsCount: assets.length,
-      availableSizes,
-      currentSize,
-    });
-
-    // 既存のインスタンスを破棄（新しいインスタンスを作成する前に）
+    // 既存のインスタンスを破棄
     if (previewInstanceRef.current) {
       try {
         previewInstanceRef.current.destroy();
       } catch (error) {
-        console.error("[PreviewPanel] Error destroying previous instance:", error);
+        if (process.env.NODE_ENV === "development") {
+          console.error("[PreviewPanel] Error destroying previous instance:", error);
+        }
       } finally {
         previewInstanceRef.current = null;
       }
     }
 
-    // コンテナをクリア（destroy()の後、新しいインスタンスを作成する前）
-    // innerHTMLは使わず、個別にremove()で削除（Reactとの競合を避けるため）
+    // コンテナをクリア
     if (previewContainerRef.current) {
       try {
-        // 子要素を配列にコピーしてから削除（削除中にDOMが変更されるのを防ぐ）
         const children = Array.from(previewContainerRef.current.children);
         for (const child of children) {
           try {
             child.remove();
           } catch (error) {
-            // 個別の削除エラーは無視
-            console.warn("[PreviewPanel] Could not remove child element:", error);
+            if (process.env.NODE_ENV === "development") {
+              console.warn("[PreviewPanel] Could not remove child element:", error);
+            }
           }
         }
       } catch (error) {
-        console.warn("[PreviewPanel] Could not clear container:", error);
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[PreviewPanel] Could not clear container:", error);
+        }
       }
     }
 
-    // アセットがない場合は初期化しない
-    if (!modelUrl) {
-      console.warn("[PreviewPanel] No asset available, skipping initialization");
-      return;
-    }
-
-    // 商品名を取得
     const currentProductName = selectedProduct?.name;
-    console.log("[PreviewPanel] Product name:", currentProductName);
 
-    // 新しいインスタンスを初期化
+    // アセット情報を準備（カテゴリーごと）
+    const assetList = Array.from(assetsByCategory.values()).map((asset) => ({
+      url: asset.modelUrl || asset.glbUrl || "",
+      category: asset.category,
+    })).filter((asset) => asset.url); // URLがあるもののみ
+
+    // 新しいインスタンスを初期化（デフォルトモデル + アセット）
+    // APIベースURLを取得（現在のオリジンを使用）
+    const apiBaseUrl = typeof window !== "undefined" ? window.location.origin : "";
+    
     const instance = initPreviewPanel({
       container: previewContainerRef.current,
-      glbUrl: selectedAsset?.glbUrl, // 後方互換性のため
-      modelUrl: modelUrl, // GLBとFBXの両方をサポート
+      glbUrl: selectedAsset?.glbUrl, // 後方互換性のため残す
+      modelUrl: modelUrl, // 後方互換性のため残す
+      assets: assetList, // 着せ替え用アセット
       textureUrl: selectedProduct?.thumbnailUrl,
-      initialHeight: height,
+      apiBaseUrl, // APIベースURLを渡す（widgetと同じ）
+      initialHeight: 170, // widgetと同じ固定値
       minHeight: 150,
       maxHeight: 190,
-      availableSizes: availableSizes as ProductSize[],
+      availableSizes, // widgetと同じ固定値
       initialSize: currentSize,
       productName: currentProductName,
       onBackClick: () => {
-        // PreviewPanel.tsxでは、ナビゲーションバーの戻るボタンは不要
-        // （既に独自のヘッダーがあるため）
+        // 戻るボタンは不要
       },
       onSizeChange: (newSize) => {
         setCurrentSize(newSize);
@@ -150,68 +146,14 @@ export function PreviewPanel({
       onHeightChange: (newHeight) => {
         setHeight(newHeight);
       },
-      onMessageSend: async (message) => {
-        // isSendingMessageの状態を確認（refを使用して最新の値を取得）
-        if (isSendingMessage) return null;
-        
-        setIsSendingMessage(true);
-        try {
-          // 最新の値を取得するために、現在の値を直接使用
-          const currentProductId = selectedProduct?.id;
-          const currentShopId = shopId;
-          const currentProductName = selectedProduct?.name;
-          const currentSizeValue = currentSize;
-          const currentHeightValue = height;
-          
-          const response = await authenticatedFetch("/api/chat", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              message,
-              productId: currentProductId,
-              shopId: currentShopId,
-              conversationId: conversationIdRef.current,
-              sessionId: sessionIdRef.current,
-              context: {
-                productName: currentProductName,
-                size: currentSizeValue,
-                height: currentHeightValue,
-              },
-            }),
-          });
-
-          if (!response.ok) {
-            const error = await response.json();
-            console.error("[PreviewPanel] Chat API error:", error);
-            throw new Error(error.message || "メッセージの送信に失敗しました");
-          }
-
-          const data = await response.json();
-          
-          // 会話IDとセッションIDを保存（次回のリクエストで使用）
-          if (data.conversationId) {
-            conversationIdRef.current = data.conversationId;
-          }
-          if (data.sessionId) {
-            sessionIdRef.current = data.sessionId;
-          }
-          
-          return data.response;
-        } catch (error) {
-          console.error("[PreviewPanel] Failed to send message:", error);
-          throw error;
-        } finally {
-          setIsSendingMessage(false);
+      onModelLoad: () => {
+        // モデル読み込み完了
+      },
+      onModelError: (error) => {
+        if (process.env.NODE_ENV === "development") {
+          console.error("[PreviewPanel] Failed to load 3D model:", error, modelUrl);
         }
       },
-        onModelLoad: () => {
-          console.log("[PreviewPanel] 3D model loaded:", modelUrl);
-        },
-        onModelError: (error) => {
-          console.error("[PreviewPanel] Failed to load 3D model:", error, modelUrl);
-        },
     });
 
     previewInstanceRef.current = instance;
@@ -222,25 +164,29 @@ export function PreviewPanel({
         try {
           previewInstanceRef.current.destroy();
         } catch (error) {
-          console.error("[PreviewPanel] Error destroying preview instance:", error);
+          if (process.env.NODE_ENV === "development") {
+            console.error("[PreviewPanel] Error destroying preview instance:", error);
+          }
         } finally {
           previewInstanceRef.current = null;
         }
       }
     };
-    // 依存配列を最小限に（isSendingMessageは削除 - コールバック内で最新の値を取得）
-    // availableSizesはuseMemoでメモ化されているので、参照が変わったときだけ再初期化される
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAsset?.modelUrl, selectedAsset?.glbUrl, selectedProduct?.thumbnailUrl, availableSizes, currentSize, height]);
+  }, [selectedAsset?.modelUrl, selectedAsset?.glbUrl, selectedProduct?.thumbnailUrl, selectedProduct?.name, assetsByCategory, currentSize, availableSizes]);
 
-  // サイズが変更されたときに、対応するアセットのGLB URLを更新
+  // サイズが変更されたときに、対応するアセットを更新
   useEffect(() => {
-    // modelUrlを優先、なければglbUrlを使用（後方互換性）
-    const modelUrl = selectedAsset?.modelUrl || selectedAsset?.glbUrl;
-    if (previewInstanceRef.current && modelUrl) {
-      previewInstanceRef.current.updateModelUrl(modelUrl);
+    if (previewInstanceRef.current) {
+      // アセット情報を準備（カテゴリーごと）
+      const assetList = Array.from(assetsByCategory.values()).map((asset) => ({
+        url: asset.modelUrl || asset.glbUrl || "",
+        category: asset.category,
+      })).filter((asset) => asset.url); // URLがあるもののみ
+      
+      // アセットを更新
+      previewInstanceRef.current.updateAssets(assetList);
     }
-  }, [selectedAsset?.modelUrl, selectedAsset?.glbUrl, currentSize]);
+  }, [assetsByCategory, currentSize]);
 
   // 身長が変更されたときに更新
   useEffect(() => {
@@ -249,7 +195,8 @@ export function PreviewPanel({
     }
   }, [height]);
 
-  // Enterキーでモーダルが閉じるのを防ぐ（ネイティブイベントリスナー）
+
+  // Enterキーでモーダルが閉じるのを防ぐ
   const rootRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
@@ -257,17 +204,13 @@ export function PreviewPanel({
       if (!(e instanceof KeyboardEvent)) return;
       
       if (e.key === "Enter") {
-        // アクティブな要素がinputまたはtextareaの場合、preview.tsで処理される
         const activeElement = document.activeElement;
         if (
           activeElement &&
           (activeElement.tagName === "INPUT" || activeElement.tagName === "TEXTAREA")
         ) {
-          // 入力フィールド内でのEnterキーは、preview.tsで処理される
-          // ここでは何もしない（イベントの伝播を止めない）
           return;
         }
-        // 入力フィールド外でのEnterキーは無視（モーダルを閉じない）
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
@@ -276,7 +219,6 @@ export function PreviewPanel({
 
     const rootElement = rootRef.current;
     if (rootElement) {
-      // captureフェーズとbubbleフェーズの両方でイベントをキャッチ
       rootElement.addEventListener("keydown", handleKeyDown, true);
       rootElement.addEventListener("keydown", handleKeyDown, false);
     }
@@ -292,22 +234,17 @@ export function PreviewPanel({
   return (
     <div 
       ref={rootRef}
-      className="flex h-screen flex-col shadow-lg overflow-hidden" 
-      style={{ width: '390px' }}
+      className="flex h-screen flex-col shadow-lg overflow-hidden bg-white" 
+      style={{ width: '400px' }}
       onKeyDownCapture={(e) => {
-        // captureフェーズでイベントをキャッチ（他のイベントリスナーより先に処理）
         if (e.key === "Enter") {
-          // アクティブな要素がinputまたはtextareaの場合、preview.tsで処理される
           const activeElement = document.activeElement;
           if (
             activeElement &&
             (activeElement.tagName === "INPUT" || activeElement.tagName === "TEXTAREA")
           ) {
-            // 入力フィールド内でのEnterキーは、preview.tsで処理される
-            // ここでは何もしない（イベントの伝播を止めない）
             return;
           }
-          // 入力フィールド外でのEnterキーは無視（モーダルを閉じない）
           e.preventDefault();
           e.stopPropagation();
         }
@@ -332,48 +269,32 @@ export function PreviewPanel({
         </div>
       )}
 
-      {/* Modal container - 中央配置用 */}
+      {/* Preview container - フレーム画像と赤枠、3Dプレビューを配置 */}
       <div 
-        className="flex-1 flex items-center justify-center p-6 bg-gray-100 overflow-hidden"
+        ref={previewWrapperRef}
+        className="flex-1 relative flex items-center justify-center p-6 bg-gray-100 overflow-hidden"
       >
-        {/* Frame container - 300px x 600px、transformなし */}
-        <div 
-          className="flex flex-col relative overflow-hidden"
-          style={{
-            width: '300px',
-            height: '600px',
-            border: '3px solid black',
-            borderRadius: '16px',
-            background: 'white',
-          }}
+        {/* PhoneFrame - フレーム画像と赤枠 */}
+        <PhoneFrame 
+          ref={phoneFrameRef}
+          previewContainerRef={previewContainerRef}
+          selectedAsset={selectedAsset}
+          onFrameBoundsChange={setFrameBounds}
+          borderRef={borderRef}
         >
-          {/* Content wrapper - 横padding 4px、縦padding 24px */}
-          <div 
-            className="flex-1 flex flex-col relative overflow-hidden"
+          {/* 3Dプレビューコンテナ - 赤枠の中に配置 */}
+          <div
+            ref={previewContainerRef}
             style={{
-              padding: '24px 4px',
-              boxSizing: 'border-box',
+              position: 'absolute',
+              left: '0px',
+              top: '0px',
+              width: '100%',
+              height: '100%',
+              zIndex: 10,
             }}
-          >
-            {/* Content area - widgetのcontentAreaと同じ */}
-            {(selectedAsset?.modelUrl || selectedAsset?.glbUrl) ? (
-              <div 
-                ref={previewContainerRef}
-                className="flex-1 flex flex-col overflow-hidden"
-                style={{
-                  minHeight: 0,
-                }}
-              />
-            ) : (
-              <div className="flex-1 flex items-center justify-center text-gray-400">
-                <div className="text-center">
-                  <p className="text-sm font-medium mb-1">アセットがありません</p>
-                  <p className="text-xs">アセット管理から3Dモデルを追加してください</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+          />
+        </PhoneFrame>
       </div>
     </div>
   );

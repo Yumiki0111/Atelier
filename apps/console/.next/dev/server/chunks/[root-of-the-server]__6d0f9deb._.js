@@ -105,10 +105,6 @@ async function GET(request) {
         const searchParams = request.nextUrl.searchParams;
         const publicKey = searchParams.get("publicKey");
         const externalProductId = searchParams.get("externalProductId");
-        console.log("[widget-config API] GET request:", {
-            publicKey,
-            externalProductId
-        });
         if (!publicKey || !externalProductId) {
             const response = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
                 enabled: false,
@@ -136,17 +132,12 @@ async function GET(request) {
             });
             return setCorsHeaders(response, request);
         }
-        console.log("[widget-config API] Widget key found:", {
-            shop_id: widgetKey.shop_id,
-            allowed_domains: widgetKey.allowed_domains
-        });
         // 2. ドメイン検証
         const origin = request.headers.get("origin") || request.headers.get("referer");
         if (origin) {
             try {
                 const url = new URL(origin);
                 const host = url.host; // 例: "example.com" または "sub.example.com"
-                console.log("[widget-config API] Request origin host:", host);
                 const allowedDomains = widgetKey.allowed_domains || [];
                 // ドメイン検証ロジック
                 const isAllowed = allowedDomains.some((domain)=>{
@@ -168,7 +159,6 @@ async function GET(request) {
                     });
                     return setCorsHeaders(response, request);
                 }
-                console.log("[widget-config API] Domain verified:", host);
             } catch (urlError) {
                 console.error("[widget-config API] Invalid origin URL:", origin, urlError);
                 const response = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
@@ -184,8 +174,8 @@ async function GET(request) {
             });
             return setCorsHeaders(response, request);
         }
-        // 3. products を (shop_id, external_product_id) で検索
-        const { data: product, error: productError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("products").select("id").eq("shop_id", widgetKey.shop_id).eq("external_product_id", externalProductId).single();
+        // 3. products を (shop_id, external_product_id) で検索（category, thumbnailUrlも取得）
+        const { data: product, error: productError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("products").select("id, name, category, thumbnail_url").eq("shop_id", widgetKey.shop_id).eq("external_product_id", externalProductId).single();
         if (productError || !product) {
             console.warn("[widget-config API] Product not found:", {
                 shop_id: widgetKey.shop_id,
@@ -197,59 +187,88 @@ async function GET(request) {
             });
             return setCorsHeaders(response, request);
         }
-        console.log("[widget-config API] Product found:", product.id);
-        // 4. assets を (shop_id, product_id) で取得（サイズごとに最新バージョン）
-        const { data: allAssets, error: assetsError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("assets").select("size, glb_url, model_url, version, created_at, is_active").eq("shop_id", widgetKey.shop_id).eq("product_id", product.id).order("size", {
+        // 4. assets を (shop_id, product_id) で取得（サイズごとに最新バージョン、カテゴリー情報も含む）
+        // まずアセットを取得（productsテーブルとのJOINは後で行う）
+        const { data: allAssets, error: assetsError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("assets").select("size, glb_url, model_url, version, created_at, is_active, product_id").eq("shop_id", widgetKey.shop_id).eq("product_id", product.id).order("size", {
             ascending: true
         }).order("created_at", {
             ascending: false
         });
+        // アセットにカテゴリー情報を追加（既に取得済みのproduct.categoryを使用）
+        const category = product.category || undefined;
+        const assetsWithCategory = allAssets?.map((asset)=>({
+                ...asset,
+                category
+            })) || [];
         if (assetsError) {
-            console.warn("[widget-config API] Error fetching assets:", assetsError);
+            console.error("[widget-config API] Error fetching assets:", assetsError);
             const response = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-                enabled: false
+                enabled: false,
+                error: "Failed to fetch assets",
+                details: assetsError.message
             });
             return setCorsHeaders(response, request);
         }
-        if (!allAssets || allAssets.length === 0) {
-            console.warn("[widget-config API] No assets found for product:", product.id);
+        if (!assetsWithCategory || assetsWithCategory.length === 0) {
+            console.warn("[widget-config API] No assets found for product:", {
+                productId: product.id,
+                shopId: widgetKey.shop_id,
+                externalProductId: externalProductId
+            });
             const response = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-                enabled: false
+                enabled: false,
+                error: "No assets found for this product"
             });
             return setCorsHeaders(response, request);
         }
-        // サイズごとに最新バージョンのアセットを取得（is_activeがtrueのものを優先）
-        const assetsBySize = new Map();
-        for (const asset of allAssets){
+        // サイズごと、カテゴリーごとに最新バージョンのアセットを取得（is_activeがtrueのものを優先）
+        // Map<size, Map<category, asset>>
+        const assetsBySizeAndCategory = new Map();
+        for (const asset of assetsWithCategory){
             const size = asset.size;
-            const existing = assetsBySize.get(size);
+            // カテゴリー情報を取得（既に追加済み）
+            const category = asset.category;
+            const categoryKey = category || "default"; // カテゴリーがない場合は"default"を使用
+            // サイズごとのマップを取得または作成
+            if (!assetsBySizeAndCategory.has(size)) {
+                assetsBySizeAndCategory.set(size, new Map());
+            }
+            const categoryMap = assetsBySizeAndCategory.get(size);
+            const existing = categoryMap.get(categoryKey);
             // まだ登録されていない、またはより新しいバージョン、またはis_activeがtrueの場合
             if (!existing || asset.version > existing.version || asset.is_active && !existing.isActive) {
                 // model_urlを優先、なければglb_urlを使用
                 const modelUrl = asset.model_url || asset.glb_url;
-                assetsBySize.set(size, {
-                    glbUrl: asset.glb_url,
-                    modelUrl: modelUrl,
+                categoryMap.set(categoryKey, {
+                    glbUrl: asset.glb_url || undefined,
+                    modelUrl: modelUrl || undefined,
                     version: asset.version,
-                    isActive: asset.is_active ?? true
+                    isActive: asset.is_active ?? true,
+                    category
                 });
             }
         }
-        if (assetsBySize.size === 0) {
+        if (assetsBySizeAndCategory.size === 0) {
             console.warn("[widget-config API] No valid assets found for product:", product.id);
             const response = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
                 enabled: false
             });
             return setCorsHeaders(response, request);
         }
-        // サイズごとのモデルURLを構築（GLBとFBXの両方をサポート）
+        // サイズごとのアセットリストを構築（複数のカテゴリーのアセットを含む）
         const sizes = {};
         let defaultSize;
-        for (const [size, asset] of assetsBySize.entries()){
-            sizes[size] = {
-                glbUrl: asset.glbUrl,
-                modelUrl: asset.modelUrl
-            };
+        for (const [size, categoryMap] of assetsBySizeAndCategory.entries()){
+            // カテゴリーごとのアセットを配列に変換
+            const assets = [];
+            for (const [categoryKey, asset] of categoryMap.entries()){
+                assets.push({
+                    glbUrl: asset.glbUrl || undefined,
+                    modelUrl: asset.modelUrl || undefined,
+                    category: asset.category
+                });
+            }
+            sizes[size] = assets;
             // デフォルトサイズは最初に見つかったサイズ、または"M"があれば"M"
             if (!defaultSize || size === "M") {
                 defaultSize = size;
@@ -257,19 +276,16 @@ async function GET(request) {
         }
         // Mがなければ最初のサイズをデフォルトに
         if (!defaultSize) {
-            defaultSize = Array.from(assetsBySize.keys())[0];
+            defaultSize = Array.from(assetsBySizeAndCategory.keys())[0] || undefined;
         }
-        console.log("[widget-config API] Assets found:", {
-            productId: product.id,
-            sizes: Object.keys(sizes),
-            defaultSize
-        });
         // 5. 成功レスポンス（サイズごとのアセット情報を含む）
         const response = __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
             enabled: true,
             asset: {
                 defaultSize,
-                sizes
+                sizes,
+                productName: product.name,
+                thumbnailUrl: product.thumbnail_url || undefined
             }
         });
         return setCorsHeaders(response, request);

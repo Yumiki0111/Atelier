@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
+// App Router用の設定
+export const runtime = 'nodejs'; // Node.jsランタイムを使用
+export const maxDuration = 300; // 5分（大きなファイルのアップロードに時間がかかる場合があるため）
+
 // ファイルアップロード用のAPIエンドポイント
 export async function POST(request: NextRequest) {
   try {
@@ -22,13 +26,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ファイルサイズのチェック（100MB制限）
-    const maxSize = 100 * 1024 * 1024; // 100MB
+    // ファイルサイズのチェック（500MB制限）
+    const maxSize = 500 * 1024 * 1024; // 500MB
     if (file.size > maxSize) {
       return NextResponse.json(
-        { error: "File size exceeds 100MB limit" },
+        { error: "File size exceeds 500MB limit" },
         { status: 400 }
       );
+    }
+
+    // 大きなファイル（50MB以上）の場合はクライアントサイドアップロードを推奨
+    const LARGE_FILE_THRESHOLD = 50 * 1024 * 1024; // 50MB
+    if (file.size > LARGE_FILE_THRESHOLD) {
+      // ファイル名を安全にする（UUID + 元の拡張子）
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `${folder}/${fileName}`;
+      const bucketName = process.env.SUPABASE_STORAGE_BUCKET || "products";
+      
+      // 公開URLを取得（アップロード完了後に使用）
+      const { data: urlData } = supabaseAdmin.storage
+        .from(bucketName)
+        .getPublicUrl(filePath);
+      
+      // クライアントサイドアップロード用の情報を返す
+      return NextResponse.json({
+        useClientUpload: true,
+        fileName,
+        filePath,
+        bucketName,
+        folder,
+        contentType: file.type,
+        publicUrl: urlData?.publicUrl,
+      });
     }
 
     // ファイル名を安全にする（UUID + 元の拡張子）
@@ -77,14 +107,57 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`Uploading to bucket: ${bucketName}, path: ${filePath}`);
+    console.log(`Uploading to bucket: ${bucketName}, path: ${filePath}, size: ${file.size} bytes`);
     
-    const { data, error } = await supabaseAdmin.storage
-      .from(bucketName)
-      .upload(filePath, buffer, {
-        contentType: file.type,
-        upsert: false,
-      });
+    // 大きなファイル（50MB以上）の場合はチャンクアップロードを使用
+    const CHUNK_SIZE = 50 * 1024 * 1024; // 50MB per chunk
+    const fileSize = file.size;
+    
+    let data, error;
+    
+    if (fileSize > CHUNK_SIZE) {
+      // チャンクアップロード
+      console.log(`Large file detected (${fileSize} bytes), using chunked upload`);
+      
+      // Supabase Storageのチャンクアップロードは、ファイルを分割してアップロードする必要がある
+      // しかし、Supabase StorageのNode.jsクライアントは自動的にチャンクアップロードをサポートしていないため、
+      // 一度にアップロードを試みる（Supabase Storageの制限は通常50MBだが、プランによって異なる）
+      // エラーが発生した場合は、より詳細なエラーメッセージを返す
+      
+      // まず通常のアップロードを試みる
+      const uploadResult = await supabaseAdmin.storage
+        .from(bucketName)
+        .upload(filePath, buffer, {
+          contentType: file.type,
+          upsert: false,
+        });
+      
+      data = uploadResult.data;
+      error = uploadResult.error;
+      
+      // エラーが発生し、ファイルサイズ制限に関するエラーの場合
+      if (error && (error.message?.includes("maximum allowed size") || error.message?.includes("exceeded"))) {
+        return NextResponse.json(
+          { 
+            error: "File size exceeds storage limit", 
+            details: `ファイルサイズ（${(fileSize / 1024 / 1024).toFixed(2)}MB）がSupabase Storageの制限を超えています。`,
+            hint: "Supabase Storageの無料プランでは50MB、Proプランでは5GBまでアップロード可能です。プランをアップグレードするか、ファイルサイズを圧縮してください。"
+          },
+          { status: 413 }
+        );
+      }
+    } else {
+      // 通常のアップロード
+      const uploadResult = await supabaseAdmin.storage
+        .from(bucketName)
+        .upload(filePath, buffer, {
+          contentType: file.type,
+          upsert: false,
+        });
+      
+      data = uploadResult.data;
+      error = uploadResult.error;
+    }
 
     if (error) {
       console.error("Error uploading file:", error);

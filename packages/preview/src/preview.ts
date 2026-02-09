@@ -1,39 +1,36 @@
 import type { PreviewPanelOptions, PreviewPanelInstance } from "./types";
 import type { ProductSize } from "@atelier/shared";
 import { init3DViewer } from "./viewer";
-import { createSizeArea, createViewerContainer, createMessageArea } from "./ui-elements";
+import { createSizeArea, createViewerContainer } from "./ui-elements";
 
-/**
- * 背景画像のURLを取得する
- * 開発環境と本番環境で異なるパスを返す
- */
 function getBackgroundImageUrl(): string {
-  if (typeof window === "undefined") {
-    return "";
-  }
+  if (typeof window === "undefined") return "";
   
-  // 開発環境では、consoleサーバーのpublicフォルダから取得
+  // 開発環境では常にconsoleサーバー（3000）から取得
   if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-    const port = window.location.port || "3000";
-    return `http://localhost:${port}/model_background.png`;
+    return `http://localhost:3000/model_background.png`;
   }
   
-  // 本番環境では、widget.jsが読み込まれたドメインから取得
-  // widget.jsのスクリプトタグのsrcから取得を試みる
+  // data-atelier-api-url属性から取得
+  const apiUrl = document.querySelector('[data-atelier-api-url]')?.getAttribute('data-atelier-api-url');
+  if (apiUrl) {
+    return `${apiUrl}/model_background.png`;
+  }
+  
+  // widget.jsのスクリプトタグから取得（getApiBaseUrlと同じロジック）
   const scriptTag = document.querySelector('script[src*="widget.js"]');
   if (scriptTag) {
-    const src = scriptTag.getAttribute("src");
+    const src = scriptTag.getAttribute('src');
     if (src) {
       try {
         const url = new URL(src, window.location.href);
-        return `${url.protocol}//${url.host}/model_background.png`;
+        return `${url.origin}/model_background.png`;
       } catch (e) {
-        // URL解析に失敗した場合は現在のオリジンを使用
+        // URL解析に失敗
       }
     }
   }
   
-  // フォールバック: 現在のオリジンを使用
   return `${window.location.origin}/model_background.png`;
 }
 
@@ -44,11 +41,18 @@ function getBackgroundImageUrl(): string {
 export function initPreviewPanel(
   options: PreviewPanelOptions
 ): PreviewPanelInstance {
+  console.log("[Atelier Preview] ===== initPreviewPanel START =====");
+  console.log("[Atelier Preview] options:", options);
+  console.log("[Atelier Preview] options.onOutfitClick:", options.onOutfitClick);
+  console.log("[Atelier Preview] typeof options.onOutfitClick:", typeof options.onOutfitClick);
+  
   const {
     container,
     glbUrl,
     modelUrl,
+    assets,
     textureUrl,
+    apiBaseUrl,
     initialHeight = 170,
     minHeight = 150,
     maxHeight = 190,
@@ -57,11 +61,18 @@ export function initPreviewPanel(
     productName,
     onHeightChange,
     onSizeChange,
-    onMessageSend,
     onModelLoad,
     onModelError,
     onBackClick,
+    onOutfitClick,
+    currentProductId,
+    onFloatingButtonsReady,
   } = options;
+  
+  // デバッグ: onOutfitClickが正しく受け取られているか確認
+  console.log("[Atelier Preview] After destructuring - onOutfitClick:", typeof onOutfitClick, onOutfitClick);
+  console.log("[Atelier Preview] onBackClick:", typeof onBackClick, onBackClick);
+  console.log("[Atelier Preview] currentProductId:", currentProductId);
   
   // modelUrlを優先、なければglbUrlを使用（後方互換性）
   const currentModelUrl = modelUrl || glbUrl;
@@ -88,25 +99,30 @@ export function initPreviewPanel(
     console.warn("[Atelier Preview] Could not clear container, continuing anyway:", error);
   }
 
-  // コンテナのスタイルを設定
-  const currentStyle = container.style.cssText || "";
+  // コンテナのスタイルを完全にリセットして設定（親要素の影響を受けないように、はみ出し防止）
+  // overflowはvisibleにして、フローティングボタンが表示されるようにする
   container.style.cssText = `
-    ${currentStyle}
     display: flex !important;
     flex-direction: column !important;
-    overflow: hidden !important;
+    position: relative !important;
+    overflow: visible !important;
     background: transparent !important;
     gap: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-sizing: border-box !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
   `.trim();
 
   // UI要素を作成
-  console.log("[Atelier Preview] initPreviewPanel - availableSizes:", availableSizes, "length:", availableSizes.length);
   const sizeAreaElements = createSizeArea(availableSizes, initialSize, productName);
-  const { sizeArea, sizeButtons, sizeButtonsContainer, prevButton, nextButton } = sizeAreaElements;
-  console.log("[Atelier Preview] initPreviewPanel - sizeButtons length:", sizeButtons.length);
-  console.log("[Atelier Preview] initPreviewPanel - sizeButtonsContainer children:", sizeButtonsContainer.children.length);
+  const { sizeArea, sizeButtons, sizeButtonsContainer, productNameDiv, prevButton, nextButton } = sizeAreaElements;
   
-  // 選択されたサイズボタンを中央にスクロールする関数
+  // スクロール関数（シンプルに）
   const scrollToSelectedSize = () => {
     const currentIndex = availableSizes.indexOf(currentSize);
     if (currentIndex >= 0 && sizeButtons[currentIndex]) {
@@ -120,19 +136,22 @@ export function initPreviewPanel(
       const targetScroll = buttonLeft - (containerWidth / 2) + (buttonWidth / 2);
       
       sizeButtonsContainer.scrollTo({
-        left: Math.max(0, targetScroll),
-        behavior: "smooth",
+        left: targetScroll,
+        behavior: 'smooth'
       });
     }
   };
-  
-  // 初期表示時に選択されたサイズを中央にスクロール
-  setTimeout(() => {
-    scrollToSelectedSize();
-  }, 100);
 
   const viewerElements = createViewerContainer(productName);
   const { viewerContainer, floatingButtons, jacketButton, userButton } = viewerElements;
+
+  // フローティングボタンはcontainerに追加される（サイズボタンと同じ仕様）
+  // onFloatingButtonsReadyコールバックが提供されている場合は呼び出す（ウィジェット側で何か処理が必要な場合）
+  if (onFloatingButtonsReady) {
+    onFloatingButtonsReady(floatingButtons);
+  }
+  
+  let isSizeChanging = false;
 
   // 各ボタンにpointer-eventsを設定
   const setButtonPointerEvents = (button: HTMLElement) => {
@@ -143,50 +162,82 @@ export function initPreviewPanel(
 
   // フローティングボタンのホバーエフェクト
   jacketButton.addEventListener("mouseenter", () => {
-    jacketButton.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.15)";
-    jacketButton.style.transform = "scale(1.05)";
+    jacketButton.style.boxShadow = "0 4px 16px rgba(0, 0, 0, 0.18)";
+    jacketButton.style.transform = "scale(1.08)";
+    jacketButton.style.background = "rgba(255, 255, 255, 1)";
   });
   jacketButton.addEventListener("mouseleave", () => {
-    jacketButton.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.1)";
+    jacketButton.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.12)";
     jacketButton.style.transform = "scale(1)";
-  });
-  userButton.addEventListener("mouseenter", () => {
-    userButton.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.15)";
-    userButton.style.transform = "scale(1.05)";
-  });
-  userButton.addEventListener("mouseleave", () => {
-    userButton.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.1)";
-    userButton.style.transform = "scale(1)";
+    jacketButton.style.background = "rgba(255, 255, 255, 0.95)";
   });
 
-  // サイズボタンのイベントハンドラー
+  // ジャケットアイコンボタンのクリックイベント（着せ替えパネルを表示/非表示）
+  console.log("[Atelier Preview] Setting up jacketButton click handler");
+  console.log("[Atelier Preview] onOutfitClick at handler setup:", typeof onOutfitClick, onOutfitClick);
+  
+  jacketButton.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log("[Atelier Preview] ===== jacketButton clicked =====");
+    console.log("[Atelier Preview] onOutfitClick:", typeof onOutfitClick, onOutfitClick);
+    
+    if (onOutfitClick) {
+      // コールバックが提供されている場合はそれを使用（ウィジェット側で処理）
+      console.log("[Atelier Preview] Calling onOutfitClick callback with container");
+      try {
+        onOutfitClick(container);
+      } catch (error) {
+        console.error("[Atelier Preview] Error in onOutfitClick:", error);
+      }
+    } else {
+      // カスタムイベントを発火（親ページでリッスンできるように）
+      console.log("[Atelier Preview] onOutfitClick not provided, dispatching custom event");
+      const event = new CustomEvent("atelier:open-outfit-modal", {
+        detail: {
+          currentProductId: currentProductId,
+        },
+        bubbles: true,
+        cancelable: true,
+      });
+      document.dispatchEvent(event);
+    }
+  });
+  userButton.addEventListener("mouseenter", () => {
+    userButton.style.boxShadow = "0 4px 16px rgba(0, 0, 0, 0.18)";
+    userButton.style.transform = "scale(1.08)";
+    userButton.style.background = "rgba(255, 255, 255, 1)";
+  });
+  userButton.addEventListener("mouseleave", () => {
+    userButton.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.12)";
+    userButton.style.transform = "scale(1)";
+    userButton.style.background = "rgba(255, 255, 255, 0.95)";
+  });
+
+  // サイズボタンの更新（シンプルに）
   const updateSizeButtons = () => {
     sizeButtons.forEach((btn, idx) => {
       const btnSize = availableSizes[idx];
       const selected = btnSize === currentSize;
-      btn.style.background = selected ? "black" : "#d1d5db";
-      btn.style.color = "white";
+      btn.style.background = selected ? "#000000" : "rgba(255, 255, 255, 0.95)";
+      btn.style.color = selected ? "#ffffff" : "#374151";
+      btn.style.border = selected ? "1px solid #000000" : "1px solid rgba(0, 0, 0, 0.15)";
+      btn.style.fontWeight = selected ? "700" : "600";
     });
-    // 選択されたサイズを中央にスクロール
+    
     scrollToSelectedSize();
   };
-
-  // タップで反転エフェクト（prevButton）
-  prevButton.addEventListener("mousedown", () => {
-    prevButton.style.opacity = "0.5";
-  });
-  prevButton.addEventListener("mouseup", () => {
-    prevButton.style.opacity = "1";
-  });
-  prevButton.addEventListener("mouseleave", () => {
-    prevButton.style.opacity = "1";
-  });
-  prevButton.addEventListener("touchstart", () => {
-    prevButton.style.opacity = "0.5";
-  });
-  prevButton.addEventListener("touchend", () => {
-    prevButton.style.opacity = "1";
-  });
+  
+  // 初期表示時にサイズボタンを更新
+  updateSizeButtons();
+  
+  // 初期表示時に選択されたサイズを中央にスクロール
+  setTimeout(() => {
+    scrollToSelectedSize();
+  }, 100);
+  
+  // 矢印ボタンのイベントハンドラー
   prevButton.addEventListener("click", () => {
     const currentIndex = availableSizes.indexOf(currentSize);
     if (currentIndex > 0) {
@@ -195,32 +246,7 @@ export function initPreviewPanel(
       onSizeChange?.(currentSize);
     }
   });
-
-  // サイズボタンコンテナのタッチイベントでスワイプを許可
-  let isScrolling = false;
-  sizeButtonsContainer.addEventListener("touchstart", () => {
-    isScrolling = false;
-  });
-  sizeButtonsContainer.addEventListener("touchmove", () => {
-    isScrolling = true;
-  });
-
-  // タップで反転エフェクト（nextButton）
-  nextButton.addEventListener("mousedown", () => {
-    nextButton.style.opacity = "0.5";
-  });
-  nextButton.addEventListener("mouseup", () => {
-    nextButton.style.opacity = "1";
-  });
-  nextButton.addEventListener("mouseleave", () => {
-    nextButton.style.opacity = "1";
-  });
-  nextButton.addEventListener("touchstart", () => {
-    nextButton.style.opacity = "0.5";
-  });
-  nextButton.addEventListener("touchend", () => {
-    nextButton.style.opacity = "1";
-  });
+  
   nextButton.addEventListener("click", () => {
     const currentIndex = availableSizes.indexOf(currentSize);
     if (currentIndex < availableSizes.length - 1) {
@@ -229,126 +255,98 @@ export function initPreviewPanel(
       onSizeChange?.(currentSize);
     }
   });
+  
+  // 矢印ボタンのホバーエフェクト（シンプルに）
+  prevButton.addEventListener("mouseenter", () => {
+    prevButton.style.background = "rgba(255, 255, 255, 1)";
+    prevButton.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.15)";
+  });
+  prevButton.addEventListener("mouseleave", () => {
+    prevButton.style.background = "rgba(255, 255, 255, 0.9)";
+    prevButton.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.1)";
+  });
+  
+  nextButton.addEventListener("mouseenter", () => {
+    nextButton.style.background = "rgba(255, 255, 255, 1)";
+    nextButton.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.15)";
+  });
+  nextButton.addEventListener("mouseleave", () => {
+    nextButton.style.background = "rgba(255, 255, 255, 0.9)";
+    nextButton.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.1)";
+  });
 
-  // サイズボタンのクリックイベント
+  // サイズボタンのクリックイベント（シンプルに）
   sizeButtons.forEach((sizeBtn, idx) => {
-    sizeBtn.addEventListener("click", (e) => {
-      // スクロール中はクリックイベントを無視
-      if (isScrolling) {
-        e.preventDefault();
-        e.stopPropagation();
-        return;
-      }
+    sizeBtn.addEventListener("click", () => {
       currentSize = availableSizes[idx];
       updateSizeButtons();
       onSizeChange?.(currentSize);
     });
   });
 
-  // メッセージ入力エリアを作成
-  const messageElements = createMessageArea();
-  const { bottomControls, messageArea, messageForm, messageInput, sendButton } = messageElements;
-
-  const handleSend = async () => {
-    const message = messageInput.value.trim();
-    if (!message || !onMessageSend) return;
-    
-    messageInput.value = "";
-    
-    // 送信ボタンを無効化
-    sendButton.disabled = true;
-    sendButton.style.opacity = "0.5";
-    sendButton.style.cursor = "not-allowed";
-    
-    try {
-      // LLM APIを呼び出し
-      const response = await onMessageSend(message);
-      
-      // レスポンスはonMessageSendのコールバックで処理される
-    } catch (error) {
-      console.error("Failed to send message:", error);
-    } finally {
-      // 送信ボタンを再有効化
-      sendButton.disabled = false;
-      sendButton.style.opacity = "1";
-      sendButton.style.cursor = "pointer";
-    }
-  };
-
-  // フォーム送信を防ぐ（captureフェーズでも処理）
-  const handleFormSubmit = (e: Event) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-    handleSend();
-    return false;
-  };
-  
-  messageForm.addEventListener("submit", handleFormSubmit, true); // capture phase
-  messageForm.addEventListener("submit", handleFormSubmit, false); // bubble phase
-
-  sendButton.type = "button"; // フォーム送信を防ぐ
-  sendButton.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-    handleSend();
-  });
-  
-  // Enterキーで送信（フォームのデフォルト動作を防ぐ）
-  // captureフェーズでイベントをキャッチして、親要素のイベントハンドラーより先に処理する
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault(); // フォーム送信を防ぐ
-      e.stopPropagation(); // イベントの伝播を止める
-      e.stopImmediatePropagation(); // 同じ要素の他のイベントリスナーも止める
-      handleSend();
-      return false; // さらに確実にイベントを止める
-    }
-  };
-  
-  // captureフェーズとbubbleフェーズの両方でイベントをキャッチ
-  messageInput.addEventListener("keydown", handleKeyDown, true); // capture phase
-  messageInput.addEventListener("keydown", handleKeyDown, false); // bubble phase
-  
-  // keypressイベントも止める（念のため）
-  messageInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
-      return false;
-    }
-  }, true);
-  
-  // messageFormでもEnterキーをキャッチ（念のため）
-  messageForm.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && e.target === messageInput) {
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
-    }
-  }, true);
-
   // 全要素を追加
+  // コンテナの構造: モデル（中央、flex: 1） → サイズ選択（下、商品名含む） → フローティングボタン（右側）
   container.appendChild(viewerContainer);
-  // sizeAreaはviewerContainer内に絶対配置されるため、viewerContainerに追加
-  viewerContainer.appendChild(sizeArea);
-  container.appendChild(bottomControls);
+  container.appendChild(sizeArea);
+  // productNameDivはsizeAreaの中に既に追加されているため、ここでは追加しない
+  
+  // フローティングボタンをcontainerに追加（サイズボタンと同じ仕様）
+  container.appendChild(floatingButtons);
+  
+  // デバッグログ（開発環境のみ）
+  if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+    setTimeout(() => {
+      const buttonsRect = floatingButtons.getBoundingClientRect();
+      const computed = window.getComputedStyle(floatingButtons);
+      console.log("[Atelier Preview] Floating buttons position:", {
+        parentElement: floatingButtons.parentElement?.tagName,
+        parentIsBody: floatingButtons.parentElement === document.body,
+        parentIsOverlay: floatingButtons.parentElement?.getAttribute("data-atelier-modal-overlay") === "true",
+        position: computed.position,
+        right: computed.right,
+        left: computed.left,
+        bottom: computed.bottom,
+        zIndex: computed.zIndex,
+        rect: {
+          left: buttonsRect.left,
+          right: buttonsRect.right,
+          width: buttonsRect.width,
+          viewportWidth: window.innerWidth,
+          distanceFromRight: window.innerWidth - buttonsRect.right,
+        },
+      });
+    }, 100);
+  }
+  
+  // サイズボタンは表示
+  // sizeArea.style.display = "none"; // コメントアウト
+  
+  // フローティングボタンは表示（着せ替え機能に必要）
 
   // 3Dビューアを初期化（背景画像を指定）
   const backgroundImageUrl = getBackgroundImageUrl();
   const viewerInstance = init3DViewer(viewerContainer, {
+    apiBaseUrl,
     glbUrl,
     modelUrl,
+    assets: assets?.map(a => ({ url: a.url, category: a.category as any })),
     textureUrl,
     backgroundImageUrl,
     onLoad: onModelLoad,
     onError: onModelError,
   });
+  
+  // init3DViewerの後、floatingButtonsの親要素を再確認（onFloatingButtonsReadyが呼ばれている場合）
+  // ただし、既にonFloatingButtonsReadyが呼ばれている場合は、再度呼ばない（重複を避ける）
+  // onFloatingButtonsReadyはsetupFloatingButtonsで既に呼ばれているため、ここでは呼ばない
+  // onFloatingButtonsReadyが提供されていない場合のみ、document.bodyに追加（後方互換性）
 
   // 作成した要素への参照を保持（destroy()で個別に削除するため）
-  const createdElements = [sizeArea, viewerContainer, bottomControls];
+  // productNameDivはsizeAreaの中に含まれているため、個別に追加する必要はない
+  const createdElements = [sizeArea, viewerContainer];
+
+  // ResizeObserverへの参照を保持（destroy()で切断するため）
+  const resizeObservers: ResizeObserver[] = [];
 
   return {
     updateGlbUrl(newGlbUrl: string | undefined) {
@@ -359,6 +357,10 @@ export function initPreviewPanel(
       // GLBとFBXの両方をサポート
       viewerInstance.updateModelUrl(newModelUrl);
     },
+    updateAssets(newAssets: Array<{ url: string; category?: string }>) {
+      // 着せ替え用アセットを更新
+      viewerInstance.updateAssets(newAssets.map(a => ({ url: a.url, category: a.category as any })));
+    },
     updateHeight(height: number) {
       // 身長スライダーは削除されたため、コールバックのみ呼び出す
       onHeightChange?.(height);
@@ -368,7 +370,14 @@ export function initPreviewPanel(
       updateSizeButtons();
     },
     destroy() {
-      // イベントリスナーの削除（チャット機能削除により不要）
+      // ResizeObserverを切断
+      for (const observer of resizeObservers) {
+        try {
+          observer.disconnect();
+        } catch (error) {
+          console.warn("[Atelier Preview] Could not disconnect ResizeObserver:", error);
+        }
+      }
       
       // 3Dビューアを破棄（viewerContainer内の要素も削除される）
       try {
@@ -397,6 +406,17 @@ export function initPreviewPanel(
       } catch (error) {
         // エラーが発生した場合は無視（既に削除されている可能性がある）
         console.warn("[Atelier Preview] Could not clean up container:", error);
+      }
+      
+      // floatingButtonsを明示的に削除（overlayの子要素として追加されている場合でも、念のため削除）
+      try {
+        if (floatingButtons && floatingButtons.isConnected) {
+          floatingButtons.remove();
+        } else if (floatingButtons && floatingButtons.parentNode) {
+          floatingButtons.remove();
+        }
+      } catch (error) {
+        console.warn("[Atelier Preview] Could not remove floatingButtons:", error);
       }
     },
   };

@@ -1,67 +1,34 @@
 import type { WidgetConfig } from "./types";
 import { initPreviewPanel } from "@atelier/preview";
-import type { PreviewPanelInstance } from "@atelier/preview";
-
-// 開発モードかどうかを判定
-function isDevelopmentMode(): boolean {
-  if (typeof window === "undefined") return false;
-  // Viteの開発サーバーは通常5173や5174ポートを使用
-  // または開発用のHTMLファイルから実行されている場合
-  const port = window.location.port;
-  const hostname = window.location.hostname;
-  return (
-    port === "5174" ||
-    port === "5173" ||
-    (hostname === "localhost" && (port === "" || port === "5174" || port === "5173"))
-  );
-}
-
-// API base URL - will be determined at runtime from the current page
-function getApiBaseUrl(): string {
-  if (typeof window === "undefined") return "";
-  
-  // 1. 環境変数から取得（ビルド時に設定）
-  // @ts-ignore - Viteのdefineで注入される
-  if (typeof process !== "undefined" && process.env?.API_BASE_URL) {
-    // @ts-ignore
-    return process.env.API_BASE_URL;
-  }
-  
-  // 2. data-atelier-api-url属性から取得（ページごとに設定可能）
-  const apiUrlAttr = document.querySelector('[data-atelier-api-url]')?.getAttribute('data-atelier-api-url');
-  if (apiUrlAttr) {
-    return apiUrlAttr;
-  }
-  
-  // 3. デフォルト: widget.jsが読み込まれたドメイン（consoleアプリのドメイン）
-  // widget.jsのスクリプトタグのsrcから取得を試みる
-  const scriptTag = document.querySelector('script[src*="widget.js"]');
-  if (scriptTag) {
-    const src = scriptTag.getAttribute('src');
-    if (src) {
-      try {
-        const url = new URL(src, window.location.href);
-        return `${url.protocol}//${url.host}`;
-      } catch (e) {
-        // URL解析に失敗した場合は現在のオリジンを使用
-      }
-    }
-  }
-  
-  // 4. フォールバック: 現在のオリジンを使用
-  const protocol = window.location.protocol;
-  const host = window.location.host;
-  return `${protocol}//${host}`;
-}
+import { isDevelopmentMode, getApiBaseUrl } from "./widget-utils";
+import { fetchWidgetConfig, sendEvent, type WidgetParams } from "./widget-api";
+import { renderCube, renderModalWithLoading, updateModalWithConfig, showErrorInModal, updateButtonPositions } from "./widget-render";
 
 export function initWidget() {
-  // Find all elements with data-atelier attributes
-  // 後方互換性のため、data-atelier-shop-id と data-atelier-public-key の両方をサポート
+  // 既存のボタンをクリーンアップ（ページ遷移時などに対応）
+  // 現在のページに存在するウィジェット要素に対応するボタンのみを保持
   const elements = document.querySelectorAll<HTMLElement>(
     "[data-atelier-public-key], [data-atelier-shop-id]"
   );
-
-  console.log(`[Atelier Widget] Found ${elements.length} widget element(s)`);
+  
+  // 現在のページに存在する商品IDを収集
+  const currentProductIds = new Set<string>();
+  elements.forEach((element) => {
+    const productId = element.getAttribute("data-atelier-product-id") || 
+                      element.getAttribute("data-atelier-external-product-id");
+    if (productId) {
+      currentProductIds.add(productId);
+    }
+  });
+  
+  // 現在のページに存在しない商品のコンテナ（ボタンと画像を含む）を削除
+  const allWidgetContainers = document.querySelectorAll<HTMLElement>('[id^="atelier-widget-container-"]');
+  allWidgetContainers.forEach((container) => {
+    const containerProductId = container.getAttribute("data-atelier-product-id");
+    if (containerProductId && !currentProductIds.has(containerProductId)) {
+      container.remove();
+    }
+  });
 
   if (elements.length === 0) {
     console.warn("[Atelier Widget] No widget elements found. Make sure you have elements with data-atelier-public-key or data-atelier-shop-id attribute.");
@@ -71,11 +38,8 @@ export function initWidget() {
   elements.forEach((element, index) => {
     // 既に初期化されている要素はスキップ
     if (element.shadowRoot) {
-      console.log(`[Atelier Widget] Widget ${index + 1} already initialized, skipping`);
       return;
     }
-    
-    console.log(`[Atelier Widget] Initializing widget ${index + 1}/${elements.length}`, element);
     
     // 新しい形式: public-key を優先
     const publicKey = element.getAttribute("data-atelier-public-key");
@@ -116,181 +80,88 @@ export function initWidget() {
         sku,
         handle,
         url,
-      });
-      
-      console.log(`[Atelier Widget] Widget ${index + 1} initialized successfully`, {
-        hasShadowRoot: !!element.shadowRoot,
-      });
+      }, handleCubeClick);
     } catch (error) {
       console.error(`[Atelier Widget] Failed to initialize widget ${index + 1}:`, error);
     }
   });
-}
-
-function renderCube(
-  shadowRoot: ShadowRoot,
-  params: {
-    publicKey?: string | null;
-    shopId?: string | null; // 後方互換性のため
-    externalProductId?: string | null;
-    productId?: string | null; // 後方互換性のため
-    sku?: string | null;
-    handle?: string | null;
-    url?: string | null;
-  }
-) {
-  console.log("[Atelier Widget] renderCube called", { shadowRoot, params });
   
-  // Create button container
-  const button = document.createElement("button");
-  button.setAttribute("type", "button"); // フォーム送信を防ぐ
-  button.style.cssText = `
-    width: 200px !important;
-    height: 48px !important;
-    background: white !important;
-    border: 2px solid black !important;
-    border-radius: 4px !important;
-    cursor: pointer !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    color: black !important;
-    font-weight: 600 !important;
-    font-size: 14px !important;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
-    transition: all 0.2s !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    outline: none !important;
-    pointer-events: auto !important;
-    position: relative !important;
-    z-index: 1 !important;
-    box-sizing: border-box !important;
-    line-height: 1 !important;
-    text-align: center !important;
-    white-space: nowrap !important;
-    overflow: visible !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-  `;
-  button.textContent = "3Dで試着する";
-  
-  console.log("[Atelier Widget] Button created", {
-    textContent: button.textContent,
-    hasStyle: !!button.style.cssText,
-    computedStyle: window.getComputedStyle ? window.getComputedStyle(button) : null,
-  });
-
-  button.addEventListener("mouseenter", () => {
-    button.style.background = "black";
-    button.style.color = "white";
-    button.style.transform = "translateY(-2px)";
-    button.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.15)";
-  });
-
-  button.addEventListener("mouseleave", () => {
-    button.style.background = "white";
-    button.style.color = "black";
-    button.style.transform = "translateY(0)";
-    button.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.1)";
-  });
-
-  button.addEventListener("click", async (e) => {
-    console.log("[Atelier Widget] Button clicked!", e);
-    e.preventDefault();
-    e.stopPropagation();
-    await handleCubeClick(shadowRoot, params);
-  });
-
-  shadowRoot.appendChild(button);
-
-  // Send cube_view event (失敗しても続行)
-  // 後方互換性のため、shopId が存在する場合は使用
-  const eventShopId = params.shopId || "unknown"; // 後方互換性のため
-  sendEvent({
-    shopId: eventShopId,
-    productId: params.productId || params.externalProductId || undefined,
-    type: "cube_view",
-  }).catch(() => {
-    // 開発環境ではエラーを無視
-  });
+  // すべてのボタンの位置を再計算（初期化後）
+  updateButtonPositions();
 }
 
 async function handleCubeClick(
   shadowRoot: ShadowRoot,
-  params: {
-    publicKey?: string | null;
-    shopId?: string | null; // 後方互換性のため
-    externalProductId?: string | null;
-    productId?: string | null; // 後方互換性のため
-    sku?: string | null;
-    handle?: string | null;
-    url?: string | null;
-  }
+  params: WidgetParams
 ) {
-  console.log("[Atelier Widget] handleCubeClick called with params:", params);
+  console.log("[Atelier Widget] ===== handleCubeClick START =====");
+  console.log("[Atelier Widget] params:", params);
   
+  // パラメータの検証
+  if (!params.publicKey && !params.shopId) {
+    const errorMsg = "[Atelier Widget] publicKey or shopId is required";
+    console.error(errorMsg);
+    alert("ウィジェットの設定エラー: Public Keyが設定されていません");
+    return;
+  }
+
+  if (!params.externalProductId && !params.productId) {
+    const errorMsg = "[Atelier Widget] externalProductId or productId is required";
+    console.error(errorMsg);
+    alert("ウィジェットの設定エラー: 商品IDが設定されていません。data-atelier-external-product-id属性を追加してください。");
+    return;
+  }
+
+  // Send cube_click event (失敗しても続行、非同期で実行)
+  const eventShopId = params.shopId || "unknown"; // 後方互換性のため
+  sendEvent({
+    shopId: eventShopId,
+    productId: params.productId || params.externalProductId || undefined,
+    type: "cube_click",
+  }).catch((error) => {
+    console.warn("[Atelier Widget] Failed to send cube_click event:", error);
+  });
+
+  // モーダルを即座に表示（ローディング状態）
+  console.log("[Atelier Widget] Calling renderModalWithLoading");
+  const { overlay, contentArea } = renderModalWithLoading(shadowRoot, params);
+  console.log("[Atelier Widget] renderModalWithLoading completed, overlay:", overlay, "contentArea:", contentArea);
+
+  // バックグラウンドで設定を取得
   try {
-    // パラメータの検証
-    if (!params.publicKey && !params.shopId) {
-      const errorMsg = "[Atelier Widget] publicKey or shopId is required";
-      console.error(errorMsg);
-      alert("ウィジェットの設定エラー: Public Keyが設定されていません");
-      return;
-    }
-
-    if (!params.externalProductId && !params.productId) {
-      const errorMsg = "[Atelier Widget] externalProductId or productId is required";
-      console.error(errorMsg);
-      alert("ウィジェットの設定エラー: 商品IDが設定されていません。data-atelier-external-product-id属性を追加してください。");
-      return;
-    }
-
-    // Send cube_click event (失敗しても続行)
-    const eventShopId = params.shopId || "unknown"; // 後方互換性のため
-    sendEvent({
-      shopId: eventShopId,
-      productId: params.productId || params.externalProductId || undefined,
-      type: "cube_click",
-    }).catch((error) => {
-      console.warn("[Atelier Widget] Failed to send cube_click event:", error);
-    });
-
     console.log("[Atelier Widget] Fetching widget config...");
-    // Fetch widget config (開発環境では自動的にモックデータを使用)
     const config = await fetchWidgetConfig(params);
-    console.log("[Atelier Widget] Widget config received:", config);
+    console.log("[Atelier Widget] Widget config fetched:", config);
     
     if (config.enabled) {
-      console.log("[Atelier Widget] Rendering modal...");
-      renderModal(shadowRoot, config, params);
+      console.log("[Atelier Widget] Config enabled, calling updateModalWithConfig");
+      updateModalWithConfig(shadowRoot, config, params, overlay, contentArea);
     } else {
       // 開発環境では、enabled: falseでもモックデータでモーダルを表示
       if (isDevelopmentMode()) {
         console.warn(
           "[Atelier Widget] Widget is disabled, but using mock config for development."
         );
-        const glbUrl = "http://localhost:3000/3d/model_men.glb";
+        const glbUrl = "http://localhost:3000/3d/clo_model.glb";
         const mockConfig: WidgetConfig = {
           enabled: true,
           asset: {
             defaultSize: "M",
             sizes: {
-              S: { glbUrl },
-              M: { glbUrl },
-              L: { glbUrl },
+              S: [{ glbUrl }],
+              M: [{ glbUrl }],
+              L: [{ glbUrl }],
             },
           },
         };
-        renderModal(shadowRoot, mockConfig, params);
+        updateModalWithConfig(shadowRoot, mockConfig, params, overlay, contentArea);
       } else {
         console.warn("[Atelier Widget] Widget is disabled for this product", {
           config,
           params,
         });
         const errorDetails = config.error || "不明なエラー";
-        alert(`この商品の3D試着は現在利用できません。\n\nエラー: ${errorDetails}\n\nブラウザのコンソールで詳細を確認してください。`);
+        showErrorInModal(shadowRoot, `この商品の3D試着は現在利用できません。\n\nエラー: ${errorDetails}`, overlay, contentArea);
       }
     }
   } catch (error) {
@@ -302,598 +173,22 @@ async function handleCubeClick(
       console.error("[Atelier Widget] Error details:", error);
       // 開発環境では、エラーが発生してもモックデータでモーダルを表示
       const glbUrl = "http://localhost:3000/3d/model_men.glb";
-      const mockConfig: WidgetConfig = {
-        enabled: true,
-        asset: {
-          defaultSize: "M",
-          sizes: {
-            S: { glbUrl },
-            M: { glbUrl },
-            L: { glbUrl },
-          },
-        },
-      };
-      renderModal(shadowRoot, mockConfig, params);
-    } else {
-      // 本番環境ではエラーメッセージを表示（1回のみ）
-      const errorKey = `atelier_widget_error_${params.publicKey}_${params.externalProductId || params.productId}`;
-      if (!(window as any)[errorKey]) {
-        (window as any)[errorKey] = true;
-        console.error("[Atelier Widget] Error in handleCubeClick:", errorMessage);
-        alert(`3D試着の読み込みに失敗しました。\n\nエラー: ${errorMessage}\n\nブラウザのコンソールで詳細を確認してください。`);
-      }
-    }
-  }
-}
-
-async function fetchWidgetConfig(params: {
-  publicKey?: string | null;
-  shopId?: string | null; // 後方互換性のため
-  externalProductId?: string | null;
-  productId?: string | null; // 後方互換性のため
-  sku?: string | null;
-  handle?: string | null;
-  url?: string | null;
-}): Promise<WidgetConfig> {
-  // publicKey が必須
-  if (!params.publicKey) {
-    throw new Error("publicKey is required");
-  }
-
-  // 開発モードでAPIサーバーが利用できない場合はモックデータを返す
-  if (isDevelopmentMode()) {
-    try {
-      const searchParams = new URLSearchParams({
-        publicKey: params.publicKey,
-      });
-
-      // externalProductId を優先、なければ productId（後方互換性）
-      if (params.externalProductId) {
-        searchParams.append("externalProductId", params.externalProductId);
-      } else if (params.productId) {
-        searchParams.append("externalProductId", params.productId); // 後方互換性
-      } else if (params.sku) {
-        // SKU はサポートされていないため、エラーを返す
-        throw new Error("SKU is not supported. Please use externalProductId.");
-      } else if (params.handle) {
-        // Handle はサポートされていないため、エラーを返す
-        throw new Error("Handle is not supported. Please use externalProductId.");
-      } else if (params.url) {
-        // URL はサポートされていないため、エラーを返す
-        throw new Error("URL is not supported. Please use externalProductId.");
-      }
-
-      // 開発環境では、consoleサーバーに接続を試みる（タイムアウトを長めに設定）
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3秒に延長
-
-      const apiUrl = getApiBaseUrl() || "http://localhost:3000"; // フォールバック
-      const response = await fetch(
-        `${apiUrl}/api/public/widget-config?${searchParams.toString()}`,
-        {
-          signal: controller.signal,
-        }
-      );
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        // 開発環境では、APIエラー（400/500）もモックデータを返す
-        if (isDevelopmentMode()) {
-          console.warn(
-            `[Atelier Widget] API returned ${response.status}, using mock config.`
-          );
-          // モックデータを返す
-          const glbUrl = "http://localhost:3000/3d/model_men.glb";
-          return {
-            enabled: true,
-            asset: {
-              defaultSize: "M",
-              sizes: {
-                S: { glbUrl },
-                M: { glbUrl },
-                L: { glbUrl },
-              },
-            },
-          };
-        }
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const config = await response.json();
-      
-      console.log("[Atelier Widget] API response:", {
-        enabled: config.enabled,
-        hasAsset: !!config.asset,
-        sizes: config.asset?.sizes ? Object.keys(config.asset.sizes) : [],
-        glbUrls: config.asset?.sizes ? Object.entries(config.asset.sizes).map(([size, data]: [string, any]) => `${size}: ${data.glbUrl}`) : [],
-      });
-      
-      // 開発環境では、APIが`enabled: false`を返した場合でもモックデータを使用
-      if (isDevelopmentMode() && !config.enabled) {
-        console.warn(
-          "[Atelier Widget] API returned enabled: false, using mock config for development."
-        );
-        const glbUrl = "http://localhost:3000/3d/model_men.glb";
-        return {
+        const mockConfig: WidgetConfig = {
           enabled: true,
           asset: {
             defaultSize: "M",
             sizes: {
-              S: { glbUrl },
-              M: { glbUrl },
-              L: { glbUrl },
+              S: [{ glbUrl }],
+              M: [{ glbUrl }],
+              L: [{ glbUrl }],
             },
           },
         };
-      }
-      
-      return config;
-    } catch (error) {
-      // 開発環境では接続エラーやAPIエラーを完全に無視してモックデータを返す
-      if (isDevelopmentMode()) {
-        // 最初の1回だけログを表示
-        if (!(window as any).__atelier_widget_config_warned) {
-          console.info(
-            "[Atelier Widget] Development mode: Using mock config. " +
-            "To use real API, start console server: npm run dev:console"
-          );
-          (window as any).__atelier_widget_config_warned = true;
-        }
-        // モックデータを返す（開発環境ではローカルのGLBファイルを使用）
-        // consoleサーバーが起動している場合、public/3d/model_men.glbにアクセス可能
-        // 開発モードでは、consoleサーバー（localhost:3000）のGLBファイルを使用
-        const glbUrl = "http://localhost:3000/3d/model_men.glb";
-        
-        return {
-          enabled: true,
-          asset: {
-            defaultSize: "M",
-            sizes: {
-              S: { glbUrl },
-              M: { glbUrl },
-              L: { glbUrl },
-            },
-          },
-        };
-      }
-      // 本番環境ではエラーを再スロー
-      throw error;
-    }
-  }
-
-  // 本番環境では通常通りAPIを呼び出す
-  try {
-    const searchParams = new URLSearchParams({
-      publicKey: params.publicKey!,
-    });
-
-    // externalProductId を優先、なければ productId（後方互換性）
-    if (params.externalProductId) {
-      searchParams.append("externalProductId", params.externalProductId);
-    } else if (params.productId) {
-      searchParams.append("externalProductId", params.productId); // 後方互換性
+        updateModalWithConfig(shadowRoot, mockConfig, params, overlay, contentArea);
     } else {
-      throw new Error("externalProductId is required");
+      // 本番環境ではエラーメッセージを表示
+      console.error("[Atelier Widget] Error in handleCubeClick:", errorMessage);
+      showErrorInModal(shadowRoot, `3D試着の読み込みに失敗しました。\n\nエラー: ${errorMessage}`, overlay, contentArea);
     }
-
-    const apiUrl = getApiBaseUrl();
-    const requestUrl = `${apiUrl}/api/public/widget-config?${searchParams.toString()}`;
-    console.log("[Atelier Widget] Fetching widget config from:", requestUrl);
-    console.log("[Atelier Widget] Request params:", {
-      publicKey: params.publicKey,
-      externalProductId: params.externalProductId || params.productId,
-    });
-
-    let response: Response;
-    try {
-      response = await fetch(requestUrl, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-    } catch (fetchError) {
-      // ネットワークエラー（CORS、タイムアウト、接続エラーなど）
-      const errorMessage = fetchError instanceof Error ? fetchError.message : "Network error";
-      console.error("[Atelier Widget] Network error:", errorMessage);
-      throw new Error(`ネットワークエラー: ${errorMessage}. APIサーバーに接続できません。`);
-    }
-
-    console.log("[Atelier Widget] API response status:", response.status);
-
-    if (!response.ok) {
-      let errorText = "";
-      try {
-        errorText = await response.text();
-      } catch (e) {
-        // レスポンスボディの読み取りに失敗
-      }
-      
-      let errorMessage = `APIエラー: ${response.status} ${response.statusText}`;
-      
-      try {
-        const errorJson = JSON.parse(errorText);
-        if (errorJson.error) {
-          errorMessage = errorJson.error;
-        }
-      } catch (e) {
-        // JSON解析に失敗した場合は、テキストをそのまま使用
-        if (errorText) {
-          errorMessage = errorText;
-        }
-      }
-      
-      console.error("[Atelier Widget] API error:", {
-        status: response.status,
-        statusText: response.statusText,
-        body: errorText.substring(0, 200), // 最初の200文字のみ
-      });
-      
-      throw new Error(errorMessage);
-    }
-
-    const config = await response.json();
-    console.log("[Atelier Widget] Widget config received:", {
-      enabled: config.enabled,
-      hasAsset: !!config.asset,
-    });
-    return config;
-  } catch (error) {
-    // エラーを再スロー（上位のhandleCubeClickで処理）
-    throw error;
-  }
-}
-
-function renderModal(
-  shadowRoot: ShadowRoot,
-  config: WidgetConfig,
-  params: {
-    publicKey?: string | null;
-    shopId?: string | null; // 後方互換性のため
-    externalProductId?: string | null;
-    productId?: string | null; // 後方互換性のため
-  }
-) {
-  // Send widget_open event
-  const eventShopId = params.shopId || "unknown"; // 後方互換性のため
-  sendEvent({
-    shopId: eventShopId,
-    productId: params.productId || params.externalProductId || undefined,
-    type: "widget_open",
-  });
-
-  // Create modal overlay - 全画面表示
-  const overlay = document.createElement("div");
-  overlay.style.cssText = `
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: white;
-    z-index: 10000;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  `;
-
-  // Create modal content - 全画面表示
-  const modal = document.createElement("div");
-  modal.style.cssText = `
-    background: white;
-    width: 100%;
-    height: 100%;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    padding: 24px;
-    box-sizing: border-box;
-    overflow: hidden;
-  `;
-
-  // Close button - PreviewPanelと同じスタイル
-  const closeButton = document.createElement("button");
-  closeButton.innerHTML = "×";
-  closeButton.style.cssText = `
-    position: absolute;
-    top: 24px;
-    right: 24px;
-    background: none;
-    border: none;
-    font-size: 20px;
-    cursor: pointer;
-    padding: 6px;
-    border-radius: 8px;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s;
-    z-index: 1;
-  `;
-  closeButton.addEventListener("mouseenter", () => {
-    closeButton.style.backgroundColor = "rgba(0, 0, 0, 0.2)";
-  });
-  closeButton.addEventListener("mouseleave", () => {
-    closeButton.style.backgroundColor = "rgba(0, 0, 0, 0.1)";
-  });
-  closeButton.addEventListener("click", () => {
-    shadowRoot.removeChild(overlay);
-  });
-
-  // Main content area - PreviewPanelと同じレイアウト（電話フレームなし）
-  // エンドユーザー向けにはタイトルは不要（閉じるボタンのみ）
-  const contentArea = document.createElement("div");
-  contentArea.style.cssText = `
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    min-height: 0;
-  `;
-  
-  modal.appendChild(closeButton);
-  modal.appendChild(contentArea);
-  overlay.appendChild(modal);
-
-  shadowRoot.appendChild(overlay);
-
-  // Initialize preview panel using @atelier/preview（新デザイン：サイズ選択 + 質問入力）
-  const defaultSize = config.asset?.defaultSize || "M";
-  const availableSizes: string[] = config.asset?.sizes 
-    ? Object.keys(config.asset.sizes)
-    : ["S", "M", "L"];
-  let currentSize = defaultSize;
-  // modelUrlを優先、なければglbUrlを使用（後方互換性）
-  let modelUrl = config.asset?.sizes[currentSize]?.modelUrl || config.asset?.sizes[currentSize]?.glbUrl;
-  
-  // 会話管理用の変数
-  let conversationId: string | undefined;
-  let sessionId: string | undefined;
-  
-  // 開発モードでmodelUrlがundefinedの場合、デフォルトのGLBファイルを使用
-  if (isDevelopmentMode() && !modelUrl) {
-    console.warn("[Atelier Widget] modelUrl is undefined, using fallback");
-    modelUrl = "http://localhost:3000/3d/model_men.glb";
-  }
-  
-  console.log("[Atelier Widget] Initializing preview panel:", {
-    modelUrl,
-    hasConfig: !!config.asset,
-    defaultSize,
-    availableSizes,
-    allSizes: config.asset?.sizes ? Object.keys(config.asset.sizes) : [],
-    allModelUrls: config.asset?.sizes ? Object.entries(config.asset.sizes).map(([size, data]: [string, any]) => `${size}: ${data.modelUrl || data.glbUrl}`) : [],
-  });
-  
-  const previewInstance = initPreviewPanel({
-    onBackClick: () => {
-      // ナビゲーションバーの戻るボタンがクリックされたらモーダルを閉じる
-      shadowRoot.removeChild(overlay);
-    },
-    container: contentArea,
-    glbUrl: modelUrl, // 後方互換性のため
-    modelUrl: modelUrl, // GLBとFBXの両方をサポート
-    textureUrl: undefined,
-    initialHeight: 170,
-    minHeight: 150,
-    maxHeight: 190,
-    availableSizes,
-    initialSize: currentSize,
-    productName: config.asset?.productName,
-    onSizeChange: (size) => {
-      currentSize = size;
-      const newModelUrl = config.asset?.sizes[size]?.modelUrl || config.asset?.sizes[size]?.glbUrl || 
-        (isDevelopmentMode() ? "http://localhost:3000/3d/model_men.glb" : undefined);
-      previewInstance.updateModelUrl(newModelUrl);
-      const eventShopId = params.shopId || "unknown"; // 後方互換性のため
-      sendEvent({
-        shopId: eventShopId,
-        productId: params.productId || params.externalProductId || undefined,
-        type: "size_change",
-        meta: { size },
-      });
-    },
-    onHeightChange: (height) => {
-      const eventShopId = params.shopId || "unknown"; // 後方互換性のため
-      sendEvent({
-        shopId: eventShopId,
-        productId: params.productId || params.externalProductId || undefined,
-        type: "height_change",
-        meta: { height },
-      });
-    },
-    onMessageSend: async (message) => {
-      try {
-        const apiUrl = getApiBaseUrl() || "http://localhost:3000"; // フォールバック
-        const eventShopId = params.shopId || "unknown"; // 後方互換性のため
-        const eventProductId = params.productId || params.externalProductId || undefined;
-        const requestBody = {
-          message,
-          productId: eventProductId,
-          shopId: eventShopId,
-          conversationId: conversationId,
-          sessionId: sessionId,
-          context: {
-            size: currentSize,
-          },
-        };
-        
-        console.log("[Atelier Widget] Sending chat request:", {
-          apiUrl: `${apiUrl}/api/chat`,
-          shopId: eventShopId,
-          productId: eventProductId,
-          conversationId: conversationId,
-          sessionId: sessionId,
-          messageLength: message.length,
-        });
-        
-        const response = await fetch(`${apiUrl}/api/chat`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(requestBody),
-        });
-
-        console.log("[Atelier Widget] Chat API response status:", response.status);
-
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({ error: "Unknown error" }));
-          console.error("[Atelier Widget] Chat API error:", {
-            status: response.status,
-            error,
-          });
-          // エラーメッセージを返す（適当な返信を返さない）
-          throw new Error(error.message || error.error || "メッセージの送信に失敗しました");
-        }
-
-        const data = await response.json();
-        console.log("[Atelier Widget] Chat API response data:", {
-          hasResponse: !!data.response,
-          conversationId: data.conversationId,
-          sessionId: data.sessionId,
-          responseLength: data.response?.length || 0,
-        });
-        
-        if (!data.response) {
-          throw new Error("レスポンスが空です");
-        }
-        
-        // 会話IDとセッションIDを保存（次回のリクエストで使用）
-        if (data.conversationId) {
-          console.log("[Atelier Widget] Conversation ID received:", data.conversationId);
-          conversationId = data.conversationId;
-        }
-        if (data.sessionId) {
-          console.log("[Atelier Widget] Session ID received:", data.sessionId);
-          sessionId = data.sessionId;
-        }
-        
-        return data.response;
-      } catch (error) {
-        // 開発環境では接続エラーを適切に処理
-        if (
-          error instanceof Error &&
-          (error.message === "Failed to fetch" ||
-            error.message.includes("network") ||
-            error.message.includes("connection") ||
-            error.name === "AbortError")
-        ) {
-          console.warn("[Atelier Widget] Chat API not available (development mode)");
-          // 開発環境でconsoleサーバーが起動していない場合のメッセージ
-          const errorMessage = isDevelopmentMode()
-            ? "開発環境では、consoleサーバー（npm run dev:console）を起動してください。商品情報を取得するには、APIサーバーへの接続が必要です。"
-            : "チャットサービスに接続できません。しばらくしてから再度お試しください。";
-          throw new Error(errorMessage);
-        }
-        console.error("[Atelier Widget] Failed to send message:", error);
-        // エラーを再スローして、preview.tsで適切に処理されるようにする
-        throw error;
-      }
-    },
-    onModelLoad: () => {
-      console.log("[Atelier Widget] 3D model loaded:", modelUrl);
-    },
-    onModelError: (error) => {
-      // 開発環境では接続エラーを抑制（consoleサーバーが起動していない場合）
-      if (
-        error instanceof Error &&
-        (error.message === "Failed to fetch" ||
-          error.message.includes("network") ||
-          error.message.includes("connection"))
-      ) {
-        // 開発環境ではエラーログを出さない
-        return;
-      }
-      console.error("[Atelier Widget] Failed to load 3D model:", error, modelUrl);
-    },
-  });
-}
-
-async function sendEvent(event: {
-  shopId: string;
-  productId?: string;
-  type: string;
-  meta?: Record<string, unknown>;
-}): Promise<void> {
-  // 開発モードではAPIサーバーが利用できない場合を想定
-  if (isDevelopmentMode()) {
-    // 開発モードでは、APIサーバーが利用可能かどうかをチェック
-    // 利用可能な場合のみ送信を試みる
-    const apiUrl = getApiBaseUrl();
-    
-    // 最初の1回だけ警告を表示
-    if (!(window as any).__atelier_widget_dev_mode_info) {
-      console.info(
-        "[Atelier Widget] Development mode active. " +
-        "API events will be sent if console server is available. " +
-        "To enable API, start: npm run dev:console"
-      );
-      (window as any).__atelier_widget_dev_mode_info = true;
-    }
-    
-    try {
-      // タイムアウトを短く設定して、すぐに失敗するようにする
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1000);
-      
-      const response = await fetch(`${apiUrl}/api/events`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(event),
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      return; // 成功した場合は終了
-    } catch (error) {
-      // 開発環境では接続エラーを完全に無視（ログも出さない）
-      // AbortErrorやTypeError（Failed to fetch）は無視
-      // ブラウザのコンソールにはERR_CONNECTION_REFUSEDが表示されるが、
-      // これはブラウザのネットワークエラーなのでJavaScript側では抑制できない
-      // widgetの動作には影響しない
-      if (
-        error instanceof Error &&
-        (error.name === "AbortError" ||
-          error.message === "Failed to fetch" ||
-          error.message.includes("network") ||
-          error.message.includes("connection"))
-      ) {
-        return; // エラーを無視して続行
-      }
-      // その他のエラーは警告として表示
-      console.warn("[Atelier Widget] Event send error:", error);
-      return;
-    }
-  }
-
-  // 本番環境では通常通りAPIを呼び出す
-  try {
-    const response = await fetch(`${getApiBaseUrl()}/api/events`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(event),
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-  } catch (error) {
-    // 本番環境でもエラーを再スローしない（widgetの動作を継続）
-    // ただし、本番環境ではエラーをログに記録
-    if (!isDevelopmentMode()) {
-      console.error("[Atelier Widget] Failed to send event:", error);
-    }
-    // エラーを再スローしない（widgetの動作を継続）
   }
 }

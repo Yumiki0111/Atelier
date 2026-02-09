@@ -148,8 +148,6 @@ async function GET(request) {
                 キューブ表示数: 0,
                 キューブクリック数: 0,
                 ウィジェット開封数: 0,
-                会話数: 0,
-                メッセージ数: 0,
                 カート追加: 0
             });
         });
@@ -176,38 +174,6 @@ async function GET(request) {
                     break;
             }
         });
-        // 会話ログを集計（conversationsテーブルから）
-        const { data: conversations, error: conversationsError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("conversations").select("id, started_at").eq("shop_id", shopId).gte("started_at", startDate.toISOString()).lte("started_at", endDate.toISOString());
-        if (conversationsError) {
-            console.error("Error fetching conversations:", conversationsError);
-        } else {
-            conversations?.forEach((conv)=>{
-                const convDate = new Date(conv.started_at);
-                const dateKey = convDate.toISOString().split("T")[0];
-                const dayData = dailyData.get(dateKey);
-                if (dayData) {
-                    dayData.会話数 += 1;
-                }
-            });
-        }
-        // メッセージ数を集計（messagesテーブルから）
-        // まず、該当するshop_idのconversation_idを取得
-        const conversationIds = conversations?.map((c)=>c.id) || [];
-        if (conversationIds.length > 0) {
-            const { data: messages, error: messagesError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("messages").select("id, created_at").in("conversation_id", conversationIds).gte("created_at", startDate.toISOString()).lte("created_at", endDate.toISOString());
-            if (messagesError) {
-                console.error("Error fetching messages:", messagesError);
-            } else {
-                messages?.forEach((msg)=>{
-                    const msgDate = new Date(msg.created_at);
-                    const dateKey = msgDate.toISOString().split("T")[0];
-                    const dayData = dailyData.get(dateKey);
-                    if (dayData) {
-                        dayData.メッセージ数 += 1;
-                    }
-                });
-            }
-        }
         // 配列に変換して返す
         const result = Array.from(dailyData.values());
         return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json(result);

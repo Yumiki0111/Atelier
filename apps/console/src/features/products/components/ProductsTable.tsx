@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import Image from "next/image";
 import type { Product, ProductSize } from "@atelier/shared";
 import {
@@ -48,8 +48,6 @@ export function ProductsTable({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
-  const [descriptionModalOpen, setDescriptionModalOpen] = useState(false);
-  const [selectedDescription, setSelectedDescription] = useState<string>("");
   const deleteProduct = useDeleteProduct();
   const bulkDeleteProducts = useBulkDeleteProducts();
 
@@ -90,41 +88,34 @@ export function ProductsTable({
     }
   };
 
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch =
-      searchQuery === "" ||
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.brand?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.externalProductId?.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
-  });
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      const matchesSearch =
+        searchQuery === "" ||
+        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.brand?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.externalProductId?.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesSearch;
+    });
+  }, [products, searchQuery]);
 
-  const toggleRowSelection = (productId: string) => {
-    const newSelection = new Set(selectedRowIds);
-    if (newSelection.has(productId)) {
-      newSelection.delete(productId);
-    } else {
-      newSelection.add(productId);
-    }
-    setSelectedRowIds(newSelection);
-  };
+  const toggleRowSelection = useCallback((productId: string) => {
+    setSelectedRowIds((prev) => {
+      const newSelection = new Set(prev);
+      if (newSelection.has(productId)) {
+        newSelection.delete(productId);
+      } else {
+        newSelection.add(productId);
+      }
+      return newSelection;
+    });
+  }, []);
 
   const handleProductClick = (product: Product) => {
     // デフォルトでMサイズを選択
     onProductSelect(product, "M");
     // プレビューを開く
     togglePreview();
-  };
-
-  const handleDescriptionClick = (description: string) => {
-    setSelectedDescription(description);
-    setDescriptionModalOpen(true);
-  };
-
-  const truncateDescription = (text: string | undefined, maxLength: number = 30) => {
-    if (!text) return "-";
-    if (text.length <= maxLength) return text;
-    return `${text.slice(0, maxLength)}...`;
   };
 
   return (
@@ -158,7 +149,7 @@ export function ProductsTable({
 
       {/* Table */}
       <div className="rounded-md border overflow-x-auto">
-        <Table>
+        <Table className="table-fixed w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
               <TableHead className="w-12 sticky left-0 bg-gray-100 z-10">
@@ -178,18 +169,17 @@ export function ProductsTable({
                   }}
                 />
               </TableHead>
-              <TableHead className="w-20">画像</TableHead>
-              <TableHead className="w-48">商品名</TableHead>
-              <TableHead className="w-32">ブランド</TableHead>
-              <TableHead className="w-32">外部商品ID</TableHead>
-              <TableHead className="w-48">説明</TableHead>
-              <TableHead className="w-32">操作</TableHead>
+              <TableHead className="w-[calc((100%-3rem)/5)]">画像</TableHead>
+              <TableHead className="w-[calc((100%-3rem)/5)]">商品名</TableHead>
+              <TableHead className="w-[calc((100%-3rem)/5)]">ブランド</TableHead>
+              <TableHead className="w-[calc((100%-3rem)/5)]">外部商品ID</TableHead>
+              <TableHead className="w-[calc((100%-3rem)/5)]">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredProducts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-gray-500">
+                <TableCell colSpan={7} className="text-center text-gray-500">
                   商品が見つかりませんでした
                 </TableCell>
               </TableRow>
@@ -232,33 +222,17 @@ export function ProductsTable({
                         <span className="text-gray-400 italic">未設定</span>
                       )}
                     </TableCell>
-                    <TableCell className={`py-2 ${isSelected ? "bg-blue-50" : ""}`}>
-                      {product.description ? (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDescriptionClick(product.description || "");
-                          }}
-                          className="text-left text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
-                        >
-                          {truncateDescription(product.description)}
-                        </button>
-                      ) : (
-                        "-"
-                      )}
-                    </TableCell>
                     <TableCell
                       className={`py-2 ${isSelected ? "bg-blue-50" : ""}`}
                       onClick={(e) => e.stopPropagation()}
                     >
                       {isSelected ? (
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setEditingProductId(product.id)}
-                            className="gap-2"
+                            className="gap-2 whitespace-nowrap"
                           >
                             <Edit className="h-4 w-4" />
                             編集
@@ -267,7 +241,7 @@ export function ProductsTable({
                             variant="outline"
                             size="sm"
                             onClick={() => handleDelete(product.id)}
-                            className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 whitespace-nowrap"
                             disabled={deleteProduct.isPending}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -275,7 +249,7 @@ export function ProductsTable({
                           </Button>
                         </div>
                       ) : (
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                           <Button
                             variant="outline"
                             size="sm"
@@ -318,21 +292,6 @@ export function ProductsTable({
           }}
         />
       )}
-
-      {/* 説明モーダル */}
-      <Dialog open={descriptionModalOpen} onOpenChange={setDescriptionModalOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>商品説明</DialogTitle>
-            <DialogDescription>
-              商品の詳細な説明を表示します。
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mt-4">
-            <p className="whitespace-pre-wrap text-sm">{selectedDescription || "説明がありません"}</p>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

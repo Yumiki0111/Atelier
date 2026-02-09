@@ -16,7 +16,7 @@ function DatabaseLayoutContent({
       <Sidebar />
       <main
         className={`overflow-y-auto bg-gray-50 p-6 transition-all duration-300 ease-in-out ${
-          isPreviewOpen ? "flex-1 mr-96" : "flex-1"
+          isPreviewOpen ? "flex-1 mr-[400px]" : "flex-1"
         }`}
       >
         {children}

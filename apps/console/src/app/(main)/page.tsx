@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProducts } from "@/features/products/useProducts";
 import { useProductSelection } from "@/contexts/ProductSelectionContext";
 import { useAnalytics } from "@/features/analytics/useAnalytics";
-import { Package, TrendingUp, ShoppingCart, MessageSquare, ArrowRight } from "lucide-react";
+import { Package, TrendingUp, ShoppingCart, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { authenticatedFetch } from "@/lib/auth/api-client";
 
@@ -60,7 +60,6 @@ export default function HomePage() {
   }, [shopId, router]);
 
   // アナリティクスデータから主要メトリクスを計算
-  const totalConversations = analyticsData.reduce((sum, d) => sum + d.会話数, 0);
   const totalCartAdds = analyticsData.reduce((sum, d) => sum + d.カート追加, 0);
   const totalCubeViews = analyticsData.reduce((sum, d) => sum + d.キューブ表示数, 0);
   const totalCubeClicks = analyticsData.reduce((sum, d) => sum + d.キューブクリック数, 0);
@@ -79,11 +78,6 @@ export default function HomePage() {
       label: "総商品数",
       value: products.length,
       icon: Package,
-    },
-    {
-      label: "過去7日の会話数",
-      value: totalConversations.toLocaleString(),
-      icon: MessageSquare,
     },
     {
       label: "過去7日のカート追加",

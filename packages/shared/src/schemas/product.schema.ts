@@ -22,7 +22,6 @@ export const productSchema = z.object({
   thumbnailUrl: z
     .union([z.string().url(), z.literal("")])
     .optional(), // URL形式であることを検証、空文字列も許可
-  description: z.string().optional(), // 商品説明
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

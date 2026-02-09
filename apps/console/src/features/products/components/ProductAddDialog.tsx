@@ -124,7 +124,6 @@ export function ProductAddDialog({ onProductAdded }: ProductAddDialogProps) {
         brand: data.brand && data.brand.trim() !== "" ? data.brand : undefined,
         category: data.category,
         thumbnailUrl: data.thumbnailUrl && data.thumbnailUrl.trim() !== "" ? data.thumbnailUrl : undefined,
-        description: data.description && data.description.trim() !== "" ? data.description : undefined,
       };
       
       await addProduct.mutateAsync(cleanedData);
@@ -270,18 +269,6 @@ export function ProductAddDialog({ onProductAdded }: ProductAddDialogProps) {
                 </button>
               </div>
             )}
-          </div>
-
-
-          <div className="space-y-2 min-w-0">
-            <Label htmlFor="description">商品説明（任意）</Label>
-            <Textarea
-              id="description"
-              {...register("description")}
-              placeholder="商品の詳細な説明を入力してください"
-              className="min-h-[100px]"
-              rows={4}
-            />
           </div>
 
           <DialogFooter>

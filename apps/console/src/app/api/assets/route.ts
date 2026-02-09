@@ -59,18 +59,33 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const assets = data?.map((a) => ({
-      id: a.id,
-      productId: a.product_id,
-      size: a.size,
-      glbUrl: a.glb_url, // 後方互換性のため残す
-      modelUrl: a.model_url || a.glb_url, // model_urlを優先、なければglb_urlを使用
-      thumbnailUrl: a.thumbnail_url,
-      version: a.version,
-      isActive: a.is_active ?? true,
-      createdAt: a.created_at,
-      updatedAt: a.updated_at,
-    }));
+    // アセットと関連する商品情報を取得（カテゴリー情報を含める）
+    const assetsWithProducts = await Promise.all(
+      (data || []).map(async (a) => {
+        // 商品情報を取得してカテゴリーを取得
+        const { data: product } = await supabaseAdmin
+          .from("products")
+          .select("category")
+          .eq("id", a.product_id)
+          .single();
+        
+        return {
+          id: a.id,
+          productId: a.product_id,
+          size: a.size,
+          glbUrl: a.glb_url, // 後方互換性のため残す
+          modelUrl: a.model_url || a.glb_url, // model_urlを優先、なければglb_urlを使用
+          thumbnailUrl: a.thumbnail_url,
+          version: a.version,
+          isActive: a.is_active ?? true,
+          createdAt: a.created_at,
+          updatedAt: a.updated_at,
+          category: product?.category || undefined, // カテゴリー情報を追加
+        };
+      })
+    );
+
+    const assets = assetsWithProducts;
 
     return NextResponse.json(assets || []);
   } catch (error) {

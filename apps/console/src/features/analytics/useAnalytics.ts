@@ -11,8 +11,6 @@ interface AnalyticsData {
   キューブ表示数: number;
   キューブクリック数: number;
   ウィジェット開封数: number;
-  会話数: number;
-  メッセージ数: number;
   カート追加: number;
 }
 

@@ -2,6 +2,16 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import { TextureLoader } from "three";
+import { DEFAULT_MODEL_URL, getCategoryLayerOrder } from "./layering";
+import type { ProductCategory } from "@atelier/shared";
+
+/**
+ * アセット情報（着せ替え用）
+ */
+export interface AssetInfo {
+  url: string;
+  category?: ProductCategory;
+}
 
 /**
  * 3Dビューアの初期化オプション
@@ -9,8 +19,10 @@ import { TextureLoader } from "three";
 export interface ViewerOptions {
   glbUrl?: string; // 後方互換性のため残す
   modelUrl?: string; // GLBとFBXの両方をサポート（優先的に使用）
+  assets?: AssetInfo[]; // 着せ替え用のアセットリスト（カテゴリー順にソート済み）
   textureUrl?: string;
   backgroundImageUrl?: string; // 背景画像のURL
+  apiBaseUrl?: string; // APIベースURL（デフォルトモデルのURL構築に使用）
   onLoad?: () => void;
   onError?: (error: Error) => void;
 }
@@ -21,6 +33,7 @@ export interface ViewerOptions {
 export interface ViewerInstance {
   updateGlbUrl(glbUrl: string | undefined): void;
   updateModelUrl(modelUrl: string | undefined): void;
+  updateAssets(assets: AssetInfo[]): void; // 着せ替え用アセットを更新
   destroy(): void;
 }
 
@@ -31,8 +44,14 @@ export function init3DViewer(
   container: HTMLElement,
   options: ViewerOptions
 ): ViewerInstance {
-  const { glbUrl, modelUrl, textureUrl, backgroundImageUrl, onLoad, onError } = options;
-  // modelUrlを優先、なければglbUrlを使用（後方互換性）
+  const { glbUrl, modelUrl, assets, textureUrl, backgroundImageUrl, apiBaseUrl, onLoad, onError } = options;
+  
+  // デフォルトモデルとアセットを管理
+  let defaultModel: THREE.Group | null = null;
+  const loadedAssets = new Map<string, THREE.Group>(); // category -> model
+  let isDefaultModelLoaded = false;
+  
+  // 後方互換性のため、既存のmodelUrlを保持
   const currentModelUrl = modelUrl || glbUrl;
 
   // コンテナのサイズを取得（初期化時に0の場合はデフォルト値を使用）
@@ -44,49 +63,10 @@ export function init3DViewer(
 
   const { width: initialWidth, height: initialHeight } = getContainerSize();
 
-  console.log("[Atelier Preview] Initializing 3D viewer:", {
-    containerWidth: container.clientWidth,
-    containerHeight: container.clientHeight,
-    initialWidth,
-    initialHeight,
-  });
-
-  // Scene setup（背景画像を設定）
+  // Scene setup（背景画像はフレームの背面に配置するため、3Dシーンでは透明にする）
   const scene = new THREE.Scene();
-  
-  // 背景画像を読み込む
-  if (backgroundImageUrl) {
-    console.log("[Atelier Preview] Loading background image:", backgroundImageUrl);
-    // 読み込み中は一時的に白背景を設定
-    scene.background = new THREE.Color(0xffffff);
-    
-    const textureLoader = new TextureLoader();
-    textureLoader.load(
-      backgroundImageUrl,
-      (texture) => {
-        console.log("[Atelier Preview] Background image loaded successfully");
-        // テクスチャの色空間を設定
-        if ('colorSpace' in texture) {
-          (texture as any).colorSpace = 'srgb';
-        } else if ('encoding' in texture) {
-          (texture as any).encoding = (THREE as any).sRGBEncoding;
-        }
-        // テクスチャの繰り返しを無効化
-        texture.wrapS = THREE.ClampToEdgeWrapping;
-        texture.wrapT = THREE.ClampToEdgeWrapping;
-        scene.background = texture;
-      },
-      undefined,
-      (error) => {
-        console.warn("[Atelier Preview] Failed to load background image:", error, backgroundImageUrl);
-        // 背景画像の読み込みに失敗した場合は白背景を維持
-        scene.background = new THREE.Color(0xffffff);
-      }
-    );
-  } else {
-    console.log("[Atelier Preview] No background image URL provided");
-    scene.background = null; // 背景なし（透明）
-  }
+  // 背景画像はフレームの背面に配置するため、3Dシーンでは透明にする
+  scene.background = null; // 透明
 
   // Camera（PreviewPanelのModelViewerと同じ: position: [0, 0, 5], fov: 50）
   const camera = new THREE.PerspectiveCamera(
@@ -95,18 +75,19 @@ export function init3DViewer(
     0.1,
     1000
   );
-  camera.position.set(0, 0, 5);
+  // モデルを拡大表示するためにカメラを近づける（radius=3.5に設定）
+  const initialRadius = 3.5;
+  camera.position.set(0, 0, initialRadius);
 
-  // Renderer（背景画像がある場合は不透明、ない場合は透明）
-  // 背景画像のURLが提供されている場合は不透明、ない場合は透明
-  const hasBackground = !!backgroundImageUrl;
+  // Renderer（背景画像はフレームの背面に配置するため、常に透明）
   const renderer = new THREE.WebGLRenderer({ 
-    antialias: true,
-    alpha: !hasBackground, // 背景画像がある場合は不透明、ない場合は透明
+    antialias: true, // アンチエイリアスを有効化
+    alpha: true, // 常に透明（背景画像はフレームの背面に配置）
     powerPreference: "high-performance", // 高性能モード
+    precision: "highp", // 高精度レンダリング
   });
-  // 高解像度レンダリング（Retinaディスプレイ対応）
-  const pixelRatio = Math.min(window.devicePixelRatio || 1, 2); // 最大2倍まで
+  // 高解像度レンダリング（Retinaディスプレイ対応、最大3倍まで）
+  const pixelRatio = Math.min(window.devicePixelRatio || 1, 3); // 最大3倍まで上げる
   renderer.setPixelRatio(pixelRatio);
   renderer.setSize(initialWidth, initialHeight);
   
@@ -114,20 +95,19 @@ export function init3DViewer(
   // Three.js r152以降ではoutputColorSpaceを使用
   if ('outputColorSpace' in renderer) {
     (renderer as any).outputColorSpace = 'srgb';
-  } else if ('outputEncoding' in renderer) {
-    // 古いバージョンのThree.js用
+  } else if ('outputEncoding' in renderer && (THREE as any).sRGBEncoding !== undefined) {
+    // 古いバージョンのThree.js用（sRGBEncodingが存在する場合のみ）
     (renderer as any).outputEncoding = (THREE as any).sRGBEncoding;
   }
+  // トーンマッピングを調整して彩度を向上
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.2; // 露出を少し上げて明るく
+  renderer.toneMappingExposure = 1.5; // 露出を上げて明るく、彩度も向上
   
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap; // ソフトシャドウ
-  if (hasBackground) {
-    renderer.setClearColor(0xffffff, 1); // 背景画像がある場合は白背景
-  } else {
-    renderer.setClearColor(0x000000, 0); // 背景を透明にする
-  }
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap; // ソフトシャドウ（高品質）
+  renderer.shadowMap.autoUpdate = true; // シャドウマップを自動更新
+  // 背景画像はフレームの背面に配置するため、常に透明
+  renderer.setClearColor(0x000000, 0); // 背景を透明にする
   const canvasElement = renderer.domElement;
   canvasElement.style.touchAction = "none"; // タッチイベントを有効化
   canvasElement.style.pointerEvents = "auto"; // ポインターイベントを有効化
@@ -136,15 +116,15 @@ export function init3DViewer(
   container.appendChild(canvasElement);
 
   // Lights（彩度を向上させるため、ライトの強度を調整）
-  const ambientLight = new THREE.AmbientLight(0xffffff, 1.2); // 環境光を少し強く
+  const ambientLight = new THREE.AmbientLight(0xffffff, 1.5); // 環境光をさらに強く（彩度向上）
   scene.add(ambientLight);
 
-  const directionalLight1 = new THREE.DirectionalLight(0xffffff, 2.0); // メインライトを強く
+  const directionalLight1 = new THREE.DirectionalLight(0xffffff, 2.5); // メインライトをさらに強く
   directionalLight1.position.set(10, 10, 5);
   directionalLight1.castShadow = true;
-  // 影の設定
-  directionalLight1.shadow.mapSize.width = 2048;
-  directionalLight1.shadow.mapSize.height = 2048;
+  // 影の設定（解像度を上げる）
+  directionalLight1.shadow.mapSize.width = 4096; // 2048から4096に上げる（高解像度）
+  directionalLight1.shadow.mapSize.height = 4096; // 2048から4096に上げる（高解像度）
   directionalLight1.shadow.camera.near = 0.5;
   directionalLight1.shadow.camera.far = 50;
   directionalLight1.shadow.camera.left = -10;
@@ -152,13 +132,14 @@ export function init3DViewer(
   directionalLight1.shadow.camera.top = 10;
   directionalLight1.shadow.camera.bottom = -10;
   directionalLight1.shadow.bias = -0.0001;
+  directionalLight1.shadow.radius = 4; // ソフトシャドウの半径を上げる（より滑らか）
   scene.add(directionalLight1);
 
-  const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.8);
+  const directionalLight2 = new THREE.DirectionalLight(0xffffff, 1.2); // 補助光を強く
   directionalLight2.position.set(-10, -10, -5);
   scene.add(directionalLight2);
 
-  const directionalLight3 = new THREE.DirectionalLight(0xffffff, 0.5);
+  const directionalLight3 = new THREE.DirectionalLight(0xffffff, 0.8); // 上部ライトを強く
   directionalLight3.position.set(0, 10, 0);
   scene.add(directionalLight3);
 
@@ -170,10 +151,11 @@ export function init3DViewer(
   const minPolarAngle = Math.PI / 4; // 45度（上方向の限界）
   const maxPolarAngle = (Math.PI * 3) / 4; // 135度（下方向の限界）
   
-  // 初期のphi（上下回転）を保存して固定
+  // 初期のphi（上下回転）とradiusを保存して固定
   const initialSpherical = new THREE.Spherical();
   initialSpherical.setFromVector3(camera.position);
   const fixedPhi = initialSpherical.phi; // 上下回転を固定
+  const fixedRadius = initialRadius; // radiusを固定（タッチ時に小さくならないように）
 
   // canvas要素にイベントリスナーを追加
   canvasElement.addEventListener("mousedown", (e) => {
@@ -181,6 +163,7 @@ export function init3DViewer(
     isDragging = true;
     previousMousePosition = { x: e.clientX, y: e.clientY };
     canvasElement.style.cursor = "grabbing";
+    // レンダリング禁止
   });
 
   canvasElement.addEventListener("mousemove", (e) => {
@@ -197,23 +180,30 @@ export function init3DViewer(
     spherical.theta -= deltaX * 0.01; // 横方向のドラッグでz軸回転
     // 上下回転（phi）は固定
     spherical.phi = fixedPhi; // 上下回転を固定
-    // z軸方向（前後方向）の動きを制限：radiusを固定（5に固定）
-    spherical.radius = 5;
+    // z軸方向（前後方向）の動きを制限：radiusを固定（タッチ時に小さくならないように）
+    spherical.radius = fixedRadius;
 
     camera.position.setFromSpherical(spherical);
-    camera.lookAt(0, 0, 0);
+    camera.lookAt(0, 0, 0); // モデルの原点（中央）を見る
+    
+    // ドラッグ中はレンダリング
+    render();
 
     previousMousePosition = { x: e.clientX, y: e.clientY };
   });
 
+  // mouseupイベントは後で追加（アニメーション停止処理を含む）
+
   canvasElement.addEventListener("mouseup", () => {
     isDragging = false;
     canvasElement.style.cursor = "grab";
+    // レンダリング禁止
   });
-
+  
   canvasElement.addEventListener("mouseleave", () => {
     isDragging = false;
     canvasElement.style.cursor = "grab";
+    // レンダリング禁止
   });
 
   // タッチイベントも追加
@@ -222,6 +212,7 @@ export function init3DViewer(
     if (e.touches.length === 1) {
       isDragging = true;
       previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      // レンダリング禁止
     }
   });
 
@@ -238,17 +229,21 @@ export function init3DViewer(
     spherical.theta -= deltaX * 0.01; // 横方向のドラッグでz軸回転
     // 上下回転（phi）は固定
     spherical.phi = fixedPhi; // 上下回転を固定
-    // z軸方向（前後方向）の動きを制限：radiusを固定（5に固定）
-    spherical.radius = 5;
+    // z軸方向（前後方向）の動きを制限：radiusを固定（タッチ時に小さくならないように）
+    spherical.radius = fixedRadius;
 
     camera.position.setFromSpherical(spherical);
-    camera.lookAt(0, 0, 0);
+    camera.lookAt(0, 0, 0); // モデルの原点（中央）を見る
+    
+    // ドラッグ中はレンダリング
+    render();
 
     previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   });
 
   canvasElement.addEventListener("touchend", () => {
     isDragging = false;
+    // レンダリング禁止
   });
 
   canvasElement.style.cursor = "grab";
@@ -267,9 +262,191 @@ export function init3DViewer(
   scene.add(ground);
 
   // Load model
-  let currentModel: THREE.Group | null = null;
+  let currentModel: THREE.Group | null = null; // 後方互換性のため残す
   const gltfLoader = new GLTFLoader();
   const fbxLoader = new FBXLoader();
+  
+  // デフォルトモデルのリグ情報を保存（位置、回転、スケール）
+  let defaultModelTransform: {
+    position: THREE.Vector3;
+    rotation: THREE.Euler;
+    scale: THREE.Vector3;
+  } | null = null;
+  
+  /**
+   * モデルの位置、回転、スケールを計算して設定する共通関数
+   * 全てのモデル（デフォルトモデル、アセット、loadModel）で同じロジックを使用
+   */
+  function calculateAndSetModelTransform(model: THREE.Group, targetSize: number = 2.0): {
+    position: THREE.Vector3;
+    rotation: THREE.Euler;
+    scale: THREE.Vector3;
+  } {
+    // 1. スケール適用前にバウンディングボックスを計算
+    const box = new THREE.Box3().setFromObject(model);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const maxSize = Math.max(size.x, size.y, size.z);
+    
+    // 2. モデルのサイズに応じてスケールを調整
+    const scale = targetSize / maxSize;
+    model.scale.set(scale, scale, scale);
+    
+    // 3. スケール適用後に再度バウンディングボックスを計算
+    const boxAfterScale = new THREE.Box3().setFromObject(model);
+    const centerAfterScale = boxAfterScale.getCenter(new THREE.Vector3());
+    
+    // 4. 回転を設定（正面を向かせる）
+    model.rotation.y = 0;
+    
+    // 5. モデルの中心を原点に合わせる
+    model.position.set(-centerAfterScale.x, -centerAfterScale.y, -centerAfterScale.z);
+    
+    // 6. 変換情報を返す
+    return {
+      position: model.position.clone(),
+      rotation: model.rotation.clone(),
+      scale: model.scale.clone(),
+    };
+  }
+  
+  // デフォルトモデルを読み込む関数
+  async function loadDefaultModel(): Promise<void> {
+    if (isDefaultModelLoaded && defaultModel) {
+      return; // 既に読み込まれている場合はスキップ
+    }
+    
+    try {
+      // apiBaseUrlが提供されている場合は完全なURLを構築、そうでなければ相対パスを使用
+      const defaultModelUrl = apiBaseUrl 
+        ? `${apiBaseUrl}${DEFAULT_MODEL_URL}` 
+        : DEFAULT_MODEL_URL;
+      
+      const gltf = await new Promise<THREE.Group>((resolve, reject) => {
+        gltfLoader.load(
+          defaultModelUrl,
+          (loaded) => {
+            resolve(loaded.scene);
+          },
+          undefined,
+          (error) => {
+            console.error("[Atelier Preview] Failed to load default model:", error);
+            reject(error);
+          }
+        );
+      });
+      
+      // 共通の位置計算関数を使用してモデルの位置、回転、スケールを設定
+      defaultModelTransform = calculateAndSetModelTransform(gltf, 2.0);
+      
+      enableShadow(gltf);
+      defaultModel = gltf;
+      isDefaultModelLoaded = true;
+      
+      // シーンに追加
+      scene.add(defaultModel);
+      
+      // レンダリング
+      setTimeout(() => {
+        render();
+      }, 50);
+    } catch (error) {
+      console.error("[Atelier Preview] Error loading default model:", error);
+      // デフォルトモデルの読み込みに失敗しても続行（後方互換性のため）
+    }
+  }
+  
+  // アセットを読み込む関数
+  async function loadAsset(url: string, category?: ProductCategory): Promise<void> {
+    try {
+      const format = getModelFormat(url);
+      
+      const model = await new Promise<THREE.Group>((resolve, reject) => {
+        const loader = format === "fbx" ? fbxLoader : gltfLoader;
+        
+        loader.load(
+          url,
+          (loaded: any) => {
+            const modelToUse = format === "fbx" ? loaded : (loaded.scene || loaded);
+            resolve(modelToUse);
+          },
+          undefined,
+          (error) => {
+            console.error("[Atelier Preview] Failed to load asset:", { url, category, error });
+            reject(error);
+          }
+        );
+      });
+      
+      // 既存のアセットを削除（同じカテゴリーの場合）
+      if (category && loadedAssets.has(category)) {
+        const existingModel = loadedAssets.get(category);
+        if (existingModel) {
+          scene.remove(existingModel);
+        }
+      }
+      
+      // デフォルトモデルと同じリグ情報を適用（位置、回転、スケールを完全に一致）
+      if (defaultModelTransform) {
+        model.position.copy(defaultModelTransform.position);
+        model.rotation.copy(defaultModelTransform.rotation);
+        model.scale.copy(defaultModelTransform.scale);
+      } else {
+        // デフォルトモデルがまだ読み込まれていない場合のフォールバック
+        // バウンディングボックスを計算して、モデルの中心を原点に合わせる
+        const box = new THREE.Box3().setFromObject(model);
+        const center = box.getCenter(new THREE.Vector3());
+        model.rotation.y = 0;
+        model.position.set(-center.x, -center.y, -center.z); // モデルの中心を原点に合わせる
+        model.scale.set(1, 1, 1);
+      }
+      
+      enableShadow(model);
+      
+      // アセットを保存
+      if (category) {
+        loadedAssets.set(category, model);
+      }
+      
+      // シーンに追加（カテゴリー順に）
+      updateSceneWithAssets();
+    } catch (error) {
+      console.error("[Atelier Preview] Error loading asset:", { url, category, error });
+    }
+  }
+  
+  // シーンにアセットを追加する関数（カテゴリー順）
+  function updateSceneWithAssets() {
+    // 既存のアセットを削除
+    loadedAssets.forEach((model) => {
+      scene.remove(model);
+    });
+    
+    // アセットをカテゴリー順にソートして追加
+    const sortedAssets = Array.from(loadedAssets.entries()).sort((a, b) => {
+      const orderA = a[0] ? getCategoryLayerOrder(a[0] as ProductCategory) : 999;
+      const orderB = b[0] ? getCategoryLayerOrder(b[0] as ProductCategory) : 999;
+      return orderA - orderB;
+    });
+    
+    sortedAssets.forEach(([category, model]) => {
+      scene.add(model);
+    });
+    
+    // カメラを調整（モデルの中心を見る）
+    if (camera) {
+      camera.lookAt(0, 0, 0);
+      camera.updateProjectionMatrix();
+    }
+    
+    // レンダリング
+    setTimeout(() => {
+      render();
+      setTimeout(() => {
+        render();
+      }, 100);
+    }, 50);
+  }
   
   // モデルのすべてのメッシュにcastShadowを設定し、マテリアルの色空間を設定する関数
   const enableShadow = (object: THREE.Object3D) => {
@@ -283,8 +460,8 @@ export function init3DViewer(
           const material = child.material as THREE.MeshStandardMaterial;
           if ('colorSpace' in material) {
             (material as any).colorSpace = 'srgb';
-          } else if ('encoding' in material) {
-            // 古いバージョンのThree.js用
+          } else if ('encoding' in material && (THREE as any).sRGBEncoding !== undefined) {
+            // 古いバージョンのThree.js用（sRGBEncodingが存在する場合のみ）
             (material as any).encoding = (THREE as any).sRGBEncoding;
           }
         }
@@ -340,7 +517,6 @@ export function init3DViewer(
       return;
     }
 
-    console.log("[Atelier Preview] Loading 3D model:", url);
     const format = getModelFormat(url);
 
     // モデル形式に応じて適切なローダーを使用
@@ -348,51 +524,26 @@ export function init3DViewer(
       fbxLoader.load(
         url,
         (fbx) => {
-          console.log("[Atelier Preview] FBX model loaded successfully:", url);
           currentModel = fbx;
           
-                 // まずスケールを適用（バウンディングボックス計算前に）
-                 // FBXファイルは通常メートル単位なので、より大きなスケールを試す
-                 // まずは大きめのスケールで表示を確認
-                 const initialScale = 0.018; // 少し小さくする
-                 currentModel.scale.set(initialScale, initialScale, initialScale);
-          
-          // スケール適用後にバウンディングボックスを計算
-          const box = new THREE.Box3().setFromObject(currentModel);
-          const center = box.getCenter(new THREE.Vector3());
-          const size = box.getSize(new THREE.Vector3());
-          const maxSize = Math.max(size.x, size.y, size.z);
-          console.log("[Atelier Preview] FBX bounding box (after scale):", { center, size, maxSize, initialScale });
-          
-                 // 原点を中心に移動し、Y軸を少し上に移動
-                 currentModel.position.set(-center.x, -center.y + 0.2, -center.z);
-          
-          // 回転は一旦なし（表示確認後、必要に応じて調整）
-          currentModel.rotation.set(0, 0, 0);
+          // 共通の位置計算関数を使用してモデルの位置、回転、スケールを設定
+          calculateAndSetModelTransform(currentModel, 2.0);
           
           // 影を有効化
           enableShadow(currentModel);
           
-          console.log("[Atelier Preview] FBX model settings:", {
-            position: currentModel.position,
-            scale: currentModel.scale,
-            rotation: currentModel.rotation,
-            maxSize,
-            initialScale,
-            boundingBoxCenter: center,
-            boundingBoxSize: size,
-          });
-          
           scene.add(currentModel);
           
-          // モデルがシーンに追加されたことを確認
-          console.log("[Atelier Preview] FBX model added to scene. Scene children count:", scene.children.length);
-          
-          // カメラをモデルに向ける（念のため）
+          // カメラをモデルに向ける（モデルの中心を見る）
           if (camera) {
             camera.lookAt(0, 0, 0);
-            console.log("[Atelier Preview] Camera positioned at:", camera.position, "looking at:", [0, 0, 0]);
+            camera.updateProjectionMatrix();
           }
+          
+          // モデル読み込み後にレンダリング（少し遅延させて確実に）
+          setTimeout(() => {
+            render();
+          }, 50);
           
           // 成功したらメッセージを削除（安全な方法）
           const existingMessage = container.querySelector("[data-atelier-message]");
@@ -416,19 +567,30 @@ export function init3DViewer(
       gltfLoader.load(
         url,
         (gltf) => {
-          console.log("[Atelier Preview] GLB model loaded successfully:", url);
-                 currentModel = gltf.scene;
-                 // PreviewPanelのModelViewerと同じ: scale: [3.5, 3.5, 3.5], rotation: [0, -Math.PI / 2, 0]
-                 // 少し小さくする
-                 currentModel.scale.set(3.0, 3.0, 3.0);
-                 currentModel.rotation.y = -Math.PI / 2;
-                 // Y軸を少し上に移動
-                 currentModel.position.y = 0.2;
+          currentModel = gltf.scene;
+          
+          // 共通の位置計算関数を使用してモデルの位置、回転、スケールを設定
+          calculateAndSetModelTransform(currentModel, 2.0);
           
           // 影を有効化
           enableShadow(currentModel);
           
           scene.add(currentModel);
+          
+          // カメラをモデルに向ける（モデルの中心を見る）
+          if (camera) {
+            camera.lookAt(0, 0, 0);
+            camera.updateProjectionMatrix();
+          }
+          
+          // モデル読み込み後にレンダリング（少し遅延させて確実に）
+          setTimeout(() => {
+            render();
+            // 念のため、もう一度レンダリング（確実に表示されるように）
+            setTimeout(() => {
+              render();
+            }, 100);
+          }, 50);
           
           // 成功したらメッセージを削除（安全な方法）
           const existingMessage = container.querySelector("[data-atelier-message]");
@@ -490,16 +652,51 @@ export function init3DViewer(
     onError?.(error instanceof Error ? error : new Error(String(error)));
   }
 
-  // Load initial model
-  loadModel(currentModelUrl);
+  // デフォルトモデルを読み込む（常に読み込む）
+  loadDefaultModel().then(() => {
+    // デフォルトモデル読み込み後、アセットがあれば読み込む
+    if (assets && assets.length > 0) {
+      // アセットをカテゴリー順にソート
+      const sortedAssets = [...assets].sort((a, b) => {
+        const orderA = a.category ? getCategoryLayerOrder(a.category) : 999;
+        const orderB = b.category ? getCategoryLayerOrder(b.category) : 999;
+        return orderA - orderB;
+      });
+      
+      // アセットを順番に読み込む
+      Promise.all(
+        sortedAssets.map((asset) => loadAsset(asset.url, asset.category))
+      ).then(() => {
+        onLoad?.();
+      }).catch((error) => {
+        console.error("[Atelier Preview] Error loading assets:", error);
+        onError?.(error instanceof Error ? error : new Error(String(error)));
+      });
+    } else if (currentModelUrl) {
+      // 後方互換性のため、既存のmodelUrlがあれば読み込む
+      loadModel(currentModelUrl);
+    } else {
+      onLoad?.();
+    }
+  }).catch((error) => {
+    console.error("[Atelier Preview] Error loading default model:", error);
+    // デフォルトモデルの読み込みに失敗した場合でも、既存のmodelUrlがあれば読み込む
+    if (currentModelUrl) {
+      loadModel(currentModelUrl);
+    } else {
+      onError?.(error instanceof Error ? error : new Error(String(error)));
+    }
+  });
 
-  // Animation loop
-  let animationId: number;
-  function animate() {
-    animationId = requestAnimationFrame(animate);
+  // レンダリング関数（シンプルに）
+  function render() {
     renderer.render(scene, camera);
   }
-  animate();
+  
+  // 初期レンダリング（少し遅延させて確実に）
+  setTimeout(() => {
+    render();
+  }, 100);
 
   // Handle resize
   const resizeObserver = new ResizeObserver(() => {
@@ -508,7 +705,8 @@ export function init3DViewer(
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
-      console.log("[Atelier Preview] Resized 3D viewer:", { width, height });
+      // リサイズ後にレンダリング
+      render();
     }
   });
   resizeObserver.observe(container);
@@ -522,8 +720,34 @@ export function init3DViewer(
       // GLBとFBXの両方をサポート
       loadModel(newModelUrl);
     },
+    updateAssets(newAssets: AssetInfo[]) {
+      // 既存のアセットをクリア
+      loadedAssets.forEach((model) => {
+        scene.remove(model);
+      });
+      loadedAssets.clear();
+      
+      // 新しいアセットを読み込む
+      if (newAssets && newAssets.length > 0) {
+        // アセットをカテゴリー順にソート
+        const sortedAssets = [...newAssets].sort((a, b) => {
+          const orderA = a.category ? getCategoryLayerOrder(a.category) : 999;
+          const orderB = b.category ? getCategoryLayerOrder(b.category) : 999;
+          return orderA - orderB;
+        });
+        
+        // アセットを順番に読み込む
+        Promise.all(
+          sortedAssets.map((asset) => loadAsset(asset.url, asset.category))
+        ).then(() => {
+          render();
+        }).catch((error) => {
+          console.error("[Atelier Preview] Error updating assets:", error);
+        });
+      }
+    },
     destroy() {
-      cancelAnimationFrame(animationId);
+      // レンダリング禁止
       resizeObserver.disconnect();
       if (currentModel) {
         scene.remove(currentModel);

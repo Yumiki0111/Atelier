@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import { createContext, useContext, useState, ReactNode, useCallback, useMemo } from "react";
 import type { Product, ProductSize } from "@atelier/shared";
 
 interface ViewStats {
@@ -50,7 +50,7 @@ export function ProductSelectionProvider({
     return { totalViews: 0, productViews: {} };
   });
 
-  const selectProduct = (product: Product, size: ProductSize) => {
+  const selectProduct = useCallback((product: Product, size: ProductSize) => {
     // 既に同じ商品とサイズが選択されている場合は何もしない
     if (
       selectedProduct?.id === product.id &&
@@ -60,9 +60,9 @@ export function ProductSelectionProvider({
     }
     setSelectedProduct(product);
     setSelectedSize(size);
-  };
+  }, [selectedProduct?.id, selectedSize]);
 
-  const togglePreview = () => {
+  const togglePreview = useCallback(() => {
     setIsPreviewOpen((prev) => {
       const newState = !prev;
       // プレビューが開かれたときにカウントを増やす
@@ -85,12 +85,19 @@ export function ProductSelectionProvider({
       }
       return newState;
     });
-  };
+  }, [selectedProduct]);
+
+  const contextValue = useMemo(() => ({
+    selectedProduct,
+    selectedSize,
+    selectProduct,
+    isPreviewOpen,
+    togglePreview,
+    viewStats,
+  }), [selectedProduct, selectedSize, selectProduct, isPreviewOpen, togglePreview, viewStats]);
 
   return (
-    <ProductSelectionContext.Provider
-      value={{ selectedProduct, selectedSize, selectProduct, isPreviewOpen, togglePreview, viewStats }}
-    >
+    <ProductSelectionContext.Provider value={contextValue}>
       {children}
     </ProductSelectionContext.Provider>
   );

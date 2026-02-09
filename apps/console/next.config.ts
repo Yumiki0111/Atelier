@@ -57,6 +57,34 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        // 背景画像にCORSヘッダーを追加
+        source: "/model_background.png",
+        headers: [
+          {
+            key: "Access-Control-Allow-Origin",
+            value: "*",
+          },
+          {
+            key: "Access-Control-Allow-Methods",
+            value: "GET, OPTIONS",
+          },
+        ],
+      },
+      {
+        // アイコン画像にCORSヘッダーを追加
+        source: "/icon/:path*",
+        headers: [
+          {
+            key: "Access-Control-Allow-Origin",
+            value: "*",
+          },
+          {
+            key: "Access-Control-Allow-Methods",
+            value: "GET, OPTIONS",
+          },
+        ],
+      },
     ];
   },
 };

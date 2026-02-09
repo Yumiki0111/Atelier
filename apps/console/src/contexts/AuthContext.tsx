@@ -33,13 +33,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(async ({ data: { session }, error: sessionError }) => {
       if (!isMounted) return;
       
-      console.log("[AuthContext] Initial session retrieved:", { hasSession: !!session, hasError: !!sessionError });
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AuthContext] Initial session retrieved:", { hasSession: !!session, hasError: !!sessionError });
+      }
       
       setUser(session?.user ?? null);
       if (session?.user && session?.access_token) {
         // 初回ログイン確定処理（招待メールからのリダイレクト時など）
         try {
-          console.log("[AuthContext] Calling post-login API to ensure profile exists...");
+          if (process.env.NODE_ENV === "development") {
+            console.log("[AuthContext] Calling post-login API to ensure profile exists...");
+          }
           const postLoginResponse = await fetch("/api/auth/post-login", {
             method: "POST",
             headers: {
@@ -47,13 +51,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             },
           });
 
-          if (postLoginResponse.ok) {
-            console.log("[AuthContext] post-login success");
-          } else {
-            console.log("[AuthContext] post-login not needed or already completed");
+          if (process.env.NODE_ENV === "development") {
+            if (postLoginResponse.ok) {
+              console.log("[AuthContext] post-login success");
+            } else {
+              console.log("[AuthContext] post-login not needed or already completed");
+            }
           }
         } catch (postLoginError) {
-          console.log("[AuthContext] post-login error (may be expected):", postLoginError);
+          if (process.env.NODE_ENV === "development") {
+            console.log("[AuthContext] post-login error (may be expected):", postLoginError);
+          }
         }
 
         // shop_id を取得
@@ -69,7 +77,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
       
-      console.log("[AuthContext] Auth state changed:", event, { hasSession: !!session });
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AuthContext] Auth state changed:", event, { hasSession: !!session });
+      }
       
       setUser(session?.user ?? null);
       if (session?.user && session?.access_token) {
@@ -96,28 +106,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // APIエンドポイント経由でshop_idを取得（RLSをバイパス）
   const fetchShopId = async (userId: string, accessToken: string) => {
-    console.log("[AuthContext] fetchShopId called for userId:", userId);
+    if (process.env.NODE_ENV === "development") {
+      console.log("[AuthContext] fetchShopId called for userId:", userId);
+    }
     
     try {
       if (!accessToken) {
-        console.warn("[AuthContext] No access token provided, using default shop_id");
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[AuthContext] No access token provided, using default shop_id");
+        }
         setShopId("default_shop");
         setIsLoading(false);
         return;
       }
 
-      console.log("[AuthContext] Using provided access token, calling API...");
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AuthContext] Using provided access token, calling API...");
+      }
 
       // タイムアウト付きでAPIエンドポイントを呼び出し
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
-        console.error("[AuthContext] Request timeout, aborting...");
+        if (process.env.NODE_ENV === "development") {
+          console.error("[AuthContext] Request timeout, aborting...");
+        }
         controller.abort();
       }, 10000); // 10秒でタイムアウト
 
       let response: Response;
       try {
-        console.log("[AuthContext] Making fetch request to /api/auth/shop-id");
+        if (process.env.NODE_ENV === "development") {
+          console.log("[AuthContext] Making fetch request to /api/auth/shop-id");
+        }
         response = await fetch("/api/auth/shop-id", {
           method: "GET",
           headers: {
@@ -125,13 +145,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           },
           signal: controller.signal,
         });
-        console.log("[AuthContext] Fetch completed, status:", response.status);
+        if (process.env.NODE_ENV === "development") {
+          console.log("[AuthContext] Fetch completed, status:", response.status);
+        }
         clearTimeout(timeoutId);
       } catch (fetchError: any) {
         clearTimeout(timeoutId);
         console.error("[AuthContext] Fetch error:", fetchError);
         if (fetchError.name === "AbortError") {
-          console.error("[AuthContext] fetchShopId timeout after 10 seconds");
+          if (process.env.NODE_ENV === "development") {
+            console.error("[AuthContext] fetchShopId timeout after 10 seconds");
+          }
           setShopId("default_shop");
           setIsLoading(false);
           return;
@@ -163,22 +187,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const data = await response.json();
-      console.log("[AuthContext] API response:", data);
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AuthContext] API response:", data);
+      }
       
       if (data.shopId) {
-        console.log("[AuthContext] shop_id found:", data.shopId);
+        if (process.env.NODE_ENV === "development") {
+          console.log("[AuthContext] shop_id found:", data.shopId);
+        }
         setShopId(String(data.shopId));
       } else {
-        console.warn("[AuthContext] No shop_id found in response, data:", data);
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[AuthContext] No shop_id found in response, data:", data);
+        }
         setShopId("default_shop");
       }
 
       // role を設定
       if (data.role && (data.role === "owner" || data.role === "member")) {
-        console.log("[AuthContext] role found:", data.role);
+        if (process.env.NODE_ENV === "development") {
+          console.log("[AuthContext] role found:", data.role);
+        }
         setUserRole(data.role);
       } else {
-        console.warn("[AuthContext] No valid role found in response");
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[AuthContext] No valid role found in response");
+        }
         setUserRole(null);
       }
     } catch (error: any) {
@@ -190,7 +224,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUserRole(null);
     } finally {
       // 必ずローディング状態を解除
-      console.log("[AuthContext] fetchShopId completed, setting isLoading to false");
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AuthContext] fetchShopId completed, setting isLoading to false");
+      }
       setIsLoading(false);
     }
   };
@@ -198,7 +234,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      console.log("[AuthContext] Attempting login for email:", email);
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AuthContext] Attempting login for email:", email);
+      }
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -226,14 +264,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("ログインに失敗しました: ユーザー情報が取得できませんでした");
       }
 
-      console.log("[AuthContext] Login successful, user ID:", data.user.id);
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AuthContext] Login successful, user ID:", data.user.id);
+      }
       
       // ユーザー情報を明示的に設定（isAuthenticatedを即座に更新するため）
       setUser(data.user);
       
       // 初回ログイン確定処理（pending_invites → profiles）
       try {
-        console.log("[AuthContext] Calling post-login API to confirm invite...");
+        if (process.env.NODE_ENV === "development") {
+          console.log("[AuthContext] Calling post-login API to confirm invite...");
+        }
         const postLoginResponse = await fetch("/api/auth/post-login", {
           method: "POST",
           headers: {
@@ -252,10 +294,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           
           // その他のエラーは警告だけ出して続行
-          console.warn("[AuthContext] post-login failed, trying to fetch shop_id directly...");
+          if (process.env.NODE_ENV === "development") {
+            console.warn("[AuthContext] post-login failed, trying to fetch shop_id directly...");
+          }
         } else {
-          const postLoginData = await postLoginResponse.json();
-          console.log("[AuthContext] post-login success:", postLoginData);
+          if (process.env.NODE_ENV === "development") {
+            const postLoginData = await postLoginResponse.json();
+            console.log("[AuthContext] post-login success:", postLoginData);
+          }
         }
       } catch (postLoginError: any) {
         console.error("[AuthContext] post-login exception:", postLoginError);
@@ -268,7 +314,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await fetchShopId(data.user.id, data.session.access_token);
       } catch (shopIdError: any) {
         // shop_idの取得に失敗してもログインは成功させる
-        console.warn("[AuthContext] Failed to fetch shop_id, but login succeeded:", shopIdError);
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[AuthContext] Failed to fetch shop_id, but login succeeded:", shopIdError);
+        }
         // profiles が存在しない場合は警告を出す
         if (shopIdError?.status === 404 || shopIdError?.response?.status === 404) {
           console.error(
@@ -284,7 +332,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
 
       // ログイン成功後、即座にリダイレクト
-      console.log("[AuthContext] Redirecting to home page");
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AuthContext] Redirecting to home page");
+      }
       // window.locationを使用して確実にリダイレクト
       if (typeof window !== 'undefined') {
         window.location.href = '/';
@@ -321,7 +371,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let error: any;
       try {
         const text = await response.text();
-        console.log("[AuthContext] Signup error response text:", text);
+        if (process.env.NODE_ENV === "development") {
+          console.log("[AuthContext] Signup error response text:", text);
+        }
         error = text ? JSON.parse(text) : { error: "Failed to sign up" };
       } catch (e) {
         console.error("[AuthContext] Failed to parse error response:", e);
@@ -362,15 +414,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isAuthenticated = !!user;
 
-  // デバッグ用ログ
+  // デバッグ用ログ（開発環境のみ）
   useEffect(() => {
-    console.log("[AuthContext] State update:", {
-      hasUser: !!user,
-      userId: user?.id,
-      isAuthenticated,
-      isLoading,
-      shopId,
-    });
+    if (process.env.NODE_ENV === "development") {
+      console.log("[AuthContext] State update:", {
+        hasUser: !!user,
+        userId: user?.id,
+        isAuthenticated,
+        isLoading,
+        shopId,
+      });
+    }
   }, [user, isAuthenticated, isLoading, shopId]);
 
   return (

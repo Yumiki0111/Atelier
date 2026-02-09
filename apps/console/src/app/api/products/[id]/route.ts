@@ -57,7 +57,6 @@ export async function GET(
       brand: data.brand,
       category: data.category,
       thumbnailUrl: data.thumbnail_url,
-      description: data.description,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };
@@ -122,7 +121,6 @@ export async function PATCH(
       // 空文字列の場合はnullに変換
       updateData.thumbnail_url = validated.thumbnailUrl === "" ? null : validated.thumbnailUrl;
     }
-    if (validated.description !== undefined) updateData.description = validated.description || null;
 
     updateData.updated_at = new Date().toISOString();
 
@@ -157,8 +155,7 @@ export async function PATCH(
           { 
             error: "Database schema error",
             message: "データベースのスキーマが最新ではありません。マイグレーションを実行してください。",
-            details: error.message,
-            hint: "descriptionカラムが存在しない可能性があります。マイグレーションファイルを確認してください。"
+            details: error.message
           },
           { status: 500 }
         );
@@ -184,7 +181,6 @@ export async function PATCH(
       brand: data.brand,
       category: data.category,
       thumbnailUrl: data.thumbnail_url,
-      description: data.description,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };

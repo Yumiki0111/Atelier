@@ -9,8 +9,6 @@ interface AnalyticsData {
   キューブ表示数: number;
   キューブクリック数: number;
   ウィジェット開封数: number;
-  会話数: number;
-  メッセージ数: number;
   カート追加: number;
 }
 
@@ -101,8 +99,6 @@ export async function GET(request: NextRequest) {
         キューブ表示数: 0,
         キューブクリック数: 0,
         ウィジェット開封数: 0,
-        会話数: 0,
-        メッセージ数: 0,
         カート追加: 0,
       });
     });
@@ -132,53 +128,6 @@ export async function GET(request: NextRequest) {
           break;
       }
     });
-
-    // 会話ログを集計（conversationsテーブルから）
-    const { data: conversations, error: conversationsError } = await supabaseAdmin
-      .from("conversations")
-      .select("id, started_at")
-      .eq("shop_id", shopId)
-      .gte("started_at", startDate.toISOString())
-      .lte("started_at", endDate.toISOString());
-
-    if (conversationsError) {
-      console.error("Error fetching conversations:", conversationsError);
-    } else {
-      conversations?.forEach((conv) => {
-        const convDate = new Date(conv.started_at);
-        const dateKey = convDate.toISOString().split("T")[0];
-        const dayData = dailyData.get(dateKey);
-        if (dayData) {
-          dayData.会話数 += 1;
-        }
-      });
-    }
-
-    // メッセージ数を集計（messagesテーブルから）
-    // まず、該当するshop_idのconversation_idを取得
-    const conversationIds = conversations?.map((c) => c.id) || [];
-    
-    if (conversationIds.length > 0) {
-      const { data: messages, error: messagesError } = await supabaseAdmin
-        .from("messages")
-        .select("id, created_at")
-        .in("conversation_id", conversationIds)
-        .gte("created_at", startDate.toISOString())
-        .lte("created_at", endDate.toISOString());
-
-      if (messagesError) {
-        console.error("Error fetching messages:", messagesError);
-      } else {
-        messages?.forEach((msg) => {
-          const msgDate = new Date(msg.created_at);
-          const dateKey = msgDate.toISOString().split("T")[0];
-          const dayData = dailyData.get(dateKey);
-          if (dayData) {
-            dayData.メッセージ数 += 1;
-          }
-        });
-      }
-    }
 
     // 配列に変換して返す
     const result = Array.from(dailyData.values());

@@ -30,7 +30,7 @@ export default defineConfig(({ mode }) => {
       },
       outDir: "dist",
       // 本番環境ではminifyと圧縮を有効化
-      minify: isProduction ? 'esbuild' : false,
+      minify: false, // デバッグのため一時的に無効化
       sourcemap: !isProduction,
     },
   };
