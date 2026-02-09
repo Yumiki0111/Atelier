@@ -68,10 +68,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // 型安全性のため、ローカル変数に保存
+    const admin = supabaseAdmin;
+
     const assetsWithProducts = await Promise.all(
       (data || []).map(async (a) => {
         // 商品情報を取得してカテゴリーを取得
-        const { data: product } = await supabaseAdmin
+        const { data: product } = await admin
           .from("products")
           .select("category")
           .eq("id", a.product_id)
