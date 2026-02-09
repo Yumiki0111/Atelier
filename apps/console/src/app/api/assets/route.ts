@@ -60,6 +60,14 @@ export async function GET(request: NextRequest) {
     }
 
     // アセットと関連する商品情報を取得（カテゴリー情報を含める）
+    // supabaseAdminがnullでないことを確認（型安全性のため）
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { error: "Database not configured" },
+        { status: 500 }
+      );
+    }
+
     const assetsWithProducts = await Promise.all(
       (data || []).map(async (a) => {
         // 商品情報を取得してカテゴリーを取得
