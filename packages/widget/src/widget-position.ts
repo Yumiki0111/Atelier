@@ -4,7 +4,6 @@ export function updateButtonPositions() {
   const baseBottomPx = 24;
   const baseRightPx = 24;
   const buttonSpacingPx = 72;
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   
   allWidgetContainers.forEach((container, index) => {
     const bottomOffsetPx = baseBottomPx + (index * buttonSpacingPx);

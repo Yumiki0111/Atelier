@@ -25,76 +25,67 @@ VALUES
   )
 ON CONFLICT (id) DO NOTHING;
 
--- テスト用商品の作成（shop_idはTEXT型として扱う）
--- 注意: productsテーブルのshop_idはTEXT型なので、UUIDをTEXTに変換
-INSERT INTO products (shop_id, name, brand, sku, handle, url, created_at, updated_at)
+-- テスト用商品の作成（shop_idはUUID型）
+INSERT INTO products (shop_id, name, brand, external_product_id, created_at, updated_at)
 SELECT 
-  '00000000-0000-0000-0000-000000000001',
+  '00000000-0000-0000-0000-000000000001'::uuid,
   'デニムジャケット',
   'ATELIER BRAND',
   'DJ-001',
-  'denim-jacket',
-  'https://example.com/products/denim-jacket',
   NOW(),
   NOW()
 WHERE NOT EXISTS (
   SELECT 1 FROM products 
-  WHERE shop_id = '00000000-0000-0000-0000-000000000001' 
-  AND sku = 'DJ-001'
+  WHERE shop_id = '00000000-0000-0000-0000-000000000001'::uuid 
+  AND external_product_id = 'DJ-001'
 )
 RETURNING id;
 
 -- テスト用商品2（ダブルジャケット）
-INSERT INTO products (shop_id, name, brand, sku, handle, url, created_at, updated_at)
+INSERT INTO products (shop_id, name, brand, external_product_id, created_at, updated_at)
 SELECT 
-  '00000000-0000-0000-0000-000000000001'::text,
+  '00000000-0000-0000-0000-000000000001'::uuid,
   'ダブルジャケット',
   'ATELIER BRAND',
   'DBL-JKT-001',
-  'double-jacket',
-  'https://example.com/products/double-jacket',
   NOW(),
   NOW()
 WHERE NOT EXISTS (
   SELECT 1 FROM products 
-  WHERE shop_id = '00000000-0000-0000-0000-000000000001' 
-  AND sku = 'DBL-JKT-001'
+  WHERE shop_id = '00000000-0000-0000-0000-000000000001'::uuid 
+  AND external_product_id = 'DBL-JKT-001'
 )
 RETURNING id;
 
 -- テスト用商品3（レザージャケット）
-INSERT INTO products (shop_id, name, brand, sku, handle, url, created_at, updated_at)
+INSERT INTO products (shop_id, name, brand, external_product_id, created_at, updated_at)
 SELECT 
-  '00000000-0000-0000-0000-000000000001'::text,
+  '00000000-0000-0000-0000-000000000001'::uuid,
   'レザージャケット',
   'ATELIER BRAND',
   'LTH-JKT-001',
-  'leather-jacket',
-  'https://example.com/products/leather-jacket',
   NOW(),
   NOW()
 WHERE NOT EXISTS (
   SELECT 1 FROM products 
-  WHERE shop_id = '00000000-0000-0000-0000-000000000001' 
-  AND handle = 'leather-jacket'
+  WHERE shop_id = '00000000-0000-0000-0000-000000000001'::uuid 
+  AND external_product_id = 'LTH-JKT-001'
 )
 RETURNING id;
 
 -- テスト用商品4（ウールコート）
-INSERT INTO products (shop_id, name, brand, sku, handle, url, created_at, updated_at)
+INSERT INTO products (shop_id, name, brand, external_product_id, created_at, updated_at)
 SELECT 
-  '00000000-0000-0000-0000-000000000001'::text,
+  '00000000-0000-0000-0000-000000000001'::uuid,
   'ウールコート',
   'ATELIER BRAND',
   'WL-CT-001',
-  'wool-coat',
-  'https://example.com/products/wool-coat',
   NOW(),
   NOW()
 WHERE NOT EXISTS (
   SELECT 1 FROM products 
-  WHERE shop_id = '00000000-0000-0000-0000-000000000001' 
-  AND url = 'https://example.com/products/wool-coat'
+  WHERE shop_id = '00000000-0000-0000-0000-000000000001'::uuid 
+  AND external_product_id = 'WL-CT-001'
 )
 RETURNING id;
 
@@ -110,7 +101,7 @@ SELECT
   NOW(),
   NOW()
 FROM products p
-WHERE p.shop_id = '00000000-0000-0000-0000-000000000001'::text
+WHERE p.shop_id = '00000000-0000-0000-0000-000000000001'::uuid
   AND NOT EXISTS (
     SELECT 1 FROM assets a 
     WHERE a.product_id = p.id 
@@ -131,7 +122,7 @@ SELECT
   NOW()
 FROM products p
 CROSS JOIN LATERAL unnest(ARRAY['S', 'L']::text[]) AS size_val
-WHERE p.shop_id = '00000000-0000-0000-0000-000000000001'::text
+WHERE p.shop_id = '00000000-0000-0000-0000-000000000001'::uuid
   AND NOT EXISTS (
     SELECT 1 FROM assets a 
     WHERE a.product_id = p.id 

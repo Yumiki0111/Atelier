@@ -29,6 +29,7 @@ import { Plus, Upload, X } from "lucide-react";
 import { z } from "zod";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { authenticatedFetch } from "@/lib/auth/api-client";
 
 const productFormSchema = createProductSchema.extend({
   // Form-specific fields can be added here if needed
@@ -78,7 +79,7 @@ export function ProductAddDialog({ onProductAdded }: ProductAddDialogProps) {
       formData.append("file", file);
       formData.append("folder", "images");
 
-      const response = await fetch("/api/upload", {
+      const response = await authenticatedFetch("/api/upload", {
         method: "POST",
         body: formData,
       });

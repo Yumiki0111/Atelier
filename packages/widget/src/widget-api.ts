@@ -1,4 +1,4 @@
-import type { WidgetConfig } from "./types";
+import type { WidgetConfig, WidgetDesignConfig } from "./types";
 import { isDevelopmentMode, getApiBaseUrl } from "./widget-utils";
 
 export interface WidgetParams {
@@ -11,6 +11,37 @@ export interface WidgetParams {
   url?: string | null;
 }
 
+/** 開発環境用のモックウィジェット設定を生成 */
+function createDevMockConfig(): WidgetConfig {
+  const glbUrl = "http://localhost:3000/3d/clo_model_men.glb";
+  return {
+    enabled: true,
+    asset: {
+      defaultSize: "M",
+      sizes: {
+        S: [{ glbUrl }],
+        M: [{ glbUrl }],
+        L: [{ glbUrl }],
+      },
+    },
+  };
+}
+
+/** searchParamsを構築する共通関数 */
+function buildSearchParams(params: WidgetParams): URLSearchParams {
+  const searchParams = new URLSearchParams();
+  if (params.publicKey) {
+    searchParams.append("publicKey", params.publicKey);
+  }
+  // externalProductId を優先、なければ productId（後方互換性）
+  if (params.externalProductId) {
+    searchParams.append("externalProductId", params.externalProductId);
+  } else if (params.productId) {
+    searchParams.append("externalProductId", params.productId);
+  }
+  return searchParams;
+}
+
 export async function fetchWidgetConfig(params: WidgetParams): Promise<WidgetConfig> {
   // publicKey または shopId が必須
   if (!params.publicKey && !params.shopId) {
@@ -20,186 +51,104 @@ export async function fetchWidgetConfig(params: WidgetParams): Promise<WidgetCon
   // 開発モードでAPIサーバーが利用できない場合はモックデータを返す
   if (isDevelopmentMode()) {
     try {
-      const searchParams = new URLSearchParams();
-      if (params.publicKey) {
-        searchParams.append("publicKey", params.publicKey);
+      const searchParams = buildSearchParams(params);
+      if (!params.externalProductId && !params.productId) {
+        if (params.sku) throw new Error("SKU is not supported. Please use externalProductId.");
+        if (params.handle) throw new Error("Handle is not supported. Please use externalProductId.");
+        if (params.url) throw new Error("URL is not supported. Please use externalProductId.");
       }
 
-      // externalProductId を優先、なければ productId（後方互換性）
-      if (params.externalProductId) {
-        searchParams.append("externalProductId", params.externalProductId);
-      } else if (params.productId) {
-        searchParams.append("externalProductId", params.productId); // 後方互換性
-      } else if (params.sku) {
-        // SKU はサポートされていないため、エラーを返す
-        throw new Error("SKU is not supported. Please use externalProductId.");
-      } else if (params.handle) {
-        // Handle はサポートされていないため、エラーを返す
-        throw new Error("Handle is not supported. Please use externalProductId.");
-      } else if (params.url) {
-        // URL はサポートされていないため、エラーを返す
-        throw new Error("URL is not supported. Please use externalProductId.");
-      }
-
-      // 開発環境では、consoleサーバーに接続を試みる（タイムアウトを長めに設定）
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3秒に延長
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
 
-      const apiUrl = getApiBaseUrl() || "http://localhost:3000"; // フォールバック
+      const apiUrl = getApiBaseUrl() || "http://localhost:3000";
       const response = await fetch(
         `${apiUrl}/api/public/widget-config?${searchParams.toString()}`,
-        {
-          signal: controller.signal,
-        }
+        { signal: controller.signal }
       );
-
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        // 開発環境では、APIエラー（400/500）もモックデータを返す
-        if (isDevelopmentMode()) {
-          console.warn(
-            `[Atelier Widget] API returned ${response.status}, using mock config.`
-          );
-          // モックデータを返す
-          const glbUrl = "http://localhost:3000/3d/clo_model.glb";
-          return {
-            enabled: true,
-            asset: {
-              defaultSize: "M",
-              sizes: {
-                S: [{ glbUrl }],
-                M: [{ glbUrl }],
-                L: [{ glbUrl }],
-              },
-            },
-          };
-        }
-        throw new Error(`HTTP ${response.status}`);
+        console.warn(`[Atelier Widget] API returned ${response.status}, using mock config.`);
+        return createDevMockConfig();
       }
 
       const config = await response.json();
-      
+
       // 開発環境では、APIが`enabled: false`を返した場合でもモックデータを使用
-      if (isDevelopmentMode() && !config.enabled) {
-        // 開発環境でも、実際のアセットが取得できている場合はそれを使用
-        // enabled: falseでも、assetが存在する場合は使用する
-        if (config.asset && config.asset.sizes && Object.keys(config.asset.sizes).length > 0) {
-          return {
-            enabled: true,
-            asset: config.asset,
-          };
+      if (!config.enabled) {
+        // 実際のアセットが取得できている場合はそれを使用
+        if (config.asset?.sizes && Object.keys(config.asset.sizes).length > 0) {
+          return { enabled: true, asset: config.asset };
         }
-        // アセットが存在しない場合のみモックデータを使用
-        const glbUrl = "http://localhost:3000/3d/clo_model.glb";
-        return {
-          enabled: true,
-          asset: {
-            defaultSize: "M",
-            sizes: {
-              S: [{ glbUrl }],
-              M: [{ glbUrl }],
-              L: [{ glbUrl }],
-            },
-          },
-        };
+        return createDevMockConfig();
       }
-      
+
       return config;
     } catch (error) {
-      // 開発環境では接続エラーやAPIエラーを完全に無視してモックデータを返す
-      if (isDevelopmentMode()) {
-        // モックデータを返す（開発環境ではローカルのGLBファイルを使用）
-        // consoleサーバーが起動している場合、public/3d/model_men.glbにアクセス可能
-        // 開発モードでは、consoleサーバー（localhost:3000）のGLBファイルを使用
-        const glbUrl = "http://localhost:3000/3d/clo_model.glb";
-        
-        return {
-          enabled: true,
-          asset: {
-            defaultSize: "M",
-            sizes: {
-              S: [{ glbUrl }],
-              M: [{ glbUrl }],
-              L: [{ glbUrl }],
-            },
-          },
-        };
-      }
-      // 本番環境ではエラーを再スロー
-      throw error;
+      // 開発環境では接続エラーを無視してモックデータを返す
+      return createDevMockConfig();
     }
   }
 
   // 本番環境では通常通りAPIを呼び出す
+  if (!params.externalProductId && !params.productId) {
+    throw new Error("externalProductId is required");
+  }
+
+  const searchParams = buildSearchParams(params);
+  const apiUrl = getApiBaseUrl();
+  const requestUrl = `${apiUrl}/api/public/widget-config?${searchParams.toString()}`;
+
+  let response: Response;
   try {
-    const searchParams = new URLSearchParams({
-      publicKey: params.publicKey!,
+    response = await fetch(requestUrl, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
     });
+  } catch (fetchError) {
+    const errorMessage = fetchError instanceof Error ? fetchError.message : "Network error";
+    throw new Error(`ネットワークエラー: ${errorMessage}. APIサーバーに接続できません。`);
+  }
 
-    // externalProductId を優先、なければ productId（後方互換性）
-    if (params.externalProductId) {
-      searchParams.append("externalProductId", params.externalProductId);
-    } else if (params.productId) {
-      searchParams.append("externalProductId", params.productId); // 後方互換性
-    } else {
-      throw new Error("externalProductId is required");
-    }
+  if (!response.ok) {
+    let errorText = "";
+    try { errorText = await response.text(); } catch { /* ignore */ }
 
-    const apiUrl = getApiBaseUrl();
-    const requestUrl = `${apiUrl}/api/public/widget-config?${searchParams.toString()}`;
-
-    let response: Response;
+    let errorMessage = `APIエラー: ${response.status} ${response.statusText}`;
     try {
-      response = await fetch(requestUrl, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-    } catch (fetchError) {
-      // ネットワークエラー（CORS、タイムアウト、接続エラーなど）
-      const errorMessage = fetchError instanceof Error ? fetchError.message : "Network error";
-      console.error("[Atelier Widget] Network error:", errorMessage);
-      throw new Error(`ネットワークエラー: ${errorMessage}. APIサーバーに接続できません。`);
+      const errorJson = JSON.parse(errorText);
+      if (errorJson.error) errorMessage = errorJson.error;
+    } catch {
+      if (errorText) errorMessage = errorText;
     }
 
-    if (!response.ok) {
-      let errorText = "";
-      try {
-        errorText = await response.text();
-      } catch (e) {
-        // レスポンスボディの読み取りに失敗
-      }
-      
-      let errorMessage = `APIエラー: ${response.status} ${response.statusText}`;
-      
-      try {
-        const errorJson = JSON.parse(errorText);
-        if (errorJson.error) {
-          errorMessage = errorJson.error;
-        }
-      } catch (e) {
-        // JSON解析に失敗した場合は、テキストをそのまま使用
-        if (errorText) {
-          errorMessage = errorText;
-        }
-      }
-      
-      console.error("[Atelier Widget] API error:", {
-        status: response.status,
-        statusText: response.statusText,
-        body: errorText.substring(0, 200), // 最初の200文字のみ
-      });
-      
-      throw new Error(errorMessage);
-    }
+    throw new Error(errorMessage);
+  }
 
-    const config = await response.json();
-    return config;
-  } catch (error) {
-    // エラーを再スロー（上位のhandleCubeClickで処理）
-    throw error;
+  return await response.json();
+}
+
+/**
+ * ボタン初期表示時にデザイン設定だけを軽量に取得する
+ */
+export async function fetchWidgetDesign(publicKey: string): Promise<WidgetDesignConfig | null> {
+  const apiUrl = getApiBaseUrl() || (isDevelopmentMode() ? "http://localhost:3000" : "");
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const res = await fetch(
+      `${apiUrl}/api/public/widget-design?publicKey=${encodeURIComponent(publicKey)}`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timeoutId);
+    if (!res.ok) return null;
+    const data = await res.json();
+    // 空オブジェクトチェック
+    if (!data || (!data.button && !data.theme)) return null;
+    return data as WidgetDesignConfig;
+  } catch {
+    return null;
   }
 }
 

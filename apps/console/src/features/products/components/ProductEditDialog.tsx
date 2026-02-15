@@ -27,6 +27,7 @@ import { createProductSchema, productCategorySchema, type ProductCategory } from
 import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { Upload, X } from "lucide-react";
+import { authenticatedFetch } from "@/lib/auth/api-client";
 
 const productFormSchema = createProductSchema.extend({
   // Form-specific fields can be added here if needed
@@ -70,16 +71,18 @@ export function ProductEditDialog({
   const thumbnailUrl = watch("thumbnailUrl");
 
   // 商品データが読み込まれたらフォームに設定
+  // open を依存配列に含めることで、ダイアログを閉じて再度開いた際にも再セットされる
   useEffect(() => {
-    if (product) {
+    if (product && open) {
       setValue("shopId", product.shopId);
       setValue("name", product.name);
       setValue("externalProductId", product.externalProductId || "");
       setValue("brand", product.brand || "");
-      setValue("category", product.category);
+      // PostgreSQLはnullを返すが、Zodの.optional()はundefinedのみ受け付けるため変換
+      setValue("category", product.category ?? undefined);
       setValue("thumbnailUrl", product.thumbnailUrl || "");
     }
-  }, [product, setValue]);
+  }, [product, setValue, open]);
 
   const handleFileUpload = async (file: File) => {
     setUploadingThumbnail(true);
@@ -89,7 +92,7 @@ export function ProductEditDialog({
       formData.append("file", file);
       formData.append("folder", "images");
 
-      const response = await fetch("/api/upload", {
+      const response = await authenticatedFetch("/api/upload", {
         method: "POST",
         body: formData,
       });

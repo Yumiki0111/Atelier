@@ -1,4 +1,5 @@
-import type { WidgetParams } from "./widget-api";
+import { fetchWidgetConfig, type WidgetParams } from "./widget-api";
+import type { WidgetConfig } from "./types";
 import { isDevelopmentMode, getApiBaseUrl } from "./widget-utils";
 
 interface CategoryProduct {
@@ -7,6 +8,12 @@ interface CategoryProduct {
   name: string;
   thumbnailUrl?: string;
   category?: string;
+}
+
+/** 商品選択時のコールバック */
+export interface OutfitChangeCallbacks {
+  /** 商品が選択されたときに呼ばれる（config取得済み） */
+  onProductSelect?: (product: CategoryProduct, config: WidgetConfig) => void;
 }
 
 // 画像キャッシュ
@@ -32,7 +39,8 @@ async function loadCachedImage(url: string): Promise<HTMLImageElement> {
 // 着せ替えパネルを表示（3Dビューアーの下に表示）
 export async function showOutfitChangePanel(
   container: HTMLElement,
-  params: WidgetParams
+  params: WidgetParams,
+  callbacks?: OutfitChangeCallbacks
 ) {
   if (isDevelopmentMode()) {
     console.log("[Atelier Widget] showOutfitChangePanel called", params);
@@ -63,44 +71,48 @@ export async function showOutfitChangePanel(
   const floatingButtons = overlay?.querySelector('[data-atelier-floating-buttons]') as HTMLElement ||
                           document.body.querySelector('[data-atelier-floating-buttons]') as HTMLElement;
   
-  // 既存のパネルがあれば削除
-  const existingPanel = container.querySelector("#atelier-outfit-change-panel");
-  if (existingPanel) {
-    // スムーズに閉じる（3Dビューアーも一緒に拡大）- より滑らかなイージング関数を使用
-    const transition = "transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 0.6s ease-out";
-    (existingPanel as HTMLElement).style.transition = transition;
-    (existingPanel as HTMLElement).style.transform = "translateY(100%)";
-    (existingPanel as HTMLElement).style.opacity = "0";
-    
-    // 3Dビューアーも一緒に拡大（max-heightを元に戻す）- 同じ滑らかなイージング関数を使用
+  /** パネルを閉じる共通処理 */
+  const closePanel = (targetPanel: HTMLElement, animationFrameIdRef?: { current: number | null }) => {
+    const closeTransition = "transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 0.6s ease-out";
+    targetPanel.style.transition = closeTransition;
+    targetPanel.style.transform = "translateY(100%)";
+    targetPanel.style.opacity = "0";
+
     if (viewerContainer) {
-      const containerRect = container.getBoundingClientRect();
       viewerContainer.style.transition = "max-height 0.6s cubic-bezier(0.25, 0.1, 0.25, 1)";
+      const containerRect = container.getBoundingClientRect();
       viewerContainer.style.maxHeight = `${containerRect.height}px`;
     }
-    
+
     // サイズボタンとフローティングボタンを再表示
-    // ただし、overlayが存在しない場合はfloatingButtonsを表示しない（プレビューが閉じられているため）
     if (sizeArea) {
       sizeArea.style.display = "flex";
     }
-    // overlayが存在し、かつisConnectedの場合のみfloatingButtonsを表示
-    // overlayが削除されている場合は、floatingButtonsも削除されているはずなので、表示しない
-    if (floatingButtons && overlay && overlay.isConnected && overlay.parentElement) {
+    const currentOverlay = document.querySelector('[data-atelier-modal-overlay="true"]') as HTMLElement;
+    if (floatingButtons && currentOverlay?.isConnected) {
       floatingButtons.style.display = "flex";
     }
-    
+
     setTimeout(() => {
-      existingPanel.remove();
+      if (animationFrameIdRef?.current) {
+        cancelAnimationFrame(animationFrameIdRef.current);
+      }
+      targetPanel.remove();
       if (viewerContainer) {
         viewerContainer.style.transition = "";
         viewerContainer.style.maxHeight = "";
       }
     }, 600);
+  };
+
+  // 既存のパネルがあれば閉じてリスナーも解除
+  const existingPanel = container.querySelector("#atelier-outfit-change-panel");
+  if (existingPanel) {
+    closePanel(existingPanel as HTMLElement);
     return;
   }
   
-  // パネルを作成（画面の2/3の高さ）
+  // パネルを作成（画面の約50%の高さ）
   const panel = document.createElement("div");
   panel.id = "atelier-outfit-change-panel";
   panel.style.cssText = `
@@ -114,8 +126,8 @@ export async function showOutfitChangePanel(
     display: flex !important;
     flex-direction: column !important;
     overflow: hidden !important;
-    max-height: 66.67vh !important;
-    height: 66.67vh !important;
+    max-height: 50vh !important;
+    height: 50vh !important;
     transform: translateY(100%) !important;
     opacity: 0 !important;
     transition: transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.5s ease-in-out !important;
@@ -209,30 +221,28 @@ export async function showOutfitChangePanel(
   }
   
   // パネルの位置変化を監視して3Dビューアーを連動させる
-  let animationFrameId: number | null = null;
+  const animationFrameIdRef = { current: null as number | null };
   let lastPanelTop = -1;
   const observePanelPosition = () => {
-    if (animationFrameId) {
-      cancelAnimationFrame(animationFrameId);
+    if (animationFrameIdRef.current) {
+      cancelAnimationFrame(animationFrameIdRef.current);
     }
     const checkPosition = () => {
       const panelRect = panel.getBoundingClientRect();
       const currentPanelTop = panelRect.top;
-      
-      // 位置が変わった場合のみ更新
+
       if (Math.abs(currentPanelTop - lastPanelTop) > 0.1) {
         lastPanelTop = currentPanelTop;
         updateViewerHeight();
       }
-      
-      // アニメーション中は継続的に監視
+
       const computedStyle = window.getComputedStyle(panel);
       const hasTransition = computedStyle.transition !== "none" && computedStyle.transition !== "all 0s ease 0s";
       if (hasTransition || panel.style.transition !== "none") {
-        animationFrameId = requestAnimationFrame(checkPosition);
+        animationFrameIdRef.current = requestAnimationFrame(checkPosition);
       }
     };
-    animationFrameId = requestAnimationFrame(checkPosition);
+    animationFrameIdRef.current = requestAnimationFrame(checkPosition);
   };
   
   // スムーズに表示（次のフレームでアニメーション開始）
@@ -265,14 +275,6 @@ export async function showOutfitChangePanel(
     }
     
     const products: CategoryProduct[] = await response.json();
-    
-    // デバッグ: カテゴリ情報を確認
-    if (isDevelopmentMode()) {
-      console.log("[Atelier Widget] Products fetched:", products);
-      products.forEach((p) => {
-        console.log(`[Atelier Widget] Product: ${p.name}, Category: ${p.category || "null/undefined"}`);
-      });
-    }
     
     // 現在の商品を除外してカテゴリ別に分類
     const categorized: { [key: string]: CategoryProduct[] } = {};
@@ -376,11 +378,48 @@ export async function showOutfitChangePanel(
             productItem.style.backgroundColor = "transparent";
           });
           
-          productItem.addEventListener("click", () => {
+          productItem.addEventListener("click", async () => {
+            // コールバックがある場合はウィジェット内で着せ替え
+            if (callbacks?.onProductSelect) {
+              // ローディング状態を表示
+              productItem.style.opacity = "0.5";
+              productItem.style.pointerEvents = "none";
+
+              try {
+                const externalProductId = product.externalProductId || product.id;
+                // 選択された商品のwidget configを取得
+                const config = await fetchWidgetConfig({
+                  publicKey: publicKey || null,
+                  shopId: shopId || null,
+                  externalProductId,
+                  productId: null,
+                });
+
+                if (config.enabled) {
+                  // コールバックで着せ替え実行
+                  callbacks.onProductSelect(product, config);
+                  // パネルを閉じる
+                  removeDocumentListeners();
+                  closePanel(panel, animationFrameIdRef);
+                  observePanelPosition();
+                } else {
+                  alert("この商品の3Dモデルが登録されていません。");
+                  productItem.style.opacity = "1";
+                  productItem.style.pointerEvents = "auto";
+                }
+              } catch (error) {
+                console.error("[Atelier Widget] Failed to fetch product config:", error);
+                alert("商品データの取得に失敗しました。");
+                productItem.style.opacity = "1";
+                productItem.style.pointerEvents = "auto";
+              }
+            } else {
+              // コールバックがない場合は従来のページ遷移
             const productId = product.externalProductId || product.id;
             const currentUrl = new URL(window.location.href);
             currentUrl.pathname = `/product/${productId}`;
             window.location.href = currentUrl.toString();
+            }
           });
           
           // 商品画像
@@ -499,6 +538,14 @@ export async function showOutfitChangePanel(
   let dragStartY = 0;
   let dragCurrentY = 0;
   let isDragging = false;
+
+  /** documentレベルのイベントリスナーを解除する */
+  const removeDocumentListeners = () => {
+    document.removeEventListener("touchmove", handleTouchMove);
+    document.removeEventListener("touchend", handleTouchEnd);
+    document.removeEventListener("mousemove", handleMouseMove);
+    document.removeEventListener("mouseup", handleMouseUp);
+  };
   
   const handleStart = (clientY: number) => {
     dragStartY = clientY;
@@ -531,59 +578,21 @@ export async function showOutfitChangePanel(
     if (!isDragging) return;
     const deltaY = dragCurrentY - dragStartY;
     const threshold = 100;
-    // 閉じる時はより滑らかなイージング関数を使用
-    const closeTransition = "transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 0.6s ease-out";
-    const openTransition = "transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.5s ease-in-out";
-    
+
     if (deltaY > threshold) {
-      // 閉じる（3Dビューアーも一緒に拡大）
-      panel.style.transition = closeTransition;
-      panel.style.transform = "translateY(100%)";
-      panel.style.opacity = "0";
-      
-      if (viewerContainer) {
-        viewerContainer.style.transition = "max-height 0.6s cubic-bezier(0.25, 0.1, 0.25, 1)";
-      }
-      
-      // パネルの位置変化を監視して3Dビューアーを連動
+      // 閉じる（リスナーも解除）
+      removeDocumentListeners();
+      closePanel(panel, animationFrameIdRef);
       observePanelPosition();
-      
-      // サイズボタンとフローティングボタンを再表示
-      // ただし、overlayが存在しない場合はfloatingButtonsを表示しない（プレビューが閉じられているため）
-      if (sizeArea) {
-        sizeArea.style.display = "flex";
-      }
-      // overlayが存在し、かつisConnectedの場合のみfloatingButtonsを表示
-      // overlayが削除されている場合は、floatingButtonsも削除されているはずなので、表示しない
-      const overlay = document.querySelector('[data-atelier-modal-overlay="true"]') as HTMLElement;
-      if (floatingButtons && overlay && overlay.isConnected && overlay.parentElement) {
-        floatingButtons.style.display = "flex";
-      }
-      
-      setTimeout(() => {
-        if (animationFrameId) {
-          cancelAnimationFrame(animationFrameId);
-        }
-        if (panel.parentNode) {
-          panel.parentNode.removeChild(panel);
-        }
-        if (viewerContainer) {
-          viewerContainer.style.transition = "";
-          viewerContainer.style.maxHeight = "";
-        }
-      }, 600);
     } else {
       // 元に戻す
-      const openTransition = "transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.5s ease-in-out";
-      panel.style.transition = openTransition;
+      panel.style.transition = "transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.5s ease-in-out";
       panel.style.transform = "translateY(0)";
       panel.style.opacity = "1";
-      
+
       if (viewerContainer) {
         viewerContainer.style.transition = "max-height 0.5s cubic-bezier(0.4, 0.0, 0.2, 1)";
       }
-      
-      // パネルの位置変化を監視して3Dビューアーを連動
       observePanelPosition();
     }
     isDragging = false;
@@ -601,6 +610,8 @@ export async function showOutfitChangePanel(
     e.preventDefault();
     handleMove(e.touches[0].clientY);
   };
+
+  const handleTouchEnd = () => handleEnd();
   
   const handleMouseDown = (e: MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -614,50 +625,20 @@ export async function showOutfitChangePanel(
     e.preventDefault();
     handleMove(e.clientY);
   };
+
+  const handleMouseUp = () => handleEnd();
   
   panel.addEventListener("touchstart", handleTouchStart, { passive: false });
   document.addEventListener("touchmove", handleTouchMove, { passive: false });
-  document.addEventListener("touchend", () => handleEnd());
+  document.addEventListener("touchend", handleTouchEnd);
   panel.addEventListener("mousedown", handleMouseDown);
   document.addEventListener("mousemove", handleMouseMove);
-  document.addEventListener("mouseup", () => handleEnd());
+  document.addEventListener("mouseup", handleMouseUp);
   
-  // ハンドルをクリックしても閉じる（3Dビューアーも一緒に拡大）- より滑らかなイージング関数を使用
+  // ハンドルをクリックしても閉じる
   handle.addEventListener("click", () => {
-    const transition = "transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 0.6s ease-out";
-    panel.style.transition = transition;
-    panel.style.transform = "translateY(100%)";
-    panel.style.opacity = "0";
-    
-    if (viewerContainer) {
-      viewerContainer.style.transition = "max-height 0.6s cubic-bezier(0.25, 0.1, 0.25, 1)";
-    }
-    
-    // パネルの位置変化を監視して3Dビューアーを連動
+    removeDocumentListeners();
+    closePanel(panel, animationFrameIdRef);
     observePanelPosition();
-    
-    // サイズボタンとフローティングボタンを再表示
-    // ただし、overlayが存在しない場合はfloatingButtonsを表示しない（プレビューが閉じられているため）
-    if (sizeArea) {
-      sizeArea.style.display = "flex";
-    }
-    // overlayが存在し、かつisConnectedの場合のみfloatingButtonsを表示
-    // overlayが削除されている場合は、floatingButtonsも削除されているはずなので、表示しない
-    if (floatingButtons && overlay && overlay.isConnected && overlay.parentElement) {
-      floatingButtons.style.display = "flex";
-    }
-    
-    setTimeout(() => {
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-      }
-      if (panel.parentNode) {
-        panel.parentNode.removeChild(panel);
-      }
-      if (viewerContainer) {
-        viewerContainer.style.transition = "";
-        viewerContainer.style.maxHeight = "";
-      }
-    }, 600);
   });
 }

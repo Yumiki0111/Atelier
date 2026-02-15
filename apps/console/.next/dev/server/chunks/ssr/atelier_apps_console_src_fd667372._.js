@@ -10,36 +10,19 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2
 "use client";
 ;
 async function authenticatedFetch(url, options = {}) {
-    try {
-        console.log("[authenticatedFetch] Starting, url:", url);
-        console.log("[authenticatedFetch] Getting session...");
-        const { data: { session }, error: sessionError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["supabase"].auth.getSession();
-        console.log("[authenticatedFetch] Session retrieved:", {
-            hasSession: !!session,
-            hasError: !!sessionError
-        });
-        if (sessionError) {
-            console.error("[authenticatedFetch] Error getting session:", sessionError);
-            throw new Error("セッションの取得に失敗しました");
-        }
-        const headers = new Headers(options.headers);
-        if (session?.access_token) {
-            headers.set("Authorization", `Bearer ${session.access_token}`);
-            console.log("[authenticatedFetch] Authorization header set");
-        } else {
-            console.warn("[authenticatedFetch] No session found, making request without auth token");
-        }
-        console.log("[authenticatedFetch] Making fetch request to:", url);
-        const response = await fetch(url, {
-            ...options,
-            headers
-        });
-        console.log("[authenticatedFetch] Fetch completed, status:", response.status);
-        return response;
-    } catch (error) {
-        console.error("[authenticatedFetch] Error:", error);
-        throw error;
+    const { data: { session }, error: sessionError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$client$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["supabase"].auth.getSession();
+    if (sessionError) {
+        console.error("[authenticatedFetch] Error getting session:", sessionError);
+        throw new Error("セッションの取得に失敗しました");
     }
+    const headers = new Headers(options.headers);
+    if (session?.access_token) {
+        headers.set("Authorization", `Bearer ${session.access_token}`);
+    }
+    return fetch(url, {
+        ...options,
+        headers
+    });
 }
 }),
 "[project]/atelier/apps/console/src/lib/errors/error-handler.ts [app-ssr] (ecmascript)", ((__turbopack_context__) => {

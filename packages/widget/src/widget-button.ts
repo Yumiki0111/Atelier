@@ -1,4 +1,5 @@
 import type { WidgetParams } from "./widget-api";
+import type { WidgetDesignConfig } from "./types";
 import { sendEvent } from "./widget-api";
 import { loadProductImage } from "./widget-image";
 import { updateButtonPositions } from "./widget-position";
@@ -128,6 +129,106 @@ export function renderCube(
     productId: params.productId || params.externalProductId || undefined,
     type: "cube_view",
   }).catch(() => {});
+}
+
+/**
+ * 既に作成済みのボタンにデザイン設定を適用する
+ */
+export function applyDesignToButton(containerId: string, design: WidgetDesignConfig) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const button = container.querySelector("button") as HTMLButtonElement | null;
+  if (!button) return;
+
+  const btn = design.button;
+  if (!btn) return;
+
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+
+  // ボタンスタイルを更新
+  const color = btn.color || "#ffffff";
+  const isWhite = color === "#ffffff" || color === "white";
+  const height = btn.height ?? (isMobile ? 48 : 56);
+  const width = btn.width ?? (isMobile ? 160 : 180);
+  const radius = btn.radius ?? height / 2;
+  const fontSize = btn.fontSize ?? (isMobile ? 13 : 15);
+  const borderWidth = btn.borderWidth ?? 0;
+  const borderColor = btn.borderColor ?? "#000000";
+  const shadow = btn.shadow ?? true;
+
+  const border = borderWidth > 0
+    ? `${borderWidth}px solid ${borderColor}`
+    : isWhite ? "2px solid #e5e7eb" : "none";
+
+  // テキスト色を自動判定
+  const hex = color.replace("#", "");
+  let textColor = "#ffffff";
+  if (hex.length === 6) {
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    textColor = luminance > 0.5 ? "#000000" : "#ffffff";
+  }
+
+  button.style.cssText = `
+    position: fixed !important;
+    bottom: 24px !important;
+    right: 24px !important;
+    width: auto !important;
+    min-width: ${width}px !important;
+    height: ${height}px !important;
+    background: ${color} !important;
+    border: ${border} !important;
+    border-radius: ${radius}px !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: ${isMobile ? 6 : 8}px !important;
+    color: ${textColor} !important;
+    font-weight: 600 !important;
+    font-size: ${fontSize}px !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+    box-shadow: ${shadow ? "0 2px 8px rgba(0,0,0,0.1)" : "none"} !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    padding: 0 ${isMobile ? "20px" : "24px"} !important;
+    margin: 0 !important;
+    outline: none !important;
+    pointer-events: auto !important;
+    z-index: 9999 !important;
+    box-sizing: border-box !important;
+    line-height: 1 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    backdrop-filter: blur(10px) !important;
+  `;
+
+  // テキスト更新
+  if (btn.text) {
+    const textNode = Array.from(button.childNodes).find(
+      (n) => n.nodeType === Node.TEXT_NODE
+    ) as Text | undefined;
+    if (textNode) textNode.textContent = btn.text;
+  }
+
+  // ホバーエフェクト更新
+  button.onmouseenter = () => {
+    button.style.transform = "translateY(-2px) scale(1.02)";
+    if (shadow) button.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15) !important";
+  };
+  button.onmouseleave = () => {
+    button.style.transform = "translateY(0) scale(1)";
+    button.style.boxShadow = shadow ? "0 2px 8px rgba(0,0,0,0.1) !important" : "none !important";
+  };
+
+  // アイコン色も更新
+  const svg = button.querySelector("svg");
+  if (svg) svg.setAttribute("stroke", textColor);
+
+  // 位置再計算
+  updateButtonPositions();
 }
 
 function createCubeIcon(size: number): SVGElement {

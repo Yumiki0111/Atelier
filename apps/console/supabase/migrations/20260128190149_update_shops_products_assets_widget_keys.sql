@@ -13,10 +13,19 @@ ALTER TABLE public.products
 
 -- 既存のRLSポリシーは shop_id TEXT を前提に定義されているため、
 -- 型変更前に一度削除しておく（後続のmigrationでprofiles/current_shop_id()ベースに再定義する）。
-DROP POLICY IF EXISTS "Users can view products of their shop" ON public.products;
-DROP POLICY IF EXISTS "Users can create products in their shop" ON public.products;
-DROP POLICY IF EXISTS "Users can update products of their shop" ON public.products;
-DROP POLICY IF EXISTS "Users can delete products of their shop" ON public.products;
+-- 全てのproductsテーブルのポリシーを削除（名前が異なる可能性があるため、全て削除）
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN 
+    SELECT policyname 
+    FROM pg_policies 
+    WHERE schemaname = 'public' AND tablename = 'products'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.products', r.policyname);
+  END LOOP;
+END $$;
 
 -- products.shop_id は初期スキーマで TEXT 型だが、
 -- マルチテナント設計に合わせて UUID 型に揃える。
@@ -40,10 +49,19 @@ END $$;
 
 -- assets: shop_id を UUID 型で保持し、products と複合FKで同一shopを強制
 -- 既に TEXT 型の shop_id がある前提で UUID へ変換する。
-DROP POLICY IF EXISTS "Users can view assets of their shop" ON public.assets;
-DROP POLICY IF EXISTS "Users can create assets in their shop" ON public.assets;
-DROP POLICY IF EXISTS "Users can update assets of their shop" ON public.assets;
-DROP POLICY IF EXISTS "Users can delete assets of their shop" ON public.assets;
+-- 全てのassetsテーブルのポリシーを削除（名前が異なる可能性があるため、全て削除）
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN 
+    SELECT policyname 
+    FROM pg_policies 
+    WHERE schemaname = 'public' AND tablename = 'assets'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.assets', r.policyname);
+  END LOOP;
+END $$;
 
 ALTER TABLE public.assets
   ALTER COLUMN shop_id TYPE UUID USING shop_id::uuid;
@@ -76,10 +94,19 @@ END $$;
 
 -- widget_keys: スキーマを仕様に合わせる
 -- shop_id を UUID 型に変更する前に、既存のRLSポリシーを削除
-DROP POLICY IF EXISTS "Users can view widget_keys of their shop" ON public.widget_keys;
-DROP POLICY IF EXISTS "Users can create widget_keys in their shop" ON public.widget_keys;
-DROP POLICY IF EXISTS "Users can update widget_keys of their shop" ON public.widget_keys;
-DROP POLICY IF EXISTS "Users can delete widget_keys of their shop" ON public.widget_keys;
+-- 全てのwidget_keysテーブルのポリシーを削除（名前が異なる可能性があるため、全て削除）
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN 
+    SELECT policyname 
+    FROM pg_policies 
+    WHERE schemaname = 'public' AND tablename = 'widget_keys'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.widget_keys', r.policyname);
+  END LOOP;
+END $$;
 
 -- shop_id を UUID 型に変更
 ALTER TABLE public.widget_keys

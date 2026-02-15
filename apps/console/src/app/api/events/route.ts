@@ -6,7 +6,7 @@ import { z } from "zod";
 // CORSヘッダーを設定する関数
 function getCorsHeaders() {
   return {
-    "Access-Control-Allow-Origin": "*", // 開発環境では全てのオリジンを許可
+    "Access-Control-Allow-Origin": "*", // ウィジェットは任意のドメインから送信されるため全オリジン許可
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
   };

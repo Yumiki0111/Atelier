@@ -96,21 +96,10 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
     
-    console.log("[PATCH /api/products/:id] Received body:", JSON.stringify(body, null, 2));
-    
     // shopIdは更新対象外なので除外
     const { shopId, ...bodyWithoutShopId } = body;
     
-    console.log("[PATCH /api/products/:id] Body without shopId:", JSON.stringify(bodyWithoutShopId, null, 2));
-    
-    let validated;
-    try {
-      validated = updateProductSchema.parse(bodyWithoutShopId);
-      console.log("[PATCH /api/products/:id] Validation passed:", JSON.stringify(validated, null, 2));
-    } catch (validationError) {
-      console.error("[PATCH /api/products/:id] Validation error:", validationError);
-      throw validationError;
-    }
+    const validated = updateProductSchema.parse(bodyWithoutShopId);
 
     const updateData: Record<string, unknown> = {};
     if (validated.name !== undefined) updateData.name = validated.name;
@@ -123,10 +112,6 @@ export async function PATCH(
     }
 
     updateData.updated_at = new Date().toISOString();
-
-    console.log("[PATCH /api/products/:id] Update data:", JSON.stringify(updateData, null, 2));
-    console.log("[PATCH /api/products/:id] Product ID:", id);
-    console.log("[PATCH /api/products/:id] Shop ID:", auth.shopId);
 
     const { data, error } = await supabaseAdmin
       .from("products")
@@ -143,11 +128,7 @@ export async function PATCH(
           { status: 404 }
         );
       }
-      console.error("[PATCH /api/products/:id] Database error:", error);
-      console.error("[PATCH /api/products/:id] Error code:", error.code);
-      console.error("[PATCH /api/products/:id] Error message:", error.message);
-      console.error("[PATCH /api/products/:id] Error hint:", error.hint);
-      console.error("[PATCH /api/products/:id] Error details:", error.details);
+      console.error("[PATCH /api/products/:id] Database error:", error.message, error.code);
       
       // カラムが存在しない場合のエラーを検出
       if (error.message?.includes("column") && error.message?.includes("does not exist")) {
@@ -165,9 +146,7 @@ export async function PATCH(
         { 
           error: "Failed to update product",
           message: error.message || "商品の更新に失敗しました",
-          details: error.code,
-          hint: error.hint,
-          fullError: process.env.NODE_ENV === "development" ? JSON.stringify(error, null, 2) : undefined
+          details: process.env.NODE_ENV === "development" ? error.code : undefined,
         },
         { status: 500 }
       );
@@ -205,13 +184,11 @@ export async function PATCH(
     }
 
     console.error("[PATCH /api/products/:id] Unexpected error:", error);
-    console.error("[PATCH /api/products/:id] Error stack:", error instanceof Error ? error.stack : "No stack trace");
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
       { 
         error: "Internal server error",
-        message: errorMessage,
-        details: error instanceof Error ? error.stack : undefined
+        message: process.env.NODE_ENV === "development" ? errorMessage : "商品の更新に失敗しました",
       },
       { status: 500 }
     );

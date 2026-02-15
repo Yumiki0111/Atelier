@@ -87,10 +87,30 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS shop_id_uuid UUID;
 -- 暫定的に、shop_idをTEXTのまま保持し、外部キー制約は追加しない
 -- 本番環境では、データ移行後にUUID型に変更する
 
--- products テーブルのインデックス追加
-CREATE INDEX IF NOT EXISTS idx_products_size_type_id ON products(size_type_id);
-CREATE INDEX IF NOT EXISTS idx_products_sku_not_null ON products(sku) WHERE sku IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_products_handle_not_null ON products(handle) WHERE handle IS NOT NULL;
+-- products テーブルのインデックス追加（カラムが存在する場合のみ）
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'products' AND column_name = 'size_type_id'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_products_size_type_id ON products(size_type_id);
+  END IF;
+  
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'products' AND column_name = 'sku'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_products_sku_not_null ON products(sku) WHERE sku IS NOT NULL;
+  END IF;
+  
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'products' AND column_name = 'handle'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_products_handle_not_null ON products(handle) WHERE handle IS NOT NULL;
+  END IF;
+END $$;
 
 -- assets テーブルのsize CHECK制約を削除（柔軟なサイズ対応）
 -- 初期スキーマで設定されたCHECK制約を削除
@@ -128,12 +148,15 @@ CREATE INDEX IF NOT EXISTS idx_events_shop_id_type_created_at ON events(shop_id,
 
 -- 3. 更新トリガー
 
+DROP TRIGGER IF EXISTS update_shops_updated_at ON shops;
 CREATE TRIGGER update_shops_updated_at BEFORE UPDATE ON shops
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_widget_configs_updated_at ON widget_configs;
 CREATE TRIGGER update_widget_configs_updated_at BEFORE UPDATE ON widget_configs
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
@@ -159,6 +182,7 @@ ALTER TABLE widget_configs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE size_types ENABLE ROW LEVEL SECURITY;
 
 -- shops テーブルのポリシー
+DROP POLICY IF EXISTS "Users can view their own shop" ON shops;
 CREATE POLICY "Users can view their own shop"
   ON shops FOR SELECT
   USING (
@@ -167,6 +191,7 @@ CREATE POLICY "Users can view their own shop"
     )
   );
 
+DROP POLICY IF EXISTS "Owners and admins can update their shop" ON shops;
 CREATE POLICY "Owners and admins can update their shop"
   ON shops FOR UPDATE
   USING (
@@ -177,6 +202,7 @@ CREATE POLICY "Owners and admins can update their shop"
   );
 
 -- users テーブルのポリシー
+DROP POLICY IF EXISTS "Users can view members of their shop" ON users;
 CREATE POLICY "Users can view members of their shop"
   ON users FOR SELECT
   USING (
@@ -185,6 +211,7 @@ CREATE POLICY "Users can view members of their shop"
     )
   );
 
+DROP POLICY IF EXISTS "Owners and admins can update members" ON users;
 CREATE POLICY "Owners and admins can update members"
   ON users FOR UPDATE
   USING (
@@ -195,103 +222,305 @@ CREATE POLICY "Owners and admins can update members"
   );
 
 -- products テーブルのポリシー
--- 注意: products.shop_idはTEXT型、users.shop_idはUUID型のため、型変換が必要
-CREATE POLICY "Users can view products of their shop"
-  ON products FOR SELECT
-  USING (
-    shop_id IN (
-      SELECT shop_id::text FROM users WHERE id = auth.uid()
-    )
-  );
+-- 注意: 既存のDBではproducts.shop_idが既にUUID型に変更されている可能性があるため、
+-- カラム型を確認してから適切なポリシーを作成
+DROP POLICY IF EXISTS "Users can view products of their shop" ON products;
+DO $$
+BEGIN
+  -- shop_idがTEXT型の場合
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'products' AND column_name = 'shop_id' AND data_type = 'text'
+  ) THEN
+    EXECUTE format('CREATE POLICY "Users can view products of their shop"
+      ON products FOR SELECT
+      USING (
+        shop_id IN (
+          SELECT shop_id::text FROM users WHERE id = auth.uid()
+        )
+      )');
+  -- shop_idがUUID型の場合
+  ELSIF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'products' AND column_name = 'shop_id' AND data_type = 'uuid'
+  ) THEN
+    EXECUTE format('CREATE POLICY "Users can view products of their shop"
+      ON products FOR SELECT
+      USING (
+        shop_id IN (
+          SELECT shop_id FROM users WHERE id = auth.uid()
+        )
+      )');
+  END IF;
+END $$;
 
-CREATE POLICY "Users can create products in their shop"
-  ON products FOR INSERT
-  WITH CHECK (
-    shop_id IN (
-      SELECT shop_id::text FROM users WHERE id = auth.uid()
-    )
-  );
+DROP POLICY IF EXISTS "Users can create products in their shop" ON products;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'products' AND column_name = 'shop_id' AND data_type = 'text'
+  ) THEN
+    EXECUTE format('CREATE POLICY "Users can create products in their shop"
+      ON products FOR INSERT
+      WITH CHECK (
+        shop_id IN (
+          SELECT shop_id::text FROM users WHERE id = auth.uid()
+        )
+      )');
+  ELSIF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'products' AND column_name = 'shop_id' AND data_type = 'uuid'
+  ) THEN
+    EXECUTE format('CREATE POLICY "Users can create products in their shop"
+      ON products FOR INSERT
+      WITH CHECK (
+        shop_id IN (
+          SELECT shop_id FROM users WHERE id = auth.uid()
+        )
+      )');
+  END IF;
+END $$;
 
-CREATE POLICY "Users can update products of their shop"
-  ON products FOR UPDATE
-  USING (
-    shop_id IN (
-      SELECT shop_id::text FROM users WHERE id = auth.uid()
-    )
-  );
+DROP POLICY IF EXISTS "Users can update products of their shop" ON products;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'products' AND column_name = 'shop_id' AND data_type = 'text'
+  ) THEN
+    EXECUTE format('CREATE POLICY "Users can update products of their shop"
+      ON products FOR UPDATE
+      USING (
+        shop_id IN (
+          SELECT shop_id::text FROM users WHERE id = auth.uid()
+        )
+      )');
+  ELSIF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'products' AND column_name = 'shop_id' AND data_type = 'uuid'
+  ) THEN
+    EXECUTE format('CREATE POLICY "Users can update products of their shop"
+      ON products FOR UPDATE
+      USING (
+        shop_id IN (
+          SELECT shop_id FROM users WHERE id = auth.uid()
+        )
+      )');
+  END IF;
+END $$;
 
-CREATE POLICY "Users can delete products of their shop"
-  ON products FOR DELETE
-  USING (
-    shop_id IN (
-      SELECT shop_id::text FROM users WHERE id = auth.uid()
-    )
-  );
+DROP POLICY IF EXISTS "Users can delete products of their shop" ON products;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'products' AND column_name = 'shop_id' AND data_type = 'text'
+  ) THEN
+    EXECUTE format('CREATE POLICY "Users can delete products of their shop"
+      ON products FOR DELETE
+      USING (
+        shop_id IN (
+          SELECT shop_id::text FROM users WHERE id = auth.uid()
+        )
+      )');
+  ELSIF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'products' AND column_name = 'shop_id' AND data_type = 'uuid'
+  ) THEN
+    EXECUTE format('CREATE POLICY "Users can delete products of their shop"
+      ON products FOR DELETE
+      USING (
+        shop_id IN (
+          SELECT shop_id FROM users WHERE id = auth.uid()
+        )
+      )');
+  END IF;
+END $$;
 
 -- assets テーブルのポリシー
--- 注意: products.shop_idはTEXT型、users.shop_idはUUID型のため、型変換が必要
-CREATE POLICY "Users can view assets of their shop's products"
-  ON assets FOR SELECT
-  USING (
-    product_id IN (
-      SELECT id FROM products
-      WHERE shop_id IN (
-        SELECT shop_id::text FROM users WHERE id = auth.uid()
-      )
-    )
-  );
+-- 注意: products.shop_idの型に応じて適切なポリシーを作成
+DROP POLICY IF EXISTS "Users can view assets of their shop's products" ON assets;
+DO $$
+BEGIN
+  -- products.shop_idがTEXT型の場合
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'products' AND column_name = 'shop_id' AND data_type = 'text'
+  ) THEN
+    EXECUTE format('CREATE POLICY "Users can view assets of their shop''s products"
+      ON assets FOR SELECT
+      USING (
+        product_id IN (
+          SELECT id FROM products
+          WHERE shop_id IN (
+            SELECT shop_id::text FROM users WHERE id = auth.uid()
+          )
+        )
+      )');
+  -- products.shop_idがUUID型の場合
+  ELSIF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'products' AND column_name = 'shop_id' AND data_type = 'uuid'
+  ) THEN
+    EXECUTE format('CREATE POLICY "Users can view assets of their shop''s products"
+      ON assets FOR SELECT
+      USING (
+        product_id IN (
+          SELECT id FROM products
+          WHERE shop_id IN (
+            SELECT shop_id FROM users WHERE id = auth.uid()
+          )
+        )
+      )');
+  END IF;
+END $$;
 
-CREATE POLICY "Users can create assets for their shop's products"
-  ON assets FOR INSERT
-  WITH CHECK (
-    product_id IN (
-      SELECT id FROM products
-      WHERE shop_id IN (
-        SELECT shop_id::text FROM users WHERE id = auth.uid()
-      )
-    )
-  );
+DROP POLICY IF EXISTS "Users can create assets for their shop's products" ON assets;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'products' AND column_name = 'shop_id' AND data_type = 'text'
+  ) THEN
+    EXECUTE format('CREATE POLICY "Users can create assets for their shop''s products"
+      ON assets FOR INSERT
+      WITH CHECK (
+        product_id IN (
+          SELECT id FROM products
+          WHERE shop_id IN (
+            SELECT shop_id::text FROM users WHERE id = auth.uid()
+          )
+        )
+      )');
+  ELSIF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'products' AND column_name = 'shop_id' AND data_type = 'uuid'
+  ) THEN
+    EXECUTE format('CREATE POLICY "Users can create assets for their shop''s products"
+      ON assets FOR INSERT
+      WITH CHECK (
+        product_id IN (
+          SELECT id FROM products
+          WHERE shop_id IN (
+            SELECT shop_id FROM users WHERE id = auth.uid()
+          )
+        )
+      )');
+  END IF;
+END $$;
 
-CREATE POLICY "Users can update assets of their shop's products"
-  ON assets FOR UPDATE
-  USING (
-    product_id IN (
-      SELECT id FROM products
-      WHERE shop_id IN (
-        SELECT shop_id::text FROM users WHERE id = auth.uid()
-      )
-    )
-  );
+DROP POLICY IF EXISTS "Users can update assets of their shop's products" ON assets;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'products' AND column_name = 'shop_id' AND data_type = 'text'
+  ) THEN
+    EXECUTE format('CREATE POLICY "Users can update assets of their shop''s products"
+      ON assets FOR UPDATE
+      USING (
+        product_id IN (
+          SELECT id FROM products
+          WHERE shop_id IN (
+            SELECT shop_id::text FROM users WHERE id = auth.uid()
+          )
+        )
+      )');
+  ELSIF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'products' AND column_name = 'shop_id' AND data_type = 'uuid'
+  ) THEN
+    EXECUTE format('CREATE POLICY "Users can update assets of their shop''s products"
+      ON assets FOR UPDATE
+      USING (
+        product_id IN (
+          SELECT id FROM products
+          WHERE shop_id IN (
+            SELECT shop_id FROM users WHERE id = auth.uid()
+          )
+        )
+      )');
+  END IF;
+END $$;
 
-CREATE POLICY "Users can delete assets of their shop's products"
-  ON assets FOR DELETE
-  USING (
-    product_id IN (
-      SELECT id FROM products
-      WHERE shop_id IN (
-        SELECT shop_id::text FROM users WHERE id = auth.uid()
-      )
-    )
-  );
+DROP POLICY IF EXISTS "Users can delete assets of their shop's products" ON assets;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'products' AND column_name = 'shop_id' AND data_type = 'text'
+  ) THEN
+    EXECUTE format('CREATE POLICY "Users can delete assets of their shop''s products"
+      ON assets FOR DELETE
+      USING (
+        product_id IN (
+          SELECT id FROM products
+          WHERE shop_id IN (
+            SELECT shop_id::text FROM users WHERE id = auth.uid()
+          )
+        )
+      )');
+  ELSIF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'products' AND column_name = 'shop_id' AND data_type = 'uuid'
+  ) THEN
+    EXECUTE format('CREATE POLICY "Users can delete assets of their shop''s products"
+      ON assets FOR DELETE
+      USING (
+        product_id IN (
+          SELECT id FROM products
+          WHERE shop_id IN (
+            SELECT shop_id FROM users WHERE id = auth.uid()
+          )
+        )
+      )');
+  END IF;
+END $$;
 
 -- events テーブルのポリシー
+DROP POLICY IF EXISTS "Anyone can insert events" ON events;
 CREATE POLICY "Anyone can insert events"
   ON events FOR INSERT
   WITH CHECK (true);
 
-CREATE POLICY "Users can view events of their shop"
-  ON events FOR SELECT
-  USING (
-    shop_id IN (
-      SELECT shop_id::text FROM users WHERE id = auth.uid()
-    )
-  );
+DROP POLICY IF EXISTS "Users can view events of their shop" ON events;
+DO $$
+BEGIN
+  -- events.shop_idがTEXT型の場合
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'events' AND column_name = 'shop_id' AND data_type = 'text'
+  ) THEN
+    EXECUTE format('CREATE POLICY "Users can view events of their shop"
+      ON events FOR SELECT
+      USING (
+        shop_id IN (
+          SELECT shop_id::text FROM users WHERE id = auth.uid()
+        )
+      )');
+  -- events.shop_idがUUID型の場合
+  ELSIF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'events' AND column_name = 'shop_id' AND data_type = 'uuid'
+  ) THEN
+    EXECUTE format('CREATE POLICY "Users can view events of their shop"
+      ON events FOR SELECT
+      USING (
+        shop_id IN (
+          SELECT shop_id FROM users WHERE id = auth.uid()
+        )
+      )');
+  END IF;
+END $$;
 
 -- widget_configs テーブルのポリシー
+DROP POLICY IF EXISTS "Anyone can view widget configs" ON widget_configs;
 CREATE POLICY "Anyone can view widget configs"
   ON widget_configs FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Users can update widget configs of their shop" ON widget_configs;
 CREATE POLICY "Users can update widget configs of their shop"
   ON widget_configs FOR UPDATE
   USING (
@@ -301,6 +530,7 @@ CREATE POLICY "Users can update widget configs of their shop"
   );
 
 -- size_types テーブルのポリシー（全員が閲覧可能）
+DROP POLICY IF EXISTS "Anyone can view size types" ON size_types;
 CREATE POLICY "Anyone can view size types"
   ON size_types FOR SELECT
   USING (true);

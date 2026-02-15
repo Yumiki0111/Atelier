@@ -10,7 +10,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
  */
 export async function GET(request: NextRequest) {
   try {
-    console.log("[shops list API] GET request received");
+    
 
     // 管理者トークンで認証
     const adminToken = request.headers.get("x-atelier-admin-token");
@@ -54,16 +54,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log("[shops list API] Fetched shops:", shops?.length || 0);
-
     return NextResponse.json(shops || []);
-  } catch (error: any) {
+  } catch (error) {
     console.error("[shops list API] Unexpected error:", error);
     return NextResponse.json(
-      { 
-        error: "Internal server error",
-        details: error?.message || "Unknown error",
-      },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

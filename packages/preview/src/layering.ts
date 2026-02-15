@@ -14,7 +14,7 @@ export const CATEGORY_LAYER_ORDER: Record<ProductCategory, number> = {
 /**
  * デフォルトモデルのURL
  */
-export const DEFAULT_MODEL_URL = "/3d/clo_model.glb";
+export const DEFAULT_MODEL_URL = "/3d/clo_model_men.glb";
 
 /**
  * カテゴリーの順序に従ってソート
@@ -29,7 +29,8 @@ export function sortCategoriesByLayer(categories: ProductCategory[]): ProductCat
 
 /**
  * カテゴリーのレイヤー順序を取得
+ * 未知のカテゴリーの場合は999（最後尾）を返す
  */
-export function getCategoryLayerOrder(category: ProductCategory): number {
-  return CATEGORY_LAYER_ORDER[category] || 999;
+export function getCategoryLayerOrder(category: string): number {
+  return CATEGORY_LAYER_ORDER[category as ProductCategory] || 999;
 }

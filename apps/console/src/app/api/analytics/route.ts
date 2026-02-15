@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { getAuthenticatedUser } from "@/lib/auth/middleware";
 
 type TimeRange = "24h" | "7d" | "30d" | "90d";
 
@@ -55,16 +56,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const searchParams = request.nextUrl.searchParams;
-    const shopId = searchParams.get("shopId");
-    const timeRange = (searchParams.get("timeRange") || "30d") as TimeRange;
-
-    if (!shopId) {
+    // 認証チェック
+    const auth = await getAuthenticatedUser(request);
+    if (!auth) {
       return NextResponse.json(
-        { error: "shopId is required" },
-        { status: 400 }
+        { error: "Unauthorized" },
+        { status: 401 }
       );
     }
+
+    const searchParams = request.nextUrl.searchParams;
+    // shopIdはクエリパラメータより認証情報を優先（他人のショップのアナリティクスを見られないようにする）
+    const shopId = auth.shopId;
+    const timeRange = (searchParams.get("timeRange") || "30d") as TimeRange;
 
     const { startDate, endDate } = getTimeRangeDates(timeRange);
     

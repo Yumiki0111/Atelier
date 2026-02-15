@@ -1,15 +1,17 @@
 (function() {
   "use strict";
+  var _a2;
+  const DEV_PORTS = /* @__PURE__ */ new Set(["3000", "3001", "5173", "5174"]);
   function isDevelopmentMode() {
     if (typeof window === "undefined") return false;
-    const port = window.location.port;
-    const hostname = window.location.hostname;
-    return port === "5174" || port === "5173" || port === "3001" || port === "3000" || hostname === "localhost" && (port === "" || port === "5174" || port === "5173" || port === "3001" || port === "3000");
+    const { hostname, port } = window.location;
+    const isLocalHost = hostname === "localhost" || hostname === "127.0.0.1";
+    return isLocalHost && DEV_PORTS.has(port);
   }
   function getApiBaseUrl() {
-    var _a2;
+    var _a3;
     if (typeof window === "undefined") return "";
-    const apiUrlAttr = (_a2 = document.querySelector("[data-atelier-api-url]")) == null ? void 0 : _a2.getAttribute("data-atelier-api-url");
+    const apiUrlAttr = (_a3 = document.querySelector("[data-atelier-api-url]")) == null ? void 0 : _a3.getAttribute("data-atelier-api-url");
     if (apiUrlAttr) {
       return apiUrlAttr;
     }
@@ -41,152 +43,118 @@
     const host = window.location.host;
     return `${protocol}//${host}`;
   }
+  function createDevMockConfig() {
+    const glbUrl = "http://localhost:3000/3d/clo_model_men.glb";
+    return {
+      enabled: true,
+      asset: {
+        defaultSize: "M",
+        sizes: {
+          S: [{ glbUrl }],
+          M: [{ glbUrl }],
+          L: [{ glbUrl }]
+        }
+      }
+    };
+  }
+  function buildSearchParams(params) {
+    const searchParams = new URLSearchParams();
+    if (params.publicKey) {
+      searchParams.append("publicKey", params.publicKey);
+    }
+    if (params.externalProductId) {
+      searchParams.append("externalProductId", params.externalProductId);
+    } else if (params.productId) {
+      searchParams.append("externalProductId", params.productId);
+    }
+    return searchParams;
+  }
   async function fetchWidgetConfig(params) {
+    var _a3;
     if (!params.publicKey && !params.shopId) {
       throw new Error("publicKey or shopId is required");
     }
     if (isDevelopmentMode()) {
       try {
-        const searchParams = new URLSearchParams();
-        if (params.publicKey) {
-          searchParams.append("publicKey", params.publicKey);
-        }
-        if (params.externalProductId) {
-          searchParams.append("externalProductId", params.externalProductId);
-        } else if (params.productId) {
-          searchParams.append("externalProductId", params.productId);
-        } else if (params.sku) {
-          throw new Error("SKU is not supported. Please use externalProductId.");
-        } else if (params.handle) {
-          throw new Error("Handle is not supported. Please use externalProductId.");
-        } else if (params.url) {
-          throw new Error("URL is not supported. Please use externalProductId.");
+        const searchParams2 = buildSearchParams(params);
+        if (!params.externalProductId && !params.productId) {
+          if (params.sku) throw new Error("SKU is not supported. Please use externalProductId.");
+          if (params.handle) throw new Error("Handle is not supported. Please use externalProductId.");
+          if (params.url) throw new Error("URL is not supported. Please use externalProductId.");
         }
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3e3);
-        const apiUrl = getApiBaseUrl() || "http://localhost:3000";
-        const response = await fetch(
-          `${apiUrl}/api/public/widget-config?${searchParams.toString()}`,
-          {
-            signal: controller.signal
-          }
+        const apiUrl2 = getApiBaseUrl() || "http://localhost:3000";
+        const response2 = await fetch(
+          `${apiUrl2}/api/public/widget-config?${searchParams2.toString()}`,
+          { signal: controller.signal }
         );
         clearTimeout(timeoutId);
-        if (!response.ok) {
-          if (isDevelopmentMode()) {
-            console.warn(
-              `[Atelier Widget] API returned ${response.status}, using mock config.`
-            );
-            const glbUrl = "http://localhost:3000/3d/clo_model.glb";
-            return {
-              enabled: true,
-              asset: {
-                defaultSize: "M",
-                sizes: {
-                  S: [{ glbUrl }],
-                  M: [{ glbUrl }],
-                  L: [{ glbUrl }]
-                }
-              }
-            };
-          }
-          throw new Error(`HTTP ${response.status}`);
+        if (!response2.ok) {
+          console.warn(`[Atelier Widget] API returned ${response2.status}, using mock config.`);
+          return createDevMockConfig();
         }
-        const config = await response.json();
-        if (isDevelopmentMode() && !config.enabled) {
-          if (config.asset && config.asset.sizes && Object.keys(config.asset.sizes).length > 0) {
-            return {
-              enabled: true,
-              asset: config.asset
-            };
+        const config = await response2.json();
+        if (!config.enabled) {
+          if (((_a3 = config.asset) == null ? void 0 : _a3.sizes) && Object.keys(config.asset.sizes).length > 0) {
+            return { enabled: true, asset: config.asset };
           }
-          const glbUrl = "http://localhost:3000/3d/clo_model.glb";
-          return {
-            enabled: true,
-            asset: {
-              defaultSize: "M",
-              sizes: {
-                S: [{ glbUrl }],
-                M: [{ glbUrl }],
-                L: [{ glbUrl }]
-              }
-            }
-          };
+          return createDevMockConfig();
         }
         return config;
       } catch (error) {
-        if (isDevelopmentMode()) {
-          const glbUrl = "http://localhost:3000/3d/clo_model.glb";
-          return {
-            enabled: true,
-            asset: {
-              defaultSize: "M",
-              sizes: {
-                S: [{ glbUrl }],
-                M: [{ glbUrl }],
-                L: [{ glbUrl }]
-              }
-            }
-          };
-        }
-        throw error;
+        return createDevMockConfig();
       }
     }
+    if (!params.externalProductId && !params.productId) {
+      throw new Error("externalProductId is required");
+    }
+    const searchParams = buildSearchParams(params);
+    const apiUrl = getApiBaseUrl();
+    const requestUrl = `${apiUrl}/api/public/widget-config?${searchParams.toString()}`;
+    let response;
     try {
-      const searchParams = new URLSearchParams({
-        publicKey: params.publicKey
+      response = await fetch(requestUrl, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
       });
-      if (params.externalProductId) {
-        searchParams.append("externalProductId", params.externalProductId);
-      } else if (params.productId) {
-        searchParams.append("externalProductId", params.productId);
-      } else {
-        throw new Error("externalProductId is required");
-      }
-      const apiUrl = getApiBaseUrl();
-      const requestUrl = `${apiUrl}/api/public/widget-config?${searchParams.toString()}`;
-      let response;
+    } catch (fetchError) {
+      const errorMessage = fetchError instanceof Error ? fetchError.message : "Network error";
+      throw new Error(`ネットワークエラー: ${errorMessage}. APIサーバーに接続できません。`);
+    }
+    if (!response.ok) {
+      let errorText = "";
       try {
-        response = await fetch(requestUrl, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json"
-          }
-        });
-      } catch (fetchError) {
-        const errorMessage = fetchError instanceof Error ? fetchError.message : "Network error";
-        console.error("[Atelier Widget] Network error:", errorMessage);
-        throw new Error(`ネットワークエラー: ${errorMessage}. APIサーバーに接続できません。`);
+        errorText = await response.text();
+      } catch {
       }
-      if (!response.ok) {
-        let errorText = "";
-        try {
-          errorText = await response.text();
-        } catch (e) {
-        }
-        let errorMessage = `APIエラー: ${response.status} ${response.statusText}`;
-        try {
-          const errorJson = JSON.parse(errorText);
-          if (errorJson.error) {
-            errorMessage = errorJson.error;
-          }
-        } catch (e) {
-          if (errorText) {
-            errorMessage = errorText;
-          }
-        }
-        console.error("[Atelier Widget] API error:", {
-          status: response.status,
-          statusText: response.statusText,
-          body: errorText.substring(0, 200)
-          // 最初の200文字のみ
-        });
-        throw new Error(errorMessage);
+      let errorMessage = `APIエラー: ${response.status} ${response.statusText}`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.error) errorMessage = errorJson.error;
+      } catch {
+        if (errorText) errorMessage = errorText;
       }
-      const config = await response.json();
-      return config;
-    } catch (error) {
-      throw error;
+      throw new Error(errorMessage);
+    }
+    return await response.json();
+  }
+  async function fetchWidgetDesign(publicKey) {
+    const apiUrl = getApiBaseUrl() || (isDevelopmentMode() ? "http://localhost:3000" : "");
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3e3);
+      const res = await fetch(
+        `${apiUrl}/api/public/widget-design?publicKey=${encodeURIComponent(publicKey)}`,
+        { signal: controller.signal }
+      );
+      clearTimeout(timeoutId);
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (!data || !data.button && !data.theme) return null;
+      return data;
+    } catch {
+      return null;
     }
   }
   async function sendEvent(event) {
@@ -234,10 +202,10 @@
     }
   }
   async function loadProductImage(params, imageContainer, imageSize) {
-    var _a2;
+    var _a3;
     try {
       const config = await fetchWidgetConfig(params);
-      if ((_a2 = config.asset) == null ? void 0 : _a2.thumbnailUrl) {
+      if ((_a3 = config.asset) == null ? void 0 : _a3.thumbnailUrl) {
         const img = document.createElement("img");
         img.src = config.asset.thumbnailUrl;
         img.alt = config.asset.productName || "商品画像";
@@ -381,6 +349,83 @@
       type: "cube_view"
     }).catch(() => {
     });
+  }
+  function applyDesignToButton(containerId, design) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const button = container.querySelector("button");
+    if (!button) return;
+    const btn = design.button;
+    if (!btn) return;
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+    const color = btn.color || "#ffffff";
+    const isWhite = color === "#ffffff" || color === "white";
+    const height = btn.height ?? (isMobile ? 48 : 56);
+    const width = btn.width ?? (isMobile ? 160 : 180);
+    const radius = btn.radius ?? height / 2;
+    const fontSize = btn.fontSize ?? (isMobile ? 13 : 15);
+    const borderWidth = btn.borderWidth ?? 0;
+    const borderColor = btn.borderColor ?? "#000000";
+    const shadow = btn.shadow ?? true;
+    const border = borderWidth > 0 ? `${borderWidth}px solid ${borderColor}` : isWhite ? "2px solid #e5e7eb" : "none";
+    const hex = color.replace("#", "");
+    let textColor = "#ffffff";
+    if (hex.length === 6) {
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      textColor = luminance > 0.5 ? "#000000" : "#ffffff";
+    }
+    button.style.cssText = `
+    position: fixed !important;
+    bottom: 24px !important;
+    right: 24px !important;
+    width: auto !important;
+    min-width: ${width}px !important;
+    height: ${height}px !important;
+    background: ${color} !important;
+    border: ${border} !important;
+    border-radius: ${radius}px !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: ${isMobile ? 6 : 8}px !important;
+    color: ${textColor} !important;
+    font-weight: 600 !important;
+    font-size: ${fontSize}px !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+    box-shadow: ${shadow ? "0 2px 8px rgba(0,0,0,0.1)" : "none"} !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    padding: 0 ${isMobile ? "20px" : "24px"} !important;
+    margin: 0 !important;
+    outline: none !important;
+    pointer-events: auto !important;
+    z-index: 9999 !important;
+    box-sizing: border-box !important;
+    line-height: 1 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    backdrop-filter: blur(10px) !important;
+  `;
+    if (btn.text) {
+      const textNode = Array.from(button.childNodes).find(
+        (n) => n.nodeType === Node.TEXT_NODE
+      );
+      if (textNode) textNode.textContent = btn.text;
+    }
+    button.onmouseenter = () => {
+      button.style.transform = "translateY(-2px) scale(1.02)";
+      if (shadow) button.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15) !important";
+    };
+    button.onmouseleave = () => {
+      button.style.transform = "translateY(0) scale(1)";
+      button.style.boxShadow = shadow ? "0 2px 8px rgba(0,0,0,0.1) !important" : "none !important";
+    };
+    const svg = button.querySelector("svg");
+    if (svg) svg.setAttribute("stroke", textColor);
+    updateButtonPositions();
   }
   function createCubeIcon(size) {
     const iconSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -13464,7 +13509,7 @@
     function pushShadow(shadowLight) {
       shadowsArray.push(shadowLight);
     }
-    function setupLights() {
+    function setupLights2() {
       lights.setup(lightsArray);
     }
     function setupLightsView(camera) {
@@ -13480,7 +13525,7 @@
     return {
       init,
       state,
-      setupLights,
+      setupLights: setupLights2,
       setupLightsView,
       pushLight,
       pushShadow
@@ -20200,7 +20245,7 @@ void main() {
     return inside;
   }
   function splitPolygon(a, b) {
-    const a2 = new Node(a.i, a.x, a.y), b2 = new Node(b.i, b.x, b.y), an = a.next, bp = b.prev;
+    const a2 = new Node$1(a.i, a.x, a.y), b2 = new Node$1(b.i, b.x, b.y), an = a.next, bp = b.prev;
     a.next = b;
     b.prev = a;
     a2.next = an;
@@ -20212,7 +20257,7 @@ void main() {
     return b2;
   }
   function insertNode(i2, x2, y, last) {
-    const p = new Node(i2, x2, y);
+    const p = new Node$1(i2, x2, y);
     if (!last) {
       p.prev = p;
       p.next = p;
@@ -20230,7 +20275,7 @@ void main() {
     if (p.prevZ) p.prevZ.nextZ = p.nextZ;
     if (p.nextZ) p.nextZ.prevZ = p.prevZ;
   }
-  function Node(i2, x2, y) {
+  function Node$1(i2, x2, y) {
     this.i = i2;
     this.x = x2;
     this.y = y;
@@ -28148,89 +28193,55 @@ void main() {
     "コート": 4
     // 最上層（アウター）
   };
-  const DEFAULT_MODEL_URL = "/3d/clo_model.glb";
+  const DEFAULT_MODEL_URL = "/3d/clo_model_men.glb";
   function getCategoryLayerOrder(category) {
     return CATEGORY_LAYER_ORDER[category] || 999;
   }
-  function init3DViewer(container, options) {
-    const { glbUrl, modelUrl, assets, apiBaseUrl, onLoad, onError } = options;
-    let defaultModel = null;
-    const loadedAssets = /* @__PURE__ */ new Map();
-    let isDefaultModelLoaded = false;
-    const currentModelUrl = modelUrl || glbUrl;
-    const getContainerSize = () => {
-      const width = container.clientWidth || 800;
-      const height = container.clientHeight || 600;
-      return { width, height };
+  function calculateAndSetModelTransform(model, targetSize = 2) {
+    const box = new Box3().setFromObject(model);
+    const center = box.getCenter(new Vector3());
+    const size = box.getSize(new Vector3());
+    const maxSize = Math.max(size.x, size.y, size.z);
+    const scale = targetSize / maxSize;
+    model.scale.set(scale, scale, scale);
+    const boxAfterScale = new Box3().setFromObject(model);
+    const centerAfterScale = boxAfterScale.getCenter(new Vector3());
+    model.rotation.y = 0;
+    const modelHeight = boxAfterScale.max.y - boxAfterScale.min.y;
+    const verticalOffset = modelHeight * 0.15;
+    const upwardOffset = 0.1;
+    model.position.set(-centerAfterScale.x, -centerAfterScale.y - verticalOffset + upwardOffset, -centerAfterScale.z);
+    return {
+      position: model.position.clone(),
+      rotation: model.rotation.clone(),
+      scale: model.scale.clone(),
+      originalSize: size.clone(),
+      originalCenter: center.clone()
     };
-    const { width: initialWidth, height: initialHeight } = getContainerSize();
-    const scene = new Scene();
-    scene.background = null;
-    const camera = new PerspectiveCamera(
-      50,
-      // fov: 50
-      initialWidth / initialHeight,
-      0.1,
-      1e3
-    );
-    const initialRadius = 3.5;
-    camera.position.set(0, 0, initialRadius);
-    const renderer = new WebGLRenderer({
-      antialias: true,
-      // アンチエイリアスを有効化
-      alpha: true,
-      // 常に透明（背景画像はフレームの背面に配置）
-      powerPreference: "high-performance",
-      // 高性能モード
-      precision: "highp"
-      // 高精度レンダリング
+  }
+  function enableShadow(object) {
+    object.traverse((child) => {
+      if (child instanceof Mesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        if (child.material) {
+          const material = child.material;
+          if ("colorSpace" in material) {
+            material.colorSpace = "srgb";
+          }
+        }
+      }
     });
-    const pixelRatio = Math.min(window.devicePixelRatio || 1, 3);
-    renderer.setPixelRatio(pixelRatio);
-    renderer.setSize(initialWidth, initialHeight);
-    if ("outputColorSpace" in renderer) {
-      renderer.outputColorSpace = "srgb";
-    }
-    renderer.toneMapping = ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.5;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = PCFSoftShadowMap;
-    renderer.shadowMap.autoUpdate = true;
-    renderer.setClearColor(0, 0);
-    const canvasElement = renderer.domElement;
-    canvasElement.style.touchAction = "none";
-    canvasElement.style.pointerEvents = "auto";
-    canvasElement.style.position = "relative";
-    canvasElement.style.zIndex = "1";
-    container.appendChild(canvasElement);
-    const ambientLight = new AmbientLight(16777215, 1.5);
-    scene.add(ambientLight);
-    const directionalLight1 = new DirectionalLight(16777215, 2.5);
-    directionalLight1.position.set(10, 10, 5);
-    directionalLight1.castShadow = true;
-    directionalLight1.shadow.mapSize.width = 4096;
-    directionalLight1.shadow.mapSize.height = 4096;
-    directionalLight1.shadow.camera.near = 0.5;
-    directionalLight1.shadow.camera.far = 50;
-    directionalLight1.shadow.camera.left = -10;
-    directionalLight1.shadow.camera.right = 10;
-    directionalLight1.shadow.camera.top = 10;
-    directionalLight1.shadow.camera.bottom = -10;
-    directionalLight1.shadow.bias = -1e-4;
-    directionalLight1.shadow.radius = 4;
-    scene.add(directionalLight1);
-    const directionalLight2 = new DirectionalLight(16777215, 1.2);
-    directionalLight2.position.set(-10, -10, -5);
-    scene.add(directionalLight2);
-    const directionalLight3 = new DirectionalLight(16777215, 0.8);
-    directionalLight3.position.set(0, 10, 0);
-    scene.add(directionalLight3);
+  }
+  function getModelFormat(url) {
+    const lowerUrl = url.toLowerCase();
+    if (lowerUrl.endsWith(".glb") || lowerUrl.endsWith(".gltf")) return "glb";
+    if (lowerUrl.endsWith(".fbx")) return "fbx";
+    return "unknown";
+  }
+  function setupOrbitControls(canvasElement, camera, fixedPhi, fixedRadius, render) {
     let isDragging = false;
-    let previousMousePosition = { x: 0, y: 0 };
-    const initialSpherical = new Spherical();
-    initialSpherical.setFromVector3(camera.position);
-    const fixedPhi = initialSpherical.phi;
-    const fixedRadius = initialRadius;
+    let previousMousePosition = { x: 0 };
     canvasElement.addEventListener("mousedown", (e) => {
       e.preventDefault();
       isDragging = true;
@@ -28241,7 +28252,6 @@ void main() {
       if (!isDragging) return;
       e.preventDefault();
       const deltaX = e.clientX - previousMousePosition.x;
-      e.clientY - previousMousePosition.y;
       const spherical = new Spherical();
       spherical.setFromVector3(camera.position);
       spherical.theta -= deltaX * 0.01;
@@ -28271,7 +28281,6 @@ void main() {
       if (!isDragging || e.touches.length !== 1) return;
       e.preventDefault();
       const deltaX = e.touches[0].clientX - previousMousePosition.x;
-      e.touches[0].clientY - previousMousePosition.y;
       const spherical = new Spherical();
       spherical.setFromVector3(camera.position);
       spherical.theta -= deltaX * 0.01;
@@ -28286,317 +28295,338 @@ void main() {
       isDragging = false;
     });
     canvasElement.style.cursor = "grab";
+  }
+  function setupLights(scene) {
+    const ambientLight = new AmbientLight(16777215, 1.5);
+    scene.add(ambientLight);
+    const directionalLight1 = new DirectionalLight(16777215, 2.5);
+    directionalLight1.position.set(10, 10, 5);
+    directionalLight1.castShadow = true;
+    directionalLight1.shadow.mapSize.width = 4096;
+    directionalLight1.shadow.mapSize.height = 4096;
+    directionalLight1.shadow.camera.near = 0.5;
+    directionalLight1.shadow.camera.far = 50;
+    directionalLight1.shadow.camera.left = -10;
+    directionalLight1.shadow.camera.right = 10;
+    directionalLight1.shadow.camera.top = 10;
+    directionalLight1.shadow.camera.bottom = -10;
+    directionalLight1.shadow.bias = -1e-4;
+    directionalLight1.shadow.radius = 4;
+    scene.add(directionalLight1);
+    const directionalLight2 = new DirectionalLight(16777215, 1.2);
+    directionalLight2.position.set(-10, -10, -5);
+    scene.add(directionalLight2);
+    const directionalLight3 = new DirectionalLight(16777215, 0.8);
+    directionalLight3.position.set(0, 10, 0);
+    scene.add(directionalLight3);
+    return { ambientLight, directionalLight1, directionalLight2, directionalLight3 };
+  }
+  function createGround(scene) {
     const groundGeometry = new PlaneGeometry(20, 20);
     const groundMaterial = new MeshStandardMaterial({
       color: 16777215,
       transparent: true,
       opacity: 0
-      // 透明だが影を受ける
     });
     const ground = new Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -3;
     ground.receiveShadow = true;
     scene.add(ground);
-    let currentModel = null;
-    const gltfLoader = new GLTFLoader();
-    const fbxLoader = new FBXLoader();
-    let defaultModelTransform = null;
-    function calculateAndSetModelTransform(model, targetSize = 2) {
-      const box = new Box3().setFromObject(model);
-      box.getCenter(new Vector3());
-      const size = box.getSize(new Vector3());
-      const maxSize = Math.max(size.x, size.y, size.z);
-      const scale = targetSize / maxSize;
-      model.scale.set(scale, scale, scale);
-      const boxAfterScale = new Box3().setFromObject(model);
-      const centerAfterScale = boxAfterScale.getCenter(new Vector3());
-      model.rotation.y = 0;
-      model.position.set(-centerAfterScale.x, -centerAfterScale.y, -centerAfterScale.z);
+    return { ground, groundGeometry, groundMaterial };
+  }
+  const DEBUG = typeof process !== "undefined" && ((_a2 = process.env) == null ? void 0 : _a2.NODE_ENV) === "development";
+  const debugLog = {
+    log: (...args) => {
+      if (DEBUG) {
+        console.log("[Atelier Preview]", ...args);
+      }
+    },
+    warn: (...args) => {
+      if (DEBUG) {
+        console.warn("[Atelier Preview]", ...args);
+      }
+    },
+    error: (...args) => {
+      console.error("[Atelier Preview]", ...args);
+    }
+  };
+  async function loadAssetModel(url, category, gltfLoader, fbxLoader, baseModelTransform, isBaseModelLoaded, baseModelLoadPromise) {
+    debugLog.log("loadAsset called:", { url, category, baseModelLoaded: isBaseModelLoaded, hasBaseModelTransform: !!baseModelTransform });
+    if (baseModelLoadPromise && !isBaseModelLoaded) {
+      debugLog.log("Waiting for base model load promise...");
+      await baseModelLoadPromise;
+      debugLog.log("Base model load promise resolved");
+    } else if (isBaseModelLoaded) {
+      debugLog.log("Base model already loaded, skipping promise wait");
+    }
+    if (!baseModelTransform) {
+      debugLog.error("Base model transform not set");
+      throw new Error("Base model transform is not set. Base model must be loaded before assets.");
+    }
+    const format = getModelFormat(url);
+    const loader = format === "fbx" ? fbxLoader : gltfLoader;
+    debugLog.log("Starting to load asset model:", { url, format, category });
+    const model = await new Promise((resolve, reject) => {
+      loader.load(
+        url,
+        (loaded) => {
+          debugLog.log("Asset model loaded successfully:", { url, category });
+          resolve(format === "fbx" ? loaded : loaded.scene || loaded);
+        },
+        (progress) => {
+          if (progress.lengthComputable && progress.total > 0) {
+            const percent = progress.loaded / progress.total * 100;
+            if (percent % 25 === 0 || percent === 100) {
+              debugLog.log(`Asset loading progress: ${percent.toFixed(0)}%`, { url, category });
+            }
+          }
+        },
+        (error) => {
+          debugLog.error("Failed to load asset:", { url, category, error });
+          reject(error);
+        }
+      );
+    });
+    return model;
+  }
+  function applyAssetTransform(model, baseModelTransform) {
+    const assetBox = new Box3().setFromObject(model);
+    const assetSize = assetBox.getSize(new Vector3());
+    const assetMaxDim = Math.max(assetSize.x, assetSize.y, assetSize.z);
+    const baseMaxDim = Math.max(
+      baseModelTransform.originalSize.x,
+      baseModelTransform.originalSize.y,
+      baseModelTransform.originalSize.z
+    );
+    let unitCorrection = 1;
+    if (baseMaxDim > 0 && assetMaxDim > 0) {
+      const ratio = assetMaxDim / baseMaxDim;
+      if (ratio > 5 || ratio < 0.2) {
+        const logRatio = Math.log10(ratio);
+        unitCorrection = 1 / Math.pow(10, Math.round(logRatio));
+      }
+    }
+    model.position.set(0, 0, 0);
+    model.rotation.set(0, 0, 0);
+    const baseScaleFactor = baseModelTransform.scale.x;
+    const combinedScale = unitCorrection * baseScaleFactor;
+    model.scale.set(combinedScale, combinedScale, combinedScale);
+    model.position.copy(baseModelTransform.position);
+    model.rotation.copy(baseModelTransform.rotation);
+    debugLog.log("Asset transform applied:", {
+      position: { x: model.position.x, y: model.position.y, z: model.position.z },
+      scale: { x: model.scale.x, y: model.scale.y, z: model.scale.z }
+    });
+  }
+  function init3DViewer(container, options) {
+    const { glbUrl, modelUrl, assets, apiBaseUrl, onLoad, onError } = options;
+    const loadedAssets = /* @__PURE__ */ new Map();
+    let baseModel = null;
+    let isBaseModelLoaded = false;
+    let baseModelTransform = null;
+    let baseModelLoadPromise = null;
+    const getContainerSize = () => ({
+      width: container.clientWidth || 800,
+      height: container.clientHeight || 600
+    });
+    const { width: initialWidth, height: initialHeight } = getContainerSize();
+    const scene = new Scene();
+    scene.background = null;
+    const camera = new PerspectiveCamera(50, initialWidth / initialHeight, 0.1, 1e3);
+    const initialRadius = 3.5;
+    camera.position.set(0, 0, initialRadius);
+    let renderer;
+    try {
+      renderer = new WebGLRenderer({
+        antialias: true,
+        alpha: true,
+        powerPreference: "high-performance",
+        precision: "highp"
+      });
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, 3);
+      renderer.setPixelRatio(pixelRatio);
+      renderer.setSize(initialWidth, initialHeight);
+    } catch (error) {
+      console.error("[Atelier Preview] Failed to create WebGL renderer:", error);
+      onError == null ? void 0 : onError(error instanceof Error ? error : new Error(String(error)));
       return {
-        position: model.position.clone(),
-        rotation: model.rotation.clone(),
-        scale: model.scale.clone()
+        updateGlbUrl: () => {
+        },
+        updateModelUrl: () => {
+        },
+        updateAssets: () => {
+        },
+        destroy: () => {
+        }
       };
     }
-    async function loadDefaultModel() {
-      if (isDefaultModelLoaded && defaultModel) {
+    if ("outputColorSpace" in renderer) {
+      renderer.outputColorSpace = "srgb";
+    }
+    renderer.toneMapping = ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.5;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = PCFSoftShadowMap;
+    renderer.shadowMap.autoUpdate = true;
+    renderer.setClearColor(0, 0);
+    const canvasElement = renderer.domElement;
+    canvasElement.style.touchAction = "none";
+    canvasElement.style.pointerEvents = "auto";
+    canvasElement.style.position = "relative";
+    canvasElement.style.zIndex = "1";
+    container.appendChild(canvasElement);
+    setupLights(scene);
+    const { ground, groundGeometry, groundMaterial } = createGround(scene);
+    function render() {
+      if (!scene || !camera) {
+        console.warn("[Atelier Preview] Scene or camera is not initialized");
         return;
       }
       try {
-        const defaultModelUrl = apiBaseUrl ? `${apiBaseUrl}${DEFAULT_MODEL_URL}` : DEFAULT_MODEL_URL;
-        const gltf = await new Promise((resolve, reject) => {
-          gltfLoader.load(
-            defaultModelUrl,
-            (loaded) => {
-              resolve(loaded.scene);
-            },
+        renderer.render(scene, camera);
+      } catch (error) {
+        console.error("[Atelier Preview] Error rendering:", error);
+      }
+    }
+    const initialSpherical = new Spherical();
+    initialSpherical.setFromVector3(camera.position);
+    setupOrbitControls(canvasElement, camera, initialSpherical.phi, initialRadius, render);
+    const gltfLoader = new GLTFLoader();
+    const fbxLoader = new FBXLoader();
+    async function loadBaseModel(modelUrl2) {
+      if (isBaseModelLoaded && baseModel) return;
+      try {
+        const format = getModelFormat(modelUrl2);
+        const loader = format === "fbx" ? fbxLoader : gltfLoader;
+        const model = await new Promise((resolve, reject) => {
+          loader.load(
+            modelUrl2,
+            (loaded) => resolve(format === "fbx" ? loaded : loaded.scene || loaded),
             void 0,
             (error) => {
-              console.error("[Atelier Preview] Failed to load default model:", error);
+              console.error("[Atelier Preview] Failed to load base model:", error);
               reject(error);
             }
           );
         });
-        defaultModelTransform = calculateAndSetModelTransform(gltf, 2);
-        enableShadow(gltf);
-        defaultModel = gltf;
-        isDefaultModelLoaded = true;
-        scene.add(defaultModel);
+        baseModelTransform = calculateAndSetModelTransform(model, 2.4);
+        enableShadow(model);
+        baseModel = model;
+        isBaseModelLoaded = true;
+        scene.add(baseModel);
+        if (camera) {
+          camera.lookAt(0, 0, 0);
+          camera.updateProjectionMatrix();
+        }
         setTimeout(() => {
           render();
+          setTimeout(() => render(), 100);
         }, 50);
       } catch (error) {
-        console.error("[Atelier Preview] Error loading default model:", error);
+        console.error("[Atelier Preview] Error loading base model:", error);
+        throw error;
       }
     }
     async function loadAsset(url, category) {
+      if (!baseModelTransform) {
+        throw new Error("Base model transform is not set. Base model must be loaded before assets.");
+      }
       try {
-        const format = getModelFormat(url);
-        const model = await new Promise((resolve, reject) => {
-          const loader = format === "fbx" ? fbxLoader : gltfLoader;
-          loader.load(
-            url,
-            (loaded) => {
-              const modelToUse = format === "fbx" ? loaded : loaded.scene || loaded;
-              resolve(modelToUse);
-            },
-            void 0,
-            (error) => {
-              console.error("[Atelier Preview] Failed to load asset:", { url, category, error });
-              reject(error);
-            }
-          );
-        });
-        if (category && loadedAssets.has(category)) {
-          const existingModel = loadedAssets.get(category);
-          if (existingModel) {
-            scene.remove(existingModel);
-          }
-        }
-        if (defaultModelTransform) {
-          model.position.copy(defaultModelTransform.position);
-          model.rotation.copy(defaultModelTransform.rotation);
-          model.scale.copy(defaultModelTransform.scale);
-        } else {
-          const box = new Box3().setFromObject(model);
-          const center = box.getCenter(new Vector3());
-          model.rotation.y = 0;
-          model.position.set(-center.x, -center.y, -center.z);
-          model.scale.set(1, 1, 1);
-        }
+        const model = await loadAssetModel(
+          url,
+          category,
+          gltfLoader,
+          fbxLoader,
+          baseModelTransform,
+          isBaseModelLoaded,
+          baseModelLoadPromise
+        );
+        applyAssetTransform(model, baseModelTransform);
         enableShadow(model);
-        if (category) {
-          loadedAssets.set(category, model);
+        const targetCategory = category || "default";
+        const existing = loadedAssets.get(targetCategory);
+        if (existing) {
+          existing.push(model);
+        } else {
+          loadedAssets.set(targetCategory, [model]);
         }
-        updateSceneWithAssets();
       } catch (error) {
-        console.error("[Atelier Preview] Error loading asset:", { url, category, error });
+        debugLog.error("Error loading asset:", { url, category, error });
+        throw error;
       }
     }
     function updateSceneWithAssets() {
-      loadedAssets.forEach((model) => {
-        scene.remove(model);
+      debugLog.log("updateSceneWithAssets called", {
+        categories: Array.from(loadedAssets.keys()),
+        totalAssets: Array.from(loadedAssets.values()).reduce((sum, arr) => sum + arr.length, 0)
+      });
+      loadedAssets.forEach((modelArray) => {
+        modelArray.forEach((model) => {
+          if (scene.children.includes(model)) {
+            scene.remove(model);
+          }
+        });
       });
       const sortedAssets = Array.from(loadedAssets.entries()).sort((a, b) => {
         const orderA = a[0] ? getCategoryLayerOrder(a[0]) : 999;
         const orderB = b[0] ? getCategoryLayerOrder(b[0]) : 999;
         return orderA - orderB;
       });
-      sortedAssets.forEach(([category, model]) => {
-        scene.add(model);
+      sortedAssets.forEach(([_category, modelArray]) => {
+        modelArray.forEach((model) => {
+          if (!scene.children.includes(model)) {
+            scene.add(model);
+            debugLog.log("Asset added to scene:", { category: _category });
+          }
+        });
       });
+      if (baseModel && !scene.children.includes(baseModel)) {
+        scene.add(baseModel);
+      }
       if (camera) {
         camera.lookAt(0, 0, 0);
         camera.updateProjectionMatrix();
       }
       setTimeout(() => {
         render();
-        setTimeout(() => {
-          render();
-        }, 100);
+        setTimeout(() => render(), 100);
       }, 50);
     }
-    const enableShadow = (object) => {
-      object.traverse((child) => {
-        if (child instanceof Mesh) {
-          child.castShadow = true;
-          child.receiveShadow = true;
-          if (child.material) {
-            const material = child.material;
-            if ("colorSpace" in material) {
-              material.colorSpace = "srgb";
-            }
-          }
-        }
+    const baseModelUrl = modelUrl || glbUrl || (apiBaseUrl ? `${apiBaseUrl}${DEFAULT_MODEL_URL}` : DEFAULT_MODEL_URL);
+    if (assets && assets.length > 0) {
+      const sortedAssets = [...assets].sort((a, b) => {
+        const orderA = a.category ? getCategoryLayerOrder(a.category) : 999;
+        const orderB = b.category ? getCategoryLayerOrder(b.category) : 999;
+        return orderA - orderB;
       });
-    };
-    function getModelFormat(url) {
-      const lowerUrl = url.toLowerCase();
-      if (lowerUrl.endsWith(".glb") || lowerUrl.endsWith(".gltf")) {
-        return "glb";
-      } else if (lowerUrl.endsWith(".fbx")) {
-        return "fbx";
-      }
-      return "unknown";
-    }
-    function loadModel(url) {
-      if (currentModel) {
-        scene.remove(currentModel);
-        currentModel = null;
-      }
-      const existingMessage = container.querySelector("[data-atelier-message]");
-      if (existingMessage) {
-        try {
-          existingMessage.remove();
-        } catch (error) {
-          existingMessage.style.display = "none";
-        }
-      }
-      if (!url) {
-        const messageDiv = document.createElement("div");
-        messageDiv.setAttribute("data-atelier-message", "true");
-        messageDiv.textContent = "3Dモデルが設定されていません";
-        messageDiv.style.cssText = `
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        color: #6b7280;
-        font-size: 14px;
-        pointer-events: none;
-        z-index: 10;
-      `;
-        container.appendChild(messageDiv);
-        return;
-      }
-      const format = getModelFormat(url);
-      if (format === "fbx") {
-        fbxLoader.load(
-          url,
-          (fbx) => {
-            currentModel = fbx;
-            calculateAndSetModelTransform(currentModel, 2);
-            enableShadow(currentModel);
-            scene.add(currentModel);
-            if (camera) {
-              camera.lookAt(0, 0, 0);
-              camera.updateProjectionMatrix();
-            }
-            setTimeout(() => {
-              render();
-            }, 50);
-            const existingMessage2 = container.querySelector("[data-atelier-message]");
-            if (existingMessage2) {
-              try {
-                existingMessage2.remove();
-              } catch (error) {
-                existingMessage2.style.display = "none";
-              }
-            }
-            onLoad == null ? void 0 : onLoad();
-          },
-          void 0,
-          (error) => {
-            handleModelError(error, url);
-          }
+      baseModelLoadPromise = loadBaseModel(baseModelUrl).then(() => {
+        debugLog.log("Loading assets:", sortedAssets.length);
+        const loadPromises = sortedAssets.map(
+          (asset) => loadAsset(asset.url, asset.category).catch((error) => {
+            debugLog.error("Failed to load asset:", { url: asset.url, category: asset.category, error });
+            return null;
+          })
         );
-      } else {
-        gltfLoader.load(
-          url,
-          (gltf) => {
-            currentModel = gltf.scene;
-            calculateAndSetModelTransform(currentModel, 2);
-            enableShadow(currentModel);
-            scene.add(currentModel);
-            if (camera) {
-              camera.lookAt(0, 0, 0);
-              camera.updateProjectionMatrix();
-            }
-            setTimeout(() => {
-              render();
-              setTimeout(() => {
-                render();
-              }, 100);
-            }, 50);
-            const existingMessage2 = container.querySelector("[data-atelier-message]");
-            if (existingMessage2) {
-              try {
-                existingMessage2.remove();
-              } catch (error) {
-                existingMessage2.style.display = "none";
-              }
-            }
-            onLoad == null ? void 0 : onLoad();
-          },
-          void 0,
-          (error) => {
-            handleModelError(error, url);
-          }
-        );
-      }
-    }
-    function handleModelError(error, url) {
-      const isConnectionError = error instanceof Error && (error.message === "Failed to fetch" || error.message.includes("network") || error.message.includes("connection"));
-      if (!isConnectionError) {
-        console.error("[Atelier Preview] Failed to load 3D model:", error, url);
-      }
-      const errorDiv = document.createElement("div");
-      errorDiv.setAttribute("data-atelier-message", "true");
-      let errorMessage = "3Dモデルの読み込みに失敗しました";
-      if (isConnectionError) {
-        errorMessage = "consoleサーバーが起動していません\nnpm run dev:console を実行してください";
-      }
-      errorDiv.textContent = errorMessage;
-      errorDiv.style.cssText = `
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: #ef4444;
-      font-size: 14px;
-      pointer-events: none;
-      z-index: 10;
-      text-align: center;
-      white-space: pre-line;
-    `;
-      container.appendChild(errorDiv);
-      onError == null ? void 0 : onError(error instanceof Error ? error : new Error(String(error)));
-    }
-    loadDefaultModel().then(() => {
-      if (assets && assets.length > 0) {
-        const sortedAssets = [...assets].sort((a, b) => {
-          const orderA = a.category ? getCategoryLayerOrder(a.category) : 999;
-          const orderB = b.category ? getCategoryLayerOrder(b.category) : 999;
-          return orderA - orderB;
-        });
-        Promise.all(
-          sortedAssets.map((asset) => loadAsset(asset.url, asset.category))
-        ).then(() => {
-          onLoad == null ? void 0 : onLoad();
-        }).catch((error) => {
-          console.error("[Atelier Preview] Error loading assets:", error);
-          onError == null ? void 0 : onError(error instanceof Error ? error : new Error(String(error)));
-        });
-      } else if (currentModelUrl) {
-        loadModel(currentModelUrl);
-      } else {
+        return Promise.all(loadPromises);
+      }).then((results) => {
+        const loadedCount = results.filter((r) => r !== null).length;
+        debugLog.log("Assets loaded:", { total: sortedAssets.length, loaded: loadedCount, failed: sortedAssets.length - loadedCount });
+        updateSceneWithAssets();
         onLoad == null ? void 0 : onLoad();
-      }
-    }).catch((error) => {
-      console.error("[Atelier Preview] Error loading default model:", error);
-      if (currentModelUrl) {
-        loadModel(currentModelUrl);
-      } else {
+      }).catch((error) => {
+        console.error("[Atelier Preview] Error loading base model or assets:", error);
         onError == null ? void 0 : onError(error instanceof Error ? error : new Error(String(error)));
-      }
-    });
-    function render() {
-      renderer.render(scene, camera);
+      });
+    } else {
+      baseModelLoadPromise = loadBaseModel(baseModelUrl).then(() => {
+        onLoad == null ? void 0 : onLoad();
+      }).catch((error) => {
+        console.error("[Atelier Preview] Error loading base model:", error);
+        onError == null ? void 0 : onError(error instanceof Error ? error : new Error(String(error)));
+      });
     }
-    setTimeout(() => {
-      render();
-    }, 100);
+    setTimeout(() => render(), 100);
     const resizeObserver = new ResizeObserver(() => {
       const { width, height } = getContainerSize();
       if (width > 0 && height > 0) {
@@ -28607,37 +28637,100 @@ void main() {
       }
     });
     resizeObserver.observe(container);
+    function updateBaseModelUrl(url) {
+      if (url) {
+        baseModelLoadPromise = loadBaseModel(url).catch((error) => {
+          console.error("[Atelier Preview] Error updating model URL:", error);
+          onError == null ? void 0 : onError(error instanceof Error ? error : new Error(String(error)));
+        });
+      }
+    }
     return {
       updateGlbUrl(newGlbUrl) {
-        loadModel(newGlbUrl);
+        updateBaseModelUrl(newGlbUrl);
       },
       updateModelUrl(newModelUrl) {
-        loadModel(newModelUrl);
+        updateBaseModelUrl(newModelUrl);
       },
       updateAssets(newAssets) {
-        loadedAssets.forEach((model) => {
-          scene.remove(model);
+        loadedAssets.forEach((modelArray) => {
+          modelArray.forEach((model) => {
+            if (scene.children.includes(model)) {
+              scene.remove(model);
+            }
+          });
         });
         loadedAssets.clear();
         if (newAssets && newAssets.length > 0) {
-          const sortedAssets = [...newAssets].sort((a, b) => {
-            const orderA = a.category ? getCategoryLayerOrder(a.category) : 999;
-            const orderB = b.category ? getCategoryLayerOrder(b.category) : 999;
-            return orderA - orderB;
-          });
-          Promise.all(
-            sortedAssets.map((asset) => loadAsset(asset.url, asset.category))
-          ).then(() => {
-            render();
-          }).catch((error) => {
+          const loadAssets = async () => {
+            if (!isBaseModelLoaded || !baseModelTransform) {
+              const baseModelUrl2 = modelUrl || glbUrl || (apiBaseUrl ? `${apiBaseUrl}${DEFAULT_MODEL_URL}` : DEFAULT_MODEL_URL);
+              if (baseModelLoadPromise) {
+                await baseModelLoadPromise;
+              } else {
+                baseModelLoadPromise = loadBaseModel(baseModelUrl2);
+                await baseModelLoadPromise;
+              }
+            } else if (baseModelLoadPromise) {
+              await baseModelLoadPromise;
+            }
+            if (!baseModelTransform) {
+              await new Promise((resolve) => setTimeout(resolve, 200));
+              if (!baseModelTransform) {
+                throw new Error("Base model transform is not set. Cannot load assets.");
+              }
+            }
+            const sortedAssets = [...newAssets].sort((a, b) => {
+              const orderA = a.category ? getCategoryLayerOrder(a.category) : 999;
+              const orderB = b.category ? getCategoryLayerOrder(b.category) : 999;
+              return orderA - orderB;
+            });
+            const loadPromises = sortedAssets.map(
+              (asset) => loadAsset(asset.url, asset.category).catch((error) => {
+                console.error("[Atelier Preview] Failed to load asset:", { url: asset.url, category: asset.category });
+                return null;
+              })
+            );
+            await Promise.all(loadPromises);
+            updateSceneWithAssets();
+          };
+          loadAssets().catch((error) => {
             console.error("[Atelier Preview] Error updating assets:", error);
+            onError == null ? void 0 : onError(error instanceof Error ? error : new Error(String(error)));
           });
+        } else {
+          render();
         }
       },
       destroy() {
         resizeObserver.disconnect();
-        if (currentModel) {
-          scene.remove(currentModel);
+        const disposeObject = (obj) => {
+          obj.traverse((child) => {
+            var _a3;
+            if (child instanceof Mesh) {
+              (_a3 = child.geometry) == null ? void 0 : _a3.dispose();
+              if (Array.isArray(child.material)) {
+                child.material.forEach((m) => m.dispose());
+              } else if (child.material) {
+                child.material.dispose();
+              }
+            }
+          });
+        };
+        loadedAssets.forEach((modelArray) => {
+          modelArray.forEach((model) => {
+            if (scene.children.includes(model)) {
+              scene.remove(model);
+            }
+            disposeObject(model);
+          });
+        });
+        loadedAssets.clear();
+        if (baseModel) {
+          if (scene.children.includes(baseModel)) {
+            scene.remove(baseModel);
+          }
+          disposeObject(baseModel);
         }
         scene.remove(ground);
         groundGeometry.dispose();
@@ -28648,15 +28741,14 @@ void main() {
           } else if (renderer.domElement && renderer.domElement.parentNode) {
             try {
               renderer.domElement.remove();
-            } catch (error) {
-              renderer.domElement.style.display = "none";
+            } catch {
             }
           }
         } catch (error) {
           try {
             renderer.domElement.style.display = "none";
-          } catch (innerError) {
-            console.warn("[Atelier Preview] Could not hide renderer element:", innerError);
+          } catch {
+            console.warn("[Atelier Preview] Could not hide renderer element");
           }
         }
         renderer.dispose();
@@ -28668,7 +28760,7 @@ void main() {
     sizeArea.setAttribute("data-atelier-size-area", "true");
     sizeArea.style.cssText = `
     position: absolute;
-    top: 83%;
+    top: 7%;
     left: 0;
     right: 0;
     width: 100%;
@@ -28678,71 +28770,65 @@ void main() {
     flex-direction: column;
     align-items: center;
     gap: 2%;
-    padding: 0 6%;
-    padding-bottom: 0.2%;
+    padding: 0 5%;
     box-sizing: border-box;
-    min-height: 150px;
-    overflow: hidden;
-    max-height: 17%;
-  `;
-    const sizeSelectorWrapper = document.createElement("div");
-    sizeSelectorWrapper.style.cssText = `
-    display: flex;
-    align-items: center;
-    width: 100%;
-    position: relative;
-    min-width: 0;
+    background: transparent;
   `;
     const sizeButtonsContainer = document.createElement("div");
     sizeButtonsContainer.className = "size-buttons-container";
     sizeButtonsContainer.style.cssText = `
     display: flex;
     align-items: center;
-    gap: 6px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    justify-content: center;
-    flex: 1;
-    min-width: 0;
-    max-width: 100%;
-    padding: 0 50px;
-    margin: 0 auto;
+    gap: 0;
+    background: #ffffff;
+    border-radius: 50px;
+    padding: 3px 8px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    width: auto;
     box-sizing: border-box;
+    position: relative;
+    margin: 0 auto;
   `;
-    const style = document.createElement("style");
-    style.textContent = `
-    .size-buttons-container::-webkit-scrollbar {
-      display: none;
+    if (!document.getElementById("atelier-size-buttons-scrollbar-style")) {
+      const style = document.createElement("style");
+      style.id = "atelier-size-buttons-scrollbar-style";
+      style.textContent = `
+      .size-buttons-container::-webkit-scrollbar {
+        display: none;
+      }
+    `;
+      document.head.appendChild(style);
     }
-  `;
-    document.head.appendChild(style);
     const sizeButtons = [];
     availableSizes.forEach((size, index) => {
-      const sizeBtn = document.createElement("button");
+      const sizeBtn = document.createElement("div");
       sizeBtn.textContent = size;
+      sizeBtn.setAttribute("role", "button");
+      sizeBtn.setAttribute("tabindex", "0");
       const isSelected = size === initialSize;
+      const hPad = index === 0 || index === availableSizes.length - 1 ? "8px" : "10px";
       sizeBtn.style.cssText = `
-      background: ${isSelected ? "#000000" : "rgba(255, 255, 255, 0.95)"};
-      color: ${isSelected ? "#ffffff" : "#374151"};
-      border: ${isSelected ? "1px solid #000000" : "1px solid rgba(0, 0, 0, 0.15)"};
-      font-size: 16px;
-      font-weight: ${isSelected ? "700" : "600"};
-      padding: 6px 12px;
-      border-radius: 20px;
+      background: ${isSelected ? "#000000" : "transparent"};
+      color: ${isSelected ? "#ffffff" : "#000000"};
+      border: none;
+      outline: none;
+      box-shadow: none;
+      font-size: 11px;
+      font-weight: ${isSelected ? "600" : "700"};
+      padding: 3px ${hPad};
+      border-radius: ${isSelected ? "50px" : "0"};
       cursor: pointer;
       transition: all 0.2s ease;
-      min-width: 45px;
-      min-height: 30px;
+      min-height: 20px;
       display: flex;
       align-items: center;
       justify-content: center;
       box-sizing: border-box;
       white-space: nowrap;
       flex-shrink: 0;
+      position: relative;
+      z-index: ${isSelected ? "1" : "0"};
+      user-select: none;
     `;
       sizeButtons.push(sizeBtn);
       sizeButtonsContainer.appendChild(sizeBtn);
@@ -28762,7 +28848,7 @@ void main() {
     border-radius: 50%;
     color: #374151;
     z-index: 10;
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     cursor: pointer;
@@ -28784,30 +28870,26 @@ void main() {
     border-radius: 50%;
     color: #374151;
     z-index: 10;
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     transition: all 0.2s ease;
   `;
-    sizeSelectorWrapper.appendChild(prevButton);
-    sizeSelectorWrapper.appendChild(sizeButtonsContainer);
-    sizeSelectorWrapper.appendChild(nextButton);
-    sizeArea.appendChild(sizeSelectorWrapper);
+    sizeArea.appendChild(sizeButtonsContainer);
     let productNameDiv = null;
     if (productName) {
       productNameDiv = document.createElement("div");
-      productNameDiv.textContent = productName.toUpperCase();
+      productNameDiv.textContent = productName;
       productNameDiv.style.cssText = `
-      font-size: 2.5%;
+      font-size: 12px;
       font-weight: 700;
-      letter-spacing: 0.1em;
-      color: #1f2937;
+      color: #000000;
       text-align: center;
       width: 100%;
-      padding-top: 1%;
-      padding-bottom: 0.5%;
+      margin: 0;
+      padding: 0;
       box-sizing: border-box;
     `;
       sizeArea.appendChild(productNameDiv);
@@ -28821,15 +28903,15 @@ void main() {
       nextButton
     };
   }
-  function getBackgroundImageUrl$1() {
-    var _a2;
+  function resolveBaseOrigin() {
+    var _a3;
     if (typeof window === "undefined") return "";
     if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-      return `http://localhost:3000/model_background.png`;
+      return "http://localhost:3000";
     }
-    const apiUrl = (_a2 = document.querySelector("[data-atelier-api-url]")) == null ? void 0 : _a2.getAttribute("data-atelier-api-url");
+    const apiUrl = (_a3 = document.querySelector("[data-atelier-api-url]")) == null ? void 0 : _a3.getAttribute("data-atelier-api-url");
     if (apiUrl) {
-      return `${apiUrl}/model_background.png`;
+      return apiUrl;
     }
     const scriptTag = document.querySelector('script[src*="widget.js"]');
     if (scriptTag) {
@@ -28837,22 +28919,30 @@ void main() {
       if (src) {
         try {
           const url = new URL(src, window.location.href);
-          return `${url.origin}/model_background.png`;
-        } catch (e) {
+          return url.origin;
+        } catch {
         }
       }
     }
-    return `${window.location.origin}/model_background.png`;
+    return window.location.origin;
+  }
+  function getBackgroundImageUrl() {
+    const origin = resolveBaseOrigin();
+    return origin ? `${origin}/model_background.png` : "";
+  }
+  function getIconUrl(iconName) {
+    const origin = resolveBaseOrigin();
+    return origin ? `${origin}/icon/${iconName}.png` : "";
   }
   function createViewerContainer(productName) {
     const viewerContainer = document.createElement("div");
     viewerContainer.setAttribute("data-atelier-viewer-container", "true");
-    const backgroundImageUrl = getBackgroundImageUrl$1();
+    const backgroundImageUrl = getBackgroundImageUrl();
     viewerContainer.style.cssText = `
     position: relative !important;
     flex: 1;
     min-height: 0;
-    overflow: visible !important;
+    overflow: hidden !important;
     transform-origin: center center;
     pointer-events: auto;
     will-change: transform;
@@ -28861,7 +28951,7 @@ void main() {
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     width: 100%;
     background-image: url(${backgroundImageUrl});
@@ -28882,97 +28972,49 @@ void main() {
     floatingButtons.setAttribute("data-atelier-floating-buttons", "true");
     floatingButtons.style.cssText = `
     position: absolute;
-    right: 24px;
+    right: 5%;
     top: 55%;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     pointer-events: auto;
     z-index: 10001;
   `;
-    const getIconUrl = (iconName) => {
-      var _a2;
-      if (typeof window === "undefined") return "";
-      if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-        return `http://localhost:3000/icon/${iconName}.png`;
-      }
-      const apiUrl = (_a2 = document.querySelector("[data-atelier-api-url]")) == null ? void 0 : _a2.getAttribute("data-atelier-api-url");
-      if (apiUrl) {
-        return `${apiUrl}/icon/${iconName}.png`;
-      }
-      const scriptTag = document.querySelector('script[src*="widget.js"]');
-      if (scriptTag) {
-        const src = scriptTag.getAttribute("src");
-        if (src) {
-          try {
-            const url = new URL(src, window.location.href);
-            return `${url.origin}/icon/${iconName}.png`;
-          } catch (e) {
-          }
-        }
-      }
-      return `${window.location.origin}/icon/${iconName}.png`;
-    };
+    const floatingBtnStyle = `
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    transition: all 0.2s ease;
+    color: black;
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    flex-shrink: 0;
+    padding: 0;
+  `;
     const jacketButton = document.createElement("button");
     const jacketIcon = document.createElement("img");
     jacketIcon.src = getIconUrl("jacket");
     jacketIcon.alt = "ジャケット";
-    jacketIcon.style.cssText = `
-    width: 20px;
-    height: 20px;
-    object-fit: contain;
-  `;
+    jacketIcon.style.cssText = `width: 16px; height: 16px; object-fit: contain;`;
     jacketButton.appendChild(jacketIcon);
-    jacketButton.style.cssText = `
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-    transition: all 0.2s ease;
-    color: black;
-    will-change: transform;
-    transform: translateZ(0);
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    flex-shrink: 0;
-  `;
+    jacketButton.style.cssText = floatingBtnStyle;
     const userButton = document.createElement("button");
     const userIcon = document.createElement("img");
     userIcon.src = getIconUrl("person");
     userIcon.alt = "ユーザー";
-    userIcon.style.cssText = `
-    width: 20px;
-    height: 20px;
-    object-fit: contain;
-  `;
+    userIcon.style.cssText = `width: 16px; height: 16px; object-fit: contain;`;
     userButton.appendChild(userIcon);
-    userButton.style.cssText = `
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-    transition: all 0.2s ease;
-    color: black;
-    will-change: transform;
-    transform: translateZ(0);
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    flex-shrink: 0;
-  `;
+    userButton.style.cssText = floatingBtnStyle;
     floatingButtons.appendChild(jacketButton);
     floatingButtons.appendChild(userButton);
     return {
@@ -28983,34 +29025,260 @@ void main() {
       userButton
     };
   }
-  function getBackgroundImageUrl() {
-    var _a2;
-    if (typeof window === "undefined") return "";
-    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-      return `http://localhost:3000/model_background.png`;
+  function createOutfitTabs(initialData, onAssetSelect) {
+    let currentData = initialData || { categories: {} };
+    let currentCategory = "";
+    let selectedAssetId = null;
+    const outfitTabsContainer = document.createElement("div");
+    outfitTabsContainer.setAttribute("data-atelier-outfit-tabs", "true");
+    outfitTabsContainer.style.cssText = `
+    position: relative;
+    width: 100%;
+    background: white;
+    border-top: 1px solid #e5e7eb;
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    height: 20%;
+    max-height: 20%;
+    flex-shrink: 0;
+    z-index: 20;
+    box-sizing: border-box;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+  `;
+    const categoryBar = document.createElement("div");
+    categoryBar.style.cssText = `
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 0;
+    border-bottom: 1px solid #e5e7eb;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    flex-shrink: 0;
+  `;
+    const body = document.createElement("div");
+    body.className = "atelier-outfit-tabs-body";
+    body.style.cssText = `
+    flex: 1;
+    overflow-y: hidden;
+    overflow-x: auto;
+    padding: 4px 3%;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+  `;
+    if (!document.getElementById("atelier-outfit-tabs-scrollbar-style")) {
+      const style = document.createElement("style");
+      style.id = "atelier-outfit-tabs-scrollbar-style";
+      style.textContent = `
+      [data-atelier-outfit-tabs]::-webkit-scrollbar { display: none; }
+      .atelier-outfit-tabs-body::-webkit-scrollbar { display: none; }
+      .atelier-outfit-tabs-body { scrollbar-width: none; -ms-overflow-style: none; }
+    `;
+      document.head.appendChild(style);
     }
-    const apiUrl = (_a2 = document.querySelector("[data-atelier-api-url]")) == null ? void 0 : _a2.getAttribute("data-atelier-api-url");
-    if (apiUrl) {
-      return `${apiUrl}/model_background.png`;
-    }
-    const scriptTag = document.querySelector('script[src*="widget.js"]');
-    if (scriptTag) {
-      const src = scriptTag.getAttribute("src");
-      if (src) {
-        try {
-          const url = new URL(src, window.location.href);
-          return `${url.origin}/model_background.png`;
-        } catch (e) {
-        }
+    const categorySelect = document.createElement("div");
+    categorySelect.style.cssText = `display: none;`;
+    function renderCategoryBar() {
+      categoryBar.innerHTML = "";
+      const categories = Object.keys(currentData.categories);
+      if (categories.length === 0) {
+        const emptyMsg = document.createElement("div");
+        emptyMsg.textContent = "アセットがありません";
+        emptyMsg.style.cssText = `
+        padding: 4px 10px;
+        font-size: 11px;
+        color: #9ca3af;
+      `;
+        categoryBar.appendChild(emptyMsg);
+        return;
       }
+      if (!currentCategory || !categories.includes(currentCategory)) {
+        currentCategory = categories[0];
+      }
+      categories.forEach((cat) => {
+        const tab = document.createElement("button");
+        tab.textContent = cat;
+        const isSelected = cat === currentCategory;
+        tab.style.cssText = `
+        padding: 4px 10px;
+        font-size: 11px;
+        font-weight: ${isSelected ? "700" : "500"};
+        color: ${isSelected ? "#000" : "#6b7280"};
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid ${isSelected ? "#000" : "transparent"};
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.2s;
+        flex-shrink: 0;
+      `;
+        tab.addEventListener("mouseenter", () => {
+          if (cat !== currentCategory) {
+            tab.style.color = "#374151";
+            tab.style.borderBottomColor = "#d1d5db";
+          }
+        });
+        tab.addEventListener("mouseleave", () => {
+          if (cat !== currentCategory) {
+            tab.style.color = "#6b7280";
+            tab.style.borderBottomColor = "transparent";
+          }
+        });
+        tab.addEventListener("click", () => {
+          currentCategory = cat;
+          renderCategoryBar();
+          renderAssets();
+        });
+        categoryBar.appendChild(tab);
+      });
     }
-    return `${window.location.origin}/model_background.png`;
+    function renderAssets() {
+      body.innerHTML = "";
+      const items = currentData.categories[currentCategory] || [];
+      if (items.length === 0) {
+        const emptyMsg = document.createElement("div");
+        emptyMsg.textContent = "このカテゴリにアセットはありません";
+        emptyMsg.style.cssText = `
+        padding: 8px;
+        font-size: 11px;
+        color: #9ca3af;
+        text-align: center;
+        width: 100%;
+      `;
+        body.appendChild(emptyMsg);
+        return;
+      }
+      items.forEach((item) => {
+        const card = document.createElement("div");
+        const isSelected = item.id === selectedAssetId;
+        card.style.cssText = `
+        width: 56px;
+        min-width: 56px;
+        height: 68px;
+      background: white;
+        border-radius: 6px;
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+        flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      overflow: hidden;
+        box-shadow: ${isSelected ? "0 0 0 2px #000, 0 2px 8px rgba(0,0,0,0.15)" : "0 1px 4px rgba(0, 0, 0, 0.1)"};
+        gap: 3px;
+        padding: 3px;
+    `;
+        card.addEventListener("mouseenter", () => {
+          if (!isSelected) {
+            card.style.backgroundColor = "#f3f4f6";
+            card.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.15)";
+            card.style.transform = "translateY(-2px)";
+          }
+        });
+        card.addEventListener("mouseleave", () => {
+          if (!isSelected) {
+            card.style.backgroundColor = "white";
+            card.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.1)";
+            card.style.transform = "translateY(0)";
+          }
+        });
+        card.addEventListener("click", () => {
+          selectedAssetId = item.id;
+          onAssetSelect == null ? void 0 : onAssetSelect(item);
+          renderAssets();
+        });
+        const thumbSize = "40px";
+        if (item.thumbnailUrl) {
+          const img = document.createElement("img");
+          img.src = item.thumbnailUrl;
+          img.alt = item.productName;
+          img.style.cssText = `
+          width: ${thumbSize};
+          height: ${thumbSize};
+          object-fit: cover;
+          border-radius: 4px;
+          background: #f3f4f6;
+          flex-shrink: 0;
+        `;
+          img.onerror = () => {
+            img.style.display = "none";
+            const placeholder = document.createElement("div");
+            placeholder.textContent = "3D";
+            placeholder.style.cssText = `
+            width: ${thumbSize};
+            height: ${thumbSize};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+            background: #f3f4f6;
+            border-radius: 4px;
+            font-size: 9px;
+            color: #9ca3af;
+            flex-shrink: 0;
+  `;
+            card.insertBefore(placeholder, card.firstChild);
+          };
+          card.appendChild(img);
+        } else {
+          const placeholder = document.createElement("div");
+          placeholder.textContent = "3D";
+          placeholder.style.cssText = `
+          width: ${thumbSize};
+          height: ${thumbSize};
+      display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #f3f4f6;
+          border-radius: 4px;
+          font-size: 9px;
+          color: #9ca3af;
+          flex-shrink: 0;
+    `;
+          card.appendChild(placeholder);
+        }
+        const label = document.createElement("div");
+        label.textContent = item.productName;
+        label.title = item.productName;
+        label.style.cssText = `
+        font-size: 9px;
+        color: #374151;
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        width: 100%;
+        line-height: 1.2;
+      `;
+        card.appendChild(label);
+        body.appendChild(card);
+      });
+    }
+    function updateAssets(data) {
+      currentData = data;
+      selectedAssetId = null;
+      renderCategoryBar();
+      renderAssets();
+    }
+    outfitTabsContainer.appendChild(categoryBar);
+    outfitTabsContainer.appendChild(body);
+    renderCategoryBar();
+    renderAssets();
+    return { outfitTabsContainer, categorySelect, updateAssets };
   }
   function initPreviewPanel(options) {
-    console.log("[Atelier Preview] ===== initPreviewPanel START =====");
-    console.log("[Atelier Preview] options:", options);
-    console.log("[Atelier Preview] options.onOutfitClick:", options.onOutfitClick);
-    console.log("[Atelier Preview] typeof options.onOutfitClick:", typeof options.onOutfitClick);
     const {
       container,
       glbUrl,
@@ -29024,36 +29292,33 @@ void main() {
       availableSizes = ["S", "M", "L"],
       initialSize = "M",
       productName,
+      outfitAssets,
       onHeightChange,
       onSizeChange,
       onModelLoad,
       onModelError,
       onBackClick,
       onOutfitClick,
+      onOutfitAssetSelect,
       currentProductId,
       onFloatingButtonsReady
     } = options;
-    console.log("[Atelier Preview] After destructuring - onOutfitClick:", typeof onOutfitClick, onOutfitClick);
-    console.log("[Atelier Preview] onBackClick:", typeof onBackClick, onBackClick);
-    console.log("[Atelier Preview] currentProductId:", currentProductId);
     let currentSize = initialSize;
     try {
       const children = Array.from(container.children);
       for (const child of children) {
         try {
           child.remove();
-        } catch (error) {
-          console.warn("[Atelier Preview] Could not remove child element:", error);
+        } catch {
         }
       }
-    } catch (error) {
-      console.warn("[Atelier Preview] Could not clear container, continuing anyway:", error);
+    } catch {
     }
     container.style.cssText = `
     display: flex !important;
     flex-direction: column !important;
     position: relative !important;
-    overflow: visible !important;
+    overflow: hidden !important;
     background: transparent !important;
     gap: 0 !important;
     width: 100% !important;
@@ -29066,7 +29331,11 @@ void main() {
     max-height: 100% !important;
   `.trim();
     const sizeAreaElements = createSizeArea(availableSizes, initialSize, productName);
-    const { sizeArea, sizeButtons, sizeButtonsContainer, prevButton, nextButton } = sizeAreaElements;
+    const { sizeArea, sizeButtons, sizeButtonsContainer, productNameDiv, prevButton, nextButton } = sizeAreaElements;
+    const outfitTabsElements = createOutfitTabs(outfitAssets, (asset) => {
+      onOutfitAssetSelect == null ? void 0 : onOutfitAssetSelect(asset);
+    });
+    const { outfitTabsContainer } = outfitTabsElements;
     const scrollToSelectedSize = () => {
       const currentIndex = availableSizes.indexOf(currentSize);
       if (currentIndex >= 0 && sizeButtons[currentIndex]) {
@@ -29075,13 +29344,8 @@ void main() {
         const buttonRect = selectedButton.getBoundingClientRect();
         const scrollLeft = sizeButtonsContainer.scrollLeft;
         const buttonLeft = buttonRect.left - containerRect.left + scrollLeft;
-        const buttonWidth = buttonRect.width;
-        const containerWidth = containerRect.width;
-        const targetScroll = buttonLeft - containerWidth / 2 + buttonWidth / 2;
-        sizeButtonsContainer.scrollTo({
-          left: targetScroll,
-          behavior: "smooth"
-        });
+        const targetScroll = buttonLeft - containerRect.width / 2 + buttonRect.width / 2;
+        sizeButtonsContainer.scrollTo({ left: targetScroll, behavior: "smooth" });
       }
     };
     const viewerElements = createViewerContainer();
@@ -29089,11 +29353,8 @@ void main() {
     if (onFloatingButtonsReady) {
       onFloatingButtonsReady(floatingButtons);
     }
-    const setButtonPointerEvents = (button) => {
-      button.style.pointerEvents = "auto";
-    };
-    setButtonPointerEvents(jacketButton);
-    setButtonPointerEvents(userButton);
+    jacketButton.style.pointerEvents = "auto";
+    userButton.style.pointerEvents = "auto";
     jacketButton.addEventListener("mouseenter", () => {
       jacketButton.style.boxShadow = "0 4px 16px rgba(0, 0, 0, 0.18)";
       jacketButton.style.transform = "scale(1.08)";
@@ -29104,26 +29365,18 @@ void main() {
       jacketButton.style.transform = "scale(1)";
       jacketButton.style.background = "rgba(255, 255, 255, 0.95)";
     });
-    console.log("[Atelier Preview] Setting up jacketButton click handler");
-    console.log("[Atelier Preview] onOutfitClick at handler setup:", typeof onOutfitClick, onOutfitClick);
     jacketButton.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      console.log("[Atelier Preview] ===== jacketButton clicked =====");
-      console.log("[Atelier Preview] onOutfitClick:", typeof onOutfitClick, onOutfitClick);
       if (onOutfitClick) {
-        console.log("[Atelier Preview] Calling onOutfitClick callback with container");
         try {
           onOutfitClick(container);
         } catch (error) {
           console.error("[Atelier Preview] Error in onOutfitClick:", error);
         }
       } else {
-        console.log("[Atelier Preview] onOutfitClick not provided, dispatching custom event");
         const event = new CustomEvent("atelier:open-outfit-modal", {
-          detail: {
-            currentProductId
-          },
+          detail: { currentProductId },
           bubbles: true,
           cancelable: true
         });
@@ -29142,51 +29395,45 @@ void main() {
     });
     const updateSizeButtons = () => {
       sizeButtons.forEach((btn, idx) => {
-        const btnSize = availableSizes[idx];
-        const selected = btnSize === currentSize;
-        btn.style.background = selected ? "#000000" : "rgba(255, 255, 255, 0.95)";
-        btn.style.color = selected ? "#ffffff" : "#374151";
-        btn.style.border = selected ? "1px solid #000000" : "1px solid rgba(0, 0, 0, 0.15)";
-        btn.style.fontWeight = selected ? "700" : "600";
+        const selected = availableSizes[idx] === currentSize;
+        btn.style.background = selected ? "#000000" : "transparent";
+        btn.style.color = selected ? "#ffffff" : "#000000";
+        btn.style.border = "none";
+        btn.style.fontWeight = selected ? "600" : "700";
+        btn.style.borderRadius = selected ? "50px" : "0";
       });
       scrollToSelectedSize();
     };
     updateSizeButtons();
-    setTimeout(() => {
-      scrollToSelectedSize();
-    }, 100);
+    setTimeout(() => scrollToSelectedSize(), 100);
     prevButton.addEventListener("click", () => {
-      const currentIndex = availableSizes.indexOf(currentSize);
-      if (currentIndex > 0) {
-        currentSize = availableSizes[currentIndex - 1];
+      const idx = availableSizes.indexOf(currentSize);
+      if (idx > 0) {
+        currentSize = availableSizes[idx - 1];
         updateSizeButtons();
         onSizeChange == null ? void 0 : onSizeChange(currentSize);
       }
     });
     nextButton.addEventListener("click", () => {
-      const currentIndex = availableSizes.indexOf(currentSize);
-      if (currentIndex < availableSizes.length - 1) {
-        currentSize = availableSizes[currentIndex + 1];
+      const idx = availableSizes.indexOf(currentSize);
+      if (idx < availableSizes.length - 1) {
+        currentSize = availableSizes[idx + 1];
         updateSizeButtons();
         onSizeChange == null ? void 0 : onSizeChange(currentSize);
       }
     });
-    prevButton.addEventListener("mouseenter", () => {
-      prevButton.style.background = "rgba(255, 255, 255, 1)";
-      prevButton.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.15)";
-    });
-    prevButton.addEventListener("mouseleave", () => {
-      prevButton.style.background = "rgba(255, 255, 255, 0.9)";
-      prevButton.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.1)";
-    });
-    nextButton.addEventListener("mouseenter", () => {
-      nextButton.style.background = "rgba(255, 255, 255, 1)";
-      nextButton.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.15)";
-    });
-    nextButton.addEventListener("mouseleave", () => {
-      nextButton.style.background = "rgba(255, 255, 255, 0.9)";
-      nextButton.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.1)";
-    });
+    const addHoverEffect = (btn) => {
+      btn.addEventListener("mouseenter", () => {
+        btn.style.background = "rgba(255, 255, 255, 1)";
+        btn.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.15)";
+      });
+      btn.addEventListener("mouseleave", () => {
+        btn.style.background = "rgba(255, 255, 255, 0.9)";
+        btn.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.1)";
+      });
+    };
+    addHoverEffect(prevButton);
+    addHoverEffect(nextButton);
     sizeButtons.forEach((sizeBtn, idx) => {
       sizeBtn.addEventListener("click", () => {
         currentSize = availableSizes[idx];
@@ -29194,33 +29441,9 @@ void main() {
         onSizeChange == null ? void 0 : onSizeChange(currentSize);
       });
     });
-    container.appendChild(viewerContainer);
     container.appendChild(sizeArea);
-    container.appendChild(floatingButtons);
-    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-      setTimeout(() => {
-        var _a2, _b2;
-        const buttonsRect = floatingButtons.getBoundingClientRect();
-        const computed = window.getComputedStyle(floatingButtons);
-        console.log("[Atelier Preview] Floating buttons position:", {
-          parentElement: (_a2 = floatingButtons.parentElement) == null ? void 0 : _a2.tagName,
-          parentIsBody: floatingButtons.parentElement === document.body,
-          parentIsOverlay: ((_b2 = floatingButtons.parentElement) == null ? void 0 : _b2.getAttribute("data-atelier-modal-overlay")) === "true",
-          position: computed.position,
-          right: computed.right,
-          left: computed.left,
-          bottom: computed.bottom,
-          zIndex: computed.zIndex,
-          rect: {
-            left: buttonsRect.left,
-            right: buttonsRect.right,
-            width: buttonsRect.width,
-            viewportWidth: window.innerWidth,
-            distanceFromRight: window.innerWidth - buttonsRect.right
-          }
-        });
-      }, 100);
-    }
+    container.appendChild(viewerContainer);
+    container.appendChild(outfitTabsContainer);
     getBackgroundImageUrl();
     const viewerInstance = init3DViewer(viewerContainer, {
       apiBaseUrl,
@@ -29242,6 +29465,9 @@ void main() {
       updateAssets(newAssets) {
         viewerInstance.updateAssets(newAssets.map((a) => ({ url: a.url, category: a.category })));
       },
+      updateOutfitAssets(data) {
+        outfitTabsElements.updateAssets(data);
+      },
       updateHeight(height) {
         onHeightChange == null ? void 0 : onHeightChange(height);
       },
@@ -29249,12 +29475,16 @@ void main() {
         currentSize = size;
         updateSizeButtons();
       },
+      updateProductName(name) {
+        if (productNameDiv) {
+          productNameDiv.textContent = name;
+        }
+      },
       destroy() {
         for (const observer of resizeObservers) {
           try {
             observer.disconnect();
-          } catch (error) {
-            console.warn("[Atelier Preview] Could not disconnect ResizeObserver:", error);
+          } catch {
           }
         }
         try {
@@ -29265,26 +29495,19 @@ void main() {
         try {
           for (const element of createdElements) {
             try {
-              if (element && element.isConnected) {
-                element.remove();
-              } else if (element && element.parentNode) {
+              if (element && (element.isConnected || element.parentNode)) {
                 element.remove();
               }
-            } catch (error) {
-              console.warn("[Atelier Preview] Could not remove element:", error);
+            } catch {
             }
           }
-        } catch (error) {
-          console.warn("[Atelier Preview] Could not clean up container:", error);
+        } catch {
         }
         try {
-          if (floatingButtons && floatingButtons.isConnected) {
-            floatingButtons.remove();
-          } else if (floatingButtons && floatingButtons.parentNode) {
+          if (floatingButtons && (floatingButtons.isConnected || floatingButtons.parentNode)) {
             floatingButtons.remove();
           }
-        } catch (error) {
-          console.warn("[Atelier Preview] Could not remove floatingButtons:", error);
+        } catch {
         }
       }
     };
@@ -29304,7 +29527,7 @@ void main() {
       img.src = url;
     });
   }
-  async function showOutfitChangePanel(container, params) {
+  async function showOutfitChangePanel(container, params, callbacks) {
     if (isDevelopmentMode()) {
       console.log("[Atelier Widget] showOutfitChangePanel called", params);
     }
@@ -29322,30 +29545,37 @@ void main() {
     const sizeArea = container.querySelector("[data-atelier-size-area]");
     const overlay = document.querySelector('[data-atelier-modal-overlay="true"]');
     const floatingButtons = (overlay == null ? void 0 : overlay.querySelector("[data-atelier-floating-buttons]")) || document.body.querySelector("[data-atelier-floating-buttons]");
-    const existingPanel = container.querySelector("#atelier-outfit-change-panel");
-    if (existingPanel) {
-      const transition = "transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 0.6s ease-out";
-      existingPanel.style.transition = transition;
-      existingPanel.style.transform = "translateY(100%)";
-      existingPanel.style.opacity = "0";
+    const closePanel = (targetPanel, animationFrameIdRef2) => {
+      const closeTransition = "transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 0.6s ease-out";
+      targetPanel.style.transition = closeTransition;
+      targetPanel.style.transform = "translateY(100%)";
+      targetPanel.style.opacity = "0";
       if (viewerContainer) {
-        const containerRect = container.getBoundingClientRect();
         viewerContainer.style.transition = "max-height 0.6s cubic-bezier(0.25, 0.1, 0.25, 1)";
+        const containerRect = container.getBoundingClientRect();
         viewerContainer.style.maxHeight = `${containerRect.height}px`;
       }
       if (sizeArea) {
         sizeArea.style.display = "flex";
       }
-      if (floatingButtons && overlay && overlay.isConnected && overlay.parentElement) {
+      const currentOverlay = document.querySelector('[data-atelier-modal-overlay="true"]');
+      if (floatingButtons && (currentOverlay == null ? void 0 : currentOverlay.isConnected)) {
         floatingButtons.style.display = "flex";
       }
       setTimeout(() => {
-        existingPanel.remove();
+        if (animationFrameIdRef2 == null ? void 0 : animationFrameIdRef2.current) {
+          cancelAnimationFrame(animationFrameIdRef2.current);
+        }
+        targetPanel.remove();
         if (viewerContainer) {
           viewerContainer.style.transition = "";
           viewerContainer.style.maxHeight = "";
         }
       }, 600);
+    };
+    const existingPanel = container.querySelector("#atelier-outfit-change-panel");
+    if (existingPanel) {
+      closePanel(existingPanel);
       return;
     }
     const panel = document.createElement("div");
@@ -29361,8 +29591,8 @@ void main() {
     display: flex !important;
     flex-direction: column !important;
     overflow: hidden !important;
-    max-height: 66.67vh !important;
-    height: 66.67vh !important;
+    max-height: 50vh !important;
+    height: 50vh !important;
     transform: translateY(100%) !important;
     opacity: 0 !important;
     transition: transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.5s ease-in-out !important;
@@ -29426,11 +29656,11 @@ void main() {
       const containerRect = container.getBoundingClientRect();
       viewerContainer.style.maxHeight = `${containerRect.height}px`;
     }
-    let animationFrameId = null;
+    const animationFrameIdRef = { current: null };
     let lastPanelTop = -1;
     const observePanelPosition = () => {
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
+      if (animationFrameIdRef.current) {
+        cancelAnimationFrame(animationFrameIdRef.current);
       }
       const checkPosition = () => {
         const panelRect = panel.getBoundingClientRect();
@@ -29442,10 +29672,10 @@ void main() {
         const computedStyle = window.getComputedStyle(panel);
         const hasTransition = computedStyle.transition !== "none" && computedStyle.transition !== "all 0s ease 0s";
         if (hasTransition || panel.style.transition !== "none") {
-          animationFrameId = requestAnimationFrame(checkPosition);
+          animationFrameIdRef.current = requestAnimationFrame(checkPosition);
         }
       };
-      animationFrameId = requestAnimationFrame(checkPosition);
+      animationFrameIdRef.current = requestAnimationFrame(checkPosition);
     };
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -29469,12 +29699,6 @@ void main() {
         throw new Error(`HTTP ${response.status}`);
       }
       const products = await response.json();
-      if (isDevelopmentMode()) {
-        console.log("[Atelier Widget] Products fetched:", products);
-        products.forEach((p) => {
-          console.log(`[Atelier Widget] Product: ${p.name}, Category: ${p.category || "null/undefined"}`);
-        });
-      }
       const categorized = {};
       products.forEach((product) => {
         const isCurrentProduct = product.id === currentProductId || product.externalProductId === currentProductId;
@@ -29557,11 +29781,40 @@ void main() {
             productItem.addEventListener("mouseleave", () => {
               productItem.style.backgroundColor = "transparent";
             });
-            productItem.addEventListener("click", () => {
-              const productId = product.externalProductId || product.id;
-              const currentUrl = new URL(window.location.href);
-              currentUrl.pathname = `/product/${productId}`;
-              window.location.href = currentUrl.toString();
+            productItem.addEventListener("click", async () => {
+              if (callbacks == null ? void 0 : callbacks.onProductSelect) {
+                productItem.style.opacity = "0.5";
+                productItem.style.pointerEvents = "none";
+                try {
+                  const externalProductId = product.externalProductId || product.id;
+                  const config = await fetchWidgetConfig({
+                    publicKey: publicKey || null,
+                    shopId: shopId || null,
+                    externalProductId,
+                    productId: null
+                  });
+                  if (config.enabled) {
+                    callbacks.onProductSelect(product, config);
+                    removeDocumentListeners();
+                    closePanel(panel, animationFrameIdRef);
+                    observePanelPosition();
+                  } else {
+                    alert("この商品の3Dモデルが登録されていません。");
+                    productItem.style.opacity = "1";
+                    productItem.style.pointerEvents = "auto";
+                  }
+                } catch (error) {
+                  console.error("[Atelier Widget] Failed to fetch product config:", error);
+                  alert("商品データの取得に失敗しました。");
+                  productItem.style.opacity = "1";
+                  productItem.style.pointerEvents = "auto";
+                }
+              } else {
+                const productId = product.externalProductId || product.id;
+                const currentUrl = new URL(window.location.href);
+                currentUrl.pathname = `/product/${productId}`;
+                window.location.href = currentUrl.toString();
+              }
             });
             const productImage = document.createElement("div");
             productImage.style.cssText = `
@@ -29658,6 +29911,12 @@ void main() {
     let dragStartY = 0;
     let dragCurrentY = 0;
     let isDragging = false;
+    const removeDocumentListeners = () => {
+      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("touchend", handleTouchEnd);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
     const handleStart = (clientY) => {
       dragStartY = clientY;
       dragCurrentY = clientY;
@@ -29683,37 +29942,12 @@ void main() {
       if (!isDragging) return;
       const deltaY = dragCurrentY - dragStartY;
       const threshold = 100;
-      const closeTransition = "transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 0.6s ease-out";
       if (deltaY > threshold) {
-        panel.style.transition = closeTransition;
-        panel.style.transform = "translateY(100%)";
-        panel.style.opacity = "0";
-        if (viewerContainer) {
-          viewerContainer.style.transition = "max-height 0.6s cubic-bezier(0.25, 0.1, 0.25, 1)";
-        }
+        removeDocumentListeners();
+        closePanel(panel, animationFrameIdRef);
         observePanelPosition();
-        if (sizeArea) {
-          sizeArea.style.display = "flex";
-        }
-        const overlay2 = document.querySelector('[data-atelier-modal-overlay="true"]');
-        if (floatingButtons && overlay2 && overlay2.isConnected && overlay2.parentElement) {
-          floatingButtons.style.display = "flex";
-        }
-        setTimeout(() => {
-          if (animationFrameId) {
-            cancelAnimationFrame(animationFrameId);
-          }
-          if (panel.parentNode) {
-            panel.parentNode.removeChild(panel);
-          }
-          if (viewerContainer) {
-            viewerContainer.style.transition = "";
-            viewerContainer.style.maxHeight = "";
-          }
-        }, 600);
       } else {
-        const openTransition2 = "transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.5s ease-in-out";
-        panel.style.transition = openTransition2;
+        panel.style.transition = "transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.5s ease-in-out";
         panel.style.transform = "translateY(0)";
         panel.style.opacity = "1";
         if (viewerContainer) {
@@ -29734,6 +29968,7 @@ void main() {
       e.preventDefault();
       handleMove(e.touches[0].clientY);
     };
+    const handleTouchEnd = () => handleEnd();
     const handleMouseDown = (e) => {
       const target = e.target;
       if (body.contains(target) && body.scrollTop > 0) return;
@@ -29745,71 +29980,63 @@ void main() {
       e.preventDefault();
       handleMove(e.clientY);
     };
+    const handleMouseUp = () => handleEnd();
     panel.addEventListener("touchstart", handleTouchStart, { passive: false });
     document.addEventListener("touchmove", handleTouchMove, { passive: false });
-    document.addEventListener("touchend", () => handleEnd());
+    document.addEventListener("touchend", handleTouchEnd);
     panel.addEventListener("mousedown", handleMouseDown);
     document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", () => handleEnd());
+    document.addEventListener("mouseup", handleMouseUp);
     handle.addEventListener("click", () => {
-      const transition = "transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 0.6s ease-out";
-      panel.style.transition = transition;
-      panel.style.transform = "translateY(100%)";
-      panel.style.opacity = "0";
-      if (viewerContainer) {
-        viewerContainer.style.transition = "max-height 0.6s cubic-bezier(0.25, 0.1, 0.25, 1)";
-      }
+      removeDocumentListeners();
+      closePanel(panel, animationFrameIdRef);
       observePanelPosition();
-      if (sizeArea) {
-        sizeArea.style.display = "flex";
-      }
-      if (floatingButtons && overlay && overlay.isConnected && overlay.parentElement) {
-        floatingButtons.style.display = "flex";
-      }
-      setTimeout(() => {
-        if (animationFrameId) {
-          cancelAnimationFrame(animationFrameId);
-        }
-        if (panel.parentNode) {
-          panel.parentNode.removeChild(panel);
-        }
-        if (viewerContainer) {
-          viewerContainer.style.transition = "";
-          viewerContainer.style.maxHeight = "";
-        }
-      }, 600);
     });
   }
   function renderModalWithLoading(shadowRoot, params) {
     const overlay = document.createElement("div");
     overlay.style.cssText = `
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: white;
-    z-index: 10000;
-    display: flex;
-    flex-direction: column;
-    overflow: visible;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    background: white !important;
+    z-index: 10000 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: visible !important;
     opacity: 0;
     animation: fadeIn 0.2s ease-out forwards;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
   `;
     addFadeInStyle();
     const modal = document.createElement("div");
     modal.style.cssText = `
-    background: white;
-    width: 100%;
-    height: 100%;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    padding: 24px 12px;
-    box-sizing: border-box;
-    overflow: hidden;
+    background: white !important;
+    width: 100% !important;
+    height: 100% !important;
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 24px 12px !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    flex: 1 !important;
+    min-height: 0 !important;
   `;
-    const backButton = createBackButton(overlay);
+    const backButton = createBackButton(() => {
+      if (overlay.parentNode) {
+        overlay.parentNode.removeChild(overlay);
+      }
+    });
     const contentArea = createContentArea();
     const loadingSpinner = createLoadingSpinner();
     contentArea.appendChild(loadingSpinner);
@@ -29822,7 +30049,7 @@ void main() {
     return { overlay, contentArea };
   }
   function updateModalWithConfig(shadowRoot, config, params, overlay, contentArea) {
-    var _a2, _b2, _c;
+    var _a3, _b2;
     if (!overlay || !contentArea) {
       console.error("[Atelier Widget] Modal elements not provided");
       return;
@@ -29841,34 +30068,94 @@ void main() {
     border: none !important;
     box-sizing: border-box !important;
   `;
-    const eventShopId = params.shopId || "unknown";
-    sendEvent({
-      shopId: eventShopId,
-      productId: params.productId || params.externalProductId || void 0,
-      type: "widget_open"
-    });
-    const defaultSize = ((_a2 = config.asset) == null ? void 0 : _a2.defaultSize) || "M";
-    const availableSizes = ["S", "M", "L", "XL"];
-    let currentSize = defaultSize;
-    const assetList = ((_b2 = config.asset) == null ? void 0 : _b2.sizes) && config.asset.sizes[currentSize] ? (() => {
-      const sizeAssets = config.asset.sizes[currentSize];
-      return sizeAssets.map((asset) => {
-        const url = asset.modelUrl || asset.glbUrl || "";
-        if (!url) return null;
-        return {
-          url,
-          category: asset.category
-        };
-      }).filter((asset) => asset !== null);
-    })() : [];
-    if (isDevelopmentMode() && assetList.length === 0) {
-      assetList.push({
-        url: "http://localhost:3000/3d/clo_model.glb",
-        category: void 0
+    const eventShopId = params.shopId || void 0;
+    if (eventShopId && eventShopId !== "unknown") {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const productIdStr = params.productId || params.externalProductId || "";
+      const validProductId = productIdStr && uuidRegex.test(productIdStr) ? productIdStr : void 0;
+      sendEvent({
+        shopId: eventShopId,
+        // eventShopId !== "unknown" のチェックで string 型が保証されている
+        productId: validProductId,
+        type: "widget_open"
+      }).catch((error) => {
+        if (isDevelopmentMode()) {
+          console.warn("[Atelier Widget] Event send error:", error);
+        }
       });
     }
+    const defaultSize = ((_a3 = config.asset) == null ? void 0 : _a3.defaultSize) || "M";
+    const availableSizes = ["S", "M", "L", "XL"];
+    let currentSize = defaultSize;
+    let currentConfig = config;
+    const activeAssets = /* @__PURE__ */ new Map();
+    const buildAssetList = (size) => {
+      var _a4, _b3, _c;
+      const sizeAssets = (_b3 = (_a4 = currentConfig.asset) == null ? void 0 : _a4.sizes) == null ? void 0 : _b3[size];
+      if (!sizeAssets) {
+        console.warn(`[Atelier Widget] No assets found for size: ${size}`, {
+          availableSizes: Object.keys(((_c = currentConfig.asset) == null ? void 0 : _c.sizes) || {}),
+          config: currentConfig
+        });
+        return [];
+      }
+      const result = [];
+      for (const asset of sizeAssets) {
+        const url = asset.modelUrl || asset.glbUrl || "";
+        if (url) {
+          result.push({ url, category: asset.category });
+        } else {
+          console.warn(`[Atelier Widget] Asset missing URL:`, asset);
+        }
+      }
+      console.log(`[Atelier Widget] Built asset list for size ${size}:`, result.length, "assets", result);
+      return result;
+    };
+    let outfitAssetsData = void 0;
+    const fetchOutfitAssets = async (previewInstanceRef) => {
+      try {
+        const apiUrl = getApiBaseUrl() || "http://localhost:3000";
+        const searchParams = new URLSearchParams();
+        if (params.publicKey) {
+          searchParams.append("publicKey", params.publicKey);
+        }
+        if (currentSize) {
+          searchParams.append("size", currentSize);
+        }
+        const currentProductId = params.externalProductId || params.productId;
+        if (currentProductId) {
+          searchParams.append("excludeProductId", currentProductId);
+        }
+        const response = await fetch(`${apiUrl}/api/public/assets/by-shop?${searchParams.toString()}`);
+        if (response.ok) {
+          const data = await response.json();
+          outfitAssetsData = data;
+          if (previewInstanceRef) {
+            previewInstanceRef.updateOutfitAssets(data);
+          }
+        }
+      } catch (error) {
+        console.warn("[Atelier Widget] Failed to fetch outfit assets:", error);
+      }
+    };
     const onOutfitClickHandler = (container) => {
-      showOutfitChangePanel(container, params).catch((error) => {
+      showOutfitChangePanel(container, params, {
+        onProductSelect: (product, newConfig) => {
+          var _a4, _b3;
+          currentConfig = newConfig;
+          const productName = ((_a4 = newConfig.asset) == null ? void 0 : _a4.productName) || product.name;
+          previewInstance.updateProductName(productName);
+          const newDefaultSize = ((_b3 = newConfig.asset) == null ? void 0 : _b3.defaultSize) || "M";
+          const newAssets = buildAssetList(currentSize);
+          if (newAssets.length > 0) {
+            previewInstance.updateAssets(newAssets);
+          } else {
+            currentSize = newDefaultSize;
+            previewInstance.updateSize(newDefaultSize);
+            previewInstance.updateAssets(buildAssetList(newDefaultSize));
+          }
+        }
+      }).catch((error) => {
         console.error("[Atelier Widget] Failed to show outfit change panel:", error);
         if (isDevelopmentMode()) {
           alert("着せ替えパネルの表示に失敗しました: " + error.message);
@@ -29876,100 +30163,122 @@ void main() {
       });
     };
     let previewInstance;
-    const setupFloatingButtons = (floatingButtons) => {
-      if (floatingButtons) {
-        const computed = window.getComputedStyle(floatingButtons);
-        if (computed.position !== "absolute") {
-          floatingButtons.style.cssText = `
-          position: absolute !important;
-          right: 24px !important;
-          top: 55% !important;
-          display: flex !important;
-          flex-direction: column !important;
-          gap: 10px !important;
-          pointer-events: auto !important;
-          z-index: 10001 !important;
-        `;
-        }
+    const cleanupAndClose = () => {
+      document.querySelectorAll("[data-atelier-floating-buttons]").forEach((el) => {
+        el.remove();
+      });
+      if (previewInstance) {
+        previewInstance.destroy();
+      }
+      if (overlay.parentNode) {
+        overlay.parentNode.removeChild(overlay);
       }
     };
+    const backButton = overlay.querySelector("[data-atelier-back-button]");
+    if (backButton) {
+      const newBackButton = backButton.cloneNode(true);
+      newBackButton.addEventListener("click", cleanupAndClose);
+      newBackButton.addEventListener("mouseenter", () => {
+        newBackButton.style.backgroundColor = "rgba(255, 255, 255, 1)";
+        newBackButton.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.2)";
+      });
+      newBackButton.addEventListener("mouseleave", () => {
+        newBackButton.style.backgroundColor = "rgba(255, 255, 255, 0.9)";
+        newBackButton.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.15)";
+      });
+      backButton.replaceWith(newBackButton);
+    }
+    const apiBaseUrl = getApiBaseUrl() || "http://localhost:3000";
+    const baseModelUrl = `${apiBaseUrl}/3d/clo_model_men.glb`;
     const previewOptions = {
-      onBackClick: () => {
-        const allFloatingButtons = document.querySelectorAll("[data-atelier-floating-buttons]");
-        allFloatingButtons.forEach((btn) => {
-          const el = btn;
-          el.style.setProperty("display", "none", "important");
-          el.style.setProperty("visibility", "hidden", "important");
-          el.style.setProperty("opacity", "0", "important");
-          el.style.setProperty("pointer-events", "none", "important");
-          if (el.parentElement) {
-            el.parentElement.removeChild(el);
-          }
-          if (el.isConnected) {
-            el.remove();
-          }
-        });
-        if (previewInstance) {
-          previewInstance.destroy();
-        }
-        if (overlay.parentNode) {
-          overlay.parentNode.removeChild(overlay);
-        }
-        const finalCheck = document.querySelectorAll("[data-atelier-floating-buttons]");
-        finalCheck.forEach((btn) => {
-          const el = btn;
-          el.style.setProperty("display", "none", "important");
-          if (el.parentElement) {
-            el.parentElement.removeChild(el);
-          }
-          if (el.isConnected) {
-            el.remove();
-          }
-        });
-      },
+      onBackClick: cleanupAndClose,
       onOutfitClick: onOutfitClickHandler,
       currentProductId: params.productId || params.externalProductId || void 0,
       container: contentArea,
-      onFloatingButtonsReady: setupFloatingButtons,
-      // 新しいコールバックを追加
-      assets: assetList,
+      modelUrl: baseModelUrl,
+      // 絶対URLで指定（ECサイトのドメインから読み込まれるのを防ぐ）
+      assets: [],
+      // 管理画面と同じく空で初期化、後でupdateAssetsで追加
+      outfitAssets: outfitAssetsData,
       textureUrl: void 0,
-      apiBaseUrl: getApiBaseUrl() || "http://localhost:3000",
+      apiBaseUrl,
+      // 上で定義したapiBaseUrlを使用
       initialHeight: 170,
       minHeight: 150,
       maxHeight: 190,
       availableSizes,
       initialSize: currentSize,
-      productName: (_c = config.asset) == null ? void 0 : _c.productName,
-      onSizeChange: (size) => {
-        var _a3;
-        currentSize = size;
-        const newAssetList = ((_a3 = config.asset) == null ? void 0 : _a3.sizes) && config.asset.sizes[size] ? (() => {
-          const sizeAssets = config.asset.sizes[size];
-          return sizeAssets.map((asset) => {
-            const url = asset.modelUrl || asset.glbUrl || "";
-            if (!url) return null;
-            return {
-              url,
-              category: asset.category
-            };
-          }).filter((asset) => asset !== null);
-        })() : [];
-        previewInstance.updateAssets(newAssetList);
-        sendEvent({
-          shopId: eventShopId,
-          productId: params.productId || params.externalProductId || void 0,
-          type: "size_change",
-          meta: { size }
+      productName: (_b2 = config.asset) == null ? void 0 : _b2.productName,
+      onOutfitAssetSelect: (asset) => {
+        activeAssets.set(asset.category, {
+          url: asset.modelUrl,
+          category: asset.category
         });
+        const allAssets = Array.from(activeAssets.values());
+        previewInstance.updateAssets(allAssets);
+        if (eventShopId && eventShopId !== "unknown") {
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          const validProductId = asset.productId && uuidRegex.test(asset.productId) ? asset.productId : void 0;
+          sendEvent({
+            shopId: eventShopId,
+            productId: validProductId,
+            type: "outfit_asset_select",
+            meta: { assetId: asset.id, category: asset.category }
+          }).catch((error) => {
+            if (isDevelopmentMode()) {
+              console.warn("[Atelier Widget] Event send error:", error);
+            }
+          });
+        }
+      },
+      onSizeChange: (size) => {
+        currentSize = size;
+        const newAssetList = buildAssetList(size);
+        activeAssets.clear();
+        newAssetList.forEach((asset) => {
+          if (asset.category) {
+            activeAssets.set(asset.category, {
+              url: asset.url,
+              category: asset.category
+            });
+          }
+        });
+        previewInstance.updateAssets(newAssetList);
+        fetchOutfitAssets(previewInstance);
+        if (eventShopId && eventShopId !== "unknown") {
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          const productIdStr = params.productId || params.externalProductId || "";
+          const validProductId = productIdStr && uuidRegex.test(productIdStr) ? productIdStr : void 0;
+          sendEvent({
+            shopId: eventShopId,
+            // eventShopId !== "unknown" のチェックで string 型が保証されている
+            productId: validProductId,
+            type: "size_change",
+            meta: { size }
+          }).catch((error) => {
+            if (isDevelopmentMode()) {
+              console.warn("[Atelier Widget] Event send error:", error);
+            }
+          });
+        }
       },
       onHeightChange: (height) => {
-        sendEvent({
-          shopId: eventShopId,
-          productId: params.productId || params.externalProductId || void 0,
-          type: "height_change",
-          meta: { height }
-        });
+        if (eventShopId && eventShopId !== "unknown") {
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          const productIdStr = params.productId || params.externalProductId || "";
+          const validProductId = productIdStr && uuidRegex.test(productIdStr) ? productIdStr : void 0;
+          sendEvent({
+            shopId: eventShopId,
+            // eventShopId !== "unknown" のチェックで string 型が保証されている
+            productId: validProductId,
+            type: "height_change",
+            meta: { height }
+          }).catch((error) => {
+            if (isDevelopmentMode()) {
+              console.warn("[Atelier Widget] Event send error:", error);
+            }
+          });
+        }
       },
       onModelLoad: () => {
       },
@@ -29981,6 +30290,25 @@ void main() {
       }
     };
     previewInstance = initPreviewPanel(previewOptions);
+    const initialAssetList = buildAssetList(currentSize);
+    if (initialAssetList.length > 0) {
+      initialAssetList.forEach((asset) => {
+        if (asset.category) {
+          activeAssets.set(asset.category, {
+            url: asset.url,
+            category: asset.category
+          });
+        }
+      });
+      previewInstance.updateAssets(initialAssetList);
+    } else if (isDevelopmentMode()) {
+      previewInstance.updateAssets([{ url: "http://localhost:3000/3d/clo_model_men.glb", category: void 0 }]);
+    }
+    fetchOutfitAssets(previewInstance).then(() => {
+      if (outfitAssetsData) {
+        previewInstance.updateOutfitAssets(outfitAssetsData);
+      }
+    });
   }
   function showErrorInModal(shadowRoot, errorMessage, overlay, contentArea) {
     if (!overlay || !contentArea) {
@@ -30022,8 +30350,9 @@ void main() {
       document.head.appendChild(style);
     }
   }
-  function createBackButton(overlay) {
+  function createBackButton(onClick) {
     const backButton = document.createElement("button");
+    backButton.setAttribute("data-atelier-back-button", "true");
     backButton.innerHTML = "< 商品に戻る";
     backButton.style.cssText = `
     position: absolute;
@@ -30053,11 +30382,7 @@ void main() {
       backButton.style.backgroundColor = "rgba(255, 255, 255, 0.9)";
       backButton.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.15)";
     });
-    backButton.addEventListener("click", () => {
-      if (overlay.parentNode) {
-        overlay.parentNode.removeChild(overlay);
-      }
-    });
+    backButton.addEventListener("click", onClick);
     return backButton;
   }
   function createContentArea() {
@@ -30142,7 +30467,7 @@ void main() {
         element.style.border = "none";
         element.style.background = "transparent";
         const shadowRoot = element.attachShadow({ mode: "open" });
-        renderCube(shadowRoot, {
+        const params = {
           publicKey: publicKey || null,
           shopId: shopId || null,
           // 後方互換性のため
@@ -30152,7 +30477,18 @@ void main() {
           sku,
           handle,
           url
-        }, handleCubeClick);
+        };
+        renderCube(shadowRoot, params, handleCubeClick);
+        if (publicKey) {
+          const pid = productId || externalProductId || `widget-${Date.now()}-${Math.random()}`;
+          const containerId = `atelier-widget-container-${pid}`;
+          fetchWidgetDesign(publicKey).then((design) => {
+            if (design) {
+              applyDesignToButton(containerId, design);
+            }
+          }).catch(() => {
+          });
+        }
       } catch (error) {
         console.error(`[Atelier Widget] Failed to initialize widget ${index + 1}:`, error);
       }
@@ -30160,17 +30496,11 @@ void main() {
     updateButtonPositions();
   }
   async function handleCubeClick(shadowRoot, params) {
-    console.log("[Atelier Widget] ===== handleCubeClick START =====");
-    console.log("[Atelier Widget] params:", params);
     if (!params.publicKey && !params.shopId) {
-      const errorMsg = "[Atelier Widget] publicKey or shopId is required";
-      console.error(errorMsg);
       alert("ウィジェットの設定エラー: Public Keyが設定されていません");
       return;
     }
     if (!params.externalProductId && !params.productId) {
-      const errorMsg = "[Atelier Widget] externalProductId or productId is required";
-      console.error(errorMsg);
       alert("ウィジェットの設定エラー: 商品IDが設定されていません。data-atelier-external-product-id属性を追加してください。");
       return;
     }
@@ -30179,71 +30509,25 @@ void main() {
       shopId: eventShopId,
       productId: params.productId || params.externalProductId || void 0,
       type: "cube_click"
-    }).catch((error) => {
-      console.warn("[Atelier Widget] Failed to send cube_click event:", error);
+    }).catch(() => {
     });
-    console.log("[Atelier Widget] Calling renderModalWithLoading");
     const { overlay, contentArea } = renderModalWithLoading();
-    console.log("[Atelier Widget] renderModalWithLoading completed, overlay:", overlay, "contentArea:", contentArea);
     try {
-      console.log("[Atelier Widget] Fetching widget config...");
       const config = await fetchWidgetConfig(params);
-      console.log("[Atelier Widget] Widget config fetched:", config);
       if (config.enabled) {
-        console.log("[Atelier Widget] Config enabled, calling updateModalWithConfig");
         updateModalWithConfig(shadowRoot, config, params, overlay, contentArea);
       } else {
-        if (isDevelopmentMode()) {
-          console.warn(
-            "[Atelier Widget] Widget is disabled, but using mock config for development."
-          );
-          const glbUrl = "http://localhost:3000/3d/clo_model.glb";
-          const mockConfig = {
-            enabled: true,
-            asset: {
-              defaultSize: "M",
-              sizes: {
-                S: [{ glbUrl }],
-                M: [{ glbUrl }],
-                L: [{ glbUrl }]
-              }
-            }
-          };
-          updateModalWithConfig(shadowRoot, mockConfig, params, overlay, contentArea);
-        } else {
-          console.warn("[Atelier Widget] Widget is disabled for this product", {
-            config,
-            params
-          });
-          const errorDetails = config.error || "不明なエラー";
-          showErrorInModal(shadowRoot, `この商品の3D試着は現在利用できません。
+        const errorDetails = config.error || "不明なエラー";
+        showErrorInModal(shadowRoot, `この商品の3D試着は現在利用できません。
 
 エラー: ${errorDetails}`, overlay, contentArea);
-        }
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      if (isDevelopmentMode()) {
-        console.error("[Atelier Widget] Error in handleCubeClick:", error);
-        console.error("[Atelier Widget] Error details:", error);
-        const glbUrl = "http://localhost:3000/3d/model_men.glb";
-        const mockConfig = {
-          asset: {
-            defaultSize: "M",
-            sizes: {
-              S: [{ glbUrl }],
-              M: [{ glbUrl }],
-              L: [{ glbUrl }]
-            }
-          }
-        };
-        updateModalWithConfig(shadowRoot, mockConfig, params, overlay, contentArea);
-      } else {
-        console.error("[Atelier Widget] Error in handleCubeClick:", errorMessage);
-        showErrorInModal(shadowRoot, `3D試着の読み込みに失敗しました。
+      console.error("[Atelier Widget] Error in handleCubeClick:", errorMessage);
+      showErrorInModal(shadowRoot, `3D試着の読み込みに失敗しました。
 
 エラー: ${errorMessage}`, overlay, contentArea);
-      }
     }
   }
   if (typeof window !== "undefined") {

@@ -16,7 +16,6 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    console.log("[shop API] GET request received for:", id);
     
     const authHeader = request.headers.get("authorization");
     
@@ -95,10 +94,10 @@ export async function GET(
     }
 
     return NextResponse.json(shop);
-  } catch (error: any) {
+  } catch (error) {
     console.error("[shop API] Unexpected error:", error);
     return NextResponse.json(
-      { error: "Internal server error", details: error?.message },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
@@ -111,7 +110,6 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    console.log("[shop API] PATCH request received for:", id);
     
     const authHeader = request.headers.get("authorization");
     
@@ -210,13 +208,11 @@ export async function PATCH(
       );
     }
 
-    console.log("[shop API] Shop updated successfully:", id);
-
     return NextResponse.json(updatedShop);
-  } catch (error: any) {
+  } catch (error) {
     console.error("[shop API] Unexpected error:", error);
     return NextResponse.json(
-      { error: "Internal server error", details: error?.message },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

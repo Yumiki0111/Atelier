@@ -48,6 +48,11 @@ const navigationItems = [
         icon: "/icon/home.png"
     },
     {
+        href: "/widget-design",
+        label: "インターフェース",
+        icon: "/icon/palet.png"
+    },
+    {
         href: "/database/products",
         label: "商品データベース",
         icon: "/icon/jacket.png"
@@ -96,7 +101,7 @@ function Sidebar() {
                                 className: "h-6 w-auto object-contain"
                             }, void 0, false, {
                                 fileName: "[project]/atelier/apps/console/src/components/sidebar/Sidebar.tsx",
-                                lineNumber: 42,
+                                lineNumber: 43,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -104,13 +109,13 @@ function Sidebar() {
                                 children: "Atelier"
                             }, void 0, false, {
                                 fileName: "[project]/atelier/apps/console/src/components/sidebar/Sidebar.tsx",
-                                lineNumber: 49,
+                                lineNumber: 50,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/atelier/apps/console/src/components/sidebar/Sidebar.tsx",
-                        lineNumber: 41,
+                        lineNumber: 42,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -121,24 +126,24 @@ function Sidebar() {
                             className: "h-4 w-4"
                         }, void 0, false, {
                             fileName: "[project]/atelier/apps/console/src/components/sidebar/Sidebar.tsx",
-                            lineNumber: 61,
+                            lineNumber: 62,
                             columnNumber: 13
                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$left$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronLeft$3e$__["ChevronLeft"], {
                             className: "h-4 w-4"
                         }, void 0, false, {
                             fileName: "[project]/atelier/apps/console/src/components/sidebar/Sidebar.tsx",
-                            lineNumber: 63,
+                            lineNumber: 64,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/atelier/apps/console/src/components/sidebar/Sidebar.tsx",
-                        lineNumber: 52,
+                        lineNumber: 53,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/atelier/apps/console/src/components/sidebar/Sidebar.tsx",
-                lineNumber: 34,
+                lineNumber: 35,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("nav", {
@@ -158,7 +163,7 @@ function Sidebar() {
                                 className: "h-5 w-5 object-contain flex-shrink-0"
                             }, void 0, false, {
                                 fileName: "[project]/atelier/apps/console/src/components/sidebar/Sidebar.tsx",
-                                lineNumber: 93,
+                                lineNumber: 94,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -166,19 +171,19 @@ function Sidebar() {
                                 children: item.label
                             }, void 0, false, {
                                 fileName: "[project]/atelier/apps/console/src/components/sidebar/Sidebar.tsx",
-                                lineNumber: 100,
+                                lineNumber: 101,
                                 columnNumber: 15
                             }, this)
                         ]
                     }, item.href, true, {
                         fileName: "[project]/atelier/apps/console/src/components/sidebar/Sidebar.tsx",
-                        lineNumber: 81,
+                        lineNumber: 82,
                         columnNumber: 13
                     }, this);
                 })
             }, void 0, false, {
                 fileName: "[project]/atelier/apps/console/src/components/sidebar/Sidebar.tsx",
-                lineNumber: 69,
+                lineNumber: 70,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -198,7 +203,7 @@ function Sidebar() {
                                 className: "h-5 w-5 object-contain flex-shrink-0"
                             }, void 0, false, {
                                 fileName: "[project]/atelier/apps/console/src/components/sidebar/Sidebar.tsx",
-                                lineNumber: 135,
+                                lineNumber: 136,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -206,25 +211,25 @@ function Sidebar() {
                                 children: item.label
                             }, void 0, false, {
                                 fileName: "[project]/atelier/apps/console/src/components/sidebar/Sidebar.tsx",
-                                lineNumber: 142,
+                                lineNumber: 143,
                                 columnNumber: 15
                             }, this)
                         ]
                     }, item.href, true, {
                         fileName: "[project]/atelier/apps/console/src/components/sidebar/Sidebar.tsx",
-                        lineNumber: 123,
+                        lineNumber: 124,
                         columnNumber: 13
                     }, this);
                 })
             }, void 0, false, {
                 fileName: "[project]/atelier/apps/console/src/components/sidebar/Sidebar.tsx",
-                lineNumber: 114,
+                lineNumber: 115,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/atelier/apps/console/src/components/sidebar/Sidebar.tsx",
-        lineNumber: 27,
+        lineNumber: 28,
         columnNumber: 5
     }, this);
 }

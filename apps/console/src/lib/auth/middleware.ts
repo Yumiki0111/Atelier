@@ -19,7 +19,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export async function getAuthenticatedUser(
   request: NextRequest
 ): Promise<{ userId: string; shopId: string; userRole: "owner" | "member" | null } | null> {
-  console.log("[getAuthenticatedUser] Starting authentication check");
+  
   try {
     // Authorizationヘッダーからトークンを取得
     const authHeader = request.headers.get("authorization");

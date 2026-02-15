@@ -1,18 +1,15 @@
-// 開発モードかどうかを判定
+/** 開発ポートのセット（Vite, Next.js等） */
+const DEV_PORTS = new Set(["3000", "3001", "5173", "5174"]);
+
+/**
+ * 開発モードかどうかを判定
+ * localhost/127.0.0.1 かつ既知の開発ポートで実行中の場合に true
+ */
 export function isDevelopmentMode(): boolean {
   if (typeof window === "undefined") return false;
-  // Viteの開発サーバーは通常5173や5174ポートを使用
-  // または開発用のHTMLファイルから実行されている場合
-  // localhostの任意のポートも開発モードとして扱う
-  const port = window.location.port;
-  const hostname = window.location.hostname;
-  return (
-    port === "5174" ||
-    port === "5173" ||
-    port === "3001" ||
-    port === "3000" ||
-    (hostname === "localhost" && (port === "" || port === "5174" || port === "5173" || port === "3001" || port === "3000"))
-  );
+  const { hostname, port } = window.location;
+  const isLocalHost = hostname === "localhost" || hostname === "127.0.0.1";
+  return isLocalHost && DEV_PORTS.has(port);
 }
 
 // API base URL - will be determined at runtime from the current page

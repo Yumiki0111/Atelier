@@ -79,7 +79,6 @@ const supabaseAnonKey = ("TURBOPACK compile-time value", "eyJhbGciOiJIUzI1NiIsIn
 if ("TURBOPACK compile-time falsy", 0) //TURBOPACK unreachable
 ;
 async function getAuthenticatedUser(request) {
-    console.log("[getAuthenticatedUser] Starting authentication check");
     try {
         // Authorizationヘッダーからトークンを取得
         const authHeader = request.headers.get("authorization");

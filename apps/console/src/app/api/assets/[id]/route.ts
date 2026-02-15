@@ -3,12 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAuthenticatedUser } from "@/lib/auth/middleware";
 import { updateAssetSchema } from "@atelier/shared";
 import { z } from "zod";
-
-// UUID形式をチェックする関数
-function isValidUUID(uuid: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(uuid);
-}
+import { isValidUUID } from "@/lib/api/validation";
 
 // GET /api/assets/:id - Get asset by ID
 export async function GET(

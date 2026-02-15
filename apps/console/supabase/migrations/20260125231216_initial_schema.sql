@@ -7,7 +7,6 @@ CREATE TABLE IF NOT EXISTS products (
   sku TEXT,
   handle TEXT,
   url TEXT,
-  status TEXT NOT NULL CHECK (status IN ('pending', 'in_production', 'review', 'revision', 'ready', 'published')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -39,7 +38,6 @@ CREATE INDEX IF NOT EXISTS idx_events_shop_id ON events(shop_id);
 CREATE INDEX IF NOT EXISTS idx_events_product_id ON events(product_id);
 CREATE INDEX IF NOT EXISTS idx_events_created_at ON events(created_at);
 CREATE INDEX IF NOT EXISTS idx_products_shop_id ON products(shop_id);
-CREATE INDEX IF NOT EXISTS idx_products_status ON products(status);
 CREATE INDEX IF NOT EXISTS idx_assets_product_id ON assets(product_id);
 
 -- Update trigger for updated_at
@@ -51,8 +49,10 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+DROP TRIGGER IF EXISTS update_products_updated_at ON products;
 CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_assets_updated_at ON assets;
 CREATE TRIGGER update_assets_updated_at BEFORE UPDATE ON assets
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

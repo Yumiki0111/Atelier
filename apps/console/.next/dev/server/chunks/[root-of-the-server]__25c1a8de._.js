@@ -459,6 +459,15 @@ async function GET(request) {
             // データベースが設定されていない場合は空配列を返す（開発環境での動作を継続）
             return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json([]);
         }
+        // 認証チェック
+        const auth = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$auth$2f$middleware$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["getAuthenticatedUser"])(request);
+        if (!auth) {
+            return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+                error: "Unauthorized"
+            }, {
+                status: 401
+            });
+        }
         const searchParams = request.nextUrl.searchParams;
         const productId = searchParams.get("productId");
         if (!productId) {
@@ -478,6 +487,15 @@ async function GET(request) {
                 status: 400
             });
         }
+        // 商品がこのユーザーのショップに属しているか検証（＋カテゴリー情報も取得）
+        const { data: product, error: productError } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("products").select("id, shop_id, category").eq("id", productId).eq("shop_id", auth.shopId).single();
+        if (productError || !product) {
+            return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+                error: "Product not found"
+            }, {
+                status: 404
+            });
+        }
         const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("assets").select("*").eq("product_id", productId).order("size", {
             ascending: true
         }).order("version", {
@@ -485,7 +503,6 @@ async function GET(request) {
         });
         if (error) {
             console.error("Error fetching assets:", error);
-            // より詳細なエラーメッセージを返す
             return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
                 error: "Failed to fetch assets",
                 details: error.message,
@@ -494,11 +511,9 @@ async function GET(request) {
                 status: 500
             });
         }
-        // アセットと関連する商品情報を取得（カテゴリー情報を含める）
-        const assetsWithProducts = await Promise.all((data || []).map(async (a)=>{
-            // 商品情報を取得してカテゴリーを取得
-            const { data: product } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$server$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from("products").select("category").eq("id", a.product_id).single();
-            return {
+        // カテゴリー情報は商品から取得済みなので N+1 クエリ不要
+        const category = product.category || undefined;
+        const assets = (data || []).map((a)=>({
                 id: a.id,
                 productId: a.product_id,
                 size: a.size,
@@ -509,11 +524,9 @@ async function GET(request) {
                 isActive: a.is_active ?? true,
                 createdAt: a.created_at,
                 updatedAt: a.updated_at,
-                category: product?.category || undefined
-            };
-        }));
-        const assets = assetsWithProducts;
-        return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json(assets || []);
+                category
+            }));
+        return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json(assets);
     } catch (error) {
         console.error("Error in GET /api/assets:", error);
         return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({

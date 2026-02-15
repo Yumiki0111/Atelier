@@ -2,9 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import type { Asset } from "@atelier/shared";
+import { authenticatedFetch } from "@/lib/auth/api-client";
 
 async function fetchAssets(productId: string): Promise<Asset[]> {
-  const response = await fetch(`/api/assets?productId=${productId}`);
+  const response = await authenticatedFetch(`/api/assets?productId=${productId}`);
   if (!response.ok) {
     // データベースが設定されていない場合は空配列を返す
     if (response.status === 500) {

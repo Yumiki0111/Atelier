@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import { authenticatedFetch } from "@/lib/auth/api-client";
 
 type TimeRange = "24h" | "7d" | "30d" | "90d";
 
@@ -15,7 +16,7 @@ interface AnalyticsData {
 }
 
 async function fetchAnalytics(shopId: string, timeRange: TimeRange): Promise<AnalyticsData[]> {
-  const response = await fetch(
+  const response = await authenticatedFetch(
     `/api/analytics?shopId=${encodeURIComponent(shopId)}&timeRange=${timeRange}`
   );
   

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { getAuthenticatedUser } from "@/lib/auth/middleware";
 
 // App Router用の設定
 export const runtime = 'nodejs'; // Node.jsランタイムを使用
@@ -12,6 +13,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Database not configured" },
         { status: 500 }
+      );
+    }
+
+    // 認証チェック
+    const auth = await getAuthenticatedUser(request);
+    if (!auth) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
       );
     }
 
@@ -89,8 +99,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // デバッグ: 利用可能なバケット一覧をログに出力
-    console.log("Available buckets:", buckets?.map(b => ({ name: b.name, public: b.public })));
+    if (process.env.NODE_ENV === "development") {
+      console.log("Available buckets:", buckets?.map(b => ({ name: b.name, public: b.public })));
+    }
 
     const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
     if (!bucketExists) {
@@ -107,7 +118,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`Uploading to bucket: ${bucketName}, path: ${filePath}, size: ${file.size} bytes`);
+    if (process.env.NODE_ENV === "development") {
+      console.log(`Uploading to bucket: ${bucketName}, path: ${filePath}, size: ${file.size} bytes`);
+    }
     
     // 大きなファイル（50MB以上）の場合はチャンクアップロードを使用
     const CHUNK_SIZE = 50 * 1024 * 1024; // 50MB per chunk
@@ -117,7 +130,9 @@ export async function POST(request: NextRequest) {
     
     if (fileSize > CHUNK_SIZE) {
       // チャンクアップロード
-      console.log(`Large file detected (${fileSize} bytes), using chunked upload`);
+      if (process.env.NODE_ENV === "development") {
+        console.log(`Large file detected (${fileSize} bytes), using chunked upload`);
+      }
       
       // Supabase Storageのチャンクアップロードは、ファイルを分割してアップロードする必要がある
       // しかし、Supabase StorageのNode.jsクライアントは自動的にチャンクアップロードをサポートしていないため、
@@ -229,13 +244,15 @@ export async function POST(request: NextRequest) {
     const bucket = buckets?.find(b => b.name === bucketName);
     const isPublic = bucket?.public === true;
 
-    console.log("Upload successful:", {
-      fileName,
-      filePath,
-      url: urlData.publicUrl,
-      bucketPublic: isPublic,
-      fileExists: fileData && fileData.length > 0,
-    });
+    if (process.env.NODE_ENV === "development") {
+      console.log("Upload successful:", {
+        fileName,
+        filePath,
+        url: urlData.publicUrl,
+        bucketPublic: isPublic,
+        fileExists: fileData && fileData.length > 0,
+      });
+    }
 
     return NextResponse.json({
       url: urlData.publicUrl,

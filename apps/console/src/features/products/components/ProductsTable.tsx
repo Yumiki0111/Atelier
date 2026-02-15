@@ -257,7 +257,7 @@ export function ProductsTable({
                               onProductSelect(product, "M");
                               togglePreview();
                             }}
-                            className="gap-2"
+                            className="gap-2 h-9 min-w-[120px]"
                           >
                             <Eye className="h-4 w-4" />
                             プレビュー

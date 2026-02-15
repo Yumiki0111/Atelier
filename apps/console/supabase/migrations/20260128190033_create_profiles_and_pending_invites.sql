@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 CREATE INDEX IF NOT EXISTS idx_profiles_shop_id ON public.profiles(shop_id);
 CREATE INDEX IF NOT EXISTS idx_profiles_email ON public.profiles(email);
 
+DROP TRIGGER IF EXISTS trg_profiles_updated_at ON public.profiles;
 CREATE TRIGGER trg_profiles_updated_at
 BEFORE UPDATE ON public.profiles
 FOR EACH ROW

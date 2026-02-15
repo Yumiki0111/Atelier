@@ -77,7 +77,6 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f40
 async function GET(request, { params }) {
     try {
         const { id } = await params;
-        console.log("[shop API] GET request received for:", id);
         const authHeader = request.headers.get("authorization");
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
             return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
@@ -137,8 +136,7 @@ async function GET(request, { params }) {
     } catch (error) {
         console.error("[shop API] Unexpected error:", error);
         return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-            error: "Internal server error",
-            details: error?.message
+            error: "Internal server error"
         }, {
             status: 500
         });
@@ -147,7 +145,6 @@ async function GET(request, { params }) {
 async function PATCH(request, { params }) {
     try {
         const { id } = await params;
-        console.log("[shop API] PATCH request received for:", id);
         const authHeader = request.headers.get("authorization");
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
             return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
@@ -225,13 +222,11 @@ async function PATCH(request, { params }) {
                 status: 500
             });
         }
-        console.log("[shop API] Shop updated successfully:", id);
         return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json(updatedShop);
     } catch (error) {
         console.error("[shop API] Unexpected error:", error);
         return __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-            error: "Internal server error",
-            details: error?.message
+            error: "Internal server error"
         }, {
             status: 500
         });

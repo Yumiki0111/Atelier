@@ -2,12 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAuthenticatedUser } from "@/lib/auth/middleware";
 import { createAssetSchema } from "@atelier/shared";
-
-// UUID形式をチェックする関数
-function isValidUUID(uuid: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(uuid);
-}
+import { isValidUUID } from "@/lib/api/validation";
 
 // GET /api/assets - List assets
 export async function GET(request: NextRequest) {
@@ -15,6 +10,15 @@ export async function GET(request: NextRequest) {
     if (!supabaseAdmin) {
       // データベースが設定されていない場合は空配列を返す（開発環境での動作を継続）
       return NextResponse.json([]);
+    }
+
+    // 認証チェック
+    const auth = await getAuthenticatedUser(request);
+    if (!auth) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
     const searchParams = request.nextUrl.searchParams;
@@ -39,6 +43,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // 商品がこのユーザーのショップに属しているか検証（＋カテゴリー情報も取得）
+    const { data: product, error: productError } = await supabaseAdmin
+      .from("products")
+      .select("id, shop_id, category")
+      .eq("id", productId)
+      .eq("shop_id", auth.shopId)
+      .single();
+
+    if (productError || !product) {
+      return NextResponse.json(
+        { error: "Product not found" },
+        { status: 404 }
+      );
+    }
+
     const { data, error } = await supabaseAdmin
       .from("assets")
       .select("*")
@@ -48,7 +67,6 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error("Error fetching assets:", error);
-      // より詳細なエラーメッセージを返す
       return NextResponse.json(
         { 
           error: "Failed to fetch assets",
@@ -59,46 +77,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // アセットと関連する商品情報を取得（カテゴリー情報を含める）
-    // supabaseAdminがnullでないことを確認（型安全性のため）
-    if (!supabaseAdmin) {
-      return NextResponse.json(
-        { error: "Database not configured" },
-        { status: 500 }
-      );
-    }
+    // カテゴリー情報は商品から取得済みなので N+1 クエリ不要
+    const category = product.category || undefined;
 
-    // 型安全性のため、ローカル変数に保存
-    const admin = supabaseAdmin;
+    const assets = (data || []).map((a) => ({
+      id: a.id,
+      productId: a.product_id,
+      size: a.size,
+      glbUrl: a.glb_url,
+      modelUrl: a.model_url || a.glb_url,
+      thumbnailUrl: a.thumbnail_url,
+      version: a.version,
+      isActive: a.is_active ?? true,
+      createdAt: a.created_at,
+      updatedAt: a.updated_at,
+      category,
+    }));
 
-    const assetsWithProducts = await Promise.all(
-      (data || []).map(async (a) => {
-        // 商品情報を取得してカテゴリーを取得
-        const { data: product } = await admin
-          .from("products")
-          .select("category")
-          .eq("id", a.product_id)
-          .single();
-        
-        return {
-          id: a.id,
-          productId: a.product_id,
-          size: a.size,
-          glbUrl: a.glb_url, // 後方互換性のため残す
-          modelUrl: a.model_url || a.glb_url, // model_urlを優先、なければglb_urlを使用
-          thumbnailUrl: a.thumbnail_url,
-          version: a.version,
-          isActive: a.is_active ?? true,
-          createdAt: a.created_at,
-          updatedAt: a.updated_at,
-          category: product?.category || undefined, // カテゴリー情報を追加
-        };
-      })
-    );
-
-    const assets = assetsWithProducts;
-
-    return NextResponse.json(assets || []);
+    return NextResponse.json(assets);
   } catch (error) {
     console.error("Error in GET /api/assets:", error);
     return NextResponse.json(

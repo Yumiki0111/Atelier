@@ -1,3 +1,20 @@
+export interface WidgetDesignConfig {
+  backgroundImage?: string;
+  backgroundColor?: string;
+  theme?: "light" | "dark";
+  button?: {
+    text?: string;
+    color?: string;
+    radius?: number;
+    width?: number;
+    height?: number;
+    fontSize?: number;
+    borderWidth?: number;
+    borderColor?: string;
+    shadow?: boolean;
+  };
+}
+
 export interface WidgetConfig {
   enabled: boolean;
   error?: string; // エラーメッセージ（enabled: falseの場合）
@@ -7,4 +24,5 @@ export interface WidgetConfig {
     productName?: string; // 商品名
     thumbnailUrl?: string; // 商品画像URL
   };
+  design?: WidgetDesignConfig;
 }

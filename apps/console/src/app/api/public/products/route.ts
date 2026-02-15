@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { setCorsHeaders, handleCorsOptions, validatePublicKeyAndDomain } from "@/lib/api/cors";
 
 /**
  * Widget Products 公開API
@@ -13,22 +14,9 @@ import { supabaseAdmin } from "@/lib/supabase/server";
  * - [{ id, externalProductId, name, category, thumbnailUrl }, ...]
  */
 
-// CORSヘッダーを設定するヘルパー関数
-function setCorsHeaders(response: NextResponse, request: NextRequest): NextResponse {
-  const origin = request.headers.get("origin");
-  if (origin) {
-    response.headers.set("Access-Control-Allow-Origin", origin);
-    response.headers.set("Access-Control-Allow-Methods", "GET, OPTIONS");
-    response.headers.set("Access-Control-Allow-Headers", "Content-Type");
-    response.headers.set("Access-Control-Allow-Credentials", "true");
-  }
-  return response;
-}
-
 // OPTIONS リクエスト（プリフライト）を処理
 export async function OPTIONS(request: NextRequest) {
-  const response = new NextResponse(null, { status: 200 });
-  return setCorsHeaders(response, request);
+  return handleCorsOptions(request);
 }
 
 export async function GET(request: NextRequest) {
@@ -44,68 +32,23 @@ export async function GET(request: NextRequest) {
       return setCorsHeaders(response, request);
     }
 
+    // publicKey + ドメイン検証
+    const validation = await validatePublicKeyAndDomain(request, publicKey);
+    if (!validation.success) {
+      return validation.response;
+    }
+    const shopId = validation.shopId;
+
     if (!supabaseAdmin) {
-      console.error("[products API] Database not configured");
       const response = NextResponse.json({ error: "Database not configured" }, { status: 500 });
       return setCorsHeaders(response, request);
     }
 
-    // 1. public_key から shop_id を取得（enabled=true のみ）
-    const { data: widgetKey, error: keyError } = await supabaseAdmin
-      .from("widget_keys")
-      .select("shop_id, allowed_domains")
-      .eq("public_key", publicKey)
-      .eq("enabled", true)
-      .single();
-
-    if (keyError || !widgetKey) {
-      console.warn("[products API] Invalid or disabled public_key:", publicKey);
-      const response = NextResponse.json({ error: "Invalid or disabled public_key" }, { status: 403 });
-      return setCorsHeaders(response, request);
-    }
-
-    // 2. ドメイン検証
-    const origin = request.headers.get("origin") || request.headers.get("referer");
-    if (origin) {
-      try {
-        const url = new URL(origin);
-        const host = url.host;
-
-        const allowedDomains: string[] = widgetKey.allowed_domains || [];
-        
-        const isAllowed = allowedDomains.some((domain) => {
-          if (host === domain) {
-            return true;
-          }
-          if (host.endsWith(`.${domain}`)) {
-            return true;
-          }
-          return false;
-        });
-
-        if (!isAllowed) {
-          console.warn("[products API] Domain not allowed:", host);
-          const response = NextResponse.json({ 
-            error: `ドメイン "${host}" が許可されていません。`
-          }, { status: 403 });
-          return setCorsHeaders(response, request);
-        }
-      } catch (urlError) {
-        console.error("[products API] Invalid origin URL:", origin, urlError);
-        const response = NextResponse.json({ error: "Invalid origin" }, { status: 400 });
-        return setCorsHeaders(response, request);
-      }
-    } else {
-      console.warn("[products API] No origin or referer header");
-      const response = NextResponse.json({ error: "Origin or referer header required" }, { status: 400 });
-      return setCorsHeaders(response, request);
-    }
-
-    // 3. 同じshop_idの商品一覧を取得
+    // 同じshop_idの商品一覧を取得
     const { data: products, error: productError } = await supabaseAdmin
       .from("products")
       .select("id, external_product_id, name, category, thumbnail_url")
-      .eq("shop_id", widgetKey.shop_id)
+      .eq("shop_id", shopId)
       .order("created_at", { ascending: false });
 
     if (productError) {
@@ -132,7 +75,7 @@ export async function GET(request: NextRequest) {
     console.error("[products API] Unexpected error:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     const response = NextResponse.json(
-      { error: "Internal server error", message: errorMessage },
+      { error: "Internal server error", message: process.env.NODE_ENV === "development" ? errorMessage : undefined },
       { status: 500 }
     );
     return setCorsHeaders(response, request);

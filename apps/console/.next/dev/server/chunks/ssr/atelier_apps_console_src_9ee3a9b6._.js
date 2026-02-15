@@ -171,15 +171,8 @@ function LoginForm() {
         if (messageParam) {
             setMessage(messageParam);
         }
-        // デバッグ用ログ
-        console.log("[LoginPage] useEffect triggered:", {
-            isAuthenticated,
-            authLoading,
-            shouldRedirect: isAuthenticated && !authLoading
-        });
         // 既にログインしている場合はホームにリダイレクト
         if (isAuthenticated && !authLoading) {
-            console.log("[LoginPage] User is authenticated, redirecting to home");
             router.replace("/");
         }
     }, [
@@ -212,12 +205,12 @@ function LoginForm() {
                 children: "読み込み中..."
             }, void 0, false, {
                 fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-                lineNumber: 64,
+                lineNumber: 56,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-            lineNumber: 63,
+            lineNumber: 55,
             columnNumber: 7
         }, this);
     }
@@ -245,7 +238,7 @@ function LoginForm() {
                                     className: "h-8 w-auto object-contain"
                                 }, void 0, false, {
                                     fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-                                    lineNumber: 81,
+                                    lineNumber: 73,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -253,18 +246,18 @@ function LoginForm() {
                                     children: "Atelier"
                                 }, void 0, false, {
                                     fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-                                    lineNumber: 88,
+                                    lineNumber: 80,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-                            lineNumber: 80,
+                            lineNumber: 72,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-                        lineNumber: 79,
+                        lineNumber: 71,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
@@ -279,7 +272,7 @@ function LoginForm() {
                                         children: "メールアドレス"
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-                                        lineNumber: 95,
+                                        lineNumber: 87,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
@@ -292,13 +285,13 @@ function LoginForm() {
                                         disabled: isLoading
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-                                        lineNumber: 96,
+                                        lineNumber: 88,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-                                lineNumber: 94,
+                                lineNumber: 86,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -309,7 +302,7 @@ function LoginForm() {
                                         children: "パスワード"
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-                                        lineNumber: 108,
+                                        lineNumber: 100,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
@@ -322,13 +315,13 @@ function LoginForm() {
                                         disabled: isLoading
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-                                        lineNumber: 109,
+                                        lineNumber: 101,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-                                lineNumber: 107,
+                                lineNumber: 99,
                                 columnNumber: 13
                             }, this),
                             message && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -338,12 +331,12 @@ function LoginForm() {
                                     children: message
                                 }, void 0, false, {
                                     fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-                                    lineNumber: 122,
+                                    lineNumber: 114,
                                     columnNumber: 17
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-                                lineNumber: 121,
+                                lineNumber: 113,
                                 columnNumber: 15
                             }, this),
                             error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -353,12 +346,12 @@ function LoginForm() {
                                     children: error
                                 }, void 0, false, {
                                     fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-                                    lineNumber: 128,
+                                    lineNumber: 120,
                                     columnNumber: 17
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-                                lineNumber: 127,
+                                lineNumber: 119,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
@@ -368,13 +361,13 @@ function LoginForm() {
                                 children: isLoading ? "ログイン中..." : "ログイン"
                             }, void 0, false, {
                                 fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-                                lineNumber: 132,
+                                lineNumber: 124,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-                        lineNumber: 93,
+                        lineNumber: 85,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -390,34 +383,34 @@ function LoginForm() {
                                     children: "新規登録"
                                 }, void 0, false, {
                                     fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-                                    lineNumber: 144,
+                                    lineNumber: 136,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-                            lineNumber: 142,
+                            lineNumber: 134,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-                        lineNumber: 141,
+                        lineNumber: 133,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-                lineNumber: 77,
+                lineNumber: 69,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-            lineNumber: 76,
+            lineNumber: 68,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-        lineNumber: 75,
+        lineNumber: 67,
         columnNumber: 5
     }, this);
 }
@@ -430,22 +423,22 @@ function LoginPage() {
                 children: "読み込み中..."
             }, void 0, false, {
                 fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-                lineNumber: 159,
+                lineNumber: 151,
                 columnNumber: 9
             }, void 0)
         }, void 0, false, {
             fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-            lineNumber: 158,
+            lineNumber: 150,
             columnNumber: 7
         }, void 0),
         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(LoginForm, {}, void 0, false, {
             fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-            lineNumber: 162,
+            lineNumber: 154,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/atelier/apps/console/src/app/login/page.tsx",
-        lineNumber: 157,
+        lineNumber: 149,
         columnNumber: 5
     }, this);
 }

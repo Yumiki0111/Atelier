@@ -2,6 +2,7 @@ import { useState } from "react";
 import { UseFormSetValue } from "react-hook-form";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase/client";
+import { authenticatedFetch } from "@/lib/auth/api-client";
 
 interface UseAssetUploadOptions {
   setValue: UseFormSetValue<any>;
@@ -18,7 +19,7 @@ export function useAssetUpload({ setValue }: UseAssetUploadOptions) {
       formData.append("file", file);
       formData.append("folder", "models");
 
-      const response = await fetch("/api/upload", {
+      const response = await authenticatedFetch("/api/upload", {
         method: "POST",
         body: formData,
       });

@@ -76,13 +76,10 @@ export async function PATCH(
       updateData.allowed_domains = validated.allowed_domains.length > 0 
         ? validated.allowed_domains 
         : [];
-      console.log("[PATCH /api/widget-keys/:id] Updating allowed_domains:", updateData.allowed_domains);
     }
     if (validated.enabled !== undefined) {
       updateData.enabled = validated.enabled;
     }
-
-    console.log("[PATCH /api/widget-keys/:id] Update data:", updateData);
 
     // 更新
     const { data, error } = await supabaseAdmin
@@ -92,8 +89,6 @@ export async function PATCH(
       .eq("shop_id", auth.shopId)
       .select("id, shop_id, public_key, allowed_domains, enabled, created_at, updated_at")
       .single();
-
-    console.log("[PATCH /api/widget-keys/:id] Update result:", { data, error });
 
     if (error) {
       console.error("Error updating widget key:", error);

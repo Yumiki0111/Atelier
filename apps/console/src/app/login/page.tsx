@@ -26,16 +26,8 @@ function LoginForm() {
       setMessage(messageParam);
     }
 
-    // デバッグ用ログ
-    console.log("[LoginPage] useEffect triggered:", {
-      isAuthenticated,
-      authLoading,
-      shouldRedirect: isAuthenticated && !authLoading,
-    });
-
     // 既にログインしている場合はホームにリダイレクト
     if (isAuthenticated && !authLoading) {
-      console.log("[LoginPage] User is authenticated, redirecting to home");
       router.replace("/");
     }
   }, [isAuthenticated, authLoading, router, searchParams]);
