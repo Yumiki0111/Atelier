@@ -3803,3 +3803,583 @@ Import traces:
 [06:03:35.502] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "g1771040664"
 [06:03:36.406] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "g1771040664"
 [06:03:37.188] Server  LOG     [widget-config API] Response: "{\n  \"productId\": \"0808f63d-8963-4c0b-af60-38a81a12c23d\",\n  \"externalProductId\": \"g1771040664\",\n  \"defaultSize\": \"M\",\n  \"sizesKeys\": [\n    \"M\"\n  ],\n  \"sizesCount\": 1,\n  \"sizes\": {\n    \"M\": [\n      {\n        \"hasModelUrl\": true,\n        \"hasGlbUrl\": true,\n        \"category\": \"ジャケット\"\n      }\n    ]\n  }\n}"
+[06:04:38.112] Server  LOG     [shop-id API] GET request received
+[06:04:38.113] Server  LOG     [shop-id API] Auth header: "present"
+[06:04:38.113] Server  LOG     [shop-id API] Token extracted, length: 796
+[06:04:38.113] Server  LOG     [shop-id API] Verifying token...
+[06:04:38.206] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[06:04:38.206] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[06:04:38.206] Browser LOG     [AuthContext] Using provided access token, calling API...
+[06:04:38.206] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[06:04:38.206] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[06:04:38.831] Server  LOG     [shop-id API] Token verification result: {}
+[06:04:38.831] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[06:04:39.322] Server  LOG     [shop-id API] Query result: {}
+[06:04:39.323] Server  LOG     [shop-id API] Returning shopId and role: {}
+[06:04:39.428] Browser LOG     [AuthContext] Fetch completed, status: 200
+[06:04:39.428] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[06:04:39.428] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[06:04:39.428] Browser LOG     [AuthContext] role found: owner
+[06:04:39.428] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[06:10:36.653] Server  LOG     [shop-id API] GET request received
+[06:10:36.653] Server  LOG     [shop-id API] Auth header: "present"
+[06:10:36.653] Server  LOG     [shop-id API] Token extracted, length: 796
+[06:10:36.653] Server  LOG     [shop-id API] Verifying token...
+[06:10:36.756] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[06:10:36.757] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[06:10:36.757] Browser LOG     [AuthContext] Using provided access token, calling API...
+[06:10:36.757] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[06:10:36.757] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[06:10:36.951] Server  LOG     [shop-id API] Token verification result: {}
+[06:10:36.951] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[06:10:37.144] Server  LOG     [shop-id API] Query result: {}
+[06:10:37.145] Server  LOG     [shop-id API] Returning shopId and role: {}
+[06:10:37.252] Browser LOG     [AuthContext] Fetch completed, status: 200
+[06:10:37.252] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[06:10:37.252] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[06:10:37.252] Browser LOG     [AuthContext] role found: owner
+[06:10:37.252] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[06:10:39.074] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:10:39.074] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:10:39.074] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:10:39.074] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:10:39.074] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:10:39.074] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:10:39.074] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ボトムス"],"totalAssets":1}
+[06:10:39.074] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:10:41.368] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:10:41.368] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:10:41.368] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:10:41.368] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ジャケット","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:10:41.368] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:10:41.368] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ジャケット","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:10:41.368] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:10:41.368] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:10:41.368] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:10:41.368] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:10:41.368] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:10:41.368] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:10:41.368] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ジャケット","ボトムス"],"totalAssets":2}
+[06:10:41.368] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:10:41.368] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ジャケット"}
+[06:13:23.600] Server  LOG     [shop-id API] GET request received
+[06:13:23.601] Server  LOG     [shop-id API] Auth header: "present"
+[06:13:23.601] Server  LOG     [shop-id API] Token extracted, length: 796
+[06:13:23.601] Server  LOG     [shop-id API] Verifying token...
+[06:13:23.699] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[06:13:23.699] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[06:13:23.699] Browser LOG     [AuthContext] Using provided access token, calling API...
+[06:13:23.699] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[06:13:23.699] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[06:13:24.254] Server  LOG     [shop-id API] Token verification result: {}
+[06:13:24.255] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[06:13:24.483] Server  LOG     [shop-id API] Query result: {}
+[06:13:24.484] Server  LOG     [shop-id API] Returning shopId and role: {}
+[06:13:24.591] Browser LOG     [AuthContext] Fetch completed, status: 200
+[06:13:24.591] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[06:13:24.591] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[06:13:24.591] Browser LOG     [AuthContext] role found: owner
+[06:13:24.591] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[06:14:14.619] Server  LOG     [shop-id API] GET request received
+[06:14:14.619] Server  LOG     [shop-id API] Auth header: "present"
+[06:14:14.619] Server  LOG     [shop-id API] Token extracted, length: 796
+[06:14:14.619] Server  LOG     [shop-id API] Verifying token...
+[06:14:14.730] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[06:14:14.731] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[06:14:14.731] Browser LOG     [AuthContext] Using provided access token, calling API...
+[06:14:14.731] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[06:14:14.731] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[06:14:15.245] Server  LOG     [shop-id API] Token verification result: {}
+[06:14:15.246] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[06:14:15.454] Server  LOG     [shop-id API] Query result: {}
+[06:14:15.455] Server  LOG     [shop-id API] Returning shopId and role: {}
+[06:14:15.562] Browser LOG     [AuthContext] Fetch completed, status: 200
+[06:14:15.562] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[06:14:15.562] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[06:14:15.562] Browser LOG     [AuthContext] role found: owner
+[06:14:15.562] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[06:14:20.207] Server  LOG     [shop-id API] GET request received
+[06:14:20.207] Server  LOG     [shop-id API] Auth header: "present"
+[06:14:20.207] Server  LOG     [shop-id API] Token extracted, length: 796
+[06:14:20.207] Server  LOG     [shop-id API] Verifying token...
+[06:14:20.319] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[06:14:20.319] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[06:14:20.319] Browser LOG     [AuthContext] Using provided access token, calling API...
+[06:14:20.319] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[06:14:20.319] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[06:14:20.483] Server  LOG     [shop-id API] Token verification result: {}
+[06:14:20.484] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[06:14:20.753] Server  LOG     [shop-id API] Query result: {}
+[06:14:20.754] Server  LOG     [shop-id API] Returning shopId and role: {}
+[06:14:20.858] Browser LOG     [AuthContext] Fetch completed, status: 200
+[06:14:20.858] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[06:14:20.858] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[06:14:20.858] Browser LOG     [AuthContext] role found: owner
+[06:14:20.858] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[06:14:21.663] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:14:21.663] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:14:21.663] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:14:21.663] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ジャケット","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:14:21.663] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:14:21.663] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ジャケット","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:14:21.663] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:14:21.663] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:14:21.663] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:14:21.663] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:14:21.663] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:14:21.663] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:14:21.663] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ジャケット","ボトムス"],"totalAssets":2}
+[06:14:21.663] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:14:21.663] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ジャケット"}
+[06:14:22.544] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:14:22.544] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:14:22.544] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:14:22.544] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ジャケット","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:14:22.544] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:14:22.544] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ジャケット","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:14:22.544] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:14:22.544] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:14:22.544] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:14:22.544] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:14:22.544] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:14:22.544] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:14:22.544] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ジャケット","ボトムス"],"totalAssets":2}
+[06:14:22.544] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:14:22.544] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ジャケット"}
+[06:14:22.849] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:14:22.849] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:14:22.849] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:14:22.849] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ジャケット","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771065786877-zz39vke4j4l.glb"}
+[06:14:22.849] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:14:22.849] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ジャケット","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771065786877-zz39vke4j4l.glb"}
+[06:14:22.849] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771065786877-zz39vke4j4l.glb"}
+[06:14:22.849] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:14:22.849] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771065786877-zz39vke4j4l.glb"}
+[06:14:22.849] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:14:22.849] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:14:22.849] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:14:22.849] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ジャケット","ボトムス"],"totalAssets":2}
+[06:14:22.849] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:14:22.849] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ジャケット"}
+[06:14:23.309] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:14:23.309] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:14:23.309] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:14:23.309] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ジャケット","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:14:23.309] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:14:23.309] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ジャケット","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:14:23.309] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:14:23.309] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:14:23.309] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:14:23.309] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:14:23.309] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:14:23.309] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:14:23.309] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ボトムス","ジャケット"],"totalAssets":2}
+[06:14:23.309] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:14:23.309] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ジャケット"}
+[06:15:33.214] Server  LOG     ✓ Compiled in 7ms
+[06:15:34.129] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:15:34.129] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:15:34.129] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:15:34.129] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:15:34.129] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:15:34.129] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:15:34.129] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ボトムス"],"totalAssets":1}
+[06:15:34.129] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:15:52.632] Server  LOG     ✓ Compiled in 48ms
+[06:15:53.124] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:15:53.124] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:15:53.124] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:15:53.124] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:15:53.124] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:15:53.124] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:15:53.124] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ボトムス"],"totalAssets":1}
+[06:15:53.124] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:16:00.812] Server  LOG     [shop-id API] GET request received
+[06:16:00.816] Server  LOG     [shop-id API] Auth header: "present"
+[06:16:00.817] Server  LOG     [shop-id API] Token extracted, length: 796
+[06:16:00.817] Server  LOG     [shop-id API] Verifying token...
+[06:16:00.859] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[06:16:00.859] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[06:16:00.859] Browser LOG     [AuthContext] Using provided access token, calling API...
+[06:16:00.859] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[06:16:00.859] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[06:16:01.083] Server  LOG     [shop-id API] Token verification result: {}
+[06:16:01.083] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[06:16:01.254] Server  LOG     [shop-id API] Query result: {}
+[06:16:01.254] Server  LOG     [shop-id API] Returning shopId and role: {}
+[06:16:01.359] Browser LOG     [AuthContext] Fetch completed, status: 200
+[06:16:01.359] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[06:16:01.359] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[06:16:01.359] Browser LOG     [AuthContext] role found: owner
+[06:16:01.359] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[06:16:02.226] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:02.226] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:16:02.226] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:02.226] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ジャケット","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:02.226] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:16:02.226] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ジャケット","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:02.226] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:02.226] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:02.226] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:02.226] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:16:02.226] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:02.226] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:16:02.226] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ボトムス","ジャケット"],"totalAssets":2}
+[06:16:02.226] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:16:02.226] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ジャケット"}
+[06:16:02.884] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:02.884] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:16:02.884] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:02.884] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ジャケット","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:02.884] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:16:02.884] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ジャケット","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:02.884] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:02.884] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:02.884] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:02.884] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:16:02.884] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:02.884] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:16:02.884] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ボトムス","ジャケット"],"totalAssets":2}
+[06:16:02.884] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:16:02.884] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ジャケット"}
+[06:16:06.795] Server  LOG     ✓ Compiled in 34ms
+[06:16:07.118] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:07.118] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:16:07.118] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:07.118] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:07.118] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:07.118] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:16:07.118] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ボトムス"],"totalAssets":1}
+[06:16:07.118] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:16:17.986] Server  LOG     [shop-id API] GET request received
+[06:16:17.986] Server  LOG     [shop-id API] Auth header: "present"
+[06:16:17.986] Server  LOG     [shop-id API] Token extracted, length: 796
+[06:16:17.986] Server  LOG     [shop-id API] Verifying token...
+[06:16:18.093] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[06:16:18.093] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[06:16:18.093] Browser LOG     [AuthContext] Using provided access token, calling API...
+[06:16:18.093] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[06:16:18.093] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[06:16:18.256] Server  LOG     [shop-id API] Token verification result: {}
+[06:16:18.256] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[06:16:18.437] Server  LOG     [shop-id API] Query result: {}
+[06:16:18.437] Server  LOG     [shop-id API] Returning shopId and role: {}
+[06:16:18.545] Browser LOG     [AuthContext] Fetch completed, status: 200
+[06:16:18.545] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[06:16:18.545] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[06:16:18.545] Browser LOG     [AuthContext] role found: owner
+[06:16:18.545] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[06:16:19.469] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:19.469] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:16:19.469] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:19.469] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ジャケット","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:19.469] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:16:19.469] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ジャケット","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:19.469] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:19.469] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:19.469] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:19.469] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:16:19.469] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:19.469] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:16:19.469] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ボトムス","ジャケット"],"totalAssets":2}
+[06:16:19.469] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:16:19.469] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ジャケット"}
+[06:16:20.017] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:20.017] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:16:20.017] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:20.017] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ジャケット","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:20.017] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:16:20.017] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ジャケット","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:20.017] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:20.017] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:20.017] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:20.017] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:16:20.017] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:20.017] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:16:20.017] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ボトムス","ジャケット"],"totalAssets":2}
+[06:16:20.017] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:16:20.017] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ジャケット"}
+[06:16:20.981] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:20.981] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:16:20.981] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:20.981] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ジャケット","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:20.981] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:16:20.981] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ジャケット","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:20.981] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:20.981] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:20.981] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:20.981] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:16:20.981] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:20.981] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:16:20.981] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ボトムス","ジャケット"],"totalAssets":2}
+[06:16:20.981] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:16:20.981] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ジャケット"}
+[06:16:20.981] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:20.981] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:16:20.981] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:20.981] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ジャケット","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:20.981] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:16:20.981] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ジャケット","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:20.981] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:20.981] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:20.981] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:20.981] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:16:20.981] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:20.981] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:16:20.981] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ボトムス","ジャケット"],"totalAssets":2}
+[06:16:20.981] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:16:20.981] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ジャケット"}
+[06:16:20.981] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:20.981] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:16:20.981] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:20.981] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ジャケット","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:20.981] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:16:20.981] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ジャケット","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:20.981] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:20.981] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:20.981] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:20.981] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:16:20.981] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:20.981] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:16:20.981] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ボトムス","ジャケット"],"totalAssets":2}
+[06:16:20.981] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:16:20.981] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ジャケット"}
+[06:16:27.894] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:27.894] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:16:27.894] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:27.894] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ジャケット","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:27.894] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:16:27.894] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ジャケット","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:27.894] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:27.894] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:27.894] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:16:27.894] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:16:27.894] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:16:27.894] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:16:27.894] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ボトムス","ジャケット"],"totalAssets":2}
+[06:16:27.894] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:16:27.894] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ジャケット"}
+[06:16:32.707] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[06:16:32.905] Server  LOG     [post-login API] POST request received
+[06:16:32.905] Server  LOG     [post-login API] Auth header: "present"
+[06:16:32.905] Server  LOG     [post-login API] Token extracted, length: 796
+[06:16:32.905] Server  LOG     [post-login API] Verifying token...
+[06:16:32.908] Server  LOG     [shop-id API] GET request received
+[06:16:32.909] Server  LOG     [shop-id API] Auth header: "present"
+[06:16:32.909] Server  LOG     [shop-id API] Token extracted, length: 796
+[06:16:32.909] Server  LOG     [shop-id API] Verifying token...
+[06:16:32.992] Browser LOG     [AuthContext] State update: {"hasUser":false,"isAuthenticated":false,"isLoading":true,"shopId":"default_shop"}
+[06:16:32.992] Browser LOG     [AuthContext] Initial session retrieved: {"hasError":false,"hasSession":true}
+[06:16:32.992] Browser LOG     [AuthContext] Calling post-login API to ensure profile exists...
+[06:16:32.992] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":true,"shopId":"default_shop","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[06:16:32.992] Browser LOG     [AuthContext] Auth state changed: INITIAL_SESSION {"hasSession":true}
+[06:16:32.992] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[06:16:32.992] Browser LOG     [AuthContext] Using provided access token, calling API...
+[06:16:32.992] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[06:16:32.992] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":true,"shopId":"default_shop","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[06:16:33.154] Server  LOG     [post-login API] Token verification result: {}
+[06:16:33.155] Server  LOG     [post-login API] Looking up pending_invites for email: "y62h34yh@gmail.com"
+[06:16:33.167] Server  LOG     [shop-id API] Token verification result: {}
+[06:16:33.167] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[06:16:33.333] Server  WARN    [post-login API] No pending invite found for: "y62h34yh@gmail.com"
+[06:16:33.347] Server  LOG     [shop-id API] Query result: {}
+[06:16:33.347] Server  LOG     [shop-id API] Returning shopId and role: {}
+[06:16:33.536] Server  ERROR   Error fetching products: {}
+[06:16:33.791] Server  LOG     [shop-id API] GET request received
+[06:16:33.791] Server  LOG     [shop-id API] Auth header: "present"
+[06:16:33.792] Server  LOG     [shop-id API] Token extracted, length: 796
+[06:16:33.792] Server  LOG     [shop-id API] Verifying token...
+[06:16:33.847] Browser LOG     [AuthContext] post-login not needed or already completed
+[06:16:33.847] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[06:16:33.847] Browser LOG     [AuthContext] Using provided access token, calling API...
+[06:16:33.847] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[06:16:33.847] Browser LOG     [AuthContext] Fetch completed, status: 200
+[06:16:33.847] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[06:16:33.847] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[06:16:33.847] Browser LOG     [AuthContext] role found: owner
+[06:16:33.847] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[06:16:33.847] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[06:16:33.984] Server  LOG     [shop-id API] Token verification result: {}
+[06:16:33.984] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[06:16:34.157] Server  LOG     [shop-id API] Query result: {}
+[06:16:34.157] Server  LOG     [shop-id API] Returning shopId and role: {}
+[06:16:35.077] Browser LOG     [AuthContext] Fetch completed, status: 200
+[06:16:35.077] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[06:16:35.077] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[06:16:35.077] Browser LOG     [AuthContext] role found: owner
+[06:16:35.077] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[06:16:52.386] Server  LOG     ✓ Compiled in 33ms
+[06:17:00.582] Server  LOG     [shop-id API] GET request received
+[06:17:00.583] Server  LOG     [shop-id API] Auth header: "present"
+[06:17:00.583] Server  LOG     [shop-id API] Token extracted, length: 796
+[06:17:00.584] Server  LOG     [shop-id API] Verifying token...
+[06:17:00.690] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[06:17:00.690] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[06:17:00.690] Browser LOG     [AuthContext] Using provided access token, calling API...
+[06:17:00.690] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[06:17:00.690] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[06:17:00.787] Server  LOG     [shop-id API] Token verification result: {}
+[06:17:00.788] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[06:17:00.970] Server  LOG     [shop-id API] Query result: {}
+[06:17:00.970] Server  LOG     [shop-id API] Returning shopId and role: {}
+[06:17:01.075] Browser LOG     [AuthContext] Fetch completed, status: 200
+[06:17:01.075] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[06:17:01.075] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[06:17:01.075] Browser LOG     [AuthContext] role found: owner
+[06:17:01.075] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[06:17:02.426] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[06:17:02.601] Server  LOG     [post-login API] POST request received
+[06:17:02.602] Server  LOG     [post-login API] Auth header: "present"
+[06:17:02.602] Server  LOG     [post-login API] Token extracted, length: 796
+[06:17:02.602] Server  LOG     [post-login API] Verifying token...
+[06:17:02.604] Server  LOG     [shop-id API] GET request received
+[06:17:02.604] Server  LOG     [shop-id API] Auth header: "present"
+[06:17:02.604] Server  LOG     [shop-id API] Token extracted, length: 796
+[06:17:02.604] Server  LOG     [shop-id API] Verifying token...
+[06:17:02.690] Browser LOG     [AuthContext] State update: {"hasUser":false,"isAuthenticated":false,"isLoading":true,"shopId":"default_shop"}
+[06:17:02.690] Browser LOG     [AuthContext] Initial session retrieved: {"hasError":false,"hasSession":true}
+[06:17:02.690] Browser LOG     [AuthContext] Calling post-login API to ensure profile exists...
+[06:17:02.690] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":true,"shopId":"default_shop","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[06:17:02.690] Browser LOG     [AuthContext] Auth state changed: INITIAL_SESSION {"hasSession":true}
+[06:17:02.690] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[06:17:02.690] Browser LOG     [AuthContext] Using provided access token, calling API...
+[06:17:02.690] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[06:17:02.690] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":true,"shopId":"default_shop","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[06:17:02.828] Server  LOG     [post-login API] Token verification result: {}
+[06:17:02.830] Server  LOG     [post-login API] Looking up pending_invites for email: "y62h34yh@gmail.com"
+[06:17:02.845] Server  LOG     [shop-id API] Token verification result: {}
+[06:17:02.846] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[06:17:02.998] Server  WARN    [post-login API] No pending invite found for: "y62h34yh@gmail.com"
+[06:17:03.075] Server  LOG     [shop-id API] Query result: {}
+[06:17:03.075] Server  LOG     [shop-id API] Returning shopId and role: {}
+[06:17:03.078] Server  LOG     [shop-id API] GET request received
+[06:17:03.078] Server  LOG     [shop-id API] Auth header: "present"
+[06:17:03.078] Server  LOG     [shop-id API] Token extracted, length: 796
+[06:17:03.079] Server  LOG     [shop-id API] Verifying token...
+[06:17:03.162] Server  ERROR   Error fetching products: {}
+[06:17:03.263] Server  LOG     [shop-id API] Token verification result: {}
+[06:17:03.263] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[06:17:03.438] Server  LOG     [shop-id API] Query result: {}
+[06:17:03.438] Server  LOG     [shop-id API] Returning shopId and role: {}
+[06:17:03.597] Browser LOG     [AuthContext] post-login not needed or already completed
+[06:17:03.597] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[06:17:03.597] Browser LOG     [AuthContext] Using provided access token, calling API...
+[06:17:03.597] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[06:17:03.597] Browser LOG     [AuthContext] Fetch completed, status: 200
+[06:17:03.597] Browser LOG     [AuthContext] Fetch completed, status: 200
+[06:17:03.597] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[06:17:03.597] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[06:17:03.597] Browser LOG     [AuthContext] role found: owner
+[06:17:03.597] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[06:17:03.597] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[06:17:03.597] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[06:17:03.597] Browser LOG     [AuthContext] role found: owner
+[06:17:03.597] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[06:17:03.597] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[06:17:07.662] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:17:07.662] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:17:07.662] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:17:07.662] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:17:07.662] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771163351882-udv6akz81bs.glb"}
+[06:17:07.662] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:17:07.662] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ボトムス"],"totalAssets":1}
+[06:17:07.662] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:17:11.499] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:11.499] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:17:11.499] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:11.499] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:11.499] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:11.499] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:17:11.499] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ボトムス"],"totalAssets":1}
+[06:17:11.499] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:17:12.868] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:12.868] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:17:12.868] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:12.868] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ジャケット","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:17:12.868] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:17:12.868] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ジャケット","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:17:12.868] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:12.868] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:17:12.868] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:12.868] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:17:12.868] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:17:12.868] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:17:12.868] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ボトムス","ジャケット"],"totalAssets":2}
+[06:17:12.868] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:17:12.868] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ジャケット"}
+[06:17:13.903] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:13.903] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:17:13.903] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:13.903] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:13.903] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:13.903] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:17:13.903] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ボトムス"],"totalAssets":1}
+[06:17:13.903] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:17:14.867] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:14.867] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:17:14.867] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:14.867] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ジャケット","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:17:14.867] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:17:14.867] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ジャケット","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:17:14.867] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:14.867] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:17:14.867] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:17:14.867] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:17:14.867] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:14.867] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:17:14.867] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ジャケット","ボトムス"],"totalAssets":2}
+[06:17:14.867] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:17:14.867] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ジャケット"}
+[06:17:15.658] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:15.658] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:17:15.658] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:15.658] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:15.658] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:15.658] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:17:15.658] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ボトムス"],"totalAssets":1}
+[06:17:15.658] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:17:17.267] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:17.267] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:17:17.267] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:17.267] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ジャケット","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:17:17.267] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:17:17.267] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ジャケット","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:17:17.267] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:17:17.267] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:17.267] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:17:17.267] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:17:17.267] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:17.267] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:17:17.267] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ジャケット","ボトムス"],"totalAssets":2}
+[06:17:17.267] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:17:17.267] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ジャケット"}
+[06:17:20.485] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:20.485] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:17:20.485] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:20.485] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ジャケット","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771065786877-zz39vke4j4l.glb"}
+[06:17:20.485] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:17:20.485] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ジャケット","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771065786877-zz39vke4j4l.glb"}
+[06:17:20.485] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:20.485] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771065786877-zz39vke4j4l.glb"}
+[06:17:20.485] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771065786877-zz39vke4j4l.glb"}
+[06:17:20.485] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:17:20.485] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:20.485] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:17:20.485] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ジャケット","ボトムス"],"totalAssets":2}
+[06:17:20.485] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:17:20.485] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ジャケット"}
+[06:17:21.228] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ボトムス","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:21.228] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:17:21.228] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ボトムス","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:21.228] Browser LOG     [Atelier Preview] loadAsset called: {"baseModelLoaded":true,"category":"ジャケット","hasBaseModelTransform":true,"url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:17:21.228] Browser LOG     [Atelier Preview] Base model already loaded, skipping promise wait
+[06:17:21.228] Browser LOG     [Atelier Preview] Starting to load asset model: {"category":"ジャケット","format":"glb","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:17:21.228] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:21.228] Browser LOG     [Atelier Preview] Asset loading progress: 100% {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:17:21.228] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ボトムス","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771059888623-8nio55ev25y.glb"}
+[06:17:21.228] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:17:21.228] Browser LOG     [Atelier Preview] Asset model loaded successfully: {"category":"ジャケット","url":"https://aeuccvcdwijoojfcgjjs.supabase.co/storage/v1/object/public/products/models/1771061578971-250tcf16s37.glb"}
+[06:17:21.228] Browser LOG     [Atelier Preview] Asset transform applied: {"position":{"x":9.295795505570581e-7,"y":-1.4290190883319842,"z":-0.06183701066901848},"scale":{"x":0.001267195366795165,"y":0.001267195366795165,"z":0.001267195366795165}}
+[06:17:21.228] Browser LOG     [Atelier Preview] updateSceneWithAssets called {"categories":["ボトムス","ジャケット"],"totalAssets":2}
+[06:17:21.228] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ボトムス"}
+[06:17:21.228] Browser LOG     [Atelier Preview] Asset added to scene: {"category":"ジャケット"}

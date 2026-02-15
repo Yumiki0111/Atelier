@@ -53,8 +53,22 @@ export function PreviewPanel({
   }, []);
 
   // 着せ替えアセット選択ハンドラ
-  const handleOutfitAssetSelect = useCallback((asset: OutfitAssetItem) => {
+  const handleOutfitAssetSelect = useCallback((asset: OutfitAssetItem | null, category?: string) => {
     if (!previewInstanceRef.current) return;
+
+    // 選択解除の場合（assetがnull）
+    if (asset === null && category) {
+      // 指定されたカテゴリーのアセットを削除
+      activeAssetsRef.current.delete(category);
+      
+      // 全アクティブアセットを3Dビューアに反映
+      const allAssets = Array.from(activeAssetsRef.current.values());
+      previewInstanceRef.current.updateAssets(allAssets);
+      return;
+    }
+
+    // assetがnullでないことを確認
+    if (!asset) return;
 
     // 選択されたアセットのカテゴリで既存アセットを置き換え
     activeAssetsRef.current.set(asset.category, {

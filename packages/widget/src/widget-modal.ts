@@ -272,7 +272,18 @@ export function updateModalWithConfig(
     availableSizes,
     initialSize: currentSize,
     productName: config.asset?.productName,
-    onOutfitAssetSelect: (asset: any) => {
+    onOutfitAssetSelect: (asset: any, category?: string) => {
+      // 選択解除の場合（assetがnull）
+      if (asset === null && category) {
+        // 指定されたカテゴリーのアセットを削除
+        activeAssets.delete(category);
+        
+        // 全アクティブアセットを3Dビューアに反映
+        const allAssets = Array.from(activeAssets.values());
+        previewInstance.updateAssets(allAssets);
+        return;
+      }
+      
       // アセットが選択されたときの処理（管理画面と同じロジック）
       // 選択されたアセットのカテゴリで既存アセットを置き換え（他のカテゴリは保持）
       activeAssets.set(asset.category, {

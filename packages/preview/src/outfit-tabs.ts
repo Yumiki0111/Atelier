@@ -15,7 +15,7 @@ export interface OutfitTabsElements {
  */
 export function createOutfitTabs(
   initialData?: OutfitAssetsData,
-  onAssetSelect?: (asset: OutfitAssetItem) => void
+  onAssetSelect?: (asset: OutfitAssetItem | null, category?: string) => void
 ): OutfitTabsElements {
   let currentData: OutfitAssetsData = initialData || { categories: {} };
   let currentCategory: string = "";
@@ -214,8 +214,14 @@ export function createOutfitTabs(
       });
 
       card.addEventListener("click", () => {
-        selectedAssetId = item.id;
-        onAssetSelect?.(item);
+        // 既に選択されている商品を再度タップした場合は着脱（削除）
+        if (isSelected) {
+          selectedAssetId = null;
+          onAssetSelect?.(null, item.category);
+        } else {
+          selectedAssetId = item.id;
+          onAssetSelect?.(item);
+        }
         renderAssets(); // 選択状態を更新
       });
 

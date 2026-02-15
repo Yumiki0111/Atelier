@@ -40,7 +40,7 @@ export interface PreviewPanelOptions {
   onModelError?: (error: Error) => void;
   onBackClick?: () => void; // ナビゲーションバーの戻るボタンがクリックされたときのコールバック
   onOutfitClick?: (container: HTMLElement) => void; // 着せ替えパネルを表示するコールバック（containerを渡す）
-  onOutfitAssetSelect?: (asset: OutfitAssetItem) => void; // 着せ替えアセットが選択されたときのコールバック
+  onOutfitAssetSelect?: (asset: OutfitAssetItem | null, category?: string) => void; // 着せ替えアセットが選択されたときのコールバック（nullの場合は選択解除）
   currentProductId?: string; // 現在の商品ID（着せ替えパネル用）
   onFloatingButtonsReady?: (floatingButtons: HTMLElement) => void; // フローティングボタンが準備できたときに呼ばれるコールバック
 }

@@ -68,8 +68,8 @@ export function initPreviewPanel(
   const sizeAreaElements = createSizeArea(availableSizes, initialSize, productName);
   const { sizeArea, sizeButtons, sizeButtonsContainer, productNameDiv, prevButton, nextButton } = sizeAreaElements;
 
-  const outfitTabsElements = createOutfitTabs(outfitAssets, (asset) => {
-    onOutfitAssetSelect?.(asset);
+  const outfitTabsElements = createOutfitTabs(outfitAssets, (asset, category) => {
+    onOutfitAssetSelect?.(asset, category);
   });
   const { outfitTabsContainer } = outfitTabsElements;
 

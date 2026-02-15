@@ -29129,8 +29129,13 @@ void main() {
           }
         });
         card.addEventListener("click", () => {
-          selectedAssetId = item.id;
-          onAssetSelect == null ? void 0 : onAssetSelect(item);
+          if (isSelected) {
+            selectedAssetId = null;
+            onAssetSelect == null ? void 0 : onAssetSelect(null, item.category);
+          } else {
+            selectedAssetId = item.id;
+            onAssetSelect == null ? void 0 : onAssetSelect(item);
+          }
           renderAssets();
         });
         const thumbSize = "40px";
@@ -29265,8 +29270,8 @@ void main() {
   `.trim();
     const sizeAreaElements = createSizeArea(availableSizes, initialSize, productName);
     const { sizeArea, sizeButtons, sizeButtonsContainer, productNameDiv, prevButton, nextButton } = sizeAreaElements;
-    const outfitTabsElements = createOutfitTabs(outfitAssets, (asset) => {
-      onOutfitAssetSelect == null ? void 0 : onOutfitAssetSelect(asset);
+    const outfitTabsElements = createOutfitTabs(outfitAssets, (asset, category) => {
+      onOutfitAssetSelect == null ? void 0 : onOutfitAssetSelect(asset, category);
     });
     const { outfitTabsContainer } = outfitTabsElements;
     const scrollToSelectedSize = () => {
@@ -30156,7 +30161,13 @@ void main() {
       availableSizes,
       initialSize: currentSize,
       productName: (_b2 = config.asset) == null ? void 0 : _b2.productName,
-      onOutfitAssetSelect: (asset) => {
+      onOutfitAssetSelect: (asset, category) => {
+        if (asset === null && category) {
+          activeAssets.delete(category);
+          const allAssets2 = Array.from(activeAssets.values());
+          previewInstance.updateAssets(allAssets2);
+          return;
+        }
         activeAssets.set(asset.category, {
           url: asset.modelUrl,
           category: asset.category
