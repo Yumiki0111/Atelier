@@ -41,7 +41,7 @@ export function renderModalWithLoading(
     position: relative !important;
     display: flex !important;
     flex-direction: column !important;
-    padding: 24px 12px !important;
+    padding: 8px !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
     margin: 0 !important;
@@ -280,6 +280,13 @@ export function updateModalWithConfig(
         category: asset.category,
       });
 
+      // コートとジャケットは同じ階層なので、一方を選択したらもう一方を削除
+      if (asset.category === "コート") {
+        activeAssets.delete("ジャケット");
+      } else if (asset.category === "ジャケット") {
+        activeAssets.delete("コート");
+      }
+
       // 全アクティブアセットを3Dビューアに反映
       const allAssets = Array.from(activeAssets.values());
       previewInstance.updateAssets(allAssets);
@@ -459,35 +466,59 @@ function addFadeInStyle() {
 function createBackButton(onClick: () => void): HTMLElement {
   const backButton = document.createElement("button");
   backButton.setAttribute("data-atelier-back-button", "true");
-  backButton.innerHTML = "< 商品に戻る";
+  
+  // lucide-reactのChevronLeftアイコンをSVGで使用
+  backButton.innerHTML = `
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      width="20" 
+      height="20" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      stroke-width="2" 
+      stroke-linecap="round" 
+      stroke-linejoin="round"
+      style="display: block;"
+    >
+      <path d="m15 18-6-6 6-6"/>
+    </svg>
+  `;
+  
   backButton.style.cssText = `
     position: absolute;
-    top: 16px;
-    left: 16px;
-    background: rgba(255, 255, 255, 0.9);
-    border: none;
+    top: 8px;
+    left: 8px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(0, 0, 0, 0.1);
     display: flex;
     align-items: center;
-    gap: 4px;
+    justify-content: center;
     cursor: pointer;
-    padding: 8px 12px;
+    padding: 0;
+    width: 30px;
+    height: 30px;
     border-radius: 8px;
     z-index: 10001;
     color: #000;
-    font-size: 14px;
-    font-weight: 500;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    transition: all 0.2s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   `;
+  
   backButton.addEventListener("mouseenter", () => {
     backButton.style.backgroundColor = "rgba(255, 255, 255, 1)";
-    backButton.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.2)";
-  });
-  backButton.addEventListener("mouseleave", () => {
-    backButton.style.backgroundColor = "rgba(255, 255, 255, 0.9)";
     backButton.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.15)";
+    backButton.style.transform = "translateY(-1px)";
   });
+  
+  backButton.addEventListener("mouseleave", () => {
+    backButton.style.backgroundColor = "rgba(255, 255, 255, 0.95)";
+    backButton.style.boxShadow = "0 1px 3px rgba(0, 0, 0, 0.1)";
+    backButton.style.transform = "translateY(0)";
+  });
+  
   backButton.addEventListener("click", onClick);
   return backButton;
 }

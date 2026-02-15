@@ -201,41 +201,6 @@
       }
     }
   }
-  async function loadProductImage(params, imageContainer, imageSize) {
-    var _a3;
-    try {
-      const config = await fetchWidgetConfig(params);
-      if ((_a3 = config.asset) == null ? void 0 : _a3.thumbnailUrl) {
-        const img = document.createElement("img");
-        img.src = config.asset.thumbnailUrl;
-        img.alt = config.asset.productName || "商品画像";
-        img.style.cssText = `
-        width: 100% !important;
-        height: 100% !important;
-        object-fit: cover !important;
-        display: block !important;
-      `;
-        img.onload = () => {
-          const placeholder = imageContainer.querySelector("div");
-          if (placeholder) {
-            placeholder.remove();
-          }
-          imageContainer.style.display = "flex";
-        };
-        img.onerror = () => {
-          imageContainer.style.display = "none";
-        };
-        imageContainer.appendChild(img);
-      } else {
-        imageContainer.style.display = "none";
-      }
-    } catch (error) {
-      if (isDevelopmentMode()) {
-        console.warn("[Atelier Widget] Failed to load product image:", error);
-      }
-      imageContainer.style.display = "none";
-    }
-  }
   function updateButtonPositions() {
     const allWidgetContainers = Array.from(document.querySelectorAll('[id^="atelier-widget-container-"]'));
     const baseBottomPx = 24;
@@ -331,14 +296,10 @@
     right: ${baseRightPx}px !important;
     display: flex !important;
     align-items: center !important;
-    gap: 12px !important;
     z-index: 9999 !important;
     pointer-events: none !important;
   `;
     button.style.pointerEvents = "auto";
-    const imageContainer = createImageContainer(buttonHeight);
-    loadProductImage(params, imageContainer);
-    container.appendChild(imageContainer);
     container.appendChild(button);
     document.body.appendChild(container);
     updateButtonPositions();
@@ -449,38 +410,6 @@
       iconSvg.appendChild(path);
     });
     return iconSvg;
-  }
-  function createImageContainer(size) {
-    const imageContainer = document.createElement("div");
-    imageContainer.style.cssText = `
-    width: ${size}px !important;
-    height: ${size}px !important;
-    border-radius: 50% !important;
-    background: white !important;
-    border: 2px solid rgba(102, 126, 234, 0.3) !important;
-    overflow: hidden !important;
-    flex-shrink: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
-    pointer-events: none !important;
-    position: relative !important;
-  `;
-    const placeholder = document.createElement("div");
-    placeholder.style.cssText = `
-    width: 100% !important;
-    height: 100% !important;
-    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%) !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-  `;
-    imageContainer.appendChild(placeholder);
-    return imageContainer;
   }
   /**
    * @license
@@ -28188,9 +28117,9 @@ void main() {
     // 最下層（パンツ・スカートなど）
     "トップス": 2,
     // 中層（シャツ・Tシャツなど）
-    "ジャケット": 3,
-    // 上層（上着）
-    "コート": 4
+    "ジャケット": 2,
+    // 中層（上着）- コートの下
+    "コート": 3
     // 最上層（アウター）
   };
   const DEFAULT_MODEL_URL = "/3d/clo_model_men.glb";
@@ -28510,7 +28439,7 @@ void main() {
             }
           );
         });
-        baseModelTransform = calculateAndSetModelTransform(model, 2.4);
+        baseModelTransform = calculateAndSetModelTransform(model, 2.6);
         enableShadow(model);
         baseModel = model;
         isBaseModelLoaded = true;
@@ -28758,9 +28687,11 @@ void main() {
   function createSizeArea(availableSizes, initialSize, productName) {
     const sizeArea = document.createElement("div");
     sizeArea.setAttribute("data-atelier-size-area", "true");
+    const isPreviewEnvironment = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || document.querySelector("[data-phone-frame]") !== null);
+    const topValue = isPreviewEnvironment ? "6%" : "0";
     sizeArea.style.cssText = `
     position: absolute;
-    top: 7%;
+    top: ${topValue};
     left: 0;
     right: 0;
     width: 100%;
@@ -28788,6 +28719,7 @@ void main() {
     box-sizing: border-box;
     position: relative;
     margin: 0 auto;
+    height: 30px;
   `;
     if (!document.getElementById("atelier-size-buttons-scrollbar-style")) {
       const style = document.createElement("style");
@@ -28819,7 +28751,8 @@ void main() {
       border-radius: ${isSelected ? "50px" : "0"};
       cursor: pointer;
       transition: all 0.2s ease;
-      min-height: 20px;
+      min-height: 24px;
+      height: 24px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -29545,15 +29478,15 @@ void main() {
     const sizeArea = container.querySelector("[data-atelier-size-area]");
     const overlay = document.querySelector('[data-atelier-modal-overlay="true"]');
     const floatingButtons = (overlay == null ? void 0 : overlay.querySelector("[data-atelier-floating-buttons]")) || document.body.querySelector("[data-atelier-floating-buttons]");
-    const closePanel = (targetPanel, animationFrameIdRef2) => {
+    const closePanel = (targetPanel, animationFrameIdRef2, observer) => {
       const closeTransition = "transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 0.6s ease-out";
       targetPanel.style.transition = closeTransition;
       targetPanel.style.transform = "translateY(100%)";
       targetPanel.style.opacity = "0";
       if (viewerContainer) {
         viewerContainer.style.transition = "max-height 0.6s cubic-bezier(0.25, 0.1, 0.25, 1)";
-        const containerRect = container.getBoundingClientRect();
-        viewerContainer.style.maxHeight = `${containerRect.height}px`;
+        const containerRect2 = container.getBoundingClientRect();
+        viewerContainer.style.maxHeight = `${containerRect2.height}px`;
       }
       if (sizeArea) {
         sizeArea.style.display = "flex";
@@ -29566,6 +29499,9 @@ void main() {
         if (animationFrameIdRef2 == null ? void 0 : animationFrameIdRef2.current) {
           cancelAnimationFrame(animationFrameIdRef2.current);
         }
+        if (observer) {
+          observer.disconnect();
+        }
         targetPanel.remove();
         if (viewerContainer) {
           viewerContainer.style.transition = "";
@@ -29575,48 +29511,48 @@ void main() {
     };
     const existingPanel = container.querySelector("#atelier-outfit-change-panel");
     if (existingPanel) {
-      closePanel(existingPanel);
+      closePanel(existingPanel, void 0, void 0);
       return;
     }
     const panel = document.createElement("div");
     panel.id = "atelier-outfit-change-panel";
-    panel.style.cssText = `
-    position: absolute !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    width: 100% !important;
-    background: white !important;
-    border-top: 1px solid #e5e7eb !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important;
-    max-height: 50vh !important;
-    height: 50vh !important;
-    transform: translateY(100%) !important;
-    opacity: 0 !important;
-    transition: transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.5s ease-in-out !important;
-    will-change: transform, opacity !important;
-    z-index: 10 !important;
-  `;
+    const containerRect = container.getBoundingClientRect();
+    const panelHeight = Math.floor(containerRect.height * 0.1);
+    panel.style.position = "absolute";
+    panel.style.bottom = "0";
+    panel.style.left = "0";
+    panel.style.right = "0";
+    panel.style.width = "100%";
+    panel.style.background = "white";
+    panel.style.borderTop = "1px solid #e5e7eb";
+    panel.style.display = "flex";
+    panel.style.flexDirection = "column";
+    panel.style.overflow = "hidden";
+    panel.style.height = `${panelHeight}px`;
+    panel.style.maxHeight = `${panelHeight}px`;
+    panel.style.minHeight = `${panelHeight}px`;
+    panel.style.transform = "translateY(100%)";
+    panel.style.opacity = "0";
+    panel.style.transition = "transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.5s ease-in-out";
+    panel.style.willChange = "transform, opacity";
+    panel.style.zIndex = "10";
+    panel.style.boxSizing = "border-box";
     const handle = document.createElement("div");
-    handle.style.cssText = `
-    width: 40px !important;
-    height: 4px !important;
-    background: #d1d5db !important;
-    border-radius: 2px !important;
-    margin: 12px auto 0 !important;
-    cursor: grab !important;
-    flex-shrink: 0 !important;
-  `;
+    handle.style.width = "40px";
+    handle.style.height = "4px";
+    handle.style.background = "#d1d5db";
+    handle.style.borderRadius = "2px";
+    handle.style.margin = "12px auto 0";
+    handle.style.cursor = "grab";
+    handle.style.flexShrink = "0";
     panel.appendChild(handle);
     const body = document.createElement("div");
     body.className = "atelier-outfit-change-panel-body";
-    body.style.cssText = `
-    flex: 1 !important;
-    overflow-y: auto !important;
-    padding: 0 20px 20px !important;
-  `;
+    body.style.flex = "1";
+    body.style.overflowY = "auto";
+    body.style.padding = "0 20px 20px";
+    body.style.minHeight = "0";
+    body.style.maxHeight = "100%";
     const loadingDiv = document.createElement("div");
     loadingDiv.style.cssText = `
     text-align: center !important;
@@ -29628,6 +29564,17 @@ void main() {
     body.appendChild(loadingDiv);
     panel.appendChild(body);
     container.appendChild(panel);
+    const updatePanelHeight = () => {
+      const containerRect2 = container.getBoundingClientRect();
+      const newPanelHeight = Math.floor(containerRect2.height * 0.1);
+      panel.style.height = `${newPanelHeight}px`;
+      panel.style.maxHeight = `${newPanelHeight}px`;
+      panel.style.minHeight = `${newPanelHeight}px`;
+    };
+    const resizeObserver = new ResizeObserver(() => {
+      updatePanelHeight();
+    });
+    resizeObserver.observe(container);
     if (sizeArea) {
       sizeArea.style.display = "none";
     }
@@ -29637,24 +29584,24 @@ void main() {
     const updateViewerHeight = () => {
       if (!viewerContainer) return;
       const panelRect = panel.getBoundingClientRect();
-      const containerRect = container.getBoundingClientRect();
-      const panelHeight = panel.offsetHeight;
-      const containerHeight = containerRect.height;
+      const containerRect2 = container.getBoundingClientRect();
+      const panelHeight2 = panel.offsetHeight;
+      const containerHeight = containerRect2.height;
       const panelTop = panelRect.top;
-      const containerBottom = containerRect.bottom;
+      const containerBottom = containerRect2.bottom;
       const panelTopWhenHidden = containerBottom;
-      const panelTopWhenVisible = containerBottom - panelHeight;
+      const panelTopWhenVisible = containerBottom - panelHeight2;
       const distance = panelTopWhenHidden - panelTop;
       const totalDistance = panelTopWhenHidden - panelTopWhenVisible;
       const progress = Math.max(0, Math.min(1, distance / totalDistance));
-      const panelVisibleHeight = panelHeight * progress;
+      const panelVisibleHeight = panelHeight2 * progress;
       const viewerMaxHeight = containerHeight - panelVisibleHeight;
       viewerContainer.style.maxHeight = `${viewerMaxHeight}px`;
     };
     if (viewerContainer) {
       viewerContainer.style.transition = "max-height 0.5s cubic-bezier(0.4, 0.0, 0.2, 1)";
-      const containerRect = container.getBoundingClientRect();
-      viewerContainer.style.maxHeight = `${containerRect.height}px`;
+      const containerRect2 = container.getBoundingClientRect();
+      viewerContainer.style.maxHeight = `${containerRect2.height}px`;
     }
     const animationFrameIdRef = { current: null };
     let lastPanelTop = -1;
@@ -29796,7 +29743,7 @@ void main() {
                   if (config.enabled) {
                     callbacks.onProductSelect(product, config);
                     removeDocumentListeners();
-                    closePanel(panel, animationFrameIdRef);
+                    closePanel(panel, animationFrameIdRef, resizeObserver);
                     observePanelPosition();
                   } else {
                     alert("この商品の3Dモデルが登録されていません。");
@@ -29944,7 +29891,7 @@ void main() {
       const threshold = 100;
       if (deltaY > threshold) {
         removeDocumentListeners();
-        closePanel(panel, animationFrameIdRef);
+        closePanel(panel, animationFrameIdRef, resizeObserver);
         observePanelPosition();
       } else {
         panel.style.transition = "transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.5s ease-in-out";
@@ -29989,7 +29936,7 @@ void main() {
     document.addEventListener("mouseup", handleMouseUp);
     handle.addEventListener("click", () => {
       removeDocumentListeners();
-      closePanel(panel, animationFrameIdRef);
+      closePanel(panel, animationFrameIdRef, resizeObserver);
       observePanelPosition();
     });
   }
@@ -30025,7 +29972,7 @@ void main() {
     position: relative !important;
     display: flex !important;
     flex-direction: column !important;
-    padding: 24px 12px !important;
+    padding: 8px !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
     margin: 0 !important;
@@ -30214,6 +30161,11 @@ void main() {
           url: asset.modelUrl,
           category: asset.category
         });
+        if (asset.category === "コート") {
+          activeAssets.delete("ジャケット");
+        } else if (asset.category === "ジャケット") {
+          activeAssets.delete("コート");
+        }
         const allAssets = Array.from(activeAssets.values());
         previewInstance.updateAssets(allAssets);
         if (eventShopId && eventShopId !== "unknown") {
@@ -30353,34 +30305,52 @@ void main() {
   function createBackButton(onClick) {
     const backButton = document.createElement("button");
     backButton.setAttribute("data-atelier-back-button", "true");
-    backButton.innerHTML = "< 商品に戻る";
+    backButton.innerHTML = `
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      width="20" 
+      height="20" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      stroke-width="2" 
+      stroke-linecap="round" 
+      stroke-linejoin="round"
+      style="display: block;"
+    >
+      <path d="m15 18-6-6 6-6"/>
+    </svg>
+  `;
     backButton.style.cssText = `
     position: absolute;
-    top: 16px;
-    left: 16px;
-    background: rgba(255, 255, 255, 0.9);
-    border: none;
+    top: 8px;
+    left: 8px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(0, 0, 0, 0.1);
     display: flex;
     align-items: center;
-    gap: 4px;
+    justify-content: center;
     cursor: pointer;
-    padding: 8px 12px;
+    padding: 0;
+    width: 30px;
+    height: 30px;
     border-radius: 8px;
     z-index: 10001;
     color: #000;
-    font-size: 14px;
-    font-weight: 500;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    transition: all 0.2s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   `;
     backButton.addEventListener("mouseenter", () => {
       backButton.style.backgroundColor = "rgba(255, 255, 255, 1)";
-      backButton.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.2)";
+      backButton.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.15)";
+      backButton.style.transform = "translateY(-1px)";
     });
     backButton.addEventListener("mouseleave", () => {
-      backButton.style.backgroundColor = "rgba(255, 255, 255, 0.9)";
-      backButton.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.15)";
+      backButton.style.backgroundColor = "rgba(255, 255, 255, 0.95)";
+      backButton.style.boxShadow = "0 1px 3px rgba(0, 0, 0, 0.1)";
+      backButton.style.transform = "translateY(0)";
     });
     backButton.addEventListener("click", onClick);
     return backButton;

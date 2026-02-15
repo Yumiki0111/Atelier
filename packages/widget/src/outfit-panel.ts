@@ -72,7 +72,7 @@ export async function showOutfitChangePanel(
                           document.body.querySelector('[data-atelier-floating-buttons]') as HTMLElement;
   
   /** パネルを閉じる共通処理 */
-  const closePanel = (targetPanel: HTMLElement, animationFrameIdRef?: { current: number | null }) => {
+  const closePanel = (targetPanel: HTMLElement, animationFrameIdRef?: { current: number | null }, observer?: ResizeObserver) => {
     const closeTransition = "transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 0.6s ease-out";
     targetPanel.style.transition = closeTransition;
     targetPanel.style.transform = "translateY(100%)";
@@ -97,6 +97,9 @@ export async function showOutfitChangePanel(
       if (animationFrameIdRef?.current) {
         cancelAnimationFrame(animationFrameIdRef.current);
       }
+      if (observer) {
+        observer.disconnect();
+      }
       targetPanel.remove();
       if (viewerContainer) {
         viewerContainer.style.transition = "";
@@ -108,54 +111,57 @@ export async function showOutfitChangePanel(
   // 既存のパネルがあれば閉じてリスナーも解除
   const existingPanel = container.querySelector("#atelier-outfit-change-panel");
   if (existingPanel) {
-    closePanel(existingPanel as HTMLElement);
+    closePanel(existingPanel as HTMLElement, undefined, undefined);
     return;
   }
   
-  // パネルを作成（画面の約50%の高さ）
+  // パネルを作成（画面の約10%の高さ）
   const panel = document.createElement("div");
   panel.id = "atelier-outfit-change-panel";
-  panel.style.cssText = `
-    position: absolute !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    width: 100% !important;
-    background: white !important;
-    border-top: 1px solid #e5e7eb !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important;
-    max-height: 50vh !important;
-    height: 50vh !important;
-    transform: translateY(100%) !important;
-    opacity: 0 !important;
-    transition: transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.5s ease-in-out !important;
-    will-change: transform, opacity !important;
-    z-index: 10 !important;
-  `;
+  
+  // コンテナの高さを取得して、10%を計算
+  const containerRect = container.getBoundingClientRect();
+  const panelHeight = Math.floor(containerRect.height * 0.1);
+  
+  panel.style.position = "absolute";
+  panel.style.bottom = "0";
+  panel.style.left = "0";
+  panel.style.right = "0";
+  panel.style.width = "100%";
+  panel.style.background = "white";
+  panel.style.borderTop = "1px solid #e5e7eb";
+  panel.style.display = "flex";
+  panel.style.flexDirection = "column";
+  panel.style.overflow = "hidden";
+  panel.style.height = `${panelHeight}px`;
+  panel.style.maxHeight = `${panelHeight}px`;
+  panel.style.minHeight = `${panelHeight}px`;
+  panel.style.transform = "translateY(100%)";
+  panel.style.opacity = "0";
+  panel.style.transition = "transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.5s ease-in-out";
+  panel.style.willChange = "transform, opacity";
+  panel.style.zIndex = "10";
+  panel.style.boxSizing = "border-box";
   
   // ドラッグハンドル
   const handle = document.createElement("div");
-  handle.style.cssText = `
-    width: 40px !important;
-    height: 4px !important;
-    background: #d1d5db !important;
-    border-radius: 2px !important;
-    margin: 12px auto 0 !important;
-    cursor: grab !important;
-    flex-shrink: 0 !important;
-  `;
+  handle.style.width = "40px";
+  handle.style.height = "4px";
+  handle.style.background = "#d1d5db";
+  handle.style.borderRadius = "2px";
+  handle.style.margin = "12px auto 0";
+  handle.style.cursor = "grab";
+  handle.style.flexShrink = "0";
   panel.appendChild(handle);
   
   // 商品リストエリア
   const body = document.createElement("div");
   body.className = "atelier-outfit-change-panel-body";
-  body.style.cssText = `
-    flex: 1 !important;
-    overflow-y: auto !important;
-    padding: 0 20px 20px !important;
-  `;
+  body.style.flex = "1";
+  body.style.overflowY = "auto";
+  body.style.padding = "0 20px 20px";
+  body.style.minHeight = "0";
+  body.style.maxHeight = "100%";
   
   // ローディング表示
   const loadingDiv = document.createElement("div");
@@ -172,6 +178,21 @@ export async function showOutfitChangePanel(
   // コンテナに追加（sizeAreaの後）
   container.appendChild(panel);
   
+  // パネルの高さを更新する関数
+  const updatePanelHeight = () => {
+    const containerRect = container.getBoundingClientRect();
+    const newPanelHeight = Math.floor(containerRect.height * 0.1);
+    panel.style.height = `${newPanelHeight}px`;
+    panel.style.maxHeight = `${newPanelHeight}px`;
+    panel.style.minHeight = `${newPanelHeight}px`;
+  };
+  
+  // リサイズ時にパネルの高さを更新
+  const resizeObserver = new ResizeObserver(() => {
+    updatePanelHeight();
+  });
+  resizeObserver.observe(container);
+  
   // サイズボタンとフローティングボタンを非表示
   if (sizeArea) {
     sizeArea.style.display = "none";
@@ -187,7 +208,7 @@ export async function showOutfitChangePanel(
     
     const panelRect = panel.getBoundingClientRect();
     const containerRect = container.getBoundingClientRect();
-    const panelHeight = panel.offsetHeight; // 66.67vh相当
+    const panelHeight = panel.offsetHeight; // 10vh相当
     const containerHeight = containerRect.height;
     
     // パネルの現在位置を計算（コンテナの下端からの距離）
@@ -400,7 +421,7 @@ export async function showOutfitChangePanel(
                   callbacks.onProductSelect(product, config);
                   // パネルを閉じる
                   removeDocumentListeners();
-                  closePanel(panel, animationFrameIdRef);
+                  closePanel(panel, animationFrameIdRef, resizeObserver);
                   observePanelPosition();
                 } else {
                   alert("この商品の3Dモデルが登録されていません。");
@@ -582,7 +603,7 @@ export async function showOutfitChangePanel(
     if (deltaY > threshold) {
       // 閉じる（リスナーも解除）
       removeDocumentListeners();
-      closePanel(panel, animationFrameIdRef);
+      closePanel(panel, animationFrameIdRef, resizeObserver);
       observePanelPosition();
     } else {
       // 元に戻す
@@ -638,7 +659,7 @@ export async function showOutfitChangePanel(
   // ハンドルをクリックしても閉じる
   handle.addEventListener("click", () => {
     removeDocumentListeners();
-    closePanel(panel, animationFrameIdRef);
+    closePanel(panel, animationFrameIdRef, resizeObserver);
     observePanelPosition();
   });
 }

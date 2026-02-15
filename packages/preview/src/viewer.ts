@@ -174,7 +174,7 @@ export function init3DViewer(
       });
 
       // モデルのトランスフォームを計算して保存（アセットを配置する際に使用）
-      baseModelTransform = calculateAndSetModelTransform(model, 2.4);
+      baseModelTransform = calculateAndSetModelTransform(model, 2.6);
       enableShadow(model);
       baseModel = model;
       isBaseModelLoaded = true;

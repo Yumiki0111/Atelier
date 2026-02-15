@@ -22,9 +22,21 @@ export function createSizeArea(
 ): SizeAreaElements {
   const sizeArea = document.createElement("div");
   sizeArea.setAttribute("data-atelier-size-area", "true");
+  
+  // プレビュー環境（PhoneFrame）を検出
+  // PhoneFrame内ではセーフエリア（ステータスバー）を考慮する必要がある
+  const isPreviewEnvironment = typeof window !== 'undefined' && 
+    (window.location.hostname === 'localhost' || 
+     window.location.hostname === '127.0.0.1' ||
+     document.querySelector('[data-phone-frame]') !== null);
+  
+  // プレビュー環境ではセーフエリア（約5.2%）を考慮して少し下げる
+  // 実機環境ではtop: 0で問題ない（ブラウザがセーフエリアを自動処理）
+  const topValue = isPreviewEnvironment ? '6%' : '0';
+  
   sizeArea.style.cssText = `
     position: absolute;
-    top: 7%;
+    top: ${topValue};
     left: 0;
     right: 0;
     width: 100%;
@@ -54,6 +66,7 @@ export function createSizeArea(
     box-sizing: border-box;
     position: relative;
     margin: 0 auto;
+    height: 30px;
   `;
 
   // スクロールバーを非表示（重複追加を防止）
@@ -90,7 +103,8 @@ export function createSizeArea(
       border-radius: ${isSelected ? "50px" : "0"};
       cursor: pointer;
       transition: all 0.2s ease;
-      min-height: 20px;
+      min-height: 24px;
+      height: 24px;
       display: flex;
       align-items: center;
       justify-content: center;

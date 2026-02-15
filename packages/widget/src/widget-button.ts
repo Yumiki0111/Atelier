@@ -1,7 +1,6 @@
 import type { WidgetParams } from "./widget-api";
 import type { WidgetDesignConfig } from "./types";
 import { sendEvent } from "./widget-api";
-import { loadProductImage } from "./widget-image";
 import { updateButtonPositions } from "./widget-position";
 
 export function renderCube(
@@ -105,18 +104,12 @@ export function renderCube(
     right: ${baseRightPx}px !important;
     display: flex !important;
     align-items: center !important;
-    gap: 12px !important;
     z-index: 9999 !important;
     pointer-events: none !important;
   `;
   
   button.style.pointerEvents = "auto";
   
-  // 商品画像コンテナ
-  const imageContainer = createImageContainer(buttonHeight);
-  loadProductImage(params, imageContainer, buttonHeight);
-  
-  container.appendChild(imageContainer);
   container.appendChild(button);
   document.body.appendChild(container);
 
@@ -256,39 +249,4 @@ function createCubeIcon(size: number): SVGElement {
   });
   
   return iconSvg;
-}
-
-function createImageContainer(size: number): HTMLElement {
-  const imageContainer = document.createElement("div");
-  imageContainer.style.cssText = `
-    width: ${size}px !important;
-    height: ${size}px !important;
-    border-radius: 50% !important;
-    background: white !important;
-    border: 2px solid rgba(102, 126, 234, 0.3) !important;
-    overflow: hidden !important;
-    flex-shrink: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
-    pointer-events: none !important;
-    position: relative !important;
-  `;
-  
-  const placeholder = document.createElement("div");
-  placeholder.style.cssText = `
-    width: 100% !important;
-    height: 100% !important;
-    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%) !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-  `;
-  imageContainer.appendChild(placeholder);
-  
-  return imageContainer;
 }

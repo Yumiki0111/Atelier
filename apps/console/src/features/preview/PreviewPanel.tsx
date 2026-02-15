@@ -62,6 +62,13 @@ export function PreviewPanel({
       category: asset.category,
     });
 
+    // コートとジャケットは同じ階層なので、一方を選択したらもう一方を削除
+    if (asset.category === "コート") {
+      activeAssetsRef.current.delete("ジャケット");
+    } else if (asset.category === "ジャケット") {
+      activeAssetsRef.current.delete("コート");
+    }
+
     // 全アクティブアセットを3Dビューアに反映
     const allAssets = Array.from(activeAssetsRef.current.values());
     previewInstanceRef.current.updateAssets(allAssets);

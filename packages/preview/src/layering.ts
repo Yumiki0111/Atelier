@@ -7,8 +7,8 @@ import type { ProductCategory } from "@atelier/shared";
 export const CATEGORY_LAYER_ORDER: Record<ProductCategory, number> = {
   "ボトムス": 1,    // 最下層（パンツ・スカートなど）
   "トップス": 2,    // 中層（シャツ・Tシャツなど）
-  "ジャケット": 3,  // 上層（上着）
-  "コート": 4,      // 最上層（アウター）
+  "ジャケット": 2,  // 中層（上着）- コートの下
+  "コート": 3,      // 最上層（アウター）
 };
 
 /**
