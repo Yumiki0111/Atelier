@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
     const fileContents = readFileSync(filePath, "utf-8");
 
     // CORSヘッダーを追加
+    // キャッシュを短く設定して、デプロイ後の更新を確実に反映
     const response = new NextResponse(fileContents, {
       status: 200,
       headers: {
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type",
-        "Cache-Control": "public, max-age=31536000, immutable",
+        "Cache-Control": "public, max-age=3600, must-revalidate",
       },
     });
 
