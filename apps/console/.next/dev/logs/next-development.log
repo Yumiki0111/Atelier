@@ -49429,3 +49429,30 @@ Import traces:
 [07:34:03.514] Server  LOG     Available buckets: [{...}]
 [07:34:03.515] Server  LOG     Uploading to bucket: products, path: images/1771592244037-g9w7p14ka3o.png, size: 7456 bytes
 [07:34:04.364] Server  LOG     Upload successful: {}
+[07:38:31.894] Server  LOG     [shop-id API] GET request received
+[07:38:31.894] Server  LOG     [shop-id API] Auth header: "present"
+[07:38:31.894] Server  LOG     [shop-id API] Token extracted, length: 796
+[07:38:31.894] Server  LOG     [shop-id API] Verifying token...
+[07:38:32.005] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[07:38:32.005] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[07:38:32.005] Browser LOG     [AuthContext] Using provided access token, calling API...
+[07:38:32.005] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[07:38:32.005] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[07:38:32.637] Server  LOG     [shop-id API] Token verification result: {}
+[07:38:32.638] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[07:38:33.140] Server  LOG     [shop-id API] Query result: {}
+[07:38:33.140] Server  LOG     [shop-id API] Returning shopId and role: {}
+[07:38:33.573] Browser LOG     [AuthContext] Fetch completed, status: 200
+[07:38:33.573] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[07:38:33.573] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[07:38:33.573] Browser LOG     [AuthContext] role found: owner
+[07:38:33.573] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false
+[07:38:39.001] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "g1771040664"
+[07:38:43.155] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "g1771040664"
+[07:38:58.604] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "g1771040664"
+[07:39:03.409] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "g1771040664"
+[07:39:04.704] Server  LOG     [widget-config API] Response: "{\n  \"productId\": \"86e82384-1435-46db-a033-86a85d42ff19\",\n  \"externalProductId\": \"g1771040664\",\n  \"defaultSize\": \"M\",\n  \"sizesKeys\": [\n    \"M\"\n  ],\n  \"sizesCount\": 1,\n  \"sizes\": {\n    \"M\": [\n      {\n        \"hasModelUrl\": true,\n        \"hasGlbUrl\": true,\n        \"category\": \"ジャケット\"\n      }\n    ]\n  }\n}"
+[07:40:46.678] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "g1771040664"
+[07:40:48.353] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "g1771040664"
+[07:40:49.115] Server  LOG     [widget-config API] Response: "{\n  \"productId\": \"86e82384-1435-46db-a033-86a85d42ff19\",\n  \"externalProductId\": \"g1771040664\",\n  \"defaultSize\": \"M\",\n  \"sizesKeys\": [\n    \"M\"\n  ],\n  \"sizesCount\": 1,\n  \"sizes\": {\n    \"M\": [\n      {\n        \"hasModelUrl\": true,\n        \"hasGlbUrl\": true,\n        \"category\": \"ジャケット\"\n      }\n    ]\n  }\n}"
+[07:40:55.714] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "g1771040664"
