@@ -1,20 +1,9 @@
 export interface WidgetDesignConfig {
   button?: {
-    color?: string;
-    radius?: number;
-    width?: number;
-    height?: number;
-    fontSize?: number;
-    borderWidth?: number;
-    borderColor?: string;
-    shadow?: boolean;
-    imageUrl?: string;
-    imageRadius?: number;
-    hasImage?: boolean;
-    title?: string;
-    hasTitle?: boolean;
-    subtitle?: string;
-    hasSubtitle?: boolean;
+    color?: string; // ボタンの色
+    text?: string; // 文言
+    shape?: "circle" | "pill"; // 形状: 円 or 横長円
+    imageUrl?: string; // 画像URL（円の場合は必須、横長円の場合は任意）
   };
 }
 

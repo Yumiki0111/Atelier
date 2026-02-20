@@ -1,5 +1,5 @@
 import { fetchWidgetConfig, fetchWidgetDesign, sendEvent, type WidgetParams } from "./widget-api";
-import { renderCube, applyDesignToButton, renderModalWithLoading, updateModalWithConfig, showErrorInModal, updateButtonPositions } from "./widget-render";
+import { renderCube, applyDesignToButton, showDefaultButton, renderModalWithLoading, updateModalWithConfig, showErrorInModal, updateButtonPositions } from "./widget-render";
 
 export function initWidget() {
   // 既存のボタンをクリーンアップ（ページ遷移時などに対応）
@@ -78,18 +78,29 @@ export function initWidget() {
         url,
       };
 
-      // Render button
-      renderCube(shadowRoot, params, handleCubeClick);
-
-      // デザイン設定を非同期で取得してボタンに適用
+      const pid = productId || externalProductId || `widget-${Date.now()}-${Math.random()}`;
+      const containerId = `atelier-widget-container-${pid}`;
+      
+      // デザインを先に取得してからボタンを作成（根本的な解決）
       if (publicKey) {
-        const pid = productId || externalProductId || `widget-${Date.now()}-${Math.random()}`;
-        const containerId = `atelier-widget-container-${pid}`;
         fetchWidgetDesign(publicKey).then((design) => {
           if (design) {
-            applyDesignToButton(containerId, design);
+            // デザインを取得できた場合、デザイン情報を渡してボタンを作成
+            renderCube(shadowRoot, params, handleCubeClick, design);
+          } else {
+            // デザインが取得できなかった場合、ボタンを作成してからデフォルトを適用
+            renderCube(shadowRoot, params, handleCubeClick, null);
+            showDefaultButton(containerId);
           }
-        }).catch(() => { /* ignore */ });
+        }).catch(() => {
+          // エラーが発生した場合、ボタンを作成してからデフォルトを適用
+          renderCube(shadowRoot, params, handleCubeClick, null);
+          showDefaultButton(containerId);
+        });
+      } else {
+        // publicKeyがない場合、ボタンを作成してからデフォルトを適用
+        renderCube(shadowRoot, params, handleCubeClick, null);
+        showDefaultButton(containerId);
       }
     } catch (error) {
       console.error(`[Atelier Widget] Failed to initialize widget ${index + 1}:`, error);

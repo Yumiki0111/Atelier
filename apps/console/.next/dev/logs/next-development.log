@@ -1122,3 +1122,21 @@ Incoming: %s useEffect [#ffffff, , circle, https://aeuccvcdwijoojfcgjjs.supabase
 [00:33:43.137] Browser WARN    [Atelier Widget] No widget elements found. Make sure you have elements with data-atelier-public-key or data-atelier-shop-id attribute.
 [00:33:43.247] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "preview"
 [00:33:43.251] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "preview"
+[00:37:49.813] Server  LOG     [shop-id API] GET request received
+[00:37:49.813] Server  LOG     [shop-id API] Auth header: "present"
+[00:37:49.813] Server  LOG     [shop-id API] Token extracted, length: 796
+[00:37:49.813] Server  LOG     [shop-id API] Verifying token...
+[00:37:49.921] Browser LOG     [AuthContext] Auth state changed: SIGNED_IN {"hasSession":true}
+[00:37:49.921] Browser LOG     [AuthContext] fetchShopId called for userId: 067bc783-177e-4683-b198-c83af8ee9f20
+[00:37:49.921] Browser LOG     [AuthContext] Using provided access token, calling API...
+[00:37:49.921] Browser LOG     [AuthContext] Making fetch request to /api/auth/shop-id
+[00:37:49.921] Browser LOG     [AuthContext] State update: {"hasUser":true,"isAuthenticated":true,"isLoading":false,"shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56","userId":"067bc783-177e-4683-b198-c83af8ee9f20"}
+[00:37:50.126] Server  LOG     [shop-id API] Token verification result: {}
+[00:37:50.127] Server  LOG     [shop-id API] Fetching shop_id for user: "067bc783-177e-4683-b198-c83af8ee9f20"
+[00:37:50.308] Server  LOG     [shop-id API] Query result: {}
+[00:37:50.309] Server  LOG     [shop-id API] Returning shopId and role: {}
+[00:37:50.414] Browser LOG     [AuthContext] Fetch completed, status: 200
+[00:37:50.414] Browser LOG     [AuthContext] API response: {"role":"owner","shopId":"abb54fb0-9119-4d9d-b979-1ea20b2f9f56"}
+[00:37:50.414] Browser LOG     [AuthContext] shop_id found: abb54fb0-9119-4d9d-b979-1ea20b2f9f56
+[00:37:50.414] Browser LOG     [AuthContext] role found: owner
+[00:37:50.414] Browser LOG     [AuthContext] fetchShopId completed, setting isLoading to false

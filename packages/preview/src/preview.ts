@@ -3,8 +3,8 @@ import type { ProductSize } from "@atelier/shared";
 import { init3DViewer } from "./viewer";
 import type { ViewerInstance } from "./viewer";
 import { getBackgroundImageUrl } from "./viewer-container";
-
-const OUTFIT_CATEGORIES: readonly string[] = ["トップス", "ボトムス", "アウター", "シューズ"];
+import { buildHeightSlider } from "./height-slider";
+import { renderCatTabs, renderThumbs, renderLeftPanel, PREVIEW_SIZES, OUTFIT_CATEGORIES } from "./ui-components";
 
 // ─── CSS injection ─────────────────────────────────────────────────────────────
 function injectStyles() {
@@ -208,128 +208,62 @@ export function initPreviewPanel(
   // ─── Render helpers ────────────────────────────────────
 
   function renderLeftSlots() {
-    leftSlots.innerHTML = "";
-    // 着ている商品だけを表示（activeAssetsに値が入っているもののみ）
+    // activeAssetsを共通関数用の形式に変換
+    const assetsForRender = new Map<string, { url: string; category: string; thumbnailUrl?: string | null }>();
     activeAssets.forEach((wearing, cat) => {
-      const isActive = cat === currentCategory;
-      // 下のパネルと同じ商品画像を取得（currentOutfitDataから該当するアイテムを探す）
       const items = currentOutfitData.categories[cat] || [];
       const item = items.find((i) => i.modelUrl === wearing.url);
-      const thumbnailUrl = item?.thumbnailUrl;
-
-      const card = document.createElement("div");
-      card.style.cssText = `
-        width: 30px; height: 30px; flex-shrink: 0;
-        border: 2px solid ${isActive ? "#3b82f6" : "#e5e7eb"};
-        border-radius: 6px;
-        background: rgba(249,250,251,0.9);
-        display: flex; align-items: center; justify-content: center;
-        cursor: pointer; overflow: hidden; box-sizing: border-box;
-      `;
-      // 下のパネルと同じスタイルで画像を表示
-      const imgWrap = document.createElement("div");
-      imgWrap.style.cssText = `
-        width: 24px; height: 24px; flex-shrink: 0;
-        border-radius: 3px; background: #f3f4f6;
-        overflow: hidden;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 8px; color: #9ca3af;
-      `;
-      if (thumbnailUrl) {
-        const img = document.createElement("img");
-        img.src = thumbnailUrl;
-        img.style.cssText = "width:100%;height:100%;object-fit:cover;";
-        imgWrap.appendChild(img);
-      } else {
-        imgWrap.textContent = "3D";
-      }
-      card.appendChild(imgWrap);
-      card.addEventListener("click", () => {
+      assetsForRender.set(cat, {
+        url: wearing.url,
+        category: cat,
+        thumbnailUrl: item?.thumbnailUrl,
+      });
+    });
+    
+    renderLeftPanel(
+      leftSlots,
+      assetsForRender,
+      currentOutfitData,
+      currentCategory,
+      (cat: string) => {
         currentCategory = cat;
         renderLeftSlots();
-        renderCatTabs();
-        renderThumbs();
-      });
-      leftSlots.appendChild(card);
-    });
+        renderCatTabsLocal();
+        renderThumbsLocal();
+      },
+      PREVIEW_SIZES
+    );
   }
 
-  function renderCatTabs() {
-    catTabs.innerHTML = "";
-    const cats = Object.keys(currentOutfitData.categories).length > 0
-      ? Object.keys(currentOutfitData.categories)
-      : [...OUTFIT_CATEGORIES];
-
-    if (!cats.includes(currentCategory)) currentCategory = cats[0] || OUTFIT_CATEGORIES[0];
-
-    cats.forEach((cat) => {
-      const isActive = cat === currentCategory;
-      const btn = document.createElement("button");
-      btn.textContent = cat;
-      btn.style.cssText = `
-        padding: 3px 8px; font-size: 9px;
-        font-weight: ${isActive ? "700" : "500"};
-        color: ${isActive ? "#fff" : "#374151"};
-        background: ${isActive ? "#111" : "transparent"};
-        border: none; border-radius: 99px;
-        cursor: pointer; white-space: nowrap; flex-shrink: 0; outline: none;
-        transition: background 0.15s, color 0.15s;
-      `;
-      btn.addEventListener("click", () => {
+  function renderCatTabsLocal() {
+    currentCategory = renderCatTabs(
+      catTabs,
+      currentOutfitData,
+      currentCategory,
+      (cat: string) => {
         currentCategory = cat;
-        renderCatTabs();
-        renderThumbs();
+        renderCatTabsLocal();
+        renderThumbsLocal();
         renderLeftSlots();
-      });
-      catTabs.appendChild(btn);
-    });
+      },
+      PREVIEW_SIZES
+    );
   }
 
-  function renderThumbs() {
-    thumbsRow.innerHTML = "";
+  function renderThumbsLocal() {
     const items: OutfitAssetItem[] = currentOutfitData.categories[currentCategory] || [];
-
-    if (items.length === 0) {
-      const msg = document.createElement("div");
-      msg.textContent = "アイテムがありません";
-      msg.style.cssText = "font-size:11px;color:#9ca3af;padding:8px;align-self:center;";
-      thumbsRow.appendChild(msg);
-      return;
-    }
-
-    items.forEach((item) => {
-      const isSelected = item.id === selectedAssetId && activeAssets.get(item.category)?.url === item.modelUrl;
-      const card = document.createElement("div");
-      card.style.cssText = `
-        width: 38px; min-width: 38px; height: 38px;
-        border-radius: 7px; background: #fff;
-        border: 2px solid ${isSelected ? "#3b82f6" : "#e5e7eb"};
-        display: flex; align-items: center; justify-content: center;
-        cursor: pointer; overflow: hidden; flex-shrink: 0;
-        box-sizing: border-box; transition: border-color 0.15s;
-      `;
-
-      const imgWrap = document.createElement("div");
-      imgWrap.style.cssText = `
-        width: 28px; height: 28px; border-radius: 3px; background: #f3f4f6;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 8px; color: #9ca3af; overflow: hidden; flex-shrink: 0;
-      `;
-      if (item.thumbnailUrl) {
-        const img = document.createElement("img");
-        img.src = item.thumbnailUrl;
-        img.style.cssText = "width:100%;height:100%;object-fit:cover;";
-        imgWrap.appendChild(img);
-      } else {
-        imgWrap.textContent = "3D";
-      }
-      card.appendChild(imgWrap);
-
-      card.addEventListener("click", () => {
-        if (isSelected) {
+    
+    renderThumbs(
+      thumbsRow,
+      items,
+      currentCategory,
+      selectedAssetId,
+      activeAssets,
+      (item: OutfitAssetItem | null, category: string) => {
+        if (item === null) {
           selectedAssetId = null;
-          activeAssets.delete(item.category);
-          onOutfitAssetSelect?.(null, item.category);
+          activeAssets.delete(category);
+          onOutfitAssetSelect?.(null, category);
         } else {
           selectedAssetId = item.id;
           activeAssets.set(item.category, { url: item.modelUrl, category: item.category });
@@ -350,16 +284,16 @@ export function initPreviewPanel(
         }
         viewer?.updateAssets(Array.from(activeAssets.values()));
         renderLeftSlots();
-        renderThumbs();
-      });
-      thumbsRow.appendChild(card);
-    });
+        renderThumbsLocal();
+      },
+      PREVIEW_SIZES
+    );
   }
 
   // Initial render
   renderLeftSlots();
-  renderCatTabs();
-  renderThumbs();
+  renderCatTabsLocal();
+  renderThumbsLocal();
 
   // ─── Public instance ───────────────────────────────────
   return {
@@ -379,8 +313,8 @@ export function initPreviewPanel(
     },
     updateOutfitAssets(data) {
       currentOutfitData = data;
-      renderCatTabs();
-      renderThumbs();
+      renderCatTabsLocal();
+      renderThumbsLocal();
     },
     updateHeight(height, baseHeight) {
       viewer?.updateHeight?.(height, baseHeight);
@@ -423,137 +357,4 @@ function makeArrowBtn(symbol: string): HTMLElement {
   return btn;
 }
 
-function buildHeightSlider(
-  container: HTMLElement,
-  min: number,
-  max: number,
-  initial: number,
-  onChange: (v: number) => void
-) {
-  const plus = document.createElement("div");
-  plus.textContent = "+";
-  plus.style.cssText = `
-    font-size: 12px; font-weight: 700; color: #374151;
-    cursor: pointer; line-height: 1; flex-shrink: 0; user-select: none;
-    width: 100%; text-align: center; padding: 2px 0;
-  `;
-
-  const trackWrap = document.createElement("div");
-  trackWrap.style.cssText = `
-    flex: 1; min-height: 0; position: relative;
-    display: flex; align-items: center; justify-content: center;
-    margin: 3px 0;
-  `;
-  const track = document.createElement("div");
-  track.style.cssText = "position:absolute;top:0;bottom:0;width:2px;background:#d1d5db;border-radius:1px;left:50%;transform:translateX(-50%);";
-
-  // 数値表示用の要素を作成
-  const valueLabel = document.createElement("div");
-  valueLabel.textContent = `${initial}`;
-  valueLabel.style.cssText = `
-    position: absolute;
-    left: -30px;
-    transform: translateY(-50%);
-    font-size: 12px;
-    font-weight: 600;
-    color: #374151;
-    white-space: nowrap;
-    opacity: 0;
-    transition: opacity 0.2s;
-    pointer-events: none;
-    z-index: 2;
-  `;
-
-  const handle = document.createElement("div");
-  handle.style.cssText = `
-    position: absolute;
-    width: 12px; height: 12px;
-    background: #111; border-radius: 50%;
-    left: 50%; transform: translate(-50%, -50%);
-    cursor: grab; touch-action: none; z-index: 1;
-  `;
-
-  const minus = document.createElement("div");
-  minus.textContent = "−";
-  minus.style.cssText = `
-    font-size: 12px; font-weight: 700; color: #374151;
-    cursor: pointer; line-height: 1; flex-shrink: 0; user-select: none;
-    width: 100%; text-align: center; padding: 2px 0;
-  `;
-
-  trackWrap.appendChild(track);
-  trackWrap.appendChild(valueLabel);
-  trackWrap.appendChild(handle);
-  container.appendChild(plus);
-  container.appendChild(trackWrap);
-  container.appendChild(minus);
-
-  let dragging = false;
-  let currentValue = initial;
-
-  const valueToY = (v: number): number => {
-    const h = trackWrap.clientHeight;
-    return (1 - (v - min) / (max - min)) * h;
-  };
-  const yToValue = (y: number): number => {
-    const h = trackWrap.clientHeight || 1;
-    return Math.round(max - Math.max(0, Math.min(1, y / h)) * (max - min));
-  };
-  const positionHandle = (v: number) => {
-    const y = valueToY(v);
-    handle.style.top = `${y}px`;
-    valueLabel.style.top = `${y}px`;
-    valueLabel.textContent = `${v}`;
-  };
-
-  requestAnimationFrame(() => positionHandle(currentValue));
-  window.addEventListener("resize", () => positionHandle(currentValue), { passive: true });
-
-  handle.addEventListener("mousedown", (e) => {
-    e.preventDefault();
-    dragging = true;
-    handle.style.cursor = "grabbing";
-    valueLabel.style.opacity = "1";
-  });
-  handle.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-    dragging = true;
-    valueLabel.style.opacity = "1";
-  }, { passive: false });
-
-  document.addEventListener("mousemove", (e) => {
-    if (!dragging) return;
-    const rect = trackWrap.getBoundingClientRect();
-    const v = yToValue(e.clientY - rect.top);
-    if (v !== currentValue) { currentValue = v; positionHandle(v); onChange(v); }
-  });
-  document.addEventListener("touchmove", (e) => {
-    if (!dragging) return;
-    e.preventDefault();
-    const rect = trackWrap.getBoundingClientRect();
-    const v = yToValue(e.touches[0].clientY - rect.top);
-    if (v !== currentValue) { currentValue = v; positionHandle(v); onChange(v); }
-  }, { passive: false });
-  document.addEventListener("mouseup", () => {
-    if (dragging) {
-      dragging = false;
-      handle.style.cursor = "grab";
-      valueLabel.style.opacity = "0";
-    }
-  });
-  document.addEventListener("touchend", () => {
-    if (dragging) {
-      dragging = false;
-      valueLabel.style.opacity = "0";
-    }
-  });
-
-  plus.addEventListener("click", () => {
-    currentValue = Math.min(max, currentValue + 1);
-    positionHandle(currentValue); onChange(currentValue);
-  });
-  minus.addEventListener("click", () => {
-    currentValue = Math.max(min, currentValue - 1);
-    positionHandle(currentValue); onChange(currentValue);
-  });
-}
+// buildHeightSlider は height-slider.ts からインポート

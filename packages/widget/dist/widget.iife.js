@@ -212,7 +212,7 @@
       container.style.right = `${baseRightPx}px`;
     });
   }
-  function renderCube(shadowRoot, params, onCubeClick) {
+  function renderCube(shadowRoot, params, onCubeClick, initialDesign) {
     const productId = params.productId || params.externalProductId || `widget-${Date.now()}-${Math.random()}`;
     const buttonId = `atelier-widget-button-${productId}`;
     const containerId = `atelier-widget-container-${productId}`;
@@ -221,12 +221,6 @@
       existingContainer.remove();
       updateButtonPositions();
     }
-    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
-    const buttonHeight = isMobile ? 48 : 56;
-    const buttonMinWidth = isMobile ? 160 : 180;
-    const buttonFontSize = isMobile ? 13 : 15;
-    const buttonPadding = isMobile ? "0 20px" : "0 24px";
-    const buttonGap = isMobile ? 6 : 8;
     const baseBottomPx = 24;
     const baseRightPx = 24;
     const button = document.createElement("button");
@@ -237,51 +231,11 @@
     position: fixed !important;
     bottom: ${baseBottomPx}px !important;
     right: ${baseRightPx}px !important;
-    width: auto !important;
-    min-width: ${buttonMinWidth}px !important;
-    height: ${buttonHeight}px !important;
-    background: white !important;
-    border: 2px solid #e5e7eb !important;
-    border-radius: ${buttonHeight / 2}px !important;
-    cursor: pointer !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: ${buttonGap}px !important;
-    color: #1f2937 !important;
-    font-weight: 600 !important;
-    font-size: ${buttonFontSize}px !important;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    padding: ${buttonPadding} !important;
-    margin: 0 !important;
-    outline: none !important;
-    pointer-events: auto !important;
     z-index: 9999 !important;
-    box-sizing: border-box !important;
-    line-height: 1 !important;
-    text-align: center !important;
-    white-space: nowrap !important;
-    backdrop-filter: blur(10px) !important;
+    display: none !important;
+    pointer-events: none !important;
   `;
-    const iconSize = isMobile ? 18 : 20;
-    const iconSvg = createCubeIcon(iconSize);
-    const buttonText = document.createTextNode("試着する");
-    button.appendChild(iconSvg);
-    button.appendChild(buttonText);
-    button.addEventListener("mouseenter", () => {
-      button.style.background = "#f9fafb !important";
-      button.style.borderColor = "#d1d5db !important";
-      button.style.transform = "translateY(-2px) scale(1.02)";
-      button.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.15) !important";
-    });
-    button.addEventListener("mouseleave", () => {
-      button.style.background = "white !important";
-      button.style.borderColor = "#e5e7eb !important";
-      button.style.transform = "translateY(0) scale(1)";
-      button.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.1) !important";
-    });
+    button.innerHTML = "";
     button.addEventListener("click", async (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -294,15 +248,19 @@
     position: fixed !important;
     bottom: ${baseBottomPx}px !important;
     right: ${baseRightPx}px !important;
-    display: flex !important;
+    display: none !important;
     align-items: center !important;
     z-index: 9999 !important;
     pointer-events: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
   `;
-    button.style.pointerEvents = "auto";
     container.appendChild(button);
     document.body.appendChild(container);
     updateButtonPositions();
+    if (initialDesign) {
+      applyDesignToButton(containerId, initialDesign);
+    }
     const eventShopId = params.shopId || "unknown";
     sendEvent({
       shopId: eventShopId,
@@ -311,51 +269,24 @@
     }).catch(() => {
     });
   }
-  function calculateFontSize(text, isSubtitle, buttonHeight, hasImage) {
-    let baseSize = Math.max(12, Math.min(20, buttonHeight * 0.25));
-    if (hasImage) {
-      baseSize *= 0.9;
-    }
-    if (isSubtitle) {
-      baseSize *= 0.75;
-    }
-    const textLength = text.length;
-    if (textLength > 20) {
-      baseSize *= 0.85;
-    } else if (textLength > 15) {
-      baseSize *= 0.9;
-    } else if (textLength > 10) {
-      baseSize *= 0.95;
-    }
-    const minSize = isSubtitle ? 10 : 12;
-    const maxSize = isSubtitle ? 16 : 20;
-    return Math.max(minSize, Math.min(maxSize, Math.round(baseSize)));
-  }
   function applyDesignToButton(containerId, design) {
     const container = document.getElementById(containerId);
     if (!container) return;
     const button = container.querySelector("button");
     if (!button) return;
+    container.style.display = "flex";
+    container.style.visibility = "visible";
+    container.style.opacity = "1";
+    button.innerHTML = "";
     const btn = design.button;
-    if (!btn) return;
-    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+    if (!btn) {
+      button.style.display = "flex";
+      return;
+    }
     const color = btn.color || "#ffffff";
-    const isWhite = color === "#ffffff" || color === "white";
-    const height = btn.height ?? (isMobile ? 48 : 56);
-    const width = btn.width ?? (isMobile ? 160 : 180);
-    const radius = btn.radius ?? height / 2;
-    const fontSize = btn.fontSize ?? (isMobile ? 13 : 15);
-    const borderWidth = btn.borderWidth ?? 0;
-    const borderColor = btn.borderColor ?? "#000000";
-    const shadow = btn.shadow ?? true;
-    const hasImage = btn.hasImage ?? false;
+    const shape = btn.shape || "pill";
+    const text = btn.text || "";
     const imageUrl = btn.imageUrl || "";
-    const imageRadius = btn.imageRadius ?? 0;
-    const hasTitle = btn.hasTitle ?? true;
-    const title = btn.title || "試着する";
-    const hasSubtitle = btn.hasSubtitle ?? false;
-    const subtitle = btn.subtitle || "";
-    const border = borderWidth > 0 ? `${borderWidth}px solid ${borderColor}` : isWhite ? "2px solid #e5e7eb" : "none";
     const hex = color.replace("#", "");
     let textColor = "#ffffff";
     if (hex.length === 6) {
@@ -365,137 +296,151 @@
       const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
       textColor = luminance > 0.5 ? "#000000" : "#ffffff";
     }
-    button.style.cssText = `
-    position: fixed !important;
-    bottom: 24px !important;
-    right: 24px !important;
-    width: auto !important;
-    min-width: ${width}px !important;
-    height: ${height}px !important;
-    background: ${color} !important;
-    border: ${border} !important;
-    border-radius: ${radius}px !important;
-    cursor: pointer !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    gap: 12px !important;
-    color: ${textColor} !important;
-    font-weight: 600 !important;
-    font-size: ${fontSize}px !important;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
-    box-shadow: ${shadow ? "0 2px 8px rgba(0,0,0,0.1)" : "none"} !important;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    padding: 12px 16px !important;
-    margin: 0 !important;
-    outline: none !important;
-    pointer-events: auto !important;
-    z-index: 9999 !important;
-    box-sizing: border-box !important;
-    backdrop-filter: blur(10px) !important;
-  `;
-    button.innerHTML = "";
-    if (hasImage && imageUrl) {
-      const img = document.createElement("img");
-      img.src = imageUrl;
-      const imageSize = height - 24;
-      img.style.cssText = `
-      width: ${imageSize}px !important;
-      height: ${imageSize}px !important;
-      min-width: ${imageSize}px !important;
-      min-height: ${imageSize}px !important;
-      max-width: ${imageSize}px !important;
-      max-height: ${imageSize}px !important;
-      object-fit: cover !important;
-      object-position: center !important;
-      border-radius: ${imageRadius}px !important;
-      flex-shrink: 0 !important;
-      aspect-ratio: 1 / 1 !important;
-      display: block !important;
-      margin: 0 !important;
-    `;
-      button.appendChild(img);
-    }
-    if (hasTitle || hasSubtitle) {
-      const textContainer = document.createElement("div");
-      textContainer.style.cssText = `
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+    const baseSize = isMobile ? 48 : 56;
+    if (shape === "circle") {
+      const size = baseSize;
+      button.style.cssText = `
+      position: fixed !important;
+      bottom: 24px !important;
+      right: 24px !important;
+      width: ${size}px !important;
+      height: ${size}px !important;
+      min-width: ${size}px !important;
+      max-width: ${size}px !important;
+      min-height: ${size}px !important;
+      max-height: ${size}px !important;
+      background: ${color} !important;
+      border: none !important;
+      border-radius: 50% !important;
+      cursor: pointer !important;
       display: flex !important;
-      flex-direction: column !important;
-      align-items: flex-start !important;
+      align-items: center !important;
       justify-content: center !important;
-      flex: 1 !important;
-      min-width: 0 !important;
+      padding: 1px !important;
+      margin: 0 !important;
+      outline: none !important;
+      pointer-events: auto !important;
+      z-index: 9999 !important;
+      box-sizing: border-box !important;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     `;
-      if (hasTitle && title) {
-        const titleFontSize = calculateFontSize(title, false, height, hasImage);
-        const titleEl = document.createElement("div");
-        titleEl.textContent = title;
-        titleEl.style.cssText = `
-        font-size: ${titleFontSize}px !important;
+      if (imageUrl) {
+        const img = document.createElement("img");
+        img.src = imageUrl;
+        const imageSize = size - 2;
+        img.style.cssText = `
+        width: ${imageSize}px !important;
+        height: ${imageSize}px !important;
+        min-width: ${imageSize}px !important;
+        min-height: ${imageSize}px !important;
+        max-width: ${imageSize}px !important;
+        max-height: ${imageSize}px !important;
+        object-fit: cover !important;
+        object-position: center !important;
+        border-radius: 50% !important;
+        display: block !important;
+        margin: 0 !important;
+      `;
+        button.appendChild(img);
+      }
+    } else {
+      const height = baseSize;
+      const screenWidth = typeof window !== "undefined" ? window.innerWidth || document.documentElement.clientWidth || 375 : 375;
+      const rightMargin = 24;
+      const leftMargin = 24;
+      const maxAvailableWidth = Math.max(120, screenWidth - rightMargin - leftMargin);
+      const desiredWidth = Math.min(screenWidth * 0.5, 300);
+      const width = Math.min(desiredWidth, maxAvailableWidth);
+      button.style.cssText = `
+        position: fixed !important;
+        bottom: 24px !important;
+        right: ${rightMargin}px !important;
+        left: auto !important;
+        width: ${width}px !important;
+        min-width: 120px !important;
+        max-width: ${maxAvailableWidth}px !important;
+        height: ${height}px !important;
+        background: ${color} !important;
+        border: none !important;
+        border-radius: ${height / 2}px !important;
+        cursor: pointer !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 8px !important;
+        padding: 0 12px !important;
+        margin: 0 !important;
+        outline: none !important;
+        pointer-events: auto !important;
+        z-index: 9999 !important;
+        box-sizing: border-box !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        overflow: hidden !important;
+      `;
+      button.innerHTML = "";
+      if (imageUrl) {
+        const img = document.createElement("img");
+        img.src = imageUrl;
+        const imageSize = height - 16;
+        img.style.cssText = `
+        width: ${imageSize}px !important;
+        height: ${imageSize}px !important;
+        min-width: ${imageSize}px !important;
+        min-height: ${imageSize}px !important;
+        max-width: ${imageSize}px !important;
+        max-height: ${imageSize}px !important;
+        object-fit: cover !important;
+        object-position: center !important;
+        border-radius: 50% !important;
+        flex-shrink: 0 !important;
+        display: block !important;
+        margin: 0 !important;
+      `;
+        button.appendChild(img);
+      }
+      if (text) {
+        const textEl = document.createElement("div");
+        textEl.textContent = text;
+        textEl.style.cssText = `
+        font-size: ${isMobile ? 13 : 15}px !important;
         font-weight: 600 !important;
         line-height: 1.2 !important;
         color: ${textColor} !important;
         white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
-        width: 100% !important;
+        flex: 1 !important;
+        min-width: 0 !important;
         text-align: left !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
       `;
-        textContainer.appendChild(titleEl);
+        button.appendChild(textEl);
       }
-      if (hasSubtitle && subtitle && hasTitle && title) {
-        const subtitleFontSize = calculateFontSize(subtitle, true, height, hasImage);
-        const subtitleEl = document.createElement("div");
-        subtitleEl.textContent = subtitle;
-        subtitleEl.style.cssText = `
-        font-size: ${subtitleFontSize}px !important;
-        font-weight: 400 !important;
-        line-height: 1.2 !important;
-        color: ${textColor} !important;
-        opacity: 0.8 !important;
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        width: 100% !important;
-        margin-top: 2px !important;
-        text-align: left !important;
-      `;
-        textContainer.appendChild(subtitleEl);
-      }
-      button.appendChild(textContainer);
     }
     button.onmouseenter = () => {
       button.style.transform = "translateY(-2px) scale(1.02)";
-      if (shadow) button.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15) !important";
+      button.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15) !important";
     };
     button.onmouseleave = () => {
       button.style.transform = "translateY(0) scale(1)";
-      button.style.boxShadow = shadow ? "0 2px 8px rgba(0,0,0,0.1) !important" : "none !important";
+      button.style.boxShadow = "0 2px 8px rgba(0,0,0,0.1) !important";
     };
     updateButtonPositions();
   }
-  function createCubeIcon(size) {
-    const iconSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    iconSvg.setAttribute("width", String(size));
-    iconSvg.setAttribute("height", String(size));
-    iconSvg.setAttribute("viewBox", "0 0 24 24");
-    iconSvg.setAttribute("fill", "none");
-    iconSvg.setAttribute("stroke", "currentColor");
-    iconSvg.setAttribute("stroke-width", "2");
-    iconSvg.setAttribute("stroke-linecap", "round");
-    iconSvg.setAttribute("stroke-linejoin", "round");
-    iconSvg.style.cssText = "flex-shrink: 0 !important;";
-    const paths = [
-      "M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z",
-      "M3.27 6.96L12 12.01l8.73-5.05",
-      "M12 22.08V12"
-    ];
-    paths.forEach((d) => {
-      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      path.setAttribute("d", d);
-      iconSvg.appendChild(path);
-    });
-    return iconSvg;
+  function showDefaultButton(containerId) {
+    const apiBaseUrl = getApiBaseUrl() || (typeof window !== "undefined" ? window.location.origin : "");
+    const defaultImageUrl = `${apiBaseUrl}/ATELIER-LOGO.png`;
+    const defaultDesign = {
+      button: {
+        shape: "circle",
+        imageUrl: defaultImageUrl,
+        color: "#ffffff"
+      }
+    };
+    applyDesignToButton(containerId, defaultDesign);
   }
   /**
    * @license
@@ -29504,7 +29449,293 @@ void main() {
       }
     };
   }
+  function buildHeightSlider(container, min, max2, initial, onChange) {
+    const plus = document.createElement("div");
+    plus.textContent = "+";
+    plus.style.cssText = `
+    font-size: 12px; font-weight: 700; color: #374151;
+    cursor: pointer; line-height: 1; flex-shrink: 0; user-select: none;
+    width: 100%; text-align: center; padding: 2px 0;
+    position: relative;
+  `;
+    const valueLabel = document.createElement("div");
+    valueLabel.textContent = `${initial}`;
+    valueLabel.style.cssText = `
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+    z-index: 2;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 2px 6px;
+    border-radius: 4px;
+  `;
+    plus.appendChild(valueLabel);
+    const trackWrap = document.createElement("div");
+    trackWrap.style.cssText = `
+    flex: 1; min-height: 0; position: relative;
+    display: flex; align-items: center; justify-content: center;
+    margin: 3px 0;
+  `;
+    const track = document.createElement("div");
+    track.style.cssText = "position:absolute;top:0;bottom:0;width:2px;background:#d1d5db;border-radius:1px;left:50%;transform:translateX(-50%);";
+    const handle = document.createElement("div");
+    handle.style.cssText = `
+    position: absolute;
+    width: 12px; height: 12px;
+    background: #111; border-radius: 50%;
+    left: 50%; transform: translate(-50%, -50%);
+    cursor: grab; touch-action: none; z-index: 1;
+  `;
+    const minus = document.createElement("div");
+    minus.textContent = "−";
+    minus.style.cssText = `
+    font-size: 12px; font-weight: 700; color: #374151;
+    cursor: pointer; line-height: 1; flex-shrink: 0; user-select: none;
+    width: 100%; text-align: center; padding: 2px 0;
+  `;
+    trackWrap.appendChild(track);
+    trackWrap.appendChild(handle);
+    container.appendChild(plus);
+    container.appendChild(trackWrap);
+    container.appendChild(minus);
+    let dragging = false;
+    let currentValue = initial;
+    const valueToY = (v) => {
+      const h = trackWrap.clientHeight;
+      return (1 - (v - min) / (max2 - min)) * h;
+    };
+    const yToValue = (y) => {
+      const h = trackWrap.clientHeight || 1;
+      const ratio = Math.max(0, Math.min(1, y / h));
+      return Math.round(max2 - ratio * (max2 - min));
+    };
+    const positionHandle = (v) => {
+      const y = valueToY(v);
+      handle.style.top = `${y}px`;
+      valueLabel.textContent = `${v}`;
+    };
+    requestAnimationFrame(() => positionHandle(currentValue));
+    window.addEventListener("resize", () => positionHandle(currentValue), { passive: true });
+    handle.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      dragging = true;
+      handle.style.cursor = "grabbing";
+      valueLabel.style.opacity = "1";
+    });
+    handle.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      dragging = true;
+      valueLabel.style.opacity = "1";
+    }, { passive: false });
+    document.addEventListener("mousemove", (e) => {
+      if (!dragging) return;
+      const rect = trackWrap.getBoundingClientRect();
+      const v = yToValue(e.clientY - rect.top);
+      if (v !== currentValue) {
+        currentValue = v;
+        positionHandle(v);
+        onChange(v);
+      }
+    });
+    document.addEventListener("touchmove", (e) => {
+      if (!dragging) return;
+      e.preventDefault();
+      const rect = trackWrap.getBoundingClientRect();
+      const v = yToValue(e.touches[0].clientY - rect.top);
+      if (v !== currentValue) {
+        currentValue = v;
+        positionHandle(v);
+        onChange(v);
+      }
+    }, { passive: false });
+    document.addEventListener("mouseup", () => {
+      if (dragging) {
+        dragging = false;
+        handle.style.cursor = "grab";
+        valueLabel.style.opacity = "0";
+      }
+    });
+    document.addEventListener("touchend", () => {
+      if (dragging) {
+        dragging = false;
+        valueLabel.style.opacity = "0";
+      }
+    });
+    plus.addEventListener("click", () => {
+      currentValue = Math.min(max2, currentValue + 1);
+      positionHandle(currentValue);
+      onChange(currentValue);
+    });
+    minus.addEventListener("click", () => {
+      currentValue = Math.max(min, currentValue - 1);
+      positionHandle(currentValue);
+      onChange(currentValue);
+    });
+  }
   const OUTFIT_CATEGORIES = ["トップス", "ボトムス", "アウター", "シューズ"];
+  const WIDGET_SIZES = {
+    leftPanel: {
+      cardSize: 44,
+      imageSize: 36,
+      fontSize: 10,
+      borderRadius: 8
+    },
+    catTabs: {
+      padding: "6px 12px",
+      fontSize: 12
+    },
+    thumbs: {
+      cardSize: 50,
+      imageSize: 40,
+      fontSize: 10,
+      borderRadius: 8,
+      emptyMessageFontSize: 13,
+      emptyMessagePadding: "12px"
+    }
+  };
+  function renderCatTabs(container, outfitData, currentCategory, onCategoryChange, sizes) {
+    container.innerHTML = "";
+    const cats = Object.keys(outfitData.categories).length > 0 ? Object.keys(outfitData.categories) : [...OUTFIT_CATEGORIES];
+    let selectedCategory = currentCategory;
+    if (!cats.includes(selectedCategory)) {
+      selectedCategory = cats[0] || OUTFIT_CATEGORIES[0];
+    }
+    cats.forEach((cat) => {
+      const isActive = cat === selectedCategory;
+      const btn = document.createElement("button");
+      btn.textContent = cat;
+      btn.style.cssText = `
+      padding: ${sizes.catTabs.padding};
+      font-size: ${sizes.catTabs.fontSize}px;
+      font-weight: ${isActive ? "700" : "500"};
+      color: ${isActive ? "#fff" : "#374151"};
+      background: ${isActive ? "#111" : "transparent"};
+      border: none; border-radius: 99px;
+      cursor: pointer; white-space: nowrap;
+      flex-shrink: 0; outline: none;
+      transition: background 0.15s, color 0.15s;
+    `;
+      btn.addEventListener("click", () => {
+        onCategoryChange(cat);
+      });
+      container.appendChild(btn);
+    });
+    return selectedCategory;
+  }
+  function renderThumbs(container, items, currentCategory, selectedAssetId, activeAssets, onItemClick, sizes) {
+    container.innerHTML = "";
+    if (items.length === 0) {
+      const msg = document.createElement("div");
+      msg.textContent = "アイテムがありません";
+      msg.style.cssText = `
+      font-size: ${sizes.thumbs.emptyMessageFontSize}px;
+      color: #9ca3af;
+      padding: ${sizes.thumbs.emptyMessagePadding};
+      align-self: center;
+    `;
+      container.appendChild(msg);
+      return;
+    }
+    items.forEach((item) => {
+      var _a3, _b2;
+      const isSelected = item.id === selectedAssetId && (((_a3 = activeAssets.get(item.category)) == null ? void 0 : _a3.id) === item.id || ((_b2 = activeAssets.get(item.category)) == null ? void 0 : _b2.url) === item.modelUrl);
+      const card = document.createElement("div");
+      card.style.cssText = `
+      width: ${sizes.thumbs.cardSize}px;
+      min-width: ${sizes.thumbs.cardSize}px;
+      height: ${sizes.thumbs.cardSize}px;
+      border-radius: ${sizes.thumbs.borderRadius}px;
+      background: #fff;
+      border: 2px solid ${isSelected ? "#3b82f6" : "#e5e7eb"};
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; overflow: hidden;
+      flex-shrink: 0; box-sizing: border-box;
+      transition: border-color 0.15s;
+    `;
+      const imgWrap = document.createElement("div");
+      imgWrap.style.cssText = `
+      width: ${sizes.thumbs.imageSize}px;
+      height: ${sizes.thumbs.imageSize}px;
+      flex-shrink: 0;
+      border-radius: ${sizes.thumbs.borderRadius === 8 ? 4 : 3}px;
+      background: #f3f4f6;
+      overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      font-size: ${sizes.thumbs.fontSize}px;
+      color: #9ca3af;
+    `;
+      if (item.thumbnailUrl) {
+        const img = document.createElement("img");
+        img.src = item.thumbnailUrl;
+        img.style.cssText = "width:100%;height:100%;object-fit:cover;";
+        imgWrap.appendChild(img);
+      } else {
+        imgWrap.textContent = "3D";
+      }
+      card.appendChild(imgWrap);
+      card.addEventListener("click", () => {
+        if (isSelected) {
+          onItemClick(null, item.category);
+        } else {
+          onItemClick(item, item.category);
+        }
+      });
+      container.appendChild(card);
+    });
+  }
+  function renderLeftPanel(container, activeAssets, outfitData, currentCategory, onCategoryClick, sizes) {
+    container.innerHTML = "";
+    activeAssets.forEach((asset, cat) => {
+      const isActive = cat === currentCategory;
+      const items = outfitData.categories[cat] || [];
+      const item = items.find((i2) => i2.modelUrl === asset.url);
+      const thumbnailUrl = (item == null ? void 0 : item.thumbnailUrl) || asset.thumbnailUrl;
+      const card = document.createElement("div");
+      card.style.cssText = `
+      width: ${sizes.leftPanel.cardSize}px;
+      height: ${sizes.leftPanel.cardSize}px;
+      flex-shrink: 0;
+      border: 2px solid ${isActive ? "#3b82f6" : "#e5e7eb"};
+      border-radius: ${sizes.leftPanel.borderRadius}px;
+      background: rgba(249,250,251,0.9);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; overflow: hidden; box-sizing: border-box;
+    `;
+      const imgWrap = document.createElement("div");
+      imgWrap.style.cssText = `
+      width: ${sizes.leftPanel.imageSize}px;
+      height: ${sizes.leftPanel.imageSize}px;
+      flex-shrink: 0;
+      border-radius: ${sizes.leftPanel.borderRadius === 8 ? 4 : 3}px;
+      background: #f3f4f6;
+      overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      font-size: ${sizes.leftPanel.fontSize}px;
+      color: #9ca3af;
+    `;
+      if (thumbnailUrl) {
+        const img = document.createElement("img");
+        img.src = thumbnailUrl;
+        img.style.cssText = "width:100%;height:100%;object-fit:cover;";
+        imgWrap.appendChild(img);
+      } else {
+        imgWrap.textContent = "3D";
+      }
+      card.appendChild(imgWrap);
+      card.addEventListener("click", () => {
+        onCategoryClick(cat);
+      });
+      container.appendChild(card);
+    });
+  }
   function injectStyles() {
     if (document.getElementById("atelier-bs-styles")) return;
     const s = document.createElement("style");
@@ -29539,7 +29770,7 @@ void main() {
     sheet.setAttribute("data-atelier-sheet", "true");
     sheet.style.cssText = `
     position: absolute; bottom: 0; left: 0; right: 0;
-    height: 90%;
+    height: 95%;
     background: #fff;
     border-radius: 16px 16px 0 0;
     display: flex; flex-direction: column;
@@ -29616,7 +29847,7 @@ void main() {
   `;
     const sliderPanel = document.createElement("div");
     sliderPanel.style.cssText = `
-    position: absolute; bottom: 8px; right: 6px;
+    position: absolute; bottom: 8px; right: 20px;
     width: 28px; height: 180px;
     display: flex; flex-direction: column; align-items: center;
     user-select: none; touch-action: none; z-index: 20;
@@ -29673,6 +29904,26 @@ void main() {
     bottomPanel.appendChild(outfitPanelEl);
     contentArea.appendChild(viewerArea);
     contentArea.appendChild(bottomPanel);
+    const dragArea = document.createElement("div");
+    dragArea.style.cssText = `
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    z-index: 15;
+    cursor: grab;
+    touch-action: none;
+    pointer-events: auto;
+  `;
+    viewerArea.appendChild(dragArea);
+    const sheet = overlay.querySelector("[data-atelier-sheet]");
+    if (sheet) {
+      setupDragToDismiss(dragArea, sheet, overlay, () => {
+        const cleanup2 = overlay.__atelierCleanup;
+        if (cleanup2) cleanup2.fn();
+      });
+    }
     let heightValue = 170;
     const MIN_H = 160, MAX_H = 190;
     let viewer = null;
@@ -29696,9 +29947,9 @@ void main() {
     };
     loadInitialAssets();
     fetchOutfitData();
-    renderLeftPanel();
-    renderCatTabs();
-    renderThumbs();
+    renderLeftPanelLocal();
+    renderCatTabsLocal();
+    renderThumbsLocal();
     function buildAssetList(size) {
       var _a4, _b2;
       const arr = ((_b2 = (_a4 = config.asset) == null ? void 0 : _a4.sizes) == null ? void 0 : _b2[size]) || [];
@@ -29734,8 +29985,8 @@ void main() {
           }
         }
       }
-      renderLeftPanel();
-      renderThumbs();
+      renderLeftPanelLocal();
+      renderThumbsLocal();
       fetchOutfitData();
       if (eshopId && eshopId !== "unknown") {
         const pid = params.productId || params.externalProductId || "";
@@ -29779,125 +30030,64 @@ void main() {
         }
       }
       viewer == null ? void 0 : viewer.updateAssets(Array.from(activeAssets.values()).map((a) => ({ url: a.url, category: a.category })));
-      renderLeftPanel();
-      renderCatTabs();
-      renderThumbs();
+      renderLeftPanelLocal();
+      renderCatTabsLocal();
+      renderThumbsLocal();
     }
-    function renderLeftPanel() {
-      leftPanel.innerHTML = "";
+    function renderLeftPanelLocal() {
+      const assetsForRender = /* @__PURE__ */ new Map();
       activeAssets.forEach((asset, cat) => {
-        const isActive = cat === currentCategory;
-        const card = document.createElement("div");
-        card.style.cssText = `
-        width: 44px; height: 44px; flex-shrink: 0;
-        border: 2px solid ${isActive ? "#3b82f6" : "#e5e7eb"};
-        border-radius: 8px;
-        background: rgba(249,250,251,0.9);
-        display: flex; align-items: center; justify-content: center;
-        cursor: pointer; overflow: hidden; box-sizing: border-box;
-      `;
-        const imgWrap = document.createElement("div");
-        imgWrap.style.cssText = `
-        width: 36px; height: 36px; flex-shrink: 0;
-        border-radius: 4px; background: #f3f4f6;
-        overflow: hidden;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 10px; color: #9ca3af;
-      `;
-        if (asset == null ? void 0 : asset.thumbnailUrl) {
-          const img = document.createElement("img");
-          img.src = asset.thumbnailUrl;
-          img.style.cssText = "width:100%;height:100%;object-fit:cover;";
-          imgWrap.appendChild(img);
-        } else {
-          imgWrap.textContent = "3D";
-        }
-        card.appendChild(imgWrap);
-        card.addEventListener("click", () => {
-          currentCategory = cat;
-          renderLeftPanel();
-          renderCatTabs();
-          renderThumbs();
+        assetsForRender.set(cat, {
+          url: asset.url,
+          category: cat,
+          thumbnailUrl: asset.thumbnailUrl
         });
-        leftPanel.appendChild(card);
       });
-    }
-    function renderCatTabs() {
-      catTabs.innerHTML = "";
-      const cats = Object.keys(outfitData.categories).length > 0 ? Object.keys(outfitData.categories) : [...OUTFIT_CATEGORIES];
-      if (!cats.includes(currentCategory)) currentCategory = cats[0] || OUTFIT_CATEGORIES[0];
-      cats.forEach((cat) => {
-        const isActive = cat === currentCategory;
-        const btn = document.createElement("button");
-        btn.textContent = cat;
-        btn.style.cssText = `
-        padding: 6px 12px;
-        font-size: 12px; font-weight: ${isActive ? "700" : "500"};
-        color: ${isActive ? "#fff" : "#374151"};
-        background: ${isActive ? "#111" : "transparent"};
-        border: none; border-radius: 99px;
-        cursor: pointer; white-space: nowrap;
-        flex-shrink: 0; outline: none;
-        transition: background 0.15s, color 0.15s;
-      `;
-        btn.addEventListener("click", () => {
+      renderLeftPanel(
+        leftPanel,
+        assetsForRender,
+        outfitData,
+        currentCategory,
+        (cat) => {
           currentCategory = cat;
-          renderCatTabs();
-          renderThumbs();
-          renderLeftPanel();
-        });
-        catTabs.appendChild(btn);
-      });
+          renderLeftPanelLocal();
+          renderCatTabsLocal();
+          renderThumbsLocal();
+        },
+        WIDGET_SIZES
+      );
     }
-    function renderThumbs() {
-      thumbsRow.innerHTML = "";
+    function renderCatTabsLocal() {
+      currentCategory = renderCatTabs(
+        catTabs,
+        outfitData,
+        currentCategory,
+        (cat) => {
+          currentCategory = cat;
+          renderCatTabsLocal();
+          renderThumbsLocal();
+          renderLeftPanelLocal();
+        },
+        WIDGET_SIZES
+      );
+    }
+    function renderThumbsLocal() {
       const items = outfitData.categories[currentCategory] || [];
-      if (items.length === 0) {
-        const msg = document.createElement("div");
-        msg.textContent = "アイテムがありません";
-        msg.style.cssText = "font-size:13px;color:#9ca3af;padding:12px;align-self:center;";
-        thumbsRow.appendChild(msg);
-        return;
-      }
-      items.forEach((item) => {
-        var _a4;
-        const isSelected = item.id === selectedAssetId && ((_a4 = activeAssets.get(item.category)) == null ? void 0 : _a4.id) === item.id;
-        const card = document.createElement("div");
-        card.style.cssText = `
-        width: 50px; min-width: 50px; height: 50px;
-        border-radius: 8px; background: #fff;
-        border: 2px solid ${isSelected ? "#3b82f6" : "#e5e7eb"};
-        display: flex; align-items: center; justify-content: center;
-        cursor: pointer; overflow: hidden;
-        flex-shrink: 0; box-sizing: border-box;
-        transition: border-color 0.15s;
-      `;
-        const imgWrap = document.createElement("div");
-        imgWrap.style.cssText = `
-        width: 40px; height: 40px; flex-shrink: 0;
-        border-radius: 4px; background: #f3f4f6;
-        overflow: hidden;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 10px; color: #9ca3af;
-      `;
-        if (item.thumbnailUrl) {
-          const img = document.createElement("img");
-          img.src = item.thumbnailUrl;
-          img.style.cssText = "width:100%;height:100%;object-fit:cover;";
-          imgWrap.appendChild(img);
-        } else {
-          imgWrap.textContent = "3D";
-        }
-        card.appendChild(imgWrap);
-        card.addEventListener("click", () => {
-          if (isSelected) {
-            handleAssetSelect(null, item.category);
+      renderThumbs(
+        thumbsRow,
+        items,
+        currentCategory,
+        selectedAssetId,
+        activeAssets,
+        (item, category) => {
+          if (item === null) {
+            handleAssetSelect(null, category);
           } else {
             handleAssetSelect(item);
           }
-        });
-        thumbsRow.appendChild(card);
-      });
+        },
+        WIDGET_SIZES
+      );
     }
     async function fetchOutfitData() {
       try {
@@ -29909,7 +30099,7 @@ void main() {
         const res = await fetch(u.toString());
         if (res.ok) {
           outfitData = await res.json();
-          renderThumbs();
+          renderThumbsLocal();
         }
       } catch (_) {
       }
@@ -29959,133 +30149,6 @@ void main() {
       btn.style.background = "transparent";
     });
     return btn;
-  }
-  function buildHeightSlider(container, min, max2, initial, onChange) {
-    const plus = document.createElement("div");
-    plus.textContent = "+";
-    plus.style.cssText = `
-    font-size: 12px; font-weight: 700; color: #374151;
-    cursor: pointer; line-height: 1; flex-shrink: 0; user-select: none;
-    width: 100%; text-align: center; padding: 2px 0;
-  `;
-    const trackWrap = document.createElement("div");
-    trackWrap.style.cssText = `
-    flex: 1; min-height: 0; position: relative;
-    display: flex; align-items: center; justify-content: center;
-    margin: 3px 0;
-  `;
-    const track = document.createElement("div");
-    track.style.cssText = "position:absolute;top:0;bottom:0;width:2px;background:#d1d5db;border-radius:1px;left:50%;transform:translateX(-50%);";
-    const valueLabel = document.createElement("div");
-    valueLabel.textContent = `${initial}`;
-    valueLabel.style.cssText = `
-    position: absolute;
-    left: -30px;
-    transform: translateY(-50%);
-    font-size: 12px;
-    font-weight: 600;
-    color: #374151;
-    white-space: nowrap;
-    opacity: 0;
-    transition: opacity 0.2s;
-    pointer-events: none;
-    z-index: 2;
-  `;
-    const handle = document.createElement("div");
-    handle.style.cssText = `
-    position: absolute;
-    width: 12px; height: 12px;
-    background: #111; border-radius: 50%;
-    left: 50%; transform: translate(-50%, -50%);
-    cursor: grab; touch-action: none; z-index: 1;
-  `;
-    const minus = document.createElement("div");
-    minus.textContent = "−";
-    minus.style.cssText = `
-    font-size: 12px; font-weight: 700; color: #374151;
-    cursor: pointer; line-height: 1; flex-shrink: 0; user-select: none;
-    width: 100%; text-align: center; padding: 2px 0;
-  `;
-    trackWrap.appendChild(track);
-    trackWrap.appendChild(valueLabel);
-    trackWrap.appendChild(handle);
-    container.appendChild(plus);
-    container.appendChild(trackWrap);
-    container.appendChild(minus);
-    let dragging = false;
-    let currentValue = initial;
-    const valueToY = (v) => {
-      const h = trackWrap.clientHeight;
-      return (1 - (v - min) / (max2 - min)) * h;
-    };
-    const yToValue = (y) => {
-      const h = trackWrap.clientHeight || 1;
-      const ratio = Math.max(0, Math.min(1, y / h));
-      return Math.round(max2 - ratio * (max2 - min));
-    };
-    const positionHandle = (v) => {
-      const y = valueToY(v);
-      handle.style.top = `${y}px`;
-      valueLabel.style.top = `${y}px`;
-      valueLabel.textContent = `${v}`;
-    };
-    requestAnimationFrame(() => positionHandle(currentValue));
-    window.addEventListener("resize", () => positionHandle(currentValue), { passive: true });
-    handle.addEventListener("mousedown", (e) => {
-      e.preventDefault();
-      dragging = true;
-      handle.style.cursor = "grabbing";
-      valueLabel.style.opacity = "1";
-    });
-    handle.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      dragging = true;
-      valueLabel.style.opacity = "1";
-    }, { passive: false });
-    document.addEventListener("mousemove", (e) => {
-      if (!dragging) return;
-      const rect = trackWrap.getBoundingClientRect();
-      const v = yToValue(e.clientY - rect.top);
-      if (v !== currentValue) {
-        currentValue = v;
-        positionHandle(v);
-        onChange(v);
-      }
-    });
-    document.addEventListener("touchmove", (e) => {
-      if (!dragging) return;
-      e.preventDefault();
-      const rect = trackWrap.getBoundingClientRect();
-      const v = yToValue(e.touches[0].clientY - rect.top);
-      if (v !== currentValue) {
-        currentValue = v;
-        positionHandle(v);
-        onChange(v);
-      }
-    }, { passive: false });
-    document.addEventListener("mouseup", () => {
-      if (dragging) {
-        dragging = false;
-        handle.style.cursor = "grab";
-        valueLabel.style.opacity = "0";
-      }
-    });
-    document.addEventListener("touchend", () => {
-      if (dragging) {
-        dragging = false;
-        valueLabel.style.opacity = "0";
-      }
-    });
-    plus.addEventListener("click", () => {
-      currentValue = Math.min(max2, currentValue + 1);
-      positionHandle(currentValue);
-      onChange(currentValue);
-    });
-    minus.addEventListener("click", () => {
-      currentValue = Math.max(min, currentValue - 1);
-      positionHandle(currentValue);
-      onChange(currentValue);
-    });
   }
   function dismissSheet(sheet, overlay) {
     sheet.style.animation = "none";
@@ -30245,16 +30308,23 @@ void main() {
           handle,
           url
         };
-        renderCube(shadowRoot, params, handleCubeClick);
+        const pid = productId || externalProductId || `widget-${Date.now()}-${Math.random()}`;
+        const containerId = `atelier-widget-container-${pid}`;
         if (publicKey) {
-          const pid = productId || externalProductId || `widget-${Date.now()}-${Math.random()}`;
-          const containerId = `atelier-widget-container-${pid}`;
           fetchWidgetDesign(publicKey).then((design) => {
             if (design) {
-              applyDesignToButton(containerId, design);
+              renderCube(shadowRoot, params, handleCubeClick, design);
+            } else {
+              renderCube(shadowRoot, params, handleCubeClick, null);
+              showDefaultButton(containerId);
             }
           }).catch(() => {
+            renderCube(shadowRoot, params, handleCubeClick, null);
+            showDefaultButton(containerId);
           });
+        } else {
+          renderCube(shadowRoot, params, handleCubeClick, null);
+          showDefaultButton(containerId);
         }
       } catch (error) {
         console.error(`[Atelier Widget] Failed to initialize widget ${index + 1}:`, error);
