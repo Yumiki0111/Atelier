@@ -135,7 +135,7 @@ export function applyDesignToButton(containerId: string, design: WidgetDesignCon
   }
 
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
-  const baseSize = isMobile ? 48 : 56;
+  const baseSize = isMobile ? 72 : 80;
 
   if (shape === "circle") {
     // 円形ボタン：画像のみ

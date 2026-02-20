@@ -81,25 +81,34 @@ export function initWidget() {
       const pid = productId || externalProductId || `widget-${Date.now()}-${Math.random()}`;
       const containerId = `atelier-widget-container-${pid}`;
       
-      // デザインを先に取得してからボタンを作成（根本的な解決）
+      // ボタンを即座に作成（デザイン取得前に非表示で）
+      renderCube(shadowRoot, params, handleCubeClick, null);
+
       if (publicKey) {
-        fetchWidgetDesign(publicKey).then((design) => {
-          if (design) {
-            // デザインを取得できた場合、デザイン情報を渡してボタンを作成
-            renderCube(shadowRoot, params, handleCubeClick, design);
-          } else {
-            // デザインが取得できなかった場合、ボタンを作成してからデフォルトを適用
-            renderCube(shadowRoot, params, handleCubeClick, null);
+        // 最大1500msでデザインを取得。タイムアウトした場合はデフォルトを表示
+        const designFetch = fetchWidgetDesign(publicKey);
+        const designTimeout = new Promise<null>((resolve) =>
+          setTimeout(() => resolve(null), 1500)
+        );
+        Promise.race([designFetch, designTimeout])
+          .then((design) => {
+            if (design) {
+              applyDesignToButton(containerId, design);
+            } else {
+              showDefaultButton(containerId);
+            }
+          })
+          .catch(() => {
             showDefaultButton(containerId);
+          });
+        // タイムアウト後に実際のデザインが届いた場合も適用
+        designFetch.then((design) => {
+          if (design) {
+            applyDesignToButton(containerId, design);
           }
-        }).catch(() => {
-          // エラーが発生した場合、ボタンを作成してからデフォルトを適用
-          renderCube(shadowRoot, params, handleCubeClick, null);
-          showDefaultButton(containerId);
-        });
+        }).catch(() => {});
       } else {
-        // publicKeyがない場合、ボタンを作成してからデフォルトを適用
-        renderCube(shadowRoot, params, handleCubeClick, null);
+        // publicKeyがない場合はデフォルトを即時適用
         showDefaultButton(containerId);
       }
     } catch (error) {

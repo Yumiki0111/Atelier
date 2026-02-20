@@ -44,6 +44,14 @@ export function renderModalWithLoading(
 ): { overlay: HTMLElement; contentArea: HTMLElement } {
   injectStyles();
 
+  // 既存の閉じたモーダルを削除（蓄積防止）
+  const existingOverlays = document.querySelectorAll<HTMLElement>("[data-atelier-modal-overlay='true']");
+  existingOverlays.forEach((el) => {
+    if (el.style.opacity === "0" || parseFloat(el.style.opacity) < 0.1) {
+      el.remove();
+    }
+  });
+
   /* ── backdrop ── */
   const overlay = document.createElement("div");
   overlay.setAttribute("data-atelier-modal", "true");
@@ -98,12 +106,7 @@ export function renderModalWithLoading(
   const cleanup = { fn: (): void => {} };
 
   setupDragToDismiss(dragBar, sheet, overlay, () => cleanup.fn());
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) {
-      cleanup.fn();
-      dismissSheet(sheet, overlay);
-    }
-  });
+  // タップではなくスライドのみで閉じる（オーバーレイクリックでは閉じない）
 
   /* expose cleanup holder so updateModalWithConfig can register viewer.destroy */
   (overlay as any).__atelierCleanup = cleanup;
@@ -549,15 +552,19 @@ function dismissSheet(sheet: HTMLElement, overlay: HTMLElement) {
   overlay.style.animation = "none";
   overlay.style.transition = "opacity 0.3s ease-out";
   overlay.style.opacity = "0";
+  // 閉じた後はポインターイベントを無効化（他の要素がタップできるように）
+  setTimeout(() => {
+    overlay.style.pointerEvents = "none";
+  }, 320);
   // モーダルの開閉状態を更新
   if ((sheet as any).__atelierSetOpen) {
     (sheet as any).__atelierSetOpen(false);
   }
-  // モーダルを削除せずに非表示にする（再度開けるようにするため）
-  // setTimeout(() => overlay.remove(), 320);
 }
 
 function openSheet(sheet: HTMLElement, overlay: HTMLElement) {
+  // 開く前にポインターイベントを有効化
+  overlay.style.pointerEvents = "auto";
   sheet.style.animation = "none";
   sheet.style.transition = "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)";
   sheet.style.transform = "translateY(0)";

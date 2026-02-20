@@ -5,7 +5,7 @@
 
 import type { OutfitAssetItem, OutfitAssetsData } from "./types";
 
-export const OUTFIT_CATEGORIES: readonly string[] = ["トップス", "ボトムス", "アウター", "シューズ"];
+export const OUTFIT_CATEGORIES: readonly string[] = ["トップス", "ボトムス", "ジャケット", "コート"];
 
 /**
  * UIサイズ設定

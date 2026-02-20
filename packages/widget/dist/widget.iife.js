@@ -258,9 +258,6 @@
     container.appendChild(button);
     document.body.appendChild(container);
     updateButtonPositions();
-    if (initialDesign) {
-      applyDesignToButton(containerId, initialDesign);
-    }
     const eventShopId = params.shopId || "unknown";
     sendEvent({
       shopId: eventShopId,
@@ -297,7 +294,7 @@
       textColor = luminance > 0.5 ? "#000000" : "#ffffff";
     }
     const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
-    const baseSize = isMobile ? 48 : 56;
+    const baseSize = isMobile ? 72 : 80;
     if (shape === "circle") {
       const size = baseSize;
       button.style.cssText = `
@@ -29580,7 +29577,7 @@ void main() {
       onChange(currentValue);
     });
   }
-  const OUTFIT_CATEGORIES = ["トップス", "ボトムス", "アウター", "シューズ"];
+  const OUTFIT_CATEGORIES = ["トップス", "ボトムス", "ジャケット", "コート"];
   const WIDGET_SIZES = {
     leftPanel: {
       cardSize: 44,
@@ -29757,6 +29754,12 @@ void main() {
   }
   function renderModalWithLoading(_shadowRoot, _params) {
     injectStyles();
+    const existingOverlays = document.querySelectorAll("[data-atelier-modal-overlay='true']");
+    existingOverlays.forEach((el) => {
+      if (el.style.opacity === "0" || parseFloat(el.style.opacity) < 0.1) {
+        el.remove();
+      }
+    });
     const overlay = document.createElement("div");
     overlay.setAttribute("data-atelier-modal", "true");
     overlay.setAttribute("data-atelier-modal-overlay", "true");
@@ -29800,12 +29803,6 @@ void main() {
     const cleanup = { fn: () => {
     } };
     setupDragToDismiss(dragBar, sheet, overlay, () => cleanup.fn());
-    overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) {
-        cleanup.fn();
-        dismissSheet(sheet, overlay);
-      }
-    });
     overlay.__atelierCleanup = cleanup;
     return { overlay, contentArea };
   }
@@ -30157,11 +30154,15 @@ void main() {
     overlay.style.animation = "none";
     overlay.style.transition = "opacity 0.3s ease-out";
     overlay.style.opacity = "0";
+    setTimeout(() => {
+      overlay.style.pointerEvents = "none";
+    }, 320);
     if (sheet.__atelierSetOpen) {
       sheet.__atelierSetOpen(false);
     }
   }
   function openSheet(sheet, overlay) {
+    overlay.style.pointerEvents = "auto";
     sheet.style.animation = "none";
     sheet.style.transition = "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)";
     sheet.style.transform = "translateY(0)";
@@ -30310,20 +30311,28 @@ void main() {
         };
         const pid = productId || externalProductId || `widget-${Date.now()}-${Math.random()}`;
         const containerId = `atelier-widget-container-${pid}`;
+        renderCube(shadowRoot, params, handleCubeClick, null);
         if (publicKey) {
-          fetchWidgetDesign(publicKey).then((design) => {
+          const designFetch = fetchWidgetDesign(publicKey);
+          const designTimeout = new Promise(
+            (resolve) => setTimeout(() => resolve(null), 1500)
+          );
+          Promise.race([designFetch, designTimeout]).then((design) => {
             if (design) {
-              renderCube(shadowRoot, params, handleCubeClick, design);
+              applyDesignToButton(containerId, design);
             } else {
-              renderCube(shadowRoot, params, handleCubeClick, null);
               showDefaultButton(containerId);
             }
           }).catch(() => {
-            renderCube(shadowRoot, params, handleCubeClick, null);
             showDefaultButton(containerId);
           });
+          designFetch.then((design) => {
+            if (design) {
+              applyDesignToButton(containerId, design);
+            }
+          }).catch(() => {
+          });
         } else {
-          renderCube(shadowRoot, params, handleCubeClick, null);
           showDefaultButton(containerId);
         }
       } catch (error) {
