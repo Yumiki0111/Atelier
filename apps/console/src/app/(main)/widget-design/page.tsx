@@ -53,6 +53,7 @@ interface ButtonPreviewProps {
   shape: "circle" | "pill";
   imageUrl: string;
   shopId: string;
+  isLoading?: boolean;
 }
 
 function ButtonPreview({ 
@@ -60,7 +61,8 @@ function ButtonPreview({
   text,
   shape,
   imageUrl,
-  shopId 
+  shopId,
+  isLoading = false,
 }: ButtonPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetElementRef = useRef<HTMLElement | null>(null);
@@ -320,12 +322,13 @@ function ButtonPreview({
     };
   }, [shopId]);
 
-  // 設定変更時にスタイルをリアルタイム反映
+  // 設定変更時にスタイルをリアルタイム反映（ロード中はスキップ）
   useEffect(() => {
+    if (isLoading) return; // 設定ロード完了前は適用しない
     if (!containerRef.current) return;
     const bc = containerRef.current.querySelector(SELECTOR) as HTMLElement;
     if (bc) applyStyles(bc);
-  }, [color, text, shape, imageUrl]);
+  }, [color, text, shape, imageUrl, isLoading]);
 
   return (
     <PhoneFrame
@@ -349,7 +352,7 @@ export default function WidgetDesignPage() {
   
   // ボタン設定（簡素化）
   const [buttonColor, setButtonColor] = useState("#ffffff");
-  const [buttonText, setButtonText] = useState("試着する");
+  const [buttonText, setButtonText] = useState(""); // 初期値は空文字列（APIから取得した値で更新される）
   const [buttonShape, setButtonShape] = useState<"circle" | "pill">("pill");
   const [buttonImageUrl, setButtonImageUrl] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -411,7 +414,7 @@ export default function WidgetDesignPage() {
       .then((res) => res.json())
       .then((s) => {
         setButtonColor(s.buttonColor || "#ffffff");
-        setButtonText(s.buttonText || "試着する");
+        setButtonText(s.buttonText || ""); // APIから取得した値がない場合は空文字列
         setButtonShape(s.buttonShape === "circle" ? "circle" : "pill");
         setButtonImageUrl(s.buttonImageUrl || "");
       })
@@ -687,6 +690,7 @@ export default function WidgetDesignPage() {
                       shape={buttonShape}
                       imageUrl={buttonImageUrl}
                       shopId={shopId || ""}
+                      isLoading={isLoadingSettings}
                     />
                   </div>
                 </div>

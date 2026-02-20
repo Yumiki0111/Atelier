@@ -173,7 +173,7 @@ export async function GET(request: NextRequest) {
       theme: designData.theme || "light",
       button: {
         color: designData.button_color || "#ffffff",
-        text: designData.button_text || "試着する",
+        text: designData.button_text || "", // デフォルト値は空文字列（設定されていない場合は表示しない）
         shape: designData.button_shape === "circle" ? "circle" : "pill",
         imageUrl: designData.button_image_url || undefined,
       },

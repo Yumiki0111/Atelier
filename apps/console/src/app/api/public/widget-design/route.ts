@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     const design = {
       button: {
         color: data.button_color || "#ffffff",
-        text: data.button_text || "試着する",
+        text: data.button_text || "", // デフォルト値は空文字列（設定されていない場合は表示しない）
         shape: data.button_shape === "circle" ? "circle" : "pill", // circle or pill
         imageUrl: data.button_image_url || undefined,
       },

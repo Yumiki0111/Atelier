@@ -13,7 +13,7 @@ import { getAuthenticatedUser } from "@/lib/auth/middleware";
 function toApiFormat(row: Record<string, unknown>) {
   return {
     buttonColor: row.button_color ?? "#ffffff",
-    buttonText: row.button_text ?? "試着する",
+    buttonText: row.button_text ?? "", // デフォルト値は空文字列（設定されていない場合は表示しない）
     buttonShape: row.button_shape === "circle" ? "circle" : "pill",
     buttonImageUrl: row.button_image_url ?? "",
   };
