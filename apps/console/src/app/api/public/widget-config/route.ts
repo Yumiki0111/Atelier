@@ -172,15 +172,10 @@ export async function GET(request: NextRequest) {
       backgroundColor: designData.background_color || undefined,
       theme: designData.theme || "light",
       button: {
-        text: designData.button_text || "試着する",
         color: designData.button_color || "#ffffff",
-        radius: designData.button_radius ?? 8,
-        width: designData.button_width ?? 200,
-        height: designData.button_height ?? 56,
-        fontSize: designData.button_font_size ?? 14,
-        borderWidth: designData.button_border_width ?? 0,
-        borderColor: designData.button_border_color || "#000000",
-        shadow: designData.button_shadow ?? true,
+        text: designData.button_text || "試着する",
+        shape: designData.button_shape === "circle" ? "circle" : "pill",
+        imageUrl: designData.button_image_url || undefined,
       },
     } : undefined;
 

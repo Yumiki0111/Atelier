@@ -27,69 +27,6 @@ function getTextColor(bg: string): string {
   return luminance > 0.5 ? "#000000" : "#ffffff";
 }
 
-/** ボタンのインラインスタイルを生成 */
-interface ButtonStyleOptions {
-  color: string;
-  radius: number;
-  width: number;
-  height: number;
-  fontSize?: number;
-  borderWidth?: number;
-  borderColor?: string;
-  shadow?: boolean;
-  imageUrl?: string;
-  imageRadius?: number;
-  hasImage?: boolean;
-  title?: string;
-  hasTitle?: boolean;
-  subtitle?: string;
-  hasSubtitle?: boolean;
-}
-
-function buildButtonStyle(opts: ButtonStyleOptions): string {
-  const { 
-    color, 
-    radius, 
-    width, 
-    height, 
-    fontSize = 14, 
-    borderWidth = 0, 
-    borderColor = "#000000", 
-    shadow = true,
-    imageRadius = 0,
-  } = opts;
-  const isWhite = color === "#ffffff" || color === "white";
-  const border = borderWidth > 0
-    ? `${borderWidth}px solid ${borderColor}`
-    : isWhite ? "2px solid #e5e7eb" : "none";
-  return `
-    background: ${color} !important;
-    border-radius: ${radius}px !important;
-    width: ${width}px !important;
-    min-width: ${width}px !important;
-    height: ${height}px !important;
-    color: ${getTextColor(color)} !important;
-    position: relative !important;
-    bottom: auto !important; right: auto !important;
-    left: auto !important; top: auto !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    pointer-events: auto !important;
-    cursor: pointer !important;
-    border: ${border} !important;
-    font-weight: 600 !important;
-    font-size: ${fontSize}px !important;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
-    box-shadow: ${shadow ? "0 2px 8px rgba(0,0,0,0.1)" : "none"} !important;
-    transition: all 0.3s cubic-bezier(0.4,0,0.2,1) !important;
-    padding: 12px 16px !important;
-    margin: 0 !important; outline: none !important;
-    box-sizing: border-box !important;
-    gap: 12px !important;
-    z-index: 1 !important;
-  `;
-}
 
 /** ボタンにホバーエフェクトを設定 */
 function applyHoverEffect(button: HTMLElement, color: string, hasShadow: boolean) {
@@ -112,39 +49,17 @@ function applyHoverEffect(button: HTMLElement, color: string, hasShadow: boolean
 
 interface ButtonPreviewProps {
   color: string;
-  radius: number;
-  width: number;
-  height: number;
-  fontSize: number;
-  borderWidth: number;
-  borderColor: string;
-  shadow: boolean;
+  text: string;
+  shape: "circle" | "pill";
   imageUrl: string;
-  imageRadius: number;
-  hasImage: boolean;
-  title: string;
-  hasTitle: boolean;
-  subtitle: string;
-  hasSubtitle: boolean;
   shopId: string;
 }
 
 function ButtonPreview({ 
   color, 
-  radius, 
-  width, 
-  height, 
-  fontSize, 
-  borderWidth, 
-  borderColor, 
-  shadow,
+  text,
+  shape,
   imageUrl,
-  imageRadius,
-  hasImage,
-  title,
-  hasTitle,
-  subtitle,
-  hasSubtitle,
   shopId 
 }: ButtonPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -155,143 +70,160 @@ function ButtonPreview({
 
   const SELECTOR = `[id^="atelier-widget-container-"][data-atelier-product-id*="preview"]`;
 
-  /** フォントサイズを自動計算 */
-  const calculateFontSize = (
-    text: string,
-    isSubtitle: boolean,
-    buttonHeight: number,
-    hasImage: boolean
-  ): number => {
-    // 基本フォントサイズをボタンの高さに基づいて計算（高さの約25-30%）
-    let baseSize = Math.max(12, Math.min(20, buttonHeight * 0.25));
-    
-    // 画像がある場合は少し小さく（利用可能な幅が減るため）
-    if (hasImage) {
-      baseSize *= 0.9;
-    }
-    
-    // 小見出しは見出しより小さく（約75-80%）
-    if (isSubtitle) {
-      baseSize *= 0.75;
-    }
-    
-    // 文字数に応じて調整（長い場合は小さく）
-    const textLength = text.length;
-    if (textLength > 20) {
-      baseSize *= 0.85;
-    } else if (textLength > 15) {
-      baseSize *= 0.9;
-    } else if (textLength > 10) {
-      baseSize *= 0.95;
-    }
-    
-    // 最小・最大サイズを設定
-    const minSize = isSubtitle ? 10 : 12;
-    const maxSize = isSubtitle ? 16 : 20;
-    
-    return Math.max(minSize, Math.min(maxSize, Math.round(baseSize)));
-  };
-
   /** ボタンコンテナのスタイルを更新 */
   const applyStyles = (buttonContainer: HTMLElement) => {
     const btn = buttonContainer.querySelector("button") as HTMLElement;
     if (!btn) return;
 
-    btn.style.cssText = buildButtonStyle({ 
-      color, 
-      radius, 
-      width, 
-      height, 
-      fontSize, 
-      borderWidth, 
-      borderColor, 
-      shadow,
-      imageRadius,
-    });
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+    const baseSize = isMobile ? 48 : 56;
+    const textColor = getTextColor(color);
 
-    // ボタンの中身を再構築
-    btn.innerHTML = "";
-
-    // 画像
-    if (hasImage && imageUrl) {
-      const img = document.createElement("img");
-      img.src = imageUrl;
-      // ボタンの高さギリギリにする（上下のpadding 12px * 2 = 24pxを考慮）
-      const imageSize = height - 24;
-      img.style.cssText = `
-        width: ${imageSize}px !important;
-        height: ${imageSize}px !important;
-        min-width: ${imageSize}px !important;
-        min-height: ${imageSize}px !important;
-        max-width: ${imageSize}px !important;
-        max-height: ${imageSize}px !important;
-        object-fit: cover !important;
-        object-position: center !important;
-        border-radius: ${imageRadius}px !important;
-        flex-shrink: 0 !important;
-        aspect-ratio: 1 / 1 !important;
-        display: block !important;
-        margin: 0 !important;
-      `;
-      btn.appendChild(img);
-    }
-
-    // テキストコンテナ
-    if (hasTitle || hasSubtitle) {
-      const textContainer = document.createElement("div");
-      textContainer.style.cssText = `
+    if (shape === "circle") {
+      // 円形ボタン：画像のみ
+      const size = baseSize;
+      btn.style.cssText = `
+        background: ${color} !important;
+        border: none !important;
+        border-radius: 50% !important;
+        width: ${size}px !important;
+        height: ${size}px !important;
+        min-width: ${size}px !important;
+        max-width: ${size}px !important;
+        min-height: ${size}px !important;
+        max-height: ${size}px !important;
+        padding: 1px !important;
         display: flex !important;
-        flex-direction: column !important;
-        align-items: flex-start !important;
+        align-items: center !important;
         justify-content: center !important;
-        flex: 1 !important;
-        min-width: 0 !important;
+        position: relative !important;
+        bottom: auto !important; right: auto !important;
+        left: auto !important; top: auto !important;
+        pointer-events: auto !important;
+        cursor: pointer !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+        transition: all 0.3s cubic-bezier(0.4,0,0.2,1) !important;
+        margin: 0 !important;
+        outline: none !important;
+        box-sizing: border-box !important;
+        z-index: 1 !important;
       `;
 
-      // 見出し
-      if (hasTitle && title) {
-        const titleFontSize = calculateFontSize(title, false, height, hasImage);
-        const titleEl = document.createElement("div");
-        titleEl.textContent = title;
-        titleEl.style.cssText = `
-          font-size: ${titleFontSize}px !important;
+      btn.innerHTML = "";
+      if (imageUrl) {
+        const img = document.createElement("img");
+        img.src = imageUrl;
+        const imageSize = size - 2; // padding 1px * 2 = 2px
+        img.style.cssText = `
+          width: ${imageSize}px !important;
+          height: ${imageSize}px !important;
+          min-width: ${imageSize}px !important;
+          min-height: ${imageSize}px !important;
+          max-width: ${imageSize}px !important;
+          max-height: ${imageSize}px !important;
+          object-fit: cover !important;
+          object-position: center !important;
+          border-radius: 50% !important;
+          display: block !important;
+          margin: 0 !important;
+        `;
+        btn.appendChild(img);
+      }
+    } else {
+      // 横長円ボタン：画像と文字
+      const height = baseSize;
+      // プレビューコンテナの幅を取得
+      // containerRefはPhoneFrame内のdivなので、その親要素（PhoneFrame）の幅を取得
+      let containerWidth = 280; // デフォルト値
+      if (containerRef.current) {
+        const phoneFrame = containerRef.current.closest('[class*="PhoneFrame"]') || 
+                          containerRef.current.parentElement?.parentElement;
+        if (phoneFrame) {
+          containerWidth = (phoneFrame as HTMLElement).offsetWidth || 
+                          (phoneFrame as HTMLElement).clientWidth || 
+                          280;
+        }
+      }
+      // 右端24px、左端24pxの余白を考慮
+      const rightMargin = 24;
+      const leftMargin = 24;
+      const maxAvailableWidth = Math.max(120, containerWidth - rightMargin - leftMargin);
+      const desiredWidth = Math.min(containerWidth * 0.5, 300);
+      const width = Math.min(desiredWidth, maxAvailableWidth);
+      
+      btn.style.cssText = `
+        background: ${color} !important;
+        border: none !important;
+        border-radius: ${height / 2}px !important;
+        width: ${width}px !important;
+        min-width: 120px !important;
+        max-width: ${maxAvailableWidth}px !important;
+        height: ${height}px !important;
+        padding: 0 12px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 8px !important;
+        position: relative !important;
+        bottom: auto !important; right: auto !important;
+        left: auto !important; top: auto !important;
+        pointer-events: auto !important;
+        cursor: pointer !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+        transition: all 0.3s cubic-bezier(0.4,0,0.2,1) !important;
+        margin: 0 !important;
+        outline: none !important;
+        box-sizing: border-box !important;
+        z-index: 1 !important;
+        overflow: hidden !important;
+      `;
+
+      btn.innerHTML = "";
+
+      // 画像（任意）
+      if (imageUrl) {
+        const img = document.createElement("img");
+        img.src = imageUrl;
+        const imageSize = height - 16;
+        img.style.cssText = `
+          width: ${imageSize}px !important;
+          height: ${imageSize}px !important;
+          min-width: ${imageSize}px !important;
+          min-height: ${imageSize}px !important;
+          max-width: ${imageSize}px !important;
+          max-height: ${imageSize}px !important;
+          object-fit: cover !important;
+          object-position: center !important;
+          border-radius: 50% !important;
+          flex-shrink: 0 !important;
+          display: block !important;
+          margin: 0 !important;
+        `;
+        btn.appendChild(img);
+      }
+
+      // テキスト
+      if (text) {
+        const textEl = document.createElement("div");
+        textEl.textContent = text;
+        textEl.style.cssText = `
+          font-size: ${isMobile ? 13 : 15}px !important;
           font-weight: 600 !important;
           line-height: 1.2 !important;
-          color: ${getTextColor(color)} !important;
+          color: ${textColor} !important;
           white-space: nowrap !important;
           overflow: hidden !important;
           text-overflow: ellipsis !important;
-          width: 100% !important;
+          flex: 1 !important;
+          min-width: 0 !important;
           text-align: left !important;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
         `;
-        textContainer.appendChild(titleEl);
+        btn.appendChild(textEl);
       }
-
-      // 小見出し
-      if (hasSubtitle && subtitle && hasTitle && title) {
-        const subtitleFontSize = calculateFontSize(subtitle, true, height, hasImage);
-        const subtitleEl = document.createElement("div");
-        subtitleEl.textContent = subtitle;
-        subtitleEl.style.cssText = `
-          font-size: ${subtitleFontSize}px !important;
-          font-weight: 400 !important;
-          line-height: 1.2 !important;
-          color: ${getTextColor(color)} !important;
-          opacity: 0.8 !important;
-          white-space: nowrap !important;
-          overflow: hidden !important;
-          text-overflow: ellipsis !important;
-          width: 100% !important;
-          margin-top: 2px !important;
-          text-align: left !important;
-        `;
-        textContainer.appendChild(subtitleEl);
-      }
-
-      btn.appendChild(textContainer);
     }
 
-    applyHoverEffect(btn, color, shadow);
+    applyHoverEffect(btn, color, true);
   };
 
   // widget.js読み込み・ボタン初期化（shopId変更時のみ）
@@ -393,7 +325,7 @@ function ButtonPreview({
     if (!containerRef.current) return;
     const bc = containerRef.current.querySelector(SELECTOR) as HTMLElement;
     if (bc) applyStyles(bc);
-  }, [color, radius, width, height, fontSize, borderWidth, borderColor, shadow, imageUrl, imageRadius, hasImage, title, hasTitle, subtitle, hasSubtitle]);
+  }, [color, text, shape, imageUrl]);
 
   return (
     <PhoneFrame
@@ -415,74 +347,16 @@ export default function WidgetDesignPage() {
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   
-  // ボタン設定
+  // ボタン設定（簡素化）
   const [buttonColor, setButtonColor] = useState("#ffffff");
-  const [buttonRadius, setButtonRadius] = useState(8);
-  const [buttonWidth, setButtonWidth] = useState(200);
-  const [buttonHeight, setButtonHeight] = useState(56);
-  const [buttonFontSize, setButtonFontSize] = useState(14);
-  const [buttonBorderWidth, setButtonBorderWidth] = useState(0);
-  const [buttonBorderColor, setButtonBorderColor] = useState("#000000");
-  const [buttonShadow, setButtonShadow] = useState(true);
-  
-  // ボタンコンテンツ設定
+  const [buttonText, setButtonText] = useState("試着する");
+  const [buttonShape, setButtonShape] = useState<"circle" | "pill">("pill");
   const [buttonImageUrl, setButtonImageUrl] = useState("");
-  const [buttonImageRadius, setButtonImageRadius] = useState(0);
-  const [hasImage, setHasImage] = useState(false);
-  const [buttonTitle, setButtonTitle] = useState("試着する");
-  const [hasTitle, setHasTitle] = useState(true);
-  const [buttonSubtitle, setButtonSubtitle] = useState("");
-  const [hasSubtitle, setHasSubtitle] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 数値入力の一時的な文字列state（削除可能にするため）
-  const [tempWidth, setTempWidth] = useState<string | null>(null);
-  const [tempHeight, setTempHeight] = useState<string | null>(null);
-  const [tempRadius, setTempRadius] = useState<string | null>(null);
-  const [tempBorderWidth, setTempBorderWidth] = useState<string | null>(null);
-  const [tempImageRadius, setTempImageRadius] = useState<string | null>(null);
-  const [tempFontSize, setTempFontSize] = useState<string | null>(null);
-
   const isOwner = userRole === "owner";
 
-  // 数値入力のヘルパー関数
-  const handleNumberChange = (
-    value: string,
-    setter: (val: number) => void,
-    min: number,
-    max: number,
-    defaultValue: number
-  ) => {
-    // 空文字列の場合はそのまま空文字列として扱う（削除可能にする）
-    if (value === "") {
-      setter(defaultValue);
-      return;
-    }
-    // 先頭の0を削除
-    const cleaned = value.replace(/^0+/, "");
-    const num = parseInt(cleaned, 10);
-    if (isNaN(num)) {
-      setter(defaultValue);
-    } else {
-      setter(Math.max(min, Math.min(max, num)));
-    }
-  };
-
-  const handleNumberBlur = (
-    value: string,
-    setter: (val: number) => void,
-    min: number,
-    max: number,
-    defaultValue: number
-  ) => {
-    const num = parseInt(value.replace(/^0+/, ""), 10);
-    if (isNaN(num) || value === "") {
-      setter(defaultValue);
-    } else {
-      setter(Math.max(min, Math.min(max, num)));
-    }
-  };
 
   // 画像アップロード処理
   const handleImageUpload = async (file: File) => {
@@ -519,7 +393,6 @@ export default function WidgetDesignPage() {
       }
       
       setButtonImageUrl(data.url);
-      setHasImage(true);
       toast.success("画像をアップロードしました");
     } catch (error) {
       console.error("Failed to upload image:", error);
@@ -538,20 +411,9 @@ export default function WidgetDesignPage() {
       .then((res) => res.json())
       .then((s) => {
         setButtonColor(s.buttonColor || "#ffffff");
-        setButtonRadius(s.buttonRadius ?? 8);
-        setButtonWidth(s.buttonWidth ?? 200);
-        setButtonHeight(s.buttonHeight ?? 56);
-        setButtonFontSize(s.buttonFontSize ?? 14);
-        setButtonBorderWidth(s.buttonBorderWidth ?? 0);
-        setButtonBorderColor(s.buttonBorderColor || "#000000");
-        setButtonShadow(s.buttonShadow ?? true);
+        setButtonText(s.buttonText || "試着する");
+        setButtonShape(s.buttonShape === "circle" ? "circle" : "pill");
         setButtonImageUrl(s.buttonImageUrl || "");
-        setButtonImageRadius(s.buttonImageRadius ?? 0);
-        setHasImage(s.hasImage ?? false);
-        setButtonTitle(s.buttonTitle || "試着する");
-        setHasTitle(s.hasTitle ?? true);
-        setButtonSubtitle(s.buttonSubtitle || "");
-        setHasSubtitle(s.hasSubtitle ?? false);
       })
       .catch((err) => {
         console.error("Failed to load widget design:", err);
@@ -571,20 +433,9 @@ export default function WidgetDesignPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           buttonColor,
-          buttonRadius,
-          buttonWidth,
-          buttonHeight,
-          buttonFontSize,
-          buttonBorderWidth,
-          buttonBorderColor,
-          buttonShadow,
+          buttonText,
+          buttonShape,
           buttonImageUrl,
-          buttonImageRadius,
-          hasImage,
-          buttonTitle,
-          hasTitle,
-          buttonSubtitle,
-          hasSubtitle,
         }),
       });
       if (!res.ok) {
@@ -600,20 +451,9 @@ export default function WidgetDesignPage() {
   }, [
     shopId,
     buttonColor,
-    buttonRadius,
-    buttonWidth,
-    buttonHeight,
-    buttonFontSize,
-    buttonBorderWidth,
-    buttonBorderColor,
-    buttonShadow,
+    buttonText,
+    buttonShape,
     buttonImageUrl,
-    buttonImageRadius,
-    hasImage,
-    buttonTitle,
-    hasTitle,
-    buttonSubtitle,
-    hasSubtitle,
   ]);
 
   if (!isOwner) {
@@ -643,72 +483,7 @@ export default function WidgetDesignPage() {
             <CardContent className="pt-6 pb-6">
               <h2 className="text-lg font-semibold mb-4">基本設定</h2>
               <div className="space-y-4">
-                {/* ボタンサイズ */}
-                <div>
-                  <Label className="text-sm font-medium text-gray-700 mb-2 block">サイズ</Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs text-gray-500">幅 (px)</Label>
-                      <Input 
-                        type="text" 
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        value={tempWidth ?? String(buttonWidth)} 
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/[^0-9]/g, "").replace(/^0+/, "");
-                          setTempWidth(val);
-                          if (val !== "") {
-                            const num = parseInt(val, 10);
-                            if (!isNaN(num)) {
-                              setButtonWidth(Math.max(100, Math.min(500, num)));
-                            }
-                          }
-                        }}
-                        onBlur={(e) => {
-                          const val = e.target.value.replace(/[^0-9]/g, "");
-                          setTempWidth(null);
-                          if (val === "") {
-                            setButtonWidth(200);
-                          } else {
-                            handleNumberBlur(val, setButtonWidth, 100, 500, 200);
-                          }
-                        }}
-                        className="h-9 text-sm" 
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-gray-500">高さ (px)</Label>
-                      <Input 
-                        type="text" 
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        value={tempHeight ?? String(buttonHeight)} 
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/[^0-9]/g, "").replace(/^0+/, "");
-                          setTempHeight(val);
-                          if (val !== "") {
-                            const num = parseInt(val, 10);
-                            if (!isNaN(num)) {
-                              setButtonHeight(Math.max(32, Math.min(100, num)));
-                            }
-                          }
-                        }}
-                        onBlur={(e) => {
-                          const val = e.target.value.replace(/[^0-9]/g, "");
-                          setTempHeight(null);
-                          if (val === "") {
-                            setButtonHeight(56);
-                          } else {
-                            handleNumberBlur(val, setButtonHeight, 32, 100, 56);
-                          }
-                        }}
-                        className="h-9 text-sm" 
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* ボタン色 */}
+                {/* ボタンの色 */}
                 <div>
                   <Label className="text-sm font-medium text-gray-700 mb-2 block">ボタンの色</Label>
                   <div className="flex items-center gap-2">
@@ -728,287 +503,170 @@ export default function WidgetDesignPage() {
                   </div>
                 </div>
 
-                {/* 角丸 */}
+                {/* 形状 */}
                 <div>
-                  <Label className="text-sm font-medium text-gray-700 mb-2 block">角丸 (px)</Label>
-                  <Input 
-                    type="text" 
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    value={tempRadius ?? String(buttonRadius)} 
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/[^0-9]/g, "").replace(/^0+/, "");
-                      setTempRadius(val);
-                      if (val !== "") {
-                        const num = parseInt(val, 10);
-                        if (!isNaN(num)) {
-                          setButtonRadius(Math.max(0, Math.min(50, num)));
-                        }
-                      }
-                    }}
-                    onBlur={(e) => {
-                      const val = e.target.value.replace(/[^0-9]/g, "");
-                      setTempRadius(null);
-                      if (val === "") {
-                        setButtonRadius(8);
-                      } else {
-                        handleNumberBlur(val, setButtonRadius, 0, 50, 8);
-                      }
-                    }}
-                    className="h-9 text-sm" 
+                  <Label className="text-sm font-medium text-gray-700 mb-2 block">形状</Label>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setButtonShape("circle")}
+                      className={`flex-1 p-4 border-2 rounded-lg transition-all ${
+                        buttonShape === "circle"
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        <div
+                          className={`${buttonShape === "circle" ? "w-16 h-16" : "w-12 h-12"} rounded-full border-2 ${
+                            buttonShape === "circle" ? "border-blue-500" : "border-gray-300"
+                          } bg-white flex items-center justify-center`}
+                        >
+                          {buttonImageUrl ? (
+                            <img
+                              src={buttonImageUrl}
+                              alt=""
+                              className="w-full h-full rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-gray-200" />
+                          )}
+                        </div>
+                        <span className={`text-xs font-medium ${
+                          buttonShape === "circle" ? "text-blue-600" : "text-gray-600"
+                        }`}>
+                          円形
+                        </span>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setButtonShape("pill")}
+                      className={`flex-1 p-4 border-2 rounded-lg transition-all ${
+                        buttonShape === "pill"
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        <div
+                          className={`${buttonShape === "pill" ? "w-24 h-12" : "w-20 h-10"} rounded-full border-2 ${
+                            buttonShape === "pill" ? "border-blue-500" : "border-gray-300"
+                          } bg-white flex items-center justify-center gap-2 px-2`}
+                        >
+                          {buttonImageUrl ? (
+                            <img
+                              src={buttonImageUrl}
+                              alt=""
+                              className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-gray-200 flex-shrink-0" />
+                          )}
+                          <div className="h-2 bg-gray-300 rounded flex-1" />
+                        </div>
+                        <span className={`text-xs font-medium ${
+                          buttonShape === "pill" ? "text-blue-600" : "text-gray-600"
+                        }`}>
+                          横長
+                        </span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 文言 */}
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 mb-2 block">文言</Label>
+                  <Input
+                    type="text"
+                    value={buttonText}
+                    onChange={(e) => setButtonText(e.target.value)}
+                    placeholder="試着する"
+                    className="h-9 text-sm"
+                    disabled={buttonShape === "circle"}
                   />
-                </div>
-
-                {/* ボーダー */}
-                <div>
-                  <Label className="text-sm font-medium text-gray-700 mb-2 block">ボーダー</Label>
-                  <div className="flex items-center gap-2">
-                    <Input 
-                      type="text" 
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      value={tempBorderWidth ?? String(buttonBorderWidth)} 
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/[^0-9]/g, "").replace(/^0+/, "");
-                        setTempBorderWidth(val);
-                        if (val !== "") {
-                          const num = parseInt(val, 10);
-                          if (!isNaN(num)) {
-                            setButtonBorderWidth(Math.max(0, Math.min(5, num)));
-                          }
-                        }
-                      }}
-                      onBlur={(e) => {
-                        const val = e.target.value.replace(/[^0-9]/g, "");
-                        setTempBorderWidth(null);
-                        if (val === "") {
-                          setButtonBorderWidth(0);
-                        } else {
-                          handleNumberBlur(val, setButtonBorderWidth, 0, 5, 0);
-                        }
-                      }}
-                      className="w-20 h-9 text-sm" 
-                    />
-                    <span className="text-xs text-gray-500">px</span>
-                    <Input
-                      type="color"
-                      value={buttonBorderColor}
-                      onChange={(e) => setButtonBorderColor(e.target.value)}
-                      className="w-12 h-9 p-1 cursor-pointer rounded"
-                    />
-                    <Input
-                      type="text"
-                      value={buttonBorderColor}
-                      onChange={(e) => setButtonBorderColor(e.target.value)}
-                      className="flex-1 h-9 text-sm"
-                    />
-                  </div>
-                </div>
-
-                {/* 影 */}
-                <div className="flex items-center justify-between pt-2">
-                  <div>
-                    <Label className="text-sm font-medium text-gray-700">影を表示</Label>
-                    <p className="text-xs text-gray-500 mt-0.5">ボタンに影を付けます</p>
-                  </div>
-                  <Switch checked={buttonShadow} onCheckedChange={setButtonShadow} />
+                  {buttonShape === "circle" && (
+                    <p className="text-xs text-gray-500 mt-1">円形ボタンでは文言は表示されません</p>
+                  )}
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* コンテンツ設定 */}
+          {/* 画像設定 */}
           <Card>
             <CardContent className="pt-6 pb-6">
-              <h2 className="text-lg font-semibold mb-4">コンテンツ設定</h2>
-              <div className="space-y-6">
-                {/* 画像設定 */}
+              <h2 className="text-lg font-semibold mb-4">画像設定</h2>
+              <div className="space-y-4">
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                        <ImageIcon className="h-4 w-4" />
-                        画像を表示
-                      </Label>
-                      <p className="text-xs text-gray-500 mt-0.5">ボタン左側に画像を表示します</p>
-                    </div>
-                    <Switch checked={hasImage} onCheckedChange={setHasImage} />
-                  </div>
-                  {hasImage && (
-                    <div className="space-y-3 pl-6 border-l-2 border-gray-200">
-                      <div>
-                        <Label className="text-xs text-gray-500 mb-1 block">画像URL</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            type="text"
-                            placeholder="https://example.com/image.jpg"
-                            value={buttonImageUrl}
-                            onChange={(e) => setButtonImageUrl(e.target.value)}
-                            className="flex-1 h-9 text-sm"
-                          />
-                          <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                handleImageUpload(file);
-                              }
-                            }}
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            disabled={uploadingImage}
-                            onClick={() => fileInputRef.current?.click()}
-                            className="h-9 px-3"
-                          >
-                            {uploadingImage ? (
-                              <>
-                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                アップロード中
-                              </>
-                            ) : (
-                              <>
-                                <Upload className="h-4 w-4 mr-2" />
-                                アップロード
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                        {buttonImageUrl && (
-                          <div className="mt-2">
-                            <img
-                              src={buttonImageUrl}
-                              alt="プレビュー"
-                              className="h-16 w-16 object-cover rounded border border-gray-200"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = "none";
-                              }}
-                            />
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <Label className="text-xs text-gray-500 mb-1 block">画像の角丸 (px)</Label>
-                          <Input
-                            type="text"
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            value={tempImageRadius ?? String(buttonImageRadius)}
-                            onChange={(e) => {
-                              const val = e.target.value.replace(/[^0-9]/g, "").replace(/^0+/, "");
-                              setTempImageRadius(val);
-                              if (val !== "") {
-                                const num = parseInt(val, 10);
-                                if (!isNaN(num)) {
-                                  setButtonImageRadius(Math.max(0, Math.min(50, num)));
-                                }
-                              }
-                            }}
-                            onBlur={(e) => {
-                              const val = e.target.value.replace(/[^0-9]/g, "");
-                              setTempImageRadius(null);
-                              if (val === "") {
-                                setButtonImageRadius(0);
-                              } else {
-                                handleNumberBlur(val, setButtonImageRadius, 0, 50, 0);
-                              }
-                            }}
-                            className="h-9 text-sm"
-                          />
-                      </div>
-                    </div>
+                  <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                    <ImageIcon className="h-4 w-4 inline mr-2" />
+                    画像
+                  </Label>
+                  {buttonShape === "circle" && (
+                    <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded mb-2">
+                      円形ボタンでは画像が必須です
+                    </p>
                   )}
-                </div>
-
-                {/* 見出し設定 */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <Label className="text-sm font-medium text-gray-700">見出しを表示</Label>
-                      <p className="text-xs text-gray-500 mt-0.5">ボタンにメインのテキストを表示します</p>
-                    </div>
-                    <Switch checked={hasTitle} onCheckedChange={setHasTitle} />
-                  </div>
-                  {hasTitle && (
-                    <div className="pl-6 border-l-2 border-gray-200">
-                      <Label className="text-xs text-gray-500 mb-1 block">見出しテキスト</Label>
-                      <Input
-                        type="text"
-                        placeholder="試着する"
-                        value={buttonTitle}
-                        onChange={(e) => setButtonTitle(e.target.value)}
-                        className="h-9 text-sm"
-                      />
-                    </div>
+                  {buttonShape === "pill" && (
+                    <p className="text-xs text-gray-500 mb-2">
+                      横長円ボタンでは画像は任意です
+                    </p>
                   )}
-                </div>
-
-                {/* 小見出し設定 */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <Label className="text-sm font-medium text-gray-700">小見出しを表示</Label>
-                      <p className="text-xs text-gray-500 mt-0.5">見出しの下にサブテキストを表示します</p>
-                    </div>
-                    <Switch 
-                      checked={hasSubtitle} 
-                      onCheckedChange={setHasSubtitle}
-                      disabled={!hasTitle}
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      placeholder="https://example.com/image.jpg"
+                      value={buttonImageUrl}
+                      onChange={(e) => setButtonImageUrl(e.target.value)}
+                      className="flex-1 h-9 text-sm"
                     />
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handleImageUpload(file);
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={uploadingImage}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="h-9 px-3"
+                    >
+                      {uploadingImage ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          アップロード中
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4 mr-2" />
+                          アップロード
+                        </>
+                      )}
+                    </Button>
                   </div>
-                  {hasSubtitle && hasTitle && (
-                    <div className="pl-6 border-l-2 border-gray-200">
-                      <Label className="text-xs text-gray-500 mb-1 block">小見出しテキスト</Label>
-                      <Input
-                        type="text"
-                        placeholder="3Dで試着"
-                        value={buttonSubtitle}
-                        onChange={(e) => setButtonSubtitle(e.target.value)}
-                        className="h-9 text-sm"
+                  {buttonImageUrl && (
+                    <div className="mt-2">
+                      <img
+                        src={buttonImageUrl}
+                        alt="プレビュー"
+                        className={`${buttonShape === "circle" ? "h-16 w-16 rounded-full" : "h-16 w-16 rounded"} object-cover border border-gray-200`}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                        }}
                       />
                     </div>
                   )}
-                  {hasSubtitle && !hasTitle && (
-                    <div className="pl-6 border-l-2 border-gray-200">
-                      <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded">見出しを有効にすると小見出しを設定できます</p>
-                    </div>
-                  )}
-                </div>
-
-                  {/* 文字サイズ */}
-                <div>
-                  <Label className="text-sm font-medium text-gray-700 mb-2 block">文字サイズ (px)</Label>
-                  <Input 
-                    type="text" 
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    value={tempFontSize ?? String(buttonFontSize)} 
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/[^0-9]/g, "").replace(/^0+/, "");
-                      setTempFontSize(val);
-                      if (val !== "") {
-                        const num = parseInt(val, 10);
-                        if (!isNaN(num)) {
-                          setButtonFontSize(Math.max(10, Math.min(24, num)));
-                        }
-                      }
-                    }}
-                    onBlur={(e) => {
-                      const val = e.target.value.replace(/[^0-9]/g, "");
-                      setTempFontSize(null);
-                      if (val === "") {
-                        setButtonFontSize(14);
-                      } else {
-                        handleNumberBlur(val, setButtonFontSize, 10, 24, 14);
-                      }
-                    }}
-                    className="h-9 text-sm" 
-                  />
                 </div>
               </div>
             </CardContent>
@@ -1024,23 +682,12 @@ export default function WidgetDesignPage() {
                 <div className="relative flex items-center justify-center bg-gray-100 rounded-lg p-4">
                   <div className="w-full max-w-[280px] aspect-[500/1080]">
                     <ButtonPreview
-                  color={buttonColor}
-                  radius={buttonRadius}
-                  width={buttonWidth}
-                  height={buttonHeight}
-                  fontSize={buttonFontSize}
-                  borderWidth={buttonBorderWidth}
-                  borderColor={buttonBorderColor}
-                  shadow={buttonShadow}
-                  imageUrl={buttonImageUrl}
-                  imageRadius={buttonImageRadius}
-                  hasImage={hasImage}
-                  title={buttonTitle}
-                  hasTitle={hasTitle}
-                  subtitle={buttonSubtitle}
-                  hasSubtitle={hasSubtitle}
-                  shopId={shopId || ""}
-                  />
+                      color={buttonColor}
+                      text={buttonText}
+                      shape={buttonShape}
+                      imageUrl={buttonImageUrl}
+                      shopId={shopId || ""}
+                    />
                   </div>
                 </div>
               </CardContent>
