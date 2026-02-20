@@ -6,7 +6,7 @@ import { useProductSelection } from "@/contexts/ProductSelectionContext";
 
 export default function ProductsPage() {
   const { data: products = [], isLoading, error } = useProducts();
-  const { selectProduct, selectedProduct, selectedSize } = useProductSelection();
+  const { selectProduct } = useProductSelection();
 
   if (isLoading) {
     return (
@@ -103,16 +103,12 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key`}
           <ProductsTable
             products={products}
             onProductSelect={selectProduct}
-            selectedProductId={selectedProduct?.id}
-            selectedSize={selectedSize}
           />
         </div>
       ) : (
         <ProductsTable
           products={products}
           onProductSelect={selectProduct}
-          selectedProductId={selectedProduct?.id}
-          selectedSize={selectedSize}
         />
       )}
     </div>

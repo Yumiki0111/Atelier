@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
-import Image from "next/image";
+import { useState, useCallback } from "react";
 import type { Product, ProductSize } from "@atelier/shared";
 import {
   Table,
@@ -12,40 +11,27 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { ProductAddDialog } from "./ProductAddDialog";
 import { ProductEditDialog } from "./ProductEditDialog";
 import { AssetManagementDialog } from "./AssetManagementDialog";
 import { ProductImportCsvDialog } from "./ProductImportCsvDialog";
-import { Search, Eye, Edit, Trash2, Trash } from "lucide-react";
+import { Eye, Edit, Trash2, Trash } from "lucide-react";
 import { useProductSelection } from "@/contexts/ProductSelectionContext";
 import { Button } from "@/components/ui/button";
 import { useDeleteProduct, useBulkDeleteProducts } from "../useProducts";
 import { toast } from "sonner";
 import { getErrorMessage, translateErrorMessage } from "@/lib/errors/error-handler";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
 interface ProductsTableProps {
   products: Product[];
   onProductSelect: (product: Product, size: ProductSize) => void;
-  selectedProductId?: string;
-  selectedSize?: ProductSize;
 }
 
 export function ProductsTable({
   products,
   onProductSelect,
-  selectedProductId,
-  selectedSize,
 }: ProductsTableProps) {
   const { togglePreview } = useProductSelection();
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const deleteProduct = useDeleteProduct();
@@ -88,16 +74,7 @@ export function ProductsTable({
     }
   };
 
-  const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
-      const matchesSearch =
-        searchQuery === "" ||
-        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.brand?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.externalProductId?.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesSearch;
-    });
-  }, [products, searchQuery]);
+  const filteredProducts = products;
 
   const toggleRowSelection = useCallback((productId: string) => {
     setSelectedRowIds((prev) => {
@@ -111,37 +88,23 @@ export function ProductsTable({
     });
   }, []);
 
-  const handleProductClick = (product: Product) => {
-    // デフォルトでMサイズを選択
-    onProductSelect(product, "M");
-    // プレビューを開く
-    togglePreview();
-  };
-
   return (
     <div className="flex flex-col space-y-4">
-      {/* Header with search and add button */}
+      {/* Header with buttons */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <Input
-            placeholder="商品を検索"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
         <div className="flex gap-2">
           {selectedRowIds.size > 0 && (
             <Button
               onClick={handleBulkDelete}
               disabled={bulkDeleteProducts.isPending}
-              className="gap-2 bg-black text-white hover:bg-gray-800"
+              className="gap-2 bg-blue-600 text-white hover:bg-blue-700"
             >
               <Trash className="h-4 w-4" />
               {bulkDeleteProducts.isPending ? "削除中..." : `選択した${selectedRowIds.size}件を削除`}
             </Button>
           )}
+        </div>
+        <div className="flex gap-2">
           <ProductImportCsvDialog />
           <ProductAddDialog />
         </div>
@@ -169,17 +132,16 @@ export function ProductsTable({
                   }}
                 />
               </TableHead>
-              <TableHead className="w-[calc((100%-3rem)/5)]">画像</TableHead>
-              <TableHead className="w-[calc((100%-3rem)/5)]">商品名</TableHead>
-              <TableHead className="w-[calc((100%-3rem)/5)]">ブランド</TableHead>
-              <TableHead className="w-[calc((100%-3rem)/5)]">外部商品ID</TableHead>
-              <TableHead className="w-[calc((100%-3rem)/5)]">操作</TableHead>
+              <TableHead className="w-[calc((100%-3rem)/4)]">画像</TableHead>
+              <TableHead className="w-[calc((100%-3rem)/4)]">商品名</TableHead>
+              <TableHead className="w-[calc((100%-3rem)/4)]">外部商品ID</TableHead>
+              <TableHead className="w-[calc((100%-3rem)/4)]">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredProducts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-gray-500">
+                <TableCell colSpan={6} className="text-center text-gray-500">
                   商品が見つかりませんでした
                 </TableCell>
               </TableRow>
@@ -189,7 +151,31 @@ export function ProductsTable({
                 return (
                   <TableRow
                     key={product.id}
-                    className={`bg-white hover:bg-white ${isSelected ? "bg-blue-50 hover:bg-blue-50" : ""}`}
+                    className={`bg-white hover:bg-white cursor-pointer border-b ${isSelected ? "bg-blue-50 hover:bg-blue-50" : ""}`}
+                    style={{ boxSizing: 'border-box', borderWidth: '1px', borderColor: 'inherit' }}
+                    onClick={(e) => {
+                      // チェックボックス、画像、ボタン（操作セル）をクリックした場合は選択しない
+                      const target = e.target as HTMLElement;
+                      const isCheckbox = target.closest('[role="checkbox"]') || target.closest('input[type="checkbox"]');
+                      const isImage = target.tagName === 'IMG' || target.closest('img');
+                      const isButton = target.closest('button') || target.closest('[role="button"]');
+                      
+                      if (!isCheckbox && !isImage && !isButton) {
+                        toggleRowSelection(product.id);
+                      }
+                    }}
+                    onTouchEnd={(e) => {
+                      // タッチイベントでも同様の処理
+                      const target = e.target as HTMLElement;
+                      const isCheckbox = target.closest('[role="checkbox"]') || target.closest('input[type="checkbox"]');
+                      const isImage = target.tagName === 'IMG' || target.closest('img');
+                      const isButton = target.closest('button') || target.closest('[role="button"]');
+                      
+                      if (!isCheckbox && !isImage && !isButton) {
+                        e.preventDefault();
+                        toggleRowSelection(product.id);
+                      }
+                    }}
                   >
                     <TableCell
                       onClick={(e) => e.stopPropagation()}
@@ -200,13 +186,31 @@ export function ProductsTable({
                         onCheckedChange={() => toggleRowSelection(product.id)}
                       />
                     </TableCell>
-                    <TableCell className={`py-2 ${isSelected ? "bg-blue-50" : ""}`}>
+                    <TableCell 
+                      className={`py-2 ${isSelected ? "bg-blue-50" : ""}`}
+                      onClick={(e) => {
+                        // 画像自体をクリックした場合のみ選択を防ぐ
+                        const target = e.target as HTMLElement;
+                        if (target.tagName === 'IMG' || target.closest('img')) {
+                          e.stopPropagation();
+                        }
+                      }}
+                      onTouchEnd={(e) => {
+                        // 画像自体をタッチした場合のみ選択を防ぐ
+                        const target = e.target as HTMLElement;
+                        if (target.tagName === 'IMG' || target.closest('img')) {
+                          e.stopPropagation();
+                        }
+                      }}
+                    >
                       {product.thumbnailUrl ? (
                         <div className="relative h-16 w-16 overflow-hidden rounded flex items-center justify-center">
                           <img
                             src={product.thumbnailUrl}
                             alt={product.name}
                             className="max-h-full max-w-full object-contain"
+                            onClick={(e) => e.stopPropagation()}
+                            onTouchEnd={(e) => e.stopPropagation()}
                           />
                         </div>
                       ) : (
@@ -216,7 +220,6 @@ export function ProductsTable({
                       )}
                     </TableCell>
                     <TableCell className={`font-medium py-2 ${isSelected ? "bg-blue-50" : ""}`}>{product.name}</TableCell>
-                    <TableCell className={`py-2 ${isSelected ? "bg-blue-50" : ""}`}>{product.brand || "-"}</TableCell>
                     <TableCell className={`py-2 ${isSelected ? "bg-blue-50" : ""} font-mono text-xs`}>
                       {product.externalProductId || (
                         <span className="text-gray-400 italic">未設定</span>
@@ -257,7 +260,7 @@ export function ProductsTable({
                               onProductSelect(product, "M");
                               togglePreview();
                             }}
-                            className="gap-2 h-9 min-w-[120px]"
+                            className="gap-2 h-9 min-w-[120px] justify-start px-3"
                           >
                             <Eye className="h-4 w-4" />
                             プレビュー

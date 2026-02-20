@@ -6,15 +6,15 @@ import type { ProductCategory } from "@atelier/shared";
  */
 export const CATEGORY_LAYER_ORDER: Record<ProductCategory, number> = {
   "ボトムス": 1,    // 最下層（パンツ・スカートなど）
-  "トップス": 2,    // 中層（シャツ・Tシャツなど）
-  "ジャケット": 2,  // 中層（上着）- コートの下
-  "コート": 3,      // 最上層（アウター）
+  "トップス": 2,    // 中層（シャツ・Tシャツ・ジャケット・コート - 同じレイヤー）
+  "ジャケット": 2,  // 中層（トップス・コートと同じレイヤー）
+  "コート": 2,      // 中層（トップス・ジャケットと同じレイヤー）
 };
 
 /**
  * デフォルトモデルのURL
  */
-export const DEFAULT_MODEL_URL = "/3d/clo_model_men.glb";
+export const DEFAULT_MODEL_URL = "/3d/Model.fbx";
 
 /**
  * カテゴリーの順序に従ってソート

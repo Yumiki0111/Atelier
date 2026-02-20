@@ -44,7 +44,7 @@
     return `${protocol}//${host}`;
   }
   function createDevMockConfig() {
-    const glbUrl = "http://localhost:3000/3d/clo_model_men.glb";
+    const glbUrl = "http://localhost:3000/3d/Model.fbx";
     return {
       enabled: true,
       asset: {
@@ -311,6 +311,26 @@
     }).catch(() => {
     });
   }
+  function calculateFontSize(text, isSubtitle, buttonHeight, hasImage) {
+    let baseSize = Math.max(12, Math.min(20, buttonHeight * 0.25));
+    if (hasImage) {
+      baseSize *= 0.9;
+    }
+    if (isSubtitle) {
+      baseSize *= 0.75;
+    }
+    const textLength = text.length;
+    if (textLength > 20) {
+      baseSize *= 0.85;
+    } else if (textLength > 15) {
+      baseSize *= 0.9;
+    } else if (textLength > 10) {
+      baseSize *= 0.95;
+    }
+    const minSize = isSubtitle ? 10 : 12;
+    const maxSize = isSubtitle ? 16 : 20;
+    return Math.max(minSize, Math.min(maxSize, Math.round(baseSize)));
+  }
   function applyDesignToButton(containerId, design) {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -328,6 +348,13 @@
     const borderWidth = btn.borderWidth ?? 0;
     const borderColor = btn.borderColor ?? "#000000";
     const shadow = btn.shadow ?? true;
+    const hasImage = btn.hasImage ?? false;
+    const imageUrl = btn.imageUrl || "";
+    const imageRadius = btn.imageRadius ?? 0;
+    const hasTitle = btn.hasTitle ?? true;
+    const title = btn.title || "試着する";
+    const hasSubtitle = btn.hasSubtitle ?? false;
+    const subtitle = btn.subtitle || "";
     const border = borderWidth > 0 ? `${borderWidth}px solid ${borderColor}` : isWhite ? "2px solid #e5e7eb" : "none";
     const hex = color.replace("#", "");
     let textColor = "#ffffff";
@@ -351,30 +378,91 @@
     cursor: pointer !important;
     display: flex !important;
     align-items: center !important;
-    justify-content: center !important;
-    gap: ${isMobile ? 6 : 8}px !important;
+    justify-content: flex-start !important;
+    gap: 12px !important;
     color: ${textColor} !important;
     font-weight: 600 !important;
     font-size: ${fontSize}px !important;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
     box-shadow: ${shadow ? "0 2px 8px rgba(0,0,0,0.1)" : "none"} !important;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    padding: 0 ${isMobile ? "20px" : "24px"} !important;
+    padding: 12px 16px !important;
     margin: 0 !important;
     outline: none !important;
     pointer-events: auto !important;
     z-index: 9999 !important;
     box-sizing: border-box !important;
-    line-height: 1 !important;
-    text-align: center !important;
-    white-space: nowrap !important;
     backdrop-filter: blur(10px) !important;
   `;
-    if (btn.text) {
-      const textNode = Array.from(button.childNodes).find(
-        (n) => n.nodeType === Node.TEXT_NODE
-      );
-      if (textNode) textNode.textContent = btn.text;
+    button.innerHTML = "";
+    if (hasImage && imageUrl) {
+      const img = document.createElement("img");
+      img.src = imageUrl;
+      const imageSize = height - 24;
+      img.style.cssText = `
+      width: ${imageSize}px !important;
+      height: ${imageSize}px !important;
+      min-width: ${imageSize}px !important;
+      min-height: ${imageSize}px !important;
+      max-width: ${imageSize}px !important;
+      max-height: ${imageSize}px !important;
+      object-fit: cover !important;
+      object-position: center !important;
+      border-radius: ${imageRadius}px !important;
+      flex-shrink: 0 !important;
+      aspect-ratio: 1 / 1 !important;
+      display: block !important;
+      margin: 0 !important;
+    `;
+      button.appendChild(img);
+    }
+    if (hasTitle || hasSubtitle) {
+      const textContainer = document.createElement("div");
+      textContainer.style.cssText = `
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      justify-content: center !important;
+      flex: 1 !important;
+      min-width: 0 !important;
+    `;
+      if (hasTitle && title) {
+        const titleFontSize = calculateFontSize(title, false, height, hasImage);
+        const titleEl = document.createElement("div");
+        titleEl.textContent = title;
+        titleEl.style.cssText = `
+        font-size: ${titleFontSize}px !important;
+        font-weight: 600 !important;
+        line-height: 1.2 !important;
+        color: ${textColor} !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        width: 100% !important;
+        text-align: left !important;
+      `;
+        textContainer.appendChild(titleEl);
+      }
+      if (hasSubtitle && subtitle && hasTitle && title) {
+        const subtitleFontSize = calculateFontSize(subtitle, true, height, hasImage);
+        const subtitleEl = document.createElement("div");
+        subtitleEl.textContent = subtitle;
+        subtitleEl.style.cssText = `
+        font-size: ${subtitleFontSize}px !important;
+        font-weight: 400 !important;
+        line-height: 1.2 !important;
+        color: ${textColor} !important;
+        opacity: 0.8 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        width: 100% !important;
+        margin-top: 2px !important;
+        text-align: left !important;
+      `;
+        textContainer.appendChild(subtitleEl);
+      }
+      button.appendChild(textContainer);
     }
     button.onmouseenter = () => {
       button.style.transform = "translateY(-2px) scale(1.02)";
@@ -384,8 +472,6 @@
       button.style.transform = "translateY(0) scale(1)";
       button.style.boxShadow = shadow ? "0 2px 8px rgba(0,0,0,0.1) !important" : "none !important";
     };
-    const svg = button.querySelector("svg");
-    if (svg) svg.setAttribute("stroke", textColor);
     updateButtonPositions();
   }
   function createCubeIcon(size) {
@@ -20174,7 +20260,7 @@ void main() {
     return inside;
   }
   function splitPolygon(a, b) {
-    const a2 = new Node$1(a.i, a.x, a.y), b2 = new Node$1(b.i, b.x, b.y), an = a.next, bp = b.prev;
+    const a2 = new Node(a.i, a.x, a.y), b2 = new Node(b.i, b.x, b.y), an = a.next, bp = b.prev;
     a.next = b;
     b.prev = a;
     a2.next = an;
@@ -20186,7 +20272,7 @@ void main() {
     return b2;
   }
   function insertNode(i2, x2, y, last) {
-    const p = new Node$1(i2, x2, y);
+    const p = new Node(i2, x2, y);
     if (!last) {
       p.prev = p;
       p.next = p;
@@ -20204,7 +20290,7 @@ void main() {
     if (p.prevZ) p.prevZ.nextZ = p.nextZ;
     if (p.nextZ) p.nextZ.prevZ = p.prevZ;
   }
-  function Node$1(i2, x2, y) {
+  function Node(i2, x2, y) {
     this.i = i2;
     this.x = x2;
     this.y = y;
@@ -28116,13 +28202,13 @@ void main() {
     "ボトムス": 1,
     // 最下層（パンツ・スカートなど）
     "トップス": 2,
-    // 中層（シャツ・Tシャツなど）
+    // 中層（シャツ・Tシャツ・ジャケット・コート - 同じレイヤー）
     "ジャケット": 2,
-    // 中層（上着）- コートの下
-    "コート": 3
-    // 最上層（アウター）
+    // 中層（トップス・コートと同じレイヤー）
+    "コート": 2
+    // 中層（トップス・ジャケットと同じレイヤー）
   };
-  const DEFAULT_MODEL_URL = "/3d/clo_model_men.glb";
+  const DEFAULT_MODEL_URL = "/3d/Model.fbx";
   function getCategoryLayerOrder(category) {
     return CATEGORY_LAYER_ORDER[category] || 999;
   }
@@ -28138,7 +28224,7 @@ void main() {
     model.rotation.y = 0;
     const modelHeight = boxAfterScale.max.y - boxAfterScale.min.y;
     const verticalOffset = modelHeight * 0.15;
-    const upwardOffset = 0.1;
+    const upwardOffset = 0.3;
     model.position.set(-centerAfterScale.x, -centerAfterScale.y - verticalOffset + upwardOffset, -centerAfterScale.z);
     return {
       position: model.position.clone(),
@@ -28150,23 +28236,65 @@ void main() {
   }
   function enableShadow(object) {
     object.traverse((child) => {
-      if (child instanceof Mesh) {
+      if (child instanceof Mesh || child instanceof SkinnedMesh) {
         child.castShadow = true;
         child.receiveShadow = true;
         if (child.material) {
-          const material = child.material;
-          if ("colorSpace" in material) {
-            material.colorSpace = "srgb";
-          }
+          const materials = Array.isArray(child.material) ? child.material : [child.material];
+          materials.forEach((material) => {
+            if (material instanceof MeshStandardMaterial) {
+              if ("colorSpace" in material) {
+                material.colorSpace = "srgb";
+              }
+              if (material.roughness !== void 0) {
+                material.roughness = Math.min(material.roughness * 0.8, 0.9);
+              }
+            } else if (material instanceof MeshPhongMaterial || material instanceof MeshLambertMaterial || material instanceof MeshBasicMaterial) {
+              if ("colorSpace" in material) {
+                material.colorSpace = "srgb";
+              }
+              if (material.color && material.color.getHex() === 0) ;
+            }
+          });
         }
       }
     });
   }
   function getModelFormat(url) {
-    const lowerUrl = url.toLowerCase();
-    if (lowerUrl.endsWith(".glb") || lowerUrl.endsWith(".gltf")) return "glb";
-    if (lowerUrl.endsWith(".fbx")) return "fbx";
-    return "unknown";
+    try {
+      const urlWithoutQuery = url.split("?")[0].split("#")[0];
+      const lowerUrl = urlWithoutQuery.toLowerCase();
+      if (lowerUrl.endsWith(".glb") || lowerUrl.endsWith(".gltf")) return "glb";
+      if (lowerUrl.endsWith(".fbx")) return "fbx";
+      const pathMatch = lowerUrl.match(/\.(glb|gltf|fbx)(\?|#|$)/);
+      if (pathMatch) {
+        const ext = pathMatch[1];
+        if (ext === "glb" || ext === "gltf") return "glb";
+        if (ext === "fbx") return "fbx";
+      }
+      const dispositionMatch = url.match(/response-content-disposition[^&]*filename[=*]'?"?([^"&'%]+)["']?/i);
+      if (dispositionMatch) {
+        let filename = decodeURIComponent(dispositionMatch[1]).toLowerCase();
+        if (filename.includes("%")) {
+          filename = decodeURIComponent(filename).toLowerCase();
+        }
+        console.log("[getModelFormat] Extracted filename from disposition:", filename);
+        if (filename.endsWith(".glb") || filename.endsWith(".gltf")) return "glb";
+        if (filename.endsWith(".fbx")) return "fbx";
+      }
+      if (lowerUrl.includes(".fbx") || lowerUrl.includes("filename") && lowerUrl.includes("fbx")) {
+        console.log("[getModelFormat] Detected FBX from URL content");
+        return "fbx";
+      }
+      if (lowerUrl.includes(".glb") || lowerUrl.includes(".gltf")) {
+        console.log("[getModelFormat] Detected GLB/GLTF from URL content");
+        return "glb";
+      }
+      return "unknown";
+    } catch (error) {
+      console.warn("[getModelFormat] Error parsing URL:", url, error);
+      return "unknown";
+    }
   }
   function setupOrbitControls(canvasElement, camera, fixedPhi, fixedRadius, render) {
     let isDragging = false;
@@ -28226,9 +28354,9 @@ void main() {
     canvasElement.style.cursor = "grab";
   }
   function setupLights(scene) {
-    const ambientLight = new AmbientLight(16777215, 1.5);
+    const ambientLight = new AmbientLight(16777215, 2);
     scene.add(ambientLight);
-    const directionalLight1 = new DirectionalLight(16777215, 2.5);
+    const directionalLight1 = new DirectionalLight(16777215, 3);
     directionalLight1.position.set(10, 10, 5);
     directionalLight1.castShadow = true;
     directionalLight1.shadow.mapSize.width = 4096;
@@ -28242,10 +28370,10 @@ void main() {
     directionalLight1.shadow.bias = -1e-4;
     directionalLight1.shadow.radius = 4;
     scene.add(directionalLight1);
-    const directionalLight2 = new DirectionalLight(16777215, 1.2);
+    const directionalLight2 = new DirectionalLight(16777215, 1.5);
     directionalLight2.position.set(-10, -10, -5);
     scene.add(directionalLight2);
-    const directionalLight3 = new DirectionalLight(16777215, 0.8);
+    const directionalLight3 = new DirectionalLight(16777215, 1.2);
     directionalLight3.position.set(0, 10, 0);
     scene.add(directionalLight3);
     return { ambientLight, directionalLight1, directionalLight2, directionalLight3 };
@@ -28294,14 +28422,60 @@ void main() {
       throw new Error("Base model transform is not set. Base model must be loaded before assets.");
     }
     const format = getModelFormat(url);
-    const loader = format === "fbx" ? fbxLoader : gltfLoader;
-    debugLog.log("Starting to load asset model:", { url, format, category });
+    let actualFormat = format;
+    if (format === "unknown") {
+      const lowerUrl = url.toLowerCase();
+      if (lowerUrl.includes(".fbx")) {
+        actualFormat = "fbx";
+        debugLog.log("Format was unknown, but detected FBX from URL");
+      } else if (lowerUrl.includes(".glb") || lowerUrl.includes(".gltf")) {
+        actualFormat = "glb";
+        debugLog.log("Format was unknown, but detected GLB/GLTF from URL");
+      }
+    }
+    const loader = actualFormat === "fbx" ? fbxLoader : gltfLoader;
+    debugLog.log("Starting to load asset model:", { url, format: actualFormat, category });
     const model = await new Promise((resolve, reject) => {
       loader.load(
         url,
         (loaded) => {
-          debugLog.log("Asset model loaded successfully:", { url, category });
-          resolve(format === "fbx" ? loaded : loaded.scene || loaded);
+          var _a3;
+          const resolvedModel = actualFormat === "fbx" ? loaded : loaded.scene || loaded;
+          if (actualFormat === "fbx" && resolvedModel) {
+            const objectNames = [];
+            const objectInfo = [];
+            resolvedModel.traverse((child) => {
+              var _a4;
+              if (child.name) {
+                objectNames.push(child.name);
+                let meshCount = 0;
+                if (child instanceof Mesh || child instanceof SkinnedMesh) {
+                  meshCount = 1;
+                }
+                child.traverse((descendant) => {
+                  if (descendant instanceof Mesh || descendant instanceof SkinnedMesh) {
+                    meshCount++;
+                  }
+                });
+                objectInfo.push({
+                  name: child.name,
+                  type: child.constructor.name,
+                  children: ((_a4 = child.children) == null ? void 0 : _a4.length) || 0,
+                  meshCount
+                });
+              }
+            });
+            debugLog.log("FBX file contents:", {
+              url,
+              category,
+              totalObjects: objectNames.length,
+              objectNames,
+              objectInfo,
+              rootChildren: ((_a3 = resolvedModel.children) == null ? void 0 : _a3.length) || 0
+            });
+          }
+          debugLog.log("Asset model loaded successfully:", { url, category, format: actualFormat });
+          resolve(resolvedModel);
         },
         (progress) => {
           if (progress.lengthComputable && progress.total > 0) {
@@ -28328,33 +28502,80 @@ void main() {
       baseModelTransform.originalSize.y,
       baseModelTransform.originalSize.z
     );
-    let unitCorrection = 1;
+    debugLog.log("Asset transform calculation:", {
+      assetSize: { x: assetSize.x, y: assetSize.y, z: assetSize.z },
+      assetMaxDim,
+      baseOriginalSize: {
+        x: baseModelTransform.originalSize.x,
+        y: baseModelTransform.originalSize.y,
+        z: baseModelTransform.originalSize.z
+      },
+      baseMaxDim,
+      baseScale: {
+        x: baseModelTransform.scale.x,
+        y: baseModelTransform.scale.y,
+        z: baseModelTransform.scale.z
+      }
+    });
+    let assetScale;
     if (baseMaxDim > 0 && assetMaxDim > 0) {
       const ratio = assetMaxDim / baseMaxDim;
-      if (ratio > 5 || ratio < 0.2) {
+      debugLog.log("Size ratio calculation:", { ratio, assetMaxDim, baseMaxDim });
+      if (ratio > 100 || ratio < 0.01) {
         const logRatio = Math.log10(ratio);
-        unitCorrection = 1 / Math.pow(10, Math.round(logRatio));
+        const unitCorrection = 1 / Math.pow(10, Math.round(logRatio));
+        assetScale = unitCorrection * baseModelTransform.scale.x;
+        debugLog.log("Unit correction applied:", { logRatio, unitCorrection, assetScale });
+      } else {
+        assetScale = baseModelTransform.scale.x;
+        debugLog.log("Using base model scale for asset:", {
+          assetScale,
+          ratio,
+          baseMaxDim,
+          assetMaxDim,
+          baseScale: baseModelTransform.scale.x
+        });
       }
+    } else {
+      assetScale = baseModelTransform.scale.x;
+      debugLog.log("Using base model scale as fallback:", { assetScale });
     }
     model.position.set(0, 0, 0);
     model.rotation.set(0, 0, 0);
-    const baseScaleFactor = baseModelTransform.scale.x;
-    const combinedScale = unitCorrection * baseScaleFactor;
-    model.scale.set(combinedScale, combinedScale, combinedScale);
+    model.scale.set(assetScale, assetScale, assetScale);
     model.position.copy(baseModelTransform.position);
     model.rotation.copy(baseModelTransform.rotation);
     debugLog.log("Asset transform applied:", {
       position: { x: model.position.x, y: model.position.y, z: model.position.z },
-      scale: { x: model.scale.x, y: model.scale.y, z: model.scale.z }
+      scale: { x: model.scale.x, y: model.scale.y, z: model.scale.z },
+      assetScale,
+      baseScaleFactor: baseModelTransform.scale.x,
+      baseMaxDim,
+      assetMaxDim
     });
   }
   function init3DViewer(container, options) {
-    const { glbUrl, modelUrl, assets, apiBaseUrl, onLoad, onError } = options;
+    const { glbUrl, modelUrl, assets, apiBaseUrl, targetSize = 2.6, onError } = options;
     const loadedAssets = /* @__PURE__ */ new Map();
     let baseModel = null;
     let isBaseModelLoaded = false;
     let baseModelTransform = null;
     let baseModelLoadPromise = null;
+    const morphTargetMeshes = [];
+    let baseHeight = 1;
+    let currentHeight = null;
+    let currentBaseHeight = null;
+    let baseModelInitialScale = null;
+    let baseModelInitialPosition = null;
+    let baseModelInitialCenter = null;
+    const skeletonBones = /* @__PURE__ */ new Map();
+    const boneInitialScales = /* @__PURE__ */ new Map();
+    const boneInitialPositions = /* @__PURE__ */ new Map();
+    const assetInitialPositions = /* @__PURE__ */ new Map();
+    const assetInitialScales = /* @__PURE__ */ new Map();
+    const assetChildInitialScales = /* @__PURE__ */ new Map();
+    const assetCategories = /* @__PURE__ */ new Map();
+    let baseModelInitialReferencePoints = null;
     const getContainerSize = () => ({
       width: container.clientWidth || 800,
       height: container.clientHeight || 600
@@ -28394,7 +28615,7 @@ void main() {
       renderer.outputColorSpace = "srgb";
     }
     renderer.toneMapping = ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.5;
+    renderer.toneMappingExposure = 2;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = PCFSoftShadowMap;
     renderer.shadowMap.autoUpdate = true;
@@ -28413,6 +28634,22 @@ void main() {
         return;
       }
       try {
+        loadedAssets.forEach((assetGroups, category) => {
+          assetGroups.forEach((assetModel) => {
+            const initialScale = assetInitialScales.get(assetModel);
+            if (initialScale) {
+              assetModel.scale.copy(initialScale);
+              assetModel.traverse((child) => {
+                if (child instanceof Mesh || child instanceof SkinnedMesh) {
+                  const childInitialScale = assetChildInitialScales.get(child);
+                  if (childInitialScale) {
+                    child.scale.copy(childInitialScale);
+                  }
+                }
+              });
+            }
+          });
+        });
         renderer.render(scene, camera);
       } catch (error) {
         console.error("[Atelier Preview] Error rendering:", error);
@@ -28427,22 +28664,362 @@ void main() {
       if (isBaseModelLoaded && baseModel) return;
       try {
         const format = getModelFormat(modelUrl2);
-        const loader = format === "fbx" ? fbxLoader : gltfLoader;
+        let actualFormat = format;
+        if (format === "unknown") {
+          const lowerUrl = modelUrl2.toLowerCase();
+          if (lowerUrl.includes(".fbx") || lowerUrl.includes("filename") && lowerUrl.includes("fbx") || lowerUrl.includes("content-disposition") && lowerUrl.includes("fbx")) {
+            actualFormat = "fbx";
+            console.log("[Atelier Preview] Format was unknown, but detected FBX from URL");
+          } else if (lowerUrl.includes(".glb") || lowerUrl.includes(".gltf")) {
+            actualFormat = "glb";
+            console.log("[Atelier Preview] Format was unknown, but detected GLB/GLTF from URL");
+          }
+        }
+        const loader = actualFormat === "fbx" ? fbxLoader : gltfLoader;
+        console.log("[Atelier Preview] Loading base model:", { modelUrl: modelUrl2, format: actualFormat });
         const model = await new Promise((resolve, reject) => {
           loader.load(
             modelUrl2,
-            (loaded) => resolve(format === "fbx" ? loaded : loaded.scene || loaded),
-            void 0,
+            (loaded) => {
+              var _a3, _b2, _c, _d, _e;
+              const resolvedModel = actualFormat === "fbx" ? loaded : loaded.scene || loaded;
+              if (actualFormat === "fbx" && resolvedModel) {
+                const objectNames = [];
+                const objectInfo = [];
+                const clothingObjects = [];
+                const modelObjects = [];
+                resolvedModel.traverse((child) => {
+                  var _a4;
+                  if (child.name) {
+                    objectNames.push(child.name);
+                    let size;
+                    try {
+                      const box2 = new Box3().setFromObject(child);
+                      const boxSize = box2.getSize(new Vector3());
+                      size = { x: boxSize.x, y: boxSize.y, z: boxSize.z };
+                    } catch (e) {
+                    }
+                    objectInfo.push({
+                      name: child.name,
+                      type: child.constructor.name,
+                      children: ((_a4 = child.children) == null ? void 0 : _a4.length) || 0,
+                      size
+                    });
+                    const lowerName = child.name.toLowerCase();
+                    if (lowerName.includes("shirt") || lowerName.includes("t-shirt") || lowerName.includes("clothing") || lowerName.includes("cloth") || lowerName.includes("top") || lowerName.includes("wear")) {
+                      clothingObjects.push(child);
+                    } else {
+                      modelObjects.push(child);
+                    }
+                  }
+                });
+                console.log("[Atelier Preview] FBX file contents:", {
+                  totalObjects: objectNames.length,
+                  objectNames,
+                  objectInfo,
+                  rootChildren: ((_a3 = resolvedModel.children) == null ? void 0 : _a3.length) || 0,
+                  clothingObjects: clothingObjects.length,
+                  modelObjects: modelObjects.length,
+                  clothingNames: clothingObjects.map((obj) => obj.name),
+                  modelNames: modelObjects.map((obj) => obj.name)
+                });
+                if (clothingObjects.length > 0) {
+                  const clothingGroup = new Group();
+                  clothingGroup.name = "ClothingGroup";
+                  clothingObjects.forEach((clothingObj) => {
+                    clothingObj.traverse((child) => {
+                      if (child instanceof SkinnedMesh && child.skeleton && child.skeleton.bones) {
+                        console.log("[Atelier Preview] Found SkinnedMesh in clothing, isolating skeleton:", {
+                          meshName: child.name,
+                          hasSkeleton: !!child.skeleton,
+                          skeletonBones: child.skeleton.bones.length
+                        });
+                        try {
+                          const originalSkeleton = child.skeleton;
+                          const bones = originalSkeleton.bones;
+                          const isolatedBones = bones.map((bone) => {
+                            const isolatedBone = bone.clone();
+                            isolatedBone.position.copy(bone.position);
+                            isolatedBone.quaternion.copy(bone.quaternion);
+                            isolatedBone.scale.copy(bone.scale);
+                            if (bone.parent) {
+                              const parentIndex = bones.indexOf(bone.parent);
+                              if (parentIndex >= 0 && isolatedBones[parentIndex]) {
+                                isolatedBone.parent = isolatedBones[parentIndex];
+                              }
+                            }
+                            return isolatedBone;
+                          });
+                          const isolatedSkeleton = new Skeleton(isolatedBones);
+                          isolatedSkeleton.update();
+                          child.updateMatrixWorld(true);
+                          child.bind(isolatedSkeleton, child.matrixWorld);
+                          console.log("[Atelier Preview] Isolated skeleton from clothing mesh:", {
+                            meshName: child.name,
+                            originalBones: originalSkeleton.bones.length,
+                            isolatedBones: isolatedSkeleton.bones.length
+                          });
+                        } catch (error) {
+                          console.warn("[Atelier Preview] Failed to isolate skeleton, keeping original:", {
+                            meshName: child.name,
+                            error: error instanceof Error ? error.message : String(error)
+                          });
+                        }
+                      }
+                    });
+                    if (clothingObj.parent) {
+                      clothingObj.parent.remove(clothingObj);
+                    }
+                    clothingGroup.add(clothingObj);
+                  });
+                  const clothingCategory = "トップス";
+                  const existing = loadedAssets.get(clothingCategory);
+                  if (existing) {
+                    existing.push(clothingGroup);
+                  } else {
+                    loadedAssets.set(clothingCategory, [clothingGroup]);
+                  }
+                  assetInitialPositions.set(clothingGroup, clothingGroup.position.clone());
+                  assetInitialScales.set(clothingGroup, clothingGroup.scale.clone());
+                  assetCategories.set(clothingGroup, clothingCategory);
+                  clothingGroup.traverse((child) => {
+                    if (child instanceof Mesh || child instanceof SkinnedMesh) {
+                      assetChildInitialScales.set(child, child.scale.clone());
+                    }
+                  });
+                  scene.add(clothingGroup);
+                  console.log("[Atelier Preview] Separated clothing from FBX:", {
+                    clothingCount: clothingObjects.length,
+                    clothingNames: clothingObjects.map((obj) => obj.name)
+                  });
+                }
+              }
+              console.log("[Atelier Preview] Base model loaded successfully:", {
+                format: actualFormat,
+                type: (_b2 = loaded == null ? void 0 : loaded.constructor) == null ? void 0 : _b2.name,
+                children: (_c = resolvedModel == null ? void 0 : resolvedModel.children) == null ? void 0 : _c.length,
+                position: (resolvedModel == null ? void 0 : resolvedModel.position) ? {
+                  x: resolvedModel.position.x,
+                  y: resolvedModel.position.y,
+                  z: resolvedModel.position.z
+                } : "no position",
+                scale: (resolvedModel == null ? void 0 : resolvedModel.scale) ? {
+                  x: resolvedModel.scale.x,
+                  y: resolvedModel.scale.y,
+                  z: resolvedModel.scale.z
+                } : "no scale",
+                boundingBox: resolvedModel ? (() => {
+                  try {
+                    const box2 = new Box3().setFromObject(resolvedModel);
+                    return {
+                      min: { x: box2.min.x, y: box2.min.y, z: box2.min.z },
+                      max: { x: box2.max.x, y: box2.max.y, z: box2.max.z },
+                      size: { x: box2.max.x - box2.min.x, y: box2.max.y - box2.min.y, z: box2.max.z - box2.min.z },
+                      center: { x: (box2.max.x + box2.min.x) / 2, y: (box2.max.y + box2.min.y) / 2, z: (box2.max.z + box2.min.z) / 2 }
+                    };
+                  } catch (error) {
+                    console.warn("[Atelier Preview] Failed to calculate bounding box:", error);
+                    return "error calculating bounding box";
+                  }
+                })() : "no resolved model"
+              });
+              console.log("[Atelier Preview] Resolved model:", {
+                type: (_d = resolvedModel == null ? void 0 : resolvedModel.constructor) == null ? void 0 : _d.name,
+                children: (_e = resolvedModel == null ? void 0 : resolvedModel.children) == null ? void 0 : _e.length,
+                visible: resolvedModel == null ? void 0 : resolvedModel.visible,
+                position: (resolvedModel == null ? void 0 : resolvedModel.position) ? {
+                  x: resolvedModel.position.x,
+                  y: resolvedModel.position.y,
+                  z: resolvedModel.position.z
+                } : "no position"
+              });
+              let hasSkeleton = false;
+              let skeletonCount = 0;
+              let boneCount = 0;
+              const skeletons = [];
+              if (resolvedModel) {
+                resolvedModel.traverse((child) => {
+                  if (child instanceof SkinnedMesh) {
+                    hasSkeleton = true;
+                    if (child.skeleton && child.skeleton.bones) {
+                      skeletonCount++;
+                      const bones = child.skeleton.bones || [];
+                      boneCount += bones.length;
+                      skeletons.push({
+                        meshName: child.name || "unnamed",
+                        boneCount: bones.length,
+                        boneNames: bones.slice(0, 10).map((b) => b.name || "unnamed")
+                        // 最初の10個の骨の名前
+                      });
+                    }
+                  }
+                });
+              }
+              console.log("[Atelier Preview] Skeleton information:", {
+                hasSkeleton,
+                skeletonCount,
+                totalBoneCount: boneCount,
+                skeletons: skeletons.length > 0 ? skeletons : "no skeletons found"
+              });
+              resolve(resolvedModel);
+            },
+            (progress) => {
+              if (progress.lengthComputable && progress.total > 0) {
+                const percent = progress.loaded / progress.total * 100;
+                if (percent % 25 === 0 || percent === 100) {
+                  console.log(`[Atelier Preview] Loading progress: ${percent.toFixed(0)}%`);
+                }
+              }
+            },
             (error) => {
               console.error("[Atelier Preview] Failed to load base model:", error);
+              console.error("[Atelier Preview] Model URL:", modelUrl2);
+              console.error("[Atelier Preview] Detected format:", actualFormat);
+              console.error("[Atelier Preview] Error details:", {
+                message: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : void 0,
+                name: error instanceof Error ? error.name : void 0
+              });
+              if (typeof window !== "undefined") {
+                const absoluteUrl = modelUrl2.startsWith("http") ? modelUrl2 : `${window.location.origin}${modelUrl2}`;
+                console.log("[Atelier Preview] Checking file accessibility:", {
+                  originalUrl: modelUrl2,
+                  absoluteUrl
+                });
+                fetch(absoluteUrl, { method: "HEAD" }).then((response) => {
+                  const headers = {};
+                  response.headers.forEach((value, key) => {
+                    headers[key] = value;
+                  });
+                  console.error("[Atelier Preview] File check result:", {
+                    status: response.status,
+                    statusText: response.statusText,
+                    ok: response.ok,
+                    contentType: response.headers.get("content-type"),
+                    contentLength: response.headers.get("content-length"),
+                    url: modelUrl2,
+                    absoluteUrl,
+                    allHeaders: headers
+                  });
+                  if (!response.ok) {
+                    console.error("[Atelier Preview] File not accessible:", {
+                      status: response.status,
+                      statusText: response.statusText,
+                      url: absoluteUrl
+                    });
+                  }
+                  return fetch(absoluteUrl, { method: "GET" });
+                }).then((response) => {
+                  if (response && response.ok) {
+                    console.log("[Atelier Preview] File is accessible via GET:", {
+                      status: response.status,
+                      contentType: response.headers.get("content-type"),
+                      contentLength: response.headers.get("content-length")
+                    });
+                  } else if (response) {
+                    console.error("[Atelier Preview] File GET failed:", {
+                      status: response.status,
+                      statusText: response.statusText
+                    });
+                  }
+                }).catch((fetchError) => {
+                  console.error("[Atelier Preview] Failed to check file:", {
+                    error: fetchError,
+                    message: fetchError instanceof Error ? fetchError.message : String(fetchError),
+                    stack: fetchError instanceof Error ? fetchError.stack : void 0,
+                    url: absoluteUrl
+                  });
+                });
+              }
               reject(error);
             }
           );
         });
-        baseModelTransform = calculateAndSetModelTransform(model, 2.6);
+        baseModelTransform = calculateAndSetModelTransform(model, targetSize);
+        console.log("[Atelier Preview] Base model transform:", {
+          position: {
+            x: baseModelTransform.position.x,
+            y: baseModelTransform.position.y,
+            z: baseModelTransform.position.z
+          },
+          scale: {
+            x: baseModelTransform.scale.x,
+            y: baseModelTransform.scale.y,
+            z: baseModelTransform.scale.z
+          },
+          originalSize: {
+            x: baseModelTransform.originalSize.x,
+            y: baseModelTransform.originalSize.y,
+            z: baseModelTransform.originalSize.z
+          }
+        });
         enableShadow(model);
         baseModel = model;
         isBaseModelLoaded = true;
+        morphTargetMeshes.length = 0;
+        model.traverse((child) => {
+          if (child instanceof Mesh && child.morphTargetInfluences) {
+            morphTargetMeshes.push(child);
+            console.log("[Atelier Preview] Found mesh with morph targets:", {
+              name: child.name,
+              morphTargetCount: child.morphTargetInfluences.length,
+              morphTargetNames: child.morphTargetDictionary ? Object.keys(child.morphTargetDictionary) : []
+            });
+          }
+        });
+        skeletonBones.clear();
+        boneInitialScales.clear();
+        boneInitialPositions.clear();
+        model.traverse((child) => {
+          if (child instanceof SkinnedMesh && child.skeleton && child.skeleton.bones) {
+            const bones = child.skeleton.bones;
+            console.log("[Atelier Preview] Found skeleton with bones:", {
+              meshName: child.name,
+              boneCount: bones.length,
+              boneNames: bones.map((b) => b.name)
+            });
+            bones.forEach((bone) => {
+              if (!skeletonBones.has(bone.name)) {
+                skeletonBones.set(bone.name, bone);
+                boneInitialScales.set(bone, bone.scale.clone());
+                boneInitialPositions.set(bone, bone.position.clone());
+              }
+            });
+          }
+        });
+        console.log("[Atelier Preview] Collected all bones for height adjustment:", {
+          totalBones: skeletonBones.size,
+          boneNames: Array.from(skeletonBones.keys())
+        });
+        const box = new Box3().setFromObject(model);
+        baseHeight = box.max.y - box.min.y;
+        const center = box.getCenter(new Vector3());
+        console.log("[Atelier Preview] Base height calculated:", {
+          baseHeight,
+          modelScale: { x: model.scale.x, y: model.scale.y, z: model.scale.z },
+          boxSize: { x: box.max.x - box.min.x, y: box.max.y - box.min.y, z: box.max.z - box.min.z },
+          center: { x: center.x, y: center.y, z: center.z }
+        });
+        baseModelInitialScale = model.scale.clone();
+        baseModelInitialPosition = model.position.clone();
+        baseModelInitialCenter = center.clone();
+        const modelHeight = box.max.y - box.min.y;
+        baseModelInitialReferencePoints = {
+          top: box.min.y + modelHeight * 0.82,
+          // トップス用：肩の位置（頭から腰までの82%の位置、肩の高さ）
+          bottom: box.min.y + modelHeight * 0.45,
+          // ボトムス用：腰の位置（45%の位置）
+          center: center.y
+          // その他用：モデルの中心
+        };
+        console.log("[Atelier Preview] Initial reference points:", {
+          top: baseModelInitialReferencePoints.top,
+          bottom: baseModelInitialReferencePoints.bottom,
+          center: baseModelInitialReferencePoints.center,
+          modelHeight,
+          boxMin: box.min.y,
+          boxMax: box.max.y
+        });
         scene.add(baseModel);
         if (camera) {
           camera.lookAt(0, 0, 0);
@@ -28473,6 +29050,16 @@ void main() {
         );
         applyAssetTransform(model, baseModelTransform);
         enableShadow(model);
+        assetInitialPositions.set(model, model.position.clone());
+        assetInitialScales.set(model, model.scale.clone());
+        model.traverse((child) => {
+          if (child instanceof Mesh || child instanceof SkinnedMesh) {
+            assetChildInitialScales.set(child, child.scale.clone());
+          }
+        });
+        if (category) {
+          assetCategories.set(model, category);
+        }
         const targetCategory = category || "default";
         const existing = loadedAssets.get(targetCategory);
         if (existing) {
@@ -28542,14 +29129,12 @@ void main() {
         const loadedCount = results.filter((r) => r !== null).length;
         debugLog.log("Assets loaded:", { total: sortedAssets.length, loaded: loadedCount, failed: sortedAssets.length - loadedCount });
         updateSceneWithAssets();
-        onLoad == null ? void 0 : onLoad();
       }).catch((error) => {
         console.error("[Atelier Preview] Error loading base model or assets:", error);
         onError == null ? void 0 : onError(error instanceof Error ? error : new Error(String(error)));
       });
     } else {
       baseModelLoadPromise = loadBaseModel(baseModelUrl).then(() => {
-        onLoad == null ? void 0 : onLoad();
       }).catch((error) => {
         console.error("[Atelier Preview] Error loading base model:", error);
         onError == null ? void 0 : onError(error instanceof Error ? error : new Error(String(error)));
@@ -28574,6 +29159,201 @@ void main() {
         });
       }
     }
+    function applyMorphTarget(morphTargetName, value) {
+      morphTargetMeshes.forEach((mesh) => {
+        if (mesh.morphTargetDictionary && mesh.morphTargetInfluences) {
+          const index = mesh.morphTargetDictionary[morphTargetName];
+          if (index !== void 0 && index < mesh.morphTargetInfluences.length) {
+            mesh.morphTargetInfluences[index] = value;
+          }
+        }
+      });
+      render();
+    }
+    function applyHeightChange(newHeight, baseHeightValue) {
+      if (!baseModel || !baseModelInitialScale || !baseModelInitialPosition) {
+        console.warn("[Atelier Preview] Base model not ready for height change");
+        return;
+      }
+      let targetBaseHeightCm;
+      if (baseHeightValue !== void 0 && baseHeightValue > 0) {
+        targetBaseHeightCm = baseHeightValue;
+      } else {
+        targetBaseHeightCm = 170;
+        console.warn("[Atelier Preview] baseHeightValue not provided, using default:", targetBaseHeightCm);
+      }
+      currentHeight = newHeight;
+      currentBaseHeight = targetBaseHeightCm;
+      if (targetBaseHeightCm <= 0) {
+        console.warn("[Atelier Preview] Invalid base height:", targetBaseHeightCm);
+        return;
+      }
+      const heightRatio = newHeight / targetBaseHeightCm;
+      console.log("[Atelier Preview] Height change:", {
+        newHeight,
+        targetBaseHeightCm,
+        heightRatio,
+        baseHeight,
+        baseHeightValue,
+        currentScale: { x: baseModel.scale.x, y: baseModel.scale.y, z: baseModel.scale.z },
+        initialScale: { x: baseModelInitialScale.x, y: baseModelInitialScale.y, z: baseModelInitialScale.z }
+      });
+      const heightMorphNames = ["height", "Height", "stature", "Stature", "tall", "Tall"];
+      let morphApplied = false;
+      for (const morphName of heightMorphNames) {
+        morphTargetMeshes.forEach((mesh) => {
+          if (mesh.morphTargetDictionary && mesh.morphTargetDictionary[morphName] !== void 0) {
+            const index = mesh.morphTargetDictionary[morphName];
+            if (mesh.morphTargetInfluences && index < mesh.morphTargetInfluences.length) {
+              const morphValue = Math.max(0, Math.min(1, (heightRatio - 1) * 0.5 + 0.5));
+              mesh.morphTargetInfluences[index] = morphValue;
+              morphApplied = true;
+              console.log("[Atelier Preview] Applied morph target:", { morphName, morphValue });
+            }
+          }
+        });
+      }
+      if (!morphApplied) {
+        const newScaleY = baseModelInitialScale.y * heightRatio;
+        const newScaleX = baseModelInitialScale.x;
+        const newScaleZ = baseModelInitialScale.z;
+        baseModel.scale.set(newScaleX, newScaleY, newScaleZ);
+        console.log("[Atelier Preview] Applied scale change:", {
+          newScale: { x: newScaleX, y: newScaleY, z: newScaleZ },
+          heightRatio
+        });
+        if (baseModelInitialCenter) {
+          const box = new Box3().setFromObject(baseModel);
+          const newCenter = box.getCenter(new Vector3());
+          const centerOffsetY = newCenter.y - baseModelInitialCenter.y;
+          baseModel.position.y = baseModelInitialPosition.y - centerOffsetY;
+          console.log("[Atelier Preview] Position adjusted:", {
+            initialPosition: { y: baseModelInitialPosition.y },
+            newPosition: { y: baseModel.position.y },
+            centerOffsetY,
+            initialCenter: { y: baseModelInitialCenter.y },
+            newCenter: { y: newCenter.y }
+          });
+        }
+      }
+      const currentBox = new Box3().setFromObject(baseModel);
+      const currentModelHeight = currentBox.max.y - currentBox.min.y;
+      const currentReferencePoints = {
+        top: currentBox.min.y + currentModelHeight * 0.82,
+        // トップス用：肩の位置（頭から腰までの82%の位置）
+        bottom: currentBox.min.y + currentModelHeight * 0.45,
+        // ボトムス用：腰の位置
+        center: currentBox.getCenter(new Vector3()).y
+        // その他用：モデルの中心
+      };
+      loadedAssets.forEach((modelArray, category) => {
+        modelArray.forEach((assetModel) => {
+          const initialPosition = assetInitialPositions.get(assetModel);
+          const initialScale = assetInitialScales.get(assetModel);
+          if (!initialPosition || !baseModelInitialReferencePoints) {
+            return;
+          }
+          const initialRefPoints = baseModelInitialReferencePoints;
+          if (initialScale) {
+            assetModel.scale.copy(initialScale);
+            assetModel.traverse((child) => {
+              if (child instanceof Mesh || child instanceof SkinnedMesh) {
+                const childInitialScale = assetChildInitialScales.get(child);
+                if (childInitialScale) {
+                  child.scale.copy(childInitialScale);
+                }
+              }
+            });
+            assetModel.updateMatrixWorld(true);
+            if (Math.random() < 0.1) {
+              console.log("[Atelier Preview] Asset scale fixed:", {
+                category,
+                initialScale: { x: initialScale.x, y: initialScale.y, z: initialScale.z },
+                currentScale: { x: assetModel.scale.x, y: assetModel.scale.y, z: assetModel.scale.z },
+                heightRatio
+              });
+            }
+          }
+          const categoryLower = (category || "").toLowerCase();
+          let referencePointType;
+          let initialReferenceY;
+          let currentReferenceY;
+          if (categoryLower.includes("トップス") || categoryLower.includes("シャツ") || categoryLower.includes("tシャツ") || categoryLower.includes("t-shirt") || categoryLower.includes("shirt") || categoryLower.includes("コート") || categoryLower.includes("coat") || categoryLower.includes("ジャケット") || categoryLower.includes("jacket")) {
+            referencePointType = "top";
+            initialReferenceY = initialRefPoints.top;
+            currentReferenceY = currentReferencePoints.top;
+          } else if (categoryLower.includes("ボトムス") || categoryLower.includes("パンツ") || categoryLower.includes("pants") || categoryLower.includes("trouser") || categoryLower.includes("スカート") || categoryLower.includes("skirt")) {
+            referencePointType = "bottom";
+            initialReferenceY = initialRefPoints.bottom;
+            currentReferenceY = currentReferencePoints.bottom;
+          } else {
+            referencePointType = "center";
+            initialReferenceY = initialRefPoints.center;
+            currentReferenceY = currentReferencePoints.center;
+          }
+          const referencePointOffset = currentReferenceY - initialReferenceY;
+          assetModel.position.set(
+            initialPosition.x,
+            initialPosition.y + referencePointOffset,
+            initialPosition.z
+          );
+          console.log("[Atelier Preview] Asset position adjusted:", {
+            category,
+            referencePointType,
+            initialPosition: { y: initialPosition.y },
+            newPosition: { y: assetModel.position.y },
+            initialScale: initialScale ? { x: initialScale.x, y: initialScale.y, z: initialScale.z } : null,
+            currentScale: { x: assetModel.scale.x, y: assetModel.scale.y, z: assetModel.scale.z },
+            referencePointOffset,
+            initialReferenceY,
+            currentReferenceY
+          });
+        });
+      });
+      render();
+    }
+    function adjustAssetPositionsForHeight(newHeight, baseHeightValue) {
+      if (!baseModel || !baseModelInitialScale || !baseModelInitialPosition || !baseModelInitialCenter || !baseModelInitialReferencePoints) {
+        return;
+      }
+      const initialRefPoints = baseModelInitialReferencePoints;
+      const currentBox = new Box3().setFromObject(baseModel);
+      const currentModelHeight = currentBox.max.y - currentBox.min.y;
+      const currentReferencePoints = {
+        top: currentBox.min.y + currentModelHeight * 0.82,
+        // トップス用：肩の位置（頭から腰までの82%の位置）
+        bottom: currentBox.min.y + currentModelHeight * 0.45,
+        // ボトムス用：腰の位置
+        center: currentBox.getCenter(new Vector3()).y
+        // その他用：モデルの中心
+      };
+      loadedAssets.forEach((modelArray, category) => {
+        modelArray.forEach((assetModel) => {
+          const initialPosition = assetInitialPositions.get(assetModel);
+          if (!initialPosition) return;
+          const categoryLower = (category || "").toLowerCase();
+          let initialReferenceY;
+          let currentReferenceY;
+          if (categoryLower.includes("トップス") || categoryLower.includes("シャツ") || categoryLower.includes("tシャツ") || categoryLower.includes("t-shirt") || categoryLower.includes("shirt") || categoryLower.includes("コート") || categoryLower.includes("coat") || categoryLower.includes("ジャケット") || categoryLower.includes("jacket")) {
+            initialReferenceY = initialRefPoints.top;
+            currentReferenceY = currentReferencePoints.top;
+          } else if (categoryLower.includes("ボトムス") || categoryLower.includes("パンツ") || categoryLower.includes("pants") || categoryLower.includes("trouser") || categoryLower.includes("スカート") || categoryLower.includes("skirt")) {
+            initialReferenceY = initialRefPoints.bottom;
+            currentReferenceY = currentReferencePoints.bottom;
+          } else {
+            initialReferenceY = initialRefPoints.center;
+            currentReferenceY = currentReferencePoints.center;
+          }
+          const referencePointOffset = currentReferenceY - initialReferenceY;
+          assetModel.position.set(
+            initialPosition.x,
+            initialPosition.y + referencePointOffset,
+            initialPosition.z
+          );
+        });
+      });
+      render();
+    }
     return {
       updateGlbUrl(newGlbUrl) {
         updateBaseModelUrl(newGlbUrl);
@@ -28581,12 +29361,42 @@ void main() {
       updateModelUrl(newModelUrl) {
         updateBaseModelUrl(newModelUrl);
       },
+      updateMorphTarget(morphTargetName, value) {
+        applyMorphTarget(morphTargetName, value);
+      },
+      updateHeight(newHeight, baseHeightValue) {
+        applyHeightChange(newHeight, baseHeightValue);
+      },
+      toggleAsset(category, visible) {
+        var _a3;
+        const modelArray = loadedAssets.get(category);
+        if (!modelArray) {
+          console.warn("[Atelier Preview] Asset category not found:", category);
+          return;
+        }
+        modelArray.forEach((assetModel) => {
+          if (visible !== void 0) {
+            assetModel.visible = visible;
+          } else {
+            assetModel.visible = !assetModel.visible;
+          }
+        });
+        render();
+        console.log("[Atelier Preview] Asset visibility toggled:", {
+          category,
+          visible: (_a3 = modelArray[0]) == null ? void 0 : _a3.visible,
+          assetCount: modelArray.length
+        });
+      },
       updateAssets(newAssets) {
         loadedAssets.forEach((modelArray) => {
           modelArray.forEach((model) => {
             if (scene.children.includes(model)) {
               scene.remove(model);
             }
+            assetInitialPositions.delete(model);
+            assetInitialScales.delete(model);
+            assetCategories.delete(model);
           });
         });
         loadedAssets.clear();
@@ -28622,6 +29432,13 @@ void main() {
             );
             await Promise.all(loadPromises);
             updateSceneWithAssets();
+            if (currentHeight !== null && currentBaseHeight !== null && baseModel) {
+              console.log("[Atelier Preview] Adjusting asset positions for current height:", {
+                currentHeight,
+                currentBaseHeight
+              });
+              adjustAssetPositionsForHeight();
+            }
           };
           loadAssets().catch((error) => {
             console.error("[Atelier Preview] Error updating assets:", error);
@@ -28652,6 +29469,9 @@ void main() {
               scene.remove(model);
             }
             disposeObject(model);
+            assetInitialPositions.delete(model);
+            assetInitialScales.delete(model);
+            assetCategories.delete(model);
           });
         });
         loadedAssets.clear();
@@ -28684,1723 +29504,689 @@ void main() {
       }
     };
   }
-  function createSizeArea(availableSizes, initialSize, productName) {
-    const sizeArea = document.createElement("div");
-    sizeArea.setAttribute("data-atelier-size-area", "true");
-    const isPreviewEnvironment = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || document.querySelector("[data-phone-frame]") !== null);
-    const topValue = isPreviewEnvironment ? "6%" : "0";
-    sizeArea.style.cssText = `
-    position: absolute;
-    top: ${topValue};
-    left: 0;
-    right: 0;
-    width: 100%;
-    flex-shrink: 0;
-    z-index: 20;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2%;
-    padding: 0 5%;
-    box-sizing: border-box;
-    background: transparent;
-  `;
-    const sizeButtonsContainer = document.createElement("div");
-    sizeButtonsContainer.className = "size-buttons-container";
-    sizeButtonsContainer.style.cssText = `
-    display: flex;
-    align-items: center;
-    gap: 0;
-    background: #ffffff;
-    border-radius: 50px;
-    padding: 3px 8px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-    width: auto;
-    box-sizing: border-box;
-    position: relative;
-    margin: 0 auto;
-    height: 30px;
-  `;
-    if (!document.getElementById("atelier-size-buttons-scrollbar-style")) {
-      const style = document.createElement("style");
-      style.id = "atelier-size-buttons-scrollbar-style";
-      style.textContent = `
-      .size-buttons-container::-webkit-scrollbar {
-        display: none;
-      }
-    `;
-      document.head.appendChild(style);
-    }
-    const sizeButtons = [];
-    availableSizes.forEach((size, index) => {
-      const sizeBtn = document.createElement("div");
-      sizeBtn.textContent = size;
-      sizeBtn.setAttribute("role", "button");
-      sizeBtn.setAttribute("tabindex", "0");
-      const isSelected = size === initialSize;
-      const hPad = index === 0 || index === availableSizes.length - 1 ? "8px" : "10px";
-      sizeBtn.style.cssText = `
-      background: ${isSelected ? "#000000" : "transparent"};
-      color: ${isSelected ? "#ffffff" : "#000000"};
-      border: none;
-      outline: none;
-      box-shadow: none;
-      font-size: 11px;
-      font-weight: ${isSelected ? "600" : "700"};
-      padding: 3px ${hPad};
-      border-radius: ${isSelected ? "50px" : "0"};
-      cursor: pointer;
-      transition: all 0.2s ease;
-      min-height: 24px;
-      height: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+  const OUTFIT_CATEGORIES = ["トップス", "ボトムス", "アウター", "シューズ"];
+  function injectStyles() {
+    if (document.getElementById("atelier-bs-styles")) return;
+    const s = document.createElement("style");
+    s.id = "atelier-bs-styles";
+    s.textContent = `
+    @keyframes atelier-fade-in  { from{opacity:0} to{opacity:1} }
+    @keyframes atelier-slide-up { from{transform:translateY(100%)} to{transform:translateY(0)} }
+    @keyframes atelier-spin     { to{transform:rotate(360deg)} }
+    [data-atelier-modal] * {
       box-sizing: border-box;
-      white-space: nowrap;
-      flex-shrink: 0;
-      position: relative;
-      z-index: ${isSelected ? "1" : "0"};
-      user-select: none;
-    `;
-      sizeButtons.push(sizeBtn);
-      sizeButtonsContainer.appendChild(sizeBtn);
-    });
-    const prevButton = document.createElement("button");
-    prevButton.innerHTML = "&lt;";
-    prevButton.style.cssText = `
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 28px;
-    height: 28px;
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    border-radius: 50%;
-    color: #374151;
-    z-index: 10;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    transition: all 0.2s ease;
-  `;
-    const nextButton = document.createElement("button");
-    nextButton.innerHTML = "&gt;";
-    nextButton.style.cssText = `
-    position: absolute;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 28px;
-    height: 28px;
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    border-radius: 50%;
-    color: #374151;
-    z-index: 10;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    transition: all 0.2s ease;
-  `;
-    sizeArea.appendChild(sizeButtonsContainer);
-    let productNameDiv = null;
-    if (productName) {
-      productNameDiv = document.createElement("div");
-      productNameDiv.textContent = productName;
-      productNameDiv.style.cssText = `
-      font-size: 12px;
-      font-weight: 700;
-      color: #000000;
-      text-align: center;
-      width: 100%;
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    `;
-      sizeArea.appendChild(productNameDiv);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
-    return {
-      sizeArea,
-      sizeButtons,
-      sizeButtonsContainer,
-      productNameDiv,
-      prevButton,
-      nextButton
-    };
-  }
-  function resolveBaseOrigin() {
-    var _a3;
-    if (typeof window === "undefined") return "";
-    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-      return "http://localhost:3000";
-    }
-    const apiUrl = (_a3 = document.querySelector("[data-atelier-api-url]")) == null ? void 0 : _a3.getAttribute("data-atelier-api-url");
-    if (apiUrl) {
-      return apiUrl;
-    }
-    const scriptTag = document.querySelector('script[src*="widget.js"]');
-    if (scriptTag) {
-      const src = scriptTag.getAttribute("src");
-      if (src) {
-        try {
-          const url = new URL(src, window.location.href);
-          return url.origin;
-        } catch {
-        }
-      }
-    }
-    return window.location.origin;
-  }
-  function getBackgroundImageUrl() {
-    const origin = resolveBaseOrigin();
-    return origin ? `${origin}/model_background.png` : "";
-  }
-  function getIconUrl(iconName) {
-    const origin = resolveBaseOrigin();
-    return origin ? `${origin}/icon/${iconName}.png` : "";
-  }
-  function createViewerContainer(productName) {
-    const viewerContainer = document.createElement("div");
-    viewerContainer.setAttribute("data-atelier-viewer-container", "true");
-    const backgroundImageUrl = getBackgroundImageUrl();
-    viewerContainer.style.cssText = `
-    position: relative !important;
-    flex: 1;
-    min-height: 0;
-    overflow: hidden !important;
-    transform-origin: center center;
-    pointer-events: auto;
-    will-change: transform;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    width: 100%;
-    background-image: url(${backgroundImageUrl});
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
+    [data-atelier-outfit-scroll]::-webkit-scrollbar,
+    [data-atelier-left-panel]::-webkit-scrollbar  { display: none }
+    [data-atelier-outfit-scroll],
+    [data-atelier-left-panel]  { scrollbar-width: none; -ms-overflow-style: none }
   `;
-    const modelWrapper = document.createElement("div");
-    modelWrapper.style.cssText = `
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-  `;
-    viewerContainer.appendChild(modelWrapper);
-    const floatingButtons = document.createElement("div");
-    floatingButtons.setAttribute("data-atelier-floating-buttons", "true");
-    floatingButtons.style.cssText = `
-    position: absolute;
-    right: 5%;
-    top: 55%;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    pointer-events: auto;
-    z-index: 10001;
-  `;
-    const floatingBtnStyle = `
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-    transition: all 0.2s ease;
-    color: black;
-    will-change: transform;
-    transform: translateZ(0);
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    flex-shrink: 0;
-    padding: 0;
-  `;
-    const jacketButton = document.createElement("button");
-    const jacketIcon = document.createElement("img");
-    jacketIcon.src = getIconUrl("jacket");
-    jacketIcon.alt = "ジャケット";
-    jacketIcon.style.cssText = `width: 16px; height: 16px; object-fit: contain;`;
-    jacketButton.appendChild(jacketIcon);
-    jacketButton.style.cssText = floatingBtnStyle;
-    const userButton = document.createElement("button");
-    const userIcon = document.createElement("img");
-    userIcon.src = getIconUrl("person");
-    userIcon.alt = "ユーザー";
-    userIcon.style.cssText = `width: 16px; height: 16px; object-fit: contain;`;
-    userButton.appendChild(userIcon);
-    userButton.style.cssText = floatingBtnStyle;
-    floatingButtons.appendChild(jacketButton);
-    floatingButtons.appendChild(userButton);
-    return {
-      viewerContainer,
-      modelWrapper,
-      floatingButtons,
-      jacketButton,
-      userButton
-    };
+    document.head.appendChild(s);
   }
-  function createOutfitTabs(initialData, onAssetSelect) {
-    let currentData = initialData || { categories: {} };
-    let currentCategory = "";
-    let selectedAssetId = null;
-    const outfitTabsContainer = document.createElement("div");
-    outfitTabsContainer.setAttribute("data-atelier-outfit-tabs", "true");
-    outfitTabsContainer.style.cssText = `
-    position: relative;
-    width: 100%;
-    background: white;
-    border-top: 1px solid #e5e7eb;
-    border-top-left-radius: 0.5rem;
-    border-top-right-radius: 0.5rem;
-    display: flex;
-    flex-direction: column;
+  function renderModalWithLoading(_shadowRoot, _params) {
+    injectStyles();
+    const overlay = document.createElement("div");
+    overlay.setAttribute("data-atelier-modal", "true");
+    overlay.setAttribute("data-atelier-modal-overlay", "true");
+    overlay.style.cssText = `
+    position: fixed !important; inset: 0 !important;
+    background: rgba(0,0,0,0.48) !important;
+    z-index: 10000 !important;
+    opacity: 0; animation: atelier-fade-in 0.22s ease-out forwards;
+  `;
+    const sheet = document.createElement("div");
+    sheet.setAttribute("data-atelier-sheet", "true");
+    sheet.style.cssText = `
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 90%;
+    background: #fff;
+    border-radius: 16px 16px 0 0;
+    display: flex; flex-direction: column;
     overflow: hidden;
-    height: 20%;
-    max-height: 20%;
-    flex-shrink: 0;
-    z-index: 20;
-    box-sizing: border-box;
-    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+    transform: translateY(calc(100% - 20px));
+    animation: atelier-slide-up 0.35s cubic-bezier(0.32, 0.72, 0, 1) forwards;
   `;
-    const categoryBar = document.createElement("div");
-    categoryBar.style.cssText = `
-    display: flex;
-    align-items: center;
-    gap: 0;
-    padding: 0;
-    border-bottom: 1px solid #e5e7eb;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    flex-shrink: 0;
+    const dragBar = buildDragBar();
+    sheet.appendChild(dragBar);
+    const contentArea = document.createElement("div");
+    contentArea.setAttribute("data-atelier-content-area", "true");
+    contentArea.style.cssText = "flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;";
+    const spinWrap = document.createElement("div");
+    spinWrap.style.cssText = "flex:1;display:flex;align-items:center;justify-content:center;";
+    const spin = document.createElement("div");
+    spin.style.cssText = `
+    width:36px;height:36px;
+    border:3px solid #f0f0f0;border-top-color:#333;
+    border-radius:50%;
+    animation:atelier-spin 0.8s linear infinite;
   `;
-    const body = document.createElement("div");
-    body.className = "atelier-outfit-tabs-body";
-    body.style.cssText = `
-    flex: 1;
-    overflow-y: hidden;
-    overflow-x: auto;
-    padding: 4px 3%;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    position: relative;
-    width: 100%;
-    box-sizing: border-box;
-  `;
-    if (!document.getElementById("atelier-outfit-tabs-scrollbar-style")) {
-      const style = document.createElement("style");
-      style.id = "atelier-outfit-tabs-scrollbar-style";
-      style.textContent = `
-      [data-atelier-outfit-tabs]::-webkit-scrollbar { display: none; }
-      .atelier-outfit-tabs-body::-webkit-scrollbar { display: none; }
-      .atelier-outfit-tabs-body { scrollbar-width: none; -ms-overflow-style: none; }
-    `;
-      document.head.appendChild(style);
-    }
-    const categorySelect = document.createElement("div");
-    categorySelect.style.cssText = `display: none;`;
-    function renderCategoryBar() {
-      categoryBar.innerHTML = "";
-      const categories = Object.keys(currentData.categories);
-      if (categories.length === 0) {
-        const emptyMsg = document.createElement("div");
-        emptyMsg.textContent = "アセットがありません";
-        emptyMsg.style.cssText = `
-        padding: 4px 10px;
-        font-size: 11px;
-        color: #9ca3af;
-      `;
-        categoryBar.appendChild(emptyMsg);
-        return;
+    spinWrap.appendChild(spin);
+    contentArea.appendChild(spinWrap);
+    sheet.appendChild(contentArea);
+    overlay.appendChild(sheet);
+    document.body.appendChild(overlay);
+    const cleanup = { fn: () => {
+    } };
+    setupDragToDismiss(dragBar, sheet, overlay, () => cleanup.fn());
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) {
+        cleanup.fn();
+        dismissSheet(sheet, overlay);
       }
-      if (!currentCategory || !categories.includes(currentCategory)) {
-        currentCategory = categories[0];
-      }
-      categories.forEach((cat) => {
-        const tab = document.createElement("button");
-        tab.textContent = cat;
-        const isSelected = cat === currentCategory;
-        tab.style.cssText = `
-        padding: 4px 10px;
-        font-size: 11px;
-        font-weight: ${isSelected ? "700" : "500"};
-        color: ${isSelected ? "#000" : "#6b7280"};
-        background: transparent;
-        border: none;
-        border-bottom: 2px solid ${isSelected ? "#000" : "transparent"};
-        cursor: pointer;
-        white-space: nowrap;
-        transition: all 0.2s;
-        flex-shrink: 0;
-      `;
-        tab.addEventListener("mouseenter", () => {
-          if (cat !== currentCategory) {
-            tab.style.color = "#374151";
-            tab.style.borderBottomColor = "#d1d5db";
-          }
-        });
-        tab.addEventListener("mouseleave", () => {
-          if (cat !== currentCategory) {
-            tab.style.color = "#6b7280";
-            tab.style.borderBottomColor = "transparent";
-          }
-        });
-        tab.addEventListener("click", () => {
-          currentCategory = cat;
-          renderCategoryBar();
-          renderAssets();
-        });
-        categoryBar.appendChild(tab);
+    });
+    overlay.__atelierCleanup = cleanup;
+    return { overlay, contentArea };
+  }
+  function updateModalWithConfig(_shadowRoot, config, params, overlay, contentArea) {
+    var _a3;
+    if (!overlay || !contentArea) return;
+    injectStyles();
+    contentArea.innerHTML = "";
+    contentArea.style.cssText = "flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;";
+    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const eshopId = params.shopId || void 0;
+    if (eshopId && eshopId !== "unknown") {
+      const pid = params.productId || params.externalProductId || "";
+      sendEvent({
+        shopId: eshopId,
+        productId: uuidRe.test(pid) ? pid : void 0,
+        type: "widget_open"
+      }).catch(() => {
       });
     }
-    function renderAssets() {
-      body.innerHTML = "";
-      const items = currentData.categories[currentCategory] || [];
-      if (items.length === 0) {
-        const emptyMsg = document.createElement("div");
-        emptyMsg.textContent = "このカテゴリにアセットはありません";
-        emptyMsg.style.cssText = `
-        padding: 8px;
-        font-size: 11px;
-        color: #9ca3af;
-        text-align: center;
-        width: 100%;
+    const apiBaseUrl = getApiBaseUrl() || "http://localhost:3000";
+    const SIZES = ["S", "M", "L", "XL"];
+    let currentSize = ((_a3 = config.asset) == null ? void 0 : _a3.defaultSize) || "M";
+    const activeAssets = /* @__PURE__ */ new Map();
+    let outfitData = { categories: {} };
+    let currentCategory = OUTFIT_CATEGORIES[0];
+    let selectedAssetId = null;
+    const viewerArea = document.createElement("div");
+    viewerArea.style.cssText = "flex:1;min-height:0;position:relative;overflow:hidden;";
+    const viewerEl = document.createElement("div");
+    viewerEl.style.cssText = "position:absolute;inset:0;";
+    const leftPanel = document.createElement("div");
+    leftPanel.setAttribute("data-atelier-left-panel", "true");
+    leftPanel.style.cssText = `
+    position: absolute; top: 8px; left: 6px;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 6px;
+    z-index: 20;
+  `;
+    const sliderPanel = document.createElement("div");
+    sliderPanel.style.cssText = `
+    position: absolute; bottom: 8px; right: 6px;
+    width: 28px; height: 180px;
+    display: flex; flex-direction: column; align-items: center;
+    user-select: none; touch-action: none; z-index: 20;
+  `;
+    viewerArea.appendChild(viewerEl);
+    viewerArea.appendChild(leftPanel);
+    viewerArea.appendChild(sliderPanel);
+    const bottomPanel = document.createElement("div");
+    bottomPanel.style.cssText = "flex-shrink:0;background:#fff;";
+    const sizeRow = document.createElement("div");
+    sizeRow.style.cssText = `
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px; padding: 1px 16px 1px;
+  `;
+    const prevBtn = makeArrowBtn("‹");
+    const sizeLabel = document.createElement("div");
+    sizeLabel.style.cssText = `
+    min-width: 40px; padding: 4px 12px;
+    text-align: center; font-size: 13px; font-weight: 700;
+    color: #fff; background: #3b82f6;
+    border-radius: 4px;
+  `;
+    sizeLabel.textContent = currentSize;
+    const nextBtn = makeArrowBtn("›");
+    prevBtn.addEventListener("click", () => {
+      const i2 = SIZES.indexOf(currentSize);
+      if (i2 > 0) {
+        currentSize = SIZES[i2 - 1];
+        sizeLabel.textContent = currentSize;
+        onSizeChange(currentSize);
+      }
+    });
+    nextBtn.addEventListener("click", () => {
+      const i2 = SIZES.indexOf(currentSize);
+      if (i2 < SIZES.length - 1) {
+        currentSize = SIZES[i2 + 1];
+        sizeLabel.textContent = currentSize;
+        onSizeChange(currentSize);
+      }
+    });
+    sizeRow.appendChild(prevBtn);
+    sizeRow.appendChild(sizeLabel);
+    sizeRow.appendChild(nextBtn);
+    const outfitPanelEl = document.createElement("div");
+    outfitPanelEl.style.cssText = "flex-shrink:0;display:flex;flex-direction:column;background:#fff;";
+    const thumbsRow = document.createElement("div");
+    thumbsRow.setAttribute("data-atelier-outfit-scroll", "true");
+    thumbsRow.style.cssText = "display:flex;gap:6px;padding:2px 10px 2px;overflow-x:auto;overflow-y:hidden;";
+    const catTabs = document.createElement("div");
+    catTabs.style.cssText = "display:flex;gap:2px;padding:2px 10px 5px;overflow-x:auto;";
+    outfitPanelEl.appendChild(thumbsRow);
+    outfitPanelEl.appendChild(catTabs);
+    bottomPanel.appendChild(sizeRow);
+    bottomPanel.appendChild(outfitPanelEl);
+    contentArea.appendChild(viewerArea);
+    contentArea.appendChild(bottomPanel);
+    let heightValue = 170;
+    const MIN_H = 160, MAX_H = 190;
+    let viewer = null;
+    buildHeightSlider(sliderPanel, MIN_H, MAX_H, heightValue, (h) => {
+      var _a4;
+      heightValue = h;
+      (_a4 = viewer == null ? void 0 : viewer.updateHeight) == null ? void 0 : _a4.call(viewer, h, 170);
+    });
+    const baseModelUrl = `${apiBaseUrl}/3d/Model.fbx`;
+    viewer = init3DViewer(viewerEl, {
+      modelUrl: baseModelUrl,
+      assets: [],
+      apiBaseUrl,
+      onError: (err2) => {
+        if (isDevelopmentMode()) console.error("[Atelier Widget] 3D error:", err2);
+      }
+    });
+    const cleanup = overlay.__atelierCleanup;
+    if (cleanup) cleanup.fn = () => {
+      viewer == null ? void 0 : viewer.destroy();
+    };
+    loadInitialAssets();
+    fetchOutfitData();
+    renderLeftPanel();
+    renderCatTabs();
+    renderThumbs();
+    function buildAssetList(size) {
+      var _a4, _b2;
+      const arr = ((_b2 = (_a4 = config.asset) == null ? void 0 : _a4.sizes) == null ? void 0 : _b2[size]) || [];
+      return arr.map((a) => ({ url: a.modelUrl || a.glbUrl || "", category: a.category })).filter((a) => a.url);
+    }
+    function loadInitialAssets() {
+      activeAssets.clear();
+      const list = buildAssetList(currentSize);
+      list.forEach((a) => {
+        if (a.category) {
+          activeAssets.set(a.category, { id: a.category, url: a.url, thumbnailUrl: null, productName: "", category: a.category });
+        }
+      });
+      viewer == null ? void 0 : viewer.updateAssets(list);
+    }
+    function onSizeChange(size) {
+      const newSizeAssets = buildAssetList(size);
+      const newSizeCategories = new Set(newSizeAssets.map((a) => a.category).filter(Boolean));
+      newSizeAssets.forEach((a) => {
+        if (a.category) {
+          activeAssets.set(a.category, { id: a.category, url: a.url, thumbnailUrl: null, productName: "", category: a.category });
+        }
+      });
+      const allAssets = Array.from(activeAssets.values()).map((a) => ({ url: a.url, category: a.category }));
+      viewer == null ? void 0 : viewer.updateAssets(allAssets);
+      if (selectedAssetId) {
+        const selectedItem = Object.values(outfitData.categories).flat().find((item) => item.id === selectedAssetId);
+        if (selectedItem && newSizeCategories.has(selectedItem.category)) {
+          const categoryItems = outfitData.categories[selectedItem.category] || [];
+          const itemExists = categoryItems.some((item) => item.id === selectedAssetId);
+          if (!itemExists) {
+            selectedAssetId = null;
+          }
+        }
+      }
+      renderLeftPanel();
+      renderThumbs();
+      fetchOutfitData();
+      if (eshopId && eshopId !== "unknown") {
+        const pid = params.productId || params.externalProductId || "";
+        sendEvent({ shopId: eshopId, productId: uuidRe.test(pid) ? pid : void 0, type: "size_change", meta: { size } }).catch(() => {
+        });
+      }
+    }
+    function handleAssetSelect(item, category) {
+      if (!item && category) {
+        activeAssets.delete(category);
+        selectedAssetId = null;
+      } else if (item) {
+        activeAssets.set(item.category, {
+          id: item.id,
+          url: item.modelUrl,
+          thumbnailUrl: item.thumbnailUrl,
+          productName: item.productName,
+          category: item.category
+        });
+        selectedAssetId = item.id;
+        currentCategory = item.category;
+        if (item.category === "コート") {
+          activeAssets.delete("ジャケット");
+          activeAssets.delete("トップス");
+        } else if (item.category === "ジャケット") {
+          activeAssets.delete("コート");
+          activeAssets.delete("トップス");
+        } else if (item.category === "トップス") {
+          activeAssets.delete("コート");
+          activeAssets.delete("ジャケット");
+        }
+        if (eshopId && eshopId !== "unknown") {
+          const pid = params.productId || params.externalProductId || "";
+          sendEvent({
+            shopId: eshopId,
+            productId: uuidRe.test(pid) ? pid : void 0,
+            type: "outfit_asset_select",
+            meta: { assetId: item.id, category: item.category }
+          }).catch(() => {
+          });
+        }
+      }
+      viewer == null ? void 0 : viewer.updateAssets(Array.from(activeAssets.values()).map((a) => ({ url: a.url, category: a.category })));
+      renderLeftPanel();
+      renderCatTabs();
+      renderThumbs();
+    }
+    function renderLeftPanel() {
+      leftPanel.innerHTML = "";
+      activeAssets.forEach((asset, cat) => {
+        const isActive = cat === currentCategory;
+        const card = document.createElement("div");
+        card.style.cssText = `
+        width: 30px; height: 30px; flex-shrink: 0;
+        border: 2px solid ${isActive ? "#3b82f6" : "#e5e7eb"};
+        border-radius: 6px;
+        background: rgba(249,250,251,0.9);
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; overflow: hidden; box-sizing: border-box;
       `;
-        body.appendChild(emptyMsg);
+        const imgWrap = document.createElement("div");
+        imgWrap.style.cssText = `
+        width: 24px; height: 24px; flex-shrink: 0;
+        border-radius: 3px; background: #f3f4f6;
+        overflow: hidden;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 8px; color: #9ca3af;
+      `;
+        if (asset == null ? void 0 : asset.thumbnailUrl) {
+          const img = document.createElement("img");
+          img.src = asset.thumbnailUrl;
+          img.style.cssText = "width:100%;height:100%;object-fit:cover;";
+          imgWrap.appendChild(img);
+        } else {
+          imgWrap.textContent = "3D";
+        }
+        card.appendChild(imgWrap);
+        card.addEventListener("click", () => {
+          currentCategory = cat;
+          renderLeftPanel();
+          renderCatTabs();
+          renderThumbs();
+        });
+        leftPanel.appendChild(card);
+      });
+    }
+    function renderCatTabs() {
+      catTabs.innerHTML = "";
+      const cats = Object.keys(outfitData.categories).length > 0 ? Object.keys(outfitData.categories) : [...OUTFIT_CATEGORIES];
+      if (!cats.includes(currentCategory)) currentCategory = cats[0] || OUTFIT_CATEGORIES[0];
+      cats.forEach((cat) => {
+        const isActive = cat === currentCategory;
+        const btn = document.createElement("button");
+        btn.textContent = cat;
+        btn.style.cssText = `
+        padding: 3px 8px;
+        font-size: 9px; font-weight: ${isActive ? "700" : "500"};
+        color: ${isActive ? "#fff" : "#374151"};
+        background: ${isActive ? "#111" : "transparent"};
+        border: none; border-radius: 99px;
+        cursor: pointer; white-space: nowrap;
+        flex-shrink: 0; outline: none;
+        transition: background 0.15s, color 0.15s;
+      `;
+        btn.addEventListener("click", () => {
+          currentCategory = cat;
+          renderCatTabs();
+          renderThumbs();
+          renderLeftPanel();
+        });
+        catTabs.appendChild(btn);
+      });
+    }
+    function renderThumbs() {
+      thumbsRow.innerHTML = "";
+      const items = outfitData.categories[currentCategory] || [];
+      if (items.length === 0) {
+        const msg = document.createElement("div");
+        msg.textContent = "アイテムがありません";
+        msg.style.cssText = "font-size:11px;color:#9ca3af;padding:8px;align-self:center;";
+        thumbsRow.appendChild(msg);
         return;
       }
       items.forEach((item) => {
+        var _a4;
+        const isSelected = item.id === selectedAssetId && ((_a4 = activeAssets.get(item.category)) == null ? void 0 : _a4.id) === item.id;
         const card = document.createElement("div");
-        const isSelected = item.id === selectedAssetId;
         card.style.cssText = `
-        width: 56px;
-        min-width: 56px;
-        height: 68px;
-      background: white;
-        border-radius: 6px;
-      flex-shrink: 0;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-        flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      box-sizing: border-box;
-      overflow: hidden;
-        box-shadow: ${isSelected ? "0 0 0 2px #000, 0 2px 8px rgba(0,0,0,0.15)" : "0 1px 4px rgba(0, 0, 0, 0.1)"};
-        gap: 3px;
-        padding: 3px;
-    `;
-        card.addEventListener("mouseenter", () => {
-          if (!isSelected) {
-            card.style.backgroundColor = "#f3f4f6";
-            card.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.15)";
-            card.style.transform = "translateY(-2px)";
-          }
-        });
-        card.addEventListener("mouseleave", () => {
-          if (!isSelected) {
-            card.style.backgroundColor = "white";
-            card.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.1)";
-            card.style.transform = "translateY(0)";
-          }
-        });
-        card.addEventListener("click", () => {
-          if (isSelected) {
-            selectedAssetId = null;
-            onAssetSelect == null ? void 0 : onAssetSelect(null, item.category);
-          } else {
-            selectedAssetId = item.id;
-            onAssetSelect == null ? void 0 : onAssetSelect(item);
-          }
-          renderAssets();
-        });
-        const thumbSize = "40px";
+        width: 38px; min-width: 38px; height: 38px;
+        border-radius: 7px; background: #fff;
+        border: 2px solid ${isSelected ? "#3b82f6" : "#e5e7eb"};
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; overflow: hidden;
+        flex-shrink: 0; box-sizing: border-box;
+        transition: border-color 0.15s;
+      `;
+        const imgWrap = document.createElement("div");
+        imgWrap.style.cssText = `
+        width: 28px; height: 28px; flex-shrink: 0;
+        border-radius: 3px; background: #f3f4f6;
+        overflow: hidden;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 8px; color: #9ca3af;
+      `;
         if (item.thumbnailUrl) {
           const img = document.createElement("img");
           img.src = item.thumbnailUrl;
-          img.alt = item.productName;
-          img.style.cssText = `
-          width: ${thumbSize};
-          height: ${thumbSize};
-          object-fit: cover;
-          border-radius: 4px;
-          background: #f3f4f6;
-          flex-shrink: 0;
-        `;
-          img.onerror = () => {
-            img.style.display = "none";
-            const placeholder = document.createElement("div");
-            placeholder.textContent = "3D";
-            placeholder.style.cssText = `
-            width: ${thumbSize};
-            height: ${thumbSize};
-    display: flex;
-    align-items: center;
-    justify-content: center;
-            background: #f3f4f6;
-            border-radius: 4px;
-            font-size: 9px;
-            color: #9ca3af;
-            flex-shrink: 0;
-  `;
-            card.insertBefore(placeholder, card.firstChild);
-          };
-          card.appendChild(img);
+          img.style.cssText = "width:100%;height:100%;object-fit:cover;";
+          imgWrap.appendChild(img);
         } else {
-          const placeholder = document.createElement("div");
-          placeholder.textContent = "3D";
-          placeholder.style.cssText = `
-          width: ${thumbSize};
-          height: ${thumbSize};
-      display: flex;
-          align-items: center;
-          justify-content: center;
-          background: #f3f4f6;
-          border-radius: 4px;
-          font-size: 9px;
-          color: #9ca3af;
-          flex-shrink: 0;
-    `;
-          card.appendChild(placeholder);
+          imgWrap.textContent = "3D";
         }
-        const label = document.createElement("div");
-        label.textContent = item.productName;
-        label.title = item.productName;
-        label.style.cssText = `
-        font-size: 9px;
-        color: #374151;
-        text-align: center;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        width: 100%;
-        line-height: 1.2;
-      `;
-        card.appendChild(label);
-        body.appendChild(card);
-      });
-    }
-    function updateAssets(data) {
-      currentData = data;
-      selectedAssetId = null;
-      renderCategoryBar();
-      renderAssets();
-    }
-    outfitTabsContainer.appendChild(categoryBar);
-    outfitTabsContainer.appendChild(body);
-    renderCategoryBar();
-    renderAssets();
-    return { outfitTabsContainer, categorySelect, updateAssets };
-  }
-  function initPreviewPanel(options) {
-    const {
-      container,
-      glbUrl,
-      modelUrl,
-      assets,
-      textureUrl,
-      apiBaseUrl,
-      initialHeight = 170,
-      minHeight = 150,
-      maxHeight = 190,
-      availableSizes = ["S", "M", "L"],
-      initialSize = "M",
-      productName,
-      outfitAssets,
-      onHeightChange,
-      onSizeChange,
-      onModelLoad,
-      onModelError,
-      onBackClick,
-      onOutfitClick,
-      onOutfitAssetSelect,
-      currentProductId,
-      onFloatingButtonsReady
-    } = options;
-    let currentSize = initialSize;
-    try {
-      const children = Array.from(container.children);
-      for (const child of children) {
-        try {
-          child.remove();
-        } catch {
-        }
-      }
-    } catch {
-    }
-    container.style.cssText = `
-    display: flex !important;
-    flex-direction: column !important;
-    position: relative !important;
-    overflow: hidden !important;
-    background: transparent !important;
-    gap: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: none !important;
-    box-sizing: border-box !important;
-    max-width: 100% !important;
-    max-height: 100% !important;
-  `.trim();
-    const sizeAreaElements = createSizeArea(availableSizes, initialSize, productName);
-    const { sizeArea, sizeButtons, sizeButtonsContainer, productNameDiv, prevButton, nextButton } = sizeAreaElements;
-    const outfitTabsElements = createOutfitTabs(outfitAssets, (asset, category) => {
-      onOutfitAssetSelect == null ? void 0 : onOutfitAssetSelect(asset, category);
-    });
-    const { outfitTabsContainer } = outfitTabsElements;
-    const scrollToSelectedSize = () => {
-      const currentIndex = availableSizes.indexOf(currentSize);
-      if (currentIndex >= 0 && sizeButtons[currentIndex]) {
-        const selectedButton = sizeButtons[currentIndex];
-        const containerRect = sizeButtonsContainer.getBoundingClientRect();
-        const buttonRect = selectedButton.getBoundingClientRect();
-        const scrollLeft = sizeButtonsContainer.scrollLeft;
-        const buttonLeft = buttonRect.left - containerRect.left + scrollLeft;
-        const targetScroll = buttonLeft - containerRect.width / 2 + buttonRect.width / 2;
-        sizeButtonsContainer.scrollTo({ left: targetScroll, behavior: "smooth" });
-      }
-    };
-    const viewerElements = createViewerContainer();
-    const { viewerContainer, floatingButtons, jacketButton, userButton } = viewerElements;
-    if (onFloatingButtonsReady) {
-      onFloatingButtonsReady(floatingButtons);
-    }
-    jacketButton.style.pointerEvents = "auto";
-    userButton.style.pointerEvents = "auto";
-    jacketButton.addEventListener("mouseenter", () => {
-      jacketButton.style.boxShadow = "0 4px 16px rgba(0, 0, 0, 0.18)";
-      jacketButton.style.transform = "scale(1.08)";
-      jacketButton.style.background = "rgba(255, 255, 255, 1)";
-    });
-    jacketButton.addEventListener("mouseleave", () => {
-      jacketButton.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.12)";
-      jacketButton.style.transform = "scale(1)";
-      jacketButton.style.background = "rgba(255, 255, 255, 0.95)";
-    });
-    jacketButton.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (onOutfitClick) {
-        try {
-          onOutfitClick(container);
-        } catch (error) {
-          console.error("[Atelier Preview] Error in onOutfitClick:", error);
-        }
-      } else {
-        const event = new CustomEvent("atelier:open-outfit-modal", {
-          detail: { currentProductId },
-          bubbles: true,
-          cancelable: true
-        });
-        document.dispatchEvent(event);
-      }
-    });
-    userButton.addEventListener("mouseenter", () => {
-      userButton.style.boxShadow = "0 4px 16px rgba(0, 0, 0, 0.18)";
-      userButton.style.transform = "scale(1.08)";
-      userButton.style.background = "rgba(255, 255, 255, 1)";
-    });
-    userButton.addEventListener("mouseleave", () => {
-      userButton.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.12)";
-      userButton.style.transform = "scale(1)";
-      userButton.style.background = "rgba(255, 255, 255, 0.95)";
-    });
-    const updateSizeButtons = () => {
-      sizeButtons.forEach((btn, idx) => {
-        const selected = availableSizes[idx] === currentSize;
-        btn.style.background = selected ? "#000000" : "transparent";
-        btn.style.color = selected ? "#ffffff" : "#000000";
-        btn.style.border = "none";
-        btn.style.fontWeight = selected ? "600" : "700";
-        btn.style.borderRadius = selected ? "50px" : "0";
-      });
-      scrollToSelectedSize();
-    };
-    updateSizeButtons();
-    setTimeout(() => scrollToSelectedSize(), 100);
-    prevButton.addEventListener("click", () => {
-      const idx = availableSizes.indexOf(currentSize);
-      if (idx > 0) {
-        currentSize = availableSizes[idx - 1];
-        updateSizeButtons();
-        onSizeChange == null ? void 0 : onSizeChange(currentSize);
-      }
-    });
-    nextButton.addEventListener("click", () => {
-      const idx = availableSizes.indexOf(currentSize);
-      if (idx < availableSizes.length - 1) {
-        currentSize = availableSizes[idx + 1];
-        updateSizeButtons();
-        onSizeChange == null ? void 0 : onSizeChange(currentSize);
-      }
-    });
-    const addHoverEffect = (btn) => {
-      btn.addEventListener("mouseenter", () => {
-        btn.style.background = "rgba(255, 255, 255, 1)";
-        btn.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.15)";
-      });
-      btn.addEventListener("mouseleave", () => {
-        btn.style.background = "rgba(255, 255, 255, 0.9)";
-        btn.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.1)";
-      });
-    };
-    addHoverEffect(prevButton);
-    addHoverEffect(nextButton);
-    sizeButtons.forEach((sizeBtn, idx) => {
-      sizeBtn.addEventListener("click", () => {
-        currentSize = availableSizes[idx];
-        updateSizeButtons();
-        onSizeChange == null ? void 0 : onSizeChange(currentSize);
-      });
-    });
-    container.appendChild(sizeArea);
-    container.appendChild(viewerContainer);
-    container.appendChild(outfitTabsContainer);
-    getBackgroundImageUrl();
-    const viewerInstance = init3DViewer(viewerContainer, {
-      apiBaseUrl,
-      glbUrl,
-      modelUrl,
-      assets: assets == null ? void 0 : assets.map((a) => ({ url: a.url, category: a.category })),
-      onLoad: onModelLoad,
-      onError: onModelError
-    });
-    const createdElements = [sizeArea, viewerContainer];
-    const resizeObservers = [];
-    return {
-      updateGlbUrl(newGlbUrl) {
-        viewerInstance.updateGlbUrl(newGlbUrl);
-      },
-      updateModelUrl(newModelUrl) {
-        viewerInstance.updateModelUrl(newModelUrl);
-      },
-      updateAssets(newAssets) {
-        viewerInstance.updateAssets(newAssets.map((a) => ({ url: a.url, category: a.category })));
-      },
-      updateOutfitAssets(data) {
-        outfitTabsElements.updateAssets(data);
-      },
-      updateHeight(height) {
-        onHeightChange == null ? void 0 : onHeightChange(height);
-      },
-      updateSize(size) {
-        currentSize = size;
-        updateSizeButtons();
-      },
-      updateProductName(name) {
-        if (productNameDiv) {
-          productNameDiv.textContent = name;
-        }
-      },
-      destroy() {
-        for (const observer of resizeObservers) {
-          try {
-            observer.disconnect();
-          } catch {
-          }
-        }
-        try {
-          viewerInstance.destroy();
-        } catch (error) {
-          console.error("[Atelier Preview] Error destroying viewer instance:", error);
-        }
-        try {
-          for (const element of createdElements) {
-            try {
-              if (element && (element.isConnected || element.parentNode)) {
-                element.remove();
-              }
-            } catch {
-            }
-          }
-        } catch {
-        }
-        try {
-          if (floatingButtons && (floatingButtons.isConnected || floatingButtons.parentNode)) {
-            floatingButtons.remove();
-          }
-        } catch {
-        }
-      }
-    };
-  }
-  const imageCache = /* @__PURE__ */ new Map();
-  async function loadCachedImage(url) {
-    if (imageCache.has(url)) {
-      return imageCache.get(url);
-    }
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        imageCache.set(url, img);
-        resolve(img);
-      };
-      img.onerror = reject;
-      img.src = url;
-    });
-  }
-  async function showOutfitChangePanel(container, params, callbacks) {
-    if (isDevelopmentMode()) {
-      console.log("[Atelier Widget] showOutfitChangePanel called", params);
-    }
-    const currentProductId = params.productId || params.externalProductId || "";
-    const publicKey = params.publicKey || "";
-    const shopId = params.shopId || "";
-    if (!publicKey && !shopId) {
-      console.error("[Atelier Widget] publicKey or shopId is required for outfit change panel");
-      if (isDevelopmentMode()) {
-        alert("着せ替えパネルを開くには、publicKeyまたはshopIdが必要です");
-      }
-      return;
-    }
-    const viewerContainer = container.querySelector("[data-atelier-viewer-container]") || container.querySelector('div[style*="flex: 1"]') || container.firstElementChild;
-    const sizeArea = container.querySelector("[data-atelier-size-area]");
-    const overlay = document.querySelector('[data-atelier-modal-overlay="true"]');
-    const floatingButtons = (overlay == null ? void 0 : overlay.querySelector("[data-atelier-floating-buttons]")) || document.body.querySelector("[data-atelier-floating-buttons]");
-    const closePanel = (targetPanel, animationFrameIdRef2, observer) => {
-      const closeTransition = "transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 0.6s ease-out";
-      targetPanel.style.transition = closeTransition;
-      targetPanel.style.transform = "translateY(100%)";
-      targetPanel.style.opacity = "0";
-      if (viewerContainer) {
-        viewerContainer.style.transition = "max-height 0.6s cubic-bezier(0.25, 0.1, 0.25, 1)";
-        const containerRect2 = container.getBoundingClientRect();
-        viewerContainer.style.maxHeight = `${containerRect2.height}px`;
-      }
-      if (sizeArea) {
-        sizeArea.style.display = "flex";
-      }
-      const currentOverlay = document.querySelector('[data-atelier-modal-overlay="true"]');
-      if (floatingButtons && (currentOverlay == null ? void 0 : currentOverlay.isConnected)) {
-        floatingButtons.style.display = "flex";
-      }
-      setTimeout(() => {
-        if (animationFrameIdRef2 == null ? void 0 : animationFrameIdRef2.current) {
-          cancelAnimationFrame(animationFrameIdRef2.current);
-        }
-        if (observer) {
-          observer.disconnect();
-        }
-        targetPanel.remove();
-        if (viewerContainer) {
-          viewerContainer.style.transition = "";
-          viewerContainer.style.maxHeight = "";
-        }
-      }, 600);
-    };
-    const existingPanel = container.querySelector("#atelier-outfit-change-panel");
-    if (existingPanel) {
-      closePanel(existingPanel, void 0, void 0);
-      return;
-    }
-    const panel = document.createElement("div");
-    panel.id = "atelier-outfit-change-panel";
-    const containerRect = container.getBoundingClientRect();
-    const panelHeight = Math.floor(containerRect.height * 0.1);
-    panel.style.position = "absolute";
-    panel.style.bottom = "0";
-    panel.style.left = "0";
-    panel.style.right = "0";
-    panel.style.width = "100%";
-    panel.style.background = "white";
-    panel.style.borderTop = "1px solid #e5e7eb";
-    panel.style.display = "flex";
-    panel.style.flexDirection = "column";
-    panel.style.overflow = "hidden";
-    panel.style.height = `${panelHeight}px`;
-    panel.style.maxHeight = `${panelHeight}px`;
-    panel.style.minHeight = `${panelHeight}px`;
-    panel.style.transform = "translateY(100%)";
-    panel.style.opacity = "0";
-    panel.style.transition = "transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.5s ease-in-out";
-    panel.style.willChange = "transform, opacity";
-    panel.style.zIndex = "10";
-    panel.style.boxSizing = "border-box";
-    const handle = document.createElement("div");
-    handle.style.width = "40px";
-    handle.style.height = "4px";
-    handle.style.background = "#d1d5db";
-    handle.style.borderRadius = "2px";
-    handle.style.margin = "12px auto 0";
-    handle.style.cursor = "grab";
-    handle.style.flexShrink = "0";
-    panel.appendChild(handle);
-    const body = document.createElement("div");
-    body.className = "atelier-outfit-change-panel-body";
-    body.style.flex = "1";
-    body.style.overflowY = "auto";
-    body.style.padding = "0 20px 20px";
-    body.style.minHeight = "0";
-    body.style.maxHeight = "100%";
-    const loadingDiv = document.createElement("div");
-    loadingDiv.style.cssText = `
-    text-align: center !important;
-    padding: 40px !important;
-    color: #6b7280 !important;
-    font-size: 14px !important;
-  `;
-    loadingDiv.textContent = "読み込み中...";
-    body.appendChild(loadingDiv);
-    panel.appendChild(body);
-    container.appendChild(panel);
-    const updatePanelHeight = () => {
-      const containerRect2 = container.getBoundingClientRect();
-      const newPanelHeight = Math.floor(containerRect2.height * 0.1);
-      panel.style.height = `${newPanelHeight}px`;
-      panel.style.maxHeight = `${newPanelHeight}px`;
-      panel.style.minHeight = `${newPanelHeight}px`;
-    };
-    const resizeObserver = new ResizeObserver(() => {
-      updatePanelHeight();
-    });
-    resizeObserver.observe(container);
-    if (sizeArea) {
-      sizeArea.style.display = "none";
-    }
-    if (floatingButtons) {
-      floatingButtons.style.display = "none";
-    }
-    const updateViewerHeight = () => {
-      if (!viewerContainer) return;
-      const panelRect = panel.getBoundingClientRect();
-      const containerRect2 = container.getBoundingClientRect();
-      const panelHeight2 = panel.offsetHeight;
-      const containerHeight = containerRect2.height;
-      const panelTop = panelRect.top;
-      const containerBottom = containerRect2.bottom;
-      const panelTopWhenHidden = containerBottom;
-      const panelTopWhenVisible = containerBottom - panelHeight2;
-      const distance = panelTopWhenHidden - panelTop;
-      const totalDistance = panelTopWhenHidden - panelTopWhenVisible;
-      const progress = Math.max(0, Math.min(1, distance / totalDistance));
-      const panelVisibleHeight = panelHeight2 * progress;
-      const viewerMaxHeight = containerHeight - panelVisibleHeight;
-      viewerContainer.style.maxHeight = `${viewerMaxHeight}px`;
-    };
-    if (viewerContainer) {
-      viewerContainer.style.transition = "max-height 0.5s cubic-bezier(0.4, 0.0, 0.2, 1)";
-      const containerRect2 = container.getBoundingClientRect();
-      viewerContainer.style.maxHeight = `${containerRect2.height}px`;
-    }
-    const animationFrameIdRef = { current: null };
-    let lastPanelTop = -1;
-    const observePanelPosition = () => {
-      if (animationFrameIdRef.current) {
-        cancelAnimationFrame(animationFrameIdRef.current);
-      }
-      const checkPosition = () => {
-        const panelRect = panel.getBoundingClientRect();
-        const currentPanelTop = panelRect.top;
-        if (Math.abs(currentPanelTop - lastPanelTop) > 0.1) {
-          lastPanelTop = currentPanelTop;
-          updateViewerHeight();
-        }
-        const computedStyle = window.getComputedStyle(panel);
-        const hasTransition = computedStyle.transition !== "none" && computedStyle.transition !== "all 0s ease 0s";
-        if (hasTransition || panel.style.transition !== "none") {
-          animationFrameIdRef.current = requestAnimationFrame(checkPosition);
-        }
-      };
-      animationFrameIdRef.current = requestAnimationFrame(checkPosition);
-    };
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        panel.style.transform = "translateY(0)";
-        panel.style.opacity = "1";
-        observePanelPosition();
-      });
-    });
-    try {
-      const apiUrl = getApiBaseUrl() || "http://localhost:3000";
-      const searchParams = new URLSearchParams();
-      if (publicKey) {
-        searchParams.append("publicKey", publicKey);
-      } else if (shopId) {
-        throw new Error("publicKey is required. shopId only is not supported for security reasons.");
-      } else {
-        throw new Error("publicKey or shopId is required");
-      }
-      const response = await fetch(`${apiUrl}/api/public/products?${searchParams.toString()}`);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      const products = await response.json();
-      const categorized = {};
-      products.forEach((product) => {
-        const isCurrentProduct = product.id === currentProductId || product.externalProductId === currentProductId;
-        if (!isCurrentProduct) {
-          const category = product.category && product.category.trim() !== "" ? product.category : "その他";
-          if (!categorized[category]) {
-            categorized[category] = [];
-          }
-          categorized[category].push(product);
-        }
-      });
-      body.innerHTML = "";
-      if (Object.keys(categorized).length === 0) {
-        const emptyDiv = document.createElement("div");
-        emptyDiv.style.cssText = `
-        text-align: center !important;
-        padding: 40px !important;
-        color: #6b7280 !important;
-        font-size: 14px !important;
-      `;
-        emptyDiv.textContent = "商品が見つかりませんでした";
-        body.appendChild(emptyDiv);
-      } else {
-        if (!document.getElementById("atelier-outfit-panel-scrollbar-style")) {
-          const style = document.createElement("style");
-          style.id = "atelier-outfit-panel-scrollbar-style";
-          style.textContent = `
-          #atelier-outfit-change-panel .atelier-outfit-change-panel-body div::-webkit-scrollbar {
-            height: 4px !important;
-          }
-          #atelier-outfit-change-panel .atelier-outfit-change-panel-body div::-webkit-scrollbar-track {
-            background: transparent !important;
-          }
-          #atelier-outfit-change-panel .atelier-outfit-change-panel-body div::-webkit-scrollbar-thumb {
-            background: #d1d5db !important;
-            border-radius: 2px !important;
-          }
-        `;
-          document.head.appendChild(style);
-        }
-        for (const [categoryName, categoryProducts] of Object.entries(categorized)) {
-          const categoryTitle = document.createElement("h4");
-          categoryTitle.style.cssText = `
-          font-size: 18px !important;
-          font-weight: 600 !important;
-          margin-bottom: 12px !important;
-          margin-top: 0 !important;
-          color: #1f2937 !important;
-        `;
-          categoryTitle.textContent = categoryName;
-          body.appendChild(categoryTitle);
-          const productList = document.createElement("div");
-          productList.style.cssText = `
-          display: flex !important;
-          gap: 12px !important;
-          overflow-x: auto !important;
-          overflow-y: hidden !important;
-          padding-bottom: 8px !important;
-          margin-bottom: 24px !important;
-          scrollbar-width: thin !important;
-          scrollbar-color: #d1d5db transparent !important;
-        `;
-          const productPromises = categoryProducts.map(async (product) => {
-            const productItem = document.createElement("div");
-            productItem.style.cssText = `
-            cursor: pointer !important;
-            display: flex !important;
-            flex-direction: column !important;
-            align-items: center !important;
-            gap: 8px !important;
-            padding: 8px !important;
-            border-radius: 8px !important;
-            transition: background-color 0.2s !important;
-            flex-shrink: 0 !important;
-            min-width: 100px !important;
-          `;
-            productItem.addEventListener("mouseenter", () => {
-              productItem.style.backgroundColor = "#f3f4f6";
-            });
-            productItem.addEventListener("mouseleave", () => {
-              productItem.style.backgroundColor = "transparent";
-            });
-            productItem.addEventListener("click", async () => {
-              if (callbacks == null ? void 0 : callbacks.onProductSelect) {
-                productItem.style.opacity = "0.5";
-                productItem.style.pointerEvents = "none";
-                try {
-                  const externalProductId = product.externalProductId || product.id;
-                  const config = await fetchWidgetConfig({
-                    publicKey: publicKey || null,
-                    shopId: shopId || null,
-                    externalProductId,
-                    productId: null
-                  });
-                  if (config.enabled) {
-                    callbacks.onProductSelect(product, config);
-                    removeDocumentListeners();
-                    closePanel(panel, animationFrameIdRef, resizeObserver);
-                    observePanelPosition();
-                  } else {
-                    alert("この商品の3Dモデルが登録されていません。");
-                    productItem.style.opacity = "1";
-                    productItem.style.pointerEvents = "auto";
-                  }
-                } catch (error) {
-                  console.error("[Atelier Widget] Failed to fetch product config:", error);
-                  alert("商品データの取得に失敗しました。");
-                  productItem.style.opacity = "1";
-                  productItem.style.pointerEvents = "auto";
-                }
-              } else {
-                const productId = product.externalProductId || product.id;
-                const currentUrl = new URL(window.location.href);
-                currentUrl.pathname = `/product/${productId}`;
-                window.location.href = currentUrl.toString();
-              }
-            });
-            const productImage = document.createElement("div");
-            productImage.style.cssText = `
-            width: 100px !important;
-            height: 100px !important;
-            border-radius: 8px !important;
-            overflow: hidden !important;
-            background: #f3f4f6 !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            position: relative !important;
-          `;
-            const placeholder = document.createElement("div");
-            placeholder.style.cssText = `
-            width: 100% !important;
-            height: 100% !important;
-            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%) !important;
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
-          `;
-            productImage.appendChild(placeholder);
-            if (product.thumbnailUrl) {
-              if (imageCache.has(product.thumbnailUrl)) {
-                const cachedImg = imageCache.get(product.thumbnailUrl);
-                const img = document.createElement("img");
-                img.src = cachedImg.src;
-                img.alt = product.name;
-                img.style.cssText = `
-                width: 100% !important;
-                height: 100% !important;
-                object-fit: cover !important;
-              `;
-                placeholder.remove();
-                productImage.appendChild(img);
-              } else {
-                loadCachedImage(product.thumbnailUrl).then((cachedImg) => {
-                  const img = document.createElement("img");
-                  img.src = cachedImg.src;
-                  img.alt = product.name;
-                  img.style.cssText = `
-                    width: 100% !important;
-                    height: 100% !important;
-                    object-fit: cover !important;
-                  `;
-                  img.onload = () => {
-                    placeholder.remove();
-                  };
-                  productImage.appendChild(img);
-                }).catch((error) => {
-                  console.warn("[Atelier Widget] Failed to load product image:", product.thumbnailUrl);
-                });
-              }
-            }
-            productItem.appendChild(productImage);
-            const productTitle = document.createElement("div");
-            productTitle.style.cssText = `
-            font-size: 12px !important;
-            text-align: center !important;
-            color: #374151 !important;
-            font-weight: 500 !important;
-            line-height: 1.4 !important;
-            width: 100px !important;
-          `;
-            productTitle.textContent = product.name;
-            productItem.appendChild(productTitle);
-            return productItem;
-          });
-          productPromises.forEach(async (promise) => {
-            const productItem = await promise;
-            productList.appendChild(productItem);
-          });
-          body.appendChild(productList);
-        }
-      }
-    } catch (error) {
-      body.innerHTML = "";
-      const errorDiv = document.createElement("div");
-      errorDiv.style.cssText = `
-      text-align: center !important;
-      padding: 40px !important;
-      color: #dc2626 !important;
-      font-size: 14px !important;
-    `;
-      const errorMessage = error instanceof Error ? error.message : "商品の読み込みに失敗しました";
-      errorDiv.textContent = errorMessage;
-      body.appendChild(errorDiv);
-      console.error("[Atelier Widget] Failed to load products:", error);
-      if (isDevelopmentMode()) {
-        alert("着せ替えパネルのエラー: " + errorMessage);
-      }
-    }
-    let dragStartY = 0;
-    let dragCurrentY = 0;
-    let isDragging = false;
-    const removeDocumentListeners = () => {
-      document.removeEventListener("touchmove", handleTouchMove);
-      document.removeEventListener("touchend", handleTouchEnd);
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
-    const handleStart = (clientY) => {
-      dragStartY = clientY;
-      dragCurrentY = clientY;
-      isDragging = true;
-      panel.style.transition = "none";
-      if (viewerContainer) {
-        viewerContainer.style.transition = "none";
-      }
-    };
-    const handleMove = (clientY) => {
-      if (!isDragging) return;
-      dragCurrentY = clientY;
-      const deltaY = dragCurrentY - dragStartY;
-      if (deltaY > 0) {
-        panel.style.transform = `translateY(${deltaY}px)`;
-        if (viewerContainer) {
-          viewerContainer.style.transition = "none";
-          updateViewerHeight();
-        }
-      }
-    };
-    const handleEnd = () => {
-      if (!isDragging) return;
-      const deltaY = dragCurrentY - dragStartY;
-      const threshold = 100;
-      if (deltaY > threshold) {
-        removeDocumentListeners();
-        closePanel(panel, animationFrameIdRef, resizeObserver);
-        observePanelPosition();
-      } else {
-        panel.style.transition = "transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.5s ease-in-out";
-        panel.style.transform = "translateY(0)";
-        panel.style.opacity = "1";
-        if (viewerContainer) {
-          viewerContainer.style.transition = "max-height 0.5s cubic-bezier(0.4, 0.0, 0.2, 1)";
-        }
-        observePanelPosition();
-      }
-      isDragging = false;
-    };
-    const handleTouchStart = (e) => {
-      const target = e.target;
-      if (body.contains(target) && body.scrollTop > 0) return;
-      handleStart(e.touches[0].clientY);
-    };
-    const handleTouchMove = (e) => {
-      if (!isDragging) return;
-      if (body.scrollTop > 0) return;
-      e.preventDefault();
-      handleMove(e.touches[0].clientY);
-    };
-    const handleTouchEnd = () => handleEnd();
-    const handleMouseDown = (e) => {
-      const target = e.target;
-      if (body.contains(target) && body.scrollTop > 0) return;
-      handleStart(e.clientY);
-    };
-    const handleMouseMove = (e) => {
-      if (!isDragging) return;
-      if (body.scrollTop > 0) return;
-      e.preventDefault();
-      handleMove(e.clientY);
-    };
-    const handleMouseUp = () => handleEnd();
-    panel.addEventListener("touchstart", handleTouchStart, { passive: false });
-    document.addEventListener("touchmove", handleTouchMove, { passive: false });
-    document.addEventListener("touchend", handleTouchEnd);
-    panel.addEventListener("mousedown", handleMouseDown);
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-    handle.addEventListener("click", () => {
-      removeDocumentListeners();
-      closePanel(panel, animationFrameIdRef, resizeObserver);
-      observePanelPosition();
-    });
-  }
-  function renderModalWithLoading(shadowRoot, params) {
-    const overlay = document.createElement("div");
-    overlay.style.cssText = `
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    max-width: 100vw !important;
-    max-height: 100vh !important;
-    background: white !important;
-    z-index: 10000 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: visible !important;
-    opacity: 0;
-    animation: fadeIn 0.2s ease-out forwards;
-    margin: 0 !important;
-    padding: 0 !important;
-    box-sizing: border-box !important;
-  `;
-    addFadeInStyle();
-    const modal = document.createElement("div");
-    modal.style.cssText = `
-    background: white !important;
-    width: 100% !important;
-    height: 100% !important;
-    position: relative !important;
-    display: flex !important;
-    flex-direction: column !important;
-    padding: 8px !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important;
-    margin: 0 !important;
-    flex: 1 !important;
-    min-height: 0 !important;
-  `;
-    const backButton = createBackButton(() => {
-      if (overlay.parentNode) {
-        overlay.parentNode.removeChild(overlay);
-      }
-    });
-    const contentArea = createContentArea();
-    const loadingSpinner = createLoadingSpinner();
-    contentArea.appendChild(loadingSpinner);
-    modal.appendChild(backButton);
-    modal.appendChild(contentArea);
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
-    overlay.setAttribute("data-atelier-modal-overlay", "true");
-    contentArea.setAttribute("data-atelier-content-area", "true");
-    return { overlay, contentArea };
-  }
-  function updateModalWithConfig(shadowRoot, config, params, overlay, contentArea) {
-    var _a3, _b2;
-    if (!overlay || !contentArea) {
-      console.error("[Atelier Widget] Modal elements not provided");
-      return;
-    }
-    contentArea.innerHTML = "";
-    contentArea.style.cssText = `
-    flex: 1 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important;
-    min-height: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: none !important;
-    box-sizing: border-box !important;
-  `;
-    const eventShopId = params.shopId || void 0;
-    if (eventShopId && eventShopId !== "unknown") {
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      const productIdStr = params.productId || params.externalProductId || "";
-      const validProductId = productIdStr && uuidRegex.test(productIdStr) ? productIdStr : void 0;
-      sendEvent({
-        shopId: eventShopId,
-        // eventShopId !== "unknown" のチェックで string 型が保証されている
-        productId: validProductId,
-        type: "widget_open"
-      }).catch((error) => {
-        if (isDevelopmentMode()) {
-          console.warn("[Atelier Widget] Event send error:", error);
-        }
-      });
-    }
-    const defaultSize = ((_a3 = config.asset) == null ? void 0 : _a3.defaultSize) || "M";
-    const availableSizes = ["S", "M", "L", "XL"];
-    let currentSize = defaultSize;
-    let currentConfig = config;
-    const activeAssets = /* @__PURE__ */ new Map();
-    const buildAssetList = (size) => {
-      var _a4, _b3, _c;
-      const sizeAssets = (_b3 = (_a4 = currentConfig.asset) == null ? void 0 : _a4.sizes) == null ? void 0 : _b3[size];
-      if (!sizeAssets) {
-        console.warn(`[Atelier Widget] No assets found for size: ${size}`, {
-          availableSizes: Object.keys(((_c = currentConfig.asset) == null ? void 0 : _c.sizes) || {}),
-          config: currentConfig
-        });
-        return [];
-      }
-      const result = [];
-      for (const asset of sizeAssets) {
-        const url = asset.modelUrl || asset.glbUrl || "";
-        if (url) {
-          result.push({ url, category: asset.category });
-        } else {
-          console.warn(`[Atelier Widget] Asset missing URL:`, asset);
-        }
-      }
-      console.log(`[Atelier Widget] Built asset list for size ${size}:`, result.length, "assets", result);
-      return result;
-    };
-    let outfitAssetsData = void 0;
-    const fetchOutfitAssets = async (previewInstanceRef) => {
-      try {
-        const apiUrl = getApiBaseUrl() || "http://localhost:3000";
-        const searchParams = new URLSearchParams();
-        if (params.publicKey) {
-          searchParams.append("publicKey", params.publicKey);
-        }
-        if (currentSize) {
-          searchParams.append("size", currentSize);
-        }
-        const currentProductId = params.externalProductId || params.productId;
-        if (currentProductId) {
-          searchParams.append("excludeProductId", currentProductId);
-        }
-        const response = await fetch(`${apiUrl}/api/public/assets/by-shop?${searchParams.toString()}`);
-        if (response.ok) {
-          const data = await response.json();
-          outfitAssetsData = data;
-          if (previewInstanceRef) {
-            previewInstanceRef.updateOutfitAssets(data);
-          }
-        }
-      } catch (error) {
-        console.warn("[Atelier Widget] Failed to fetch outfit assets:", error);
-      }
-    };
-    const onOutfitClickHandler = (container) => {
-      showOutfitChangePanel(container, params, {
-        onProductSelect: (product, newConfig) => {
-          var _a4, _b3;
-          currentConfig = newConfig;
-          const productName = ((_a4 = newConfig.asset) == null ? void 0 : _a4.productName) || product.name;
-          previewInstance.updateProductName(productName);
-          const newDefaultSize = ((_b3 = newConfig.asset) == null ? void 0 : _b3.defaultSize) || "M";
-          const newAssets = buildAssetList(currentSize);
-          if (newAssets.length > 0) {
-            previewInstance.updateAssets(newAssets);
+        card.appendChild(imgWrap);
+        card.addEventListener("click", () => {
+          if (isSelected) {
+            handleAssetSelect(null, item.category);
           } else {
-            currentSize = newDefaultSize;
-            previewInstance.updateSize(newDefaultSize);
-            previewInstance.updateAssets(buildAssetList(newDefaultSize));
-          }
-        }
-      }).catch((error) => {
-        console.error("[Atelier Widget] Failed to show outfit change panel:", error);
-        if (isDevelopmentMode()) {
-          alert("着せ替えパネルの表示に失敗しました: " + error.message);
-        }
-      });
-    };
-    let previewInstance;
-    const cleanupAndClose = () => {
-      document.querySelectorAll("[data-atelier-floating-buttons]").forEach((el) => {
-        el.remove();
-      });
-      if (previewInstance) {
-        previewInstance.destroy();
-      }
-      if (overlay.parentNode) {
-        overlay.parentNode.removeChild(overlay);
-      }
-    };
-    const backButton = overlay.querySelector("[data-atelier-back-button]");
-    if (backButton) {
-      const newBackButton = backButton.cloneNode(true);
-      newBackButton.addEventListener("click", cleanupAndClose);
-      newBackButton.addEventListener("mouseenter", () => {
-        newBackButton.style.backgroundColor = "rgba(255, 255, 255, 1)";
-        newBackButton.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.2)";
-      });
-      newBackButton.addEventListener("mouseleave", () => {
-        newBackButton.style.backgroundColor = "rgba(255, 255, 255, 0.9)";
-        newBackButton.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.15)";
-      });
-      backButton.replaceWith(newBackButton);
-    }
-    const apiBaseUrl = getApiBaseUrl() || "http://localhost:3000";
-    const baseModelUrl = `${apiBaseUrl}/3d/clo_model_men.glb`;
-    const previewOptions = {
-      onBackClick: cleanupAndClose,
-      onOutfitClick: onOutfitClickHandler,
-      currentProductId: params.productId || params.externalProductId || void 0,
-      container: contentArea,
-      modelUrl: baseModelUrl,
-      // 絶対URLで指定（ECサイトのドメインから読み込まれるのを防ぐ）
-      assets: [],
-      // 管理画面と同じく空で初期化、後でupdateAssetsで追加
-      outfitAssets: outfitAssetsData,
-      textureUrl: void 0,
-      apiBaseUrl,
-      // 上で定義したapiBaseUrlを使用
-      initialHeight: 170,
-      minHeight: 150,
-      maxHeight: 190,
-      availableSizes,
-      initialSize: currentSize,
-      productName: (_b2 = config.asset) == null ? void 0 : _b2.productName,
-      onOutfitAssetSelect: (asset, category) => {
-        if (asset === null && category) {
-          activeAssets.delete(category);
-          const allAssets2 = Array.from(activeAssets.values());
-          previewInstance.updateAssets(allAssets2);
-          return;
-        }
-        activeAssets.set(asset.category, {
-          url: asset.modelUrl,
-          category: asset.category
-        });
-        if (asset.category === "コート") {
-          activeAssets.delete("ジャケット");
-        } else if (asset.category === "ジャケット") {
-          activeAssets.delete("コート");
-        }
-        const allAssets = Array.from(activeAssets.values());
-        previewInstance.updateAssets(allAssets);
-        if (eventShopId && eventShopId !== "unknown") {
-          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-          const validProductId = asset.productId && uuidRegex.test(asset.productId) ? asset.productId : void 0;
-          sendEvent({
-            shopId: eventShopId,
-            productId: validProductId,
-            type: "outfit_asset_select",
-            meta: { assetId: asset.id, category: asset.category }
-          }).catch((error) => {
-            if (isDevelopmentMode()) {
-              console.warn("[Atelier Widget] Event send error:", error);
-            }
-          });
-        }
-      },
-      onSizeChange: (size) => {
-        currentSize = size;
-        const newAssetList = buildAssetList(size);
-        activeAssets.clear();
-        newAssetList.forEach((asset) => {
-          if (asset.category) {
-            activeAssets.set(asset.category, {
-              url: asset.url,
-              category: asset.category
-            });
+            handleAssetSelect(item);
           }
         });
-        previewInstance.updateAssets(newAssetList);
-        fetchOutfitAssets(previewInstance);
-        if (eventShopId && eventShopId !== "unknown") {
-          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-          const productIdStr = params.productId || params.externalProductId || "";
-          const validProductId = productIdStr && uuidRegex.test(productIdStr) ? productIdStr : void 0;
-          sendEvent({
-            shopId: eventShopId,
-            // eventShopId !== "unknown" のチェックで string 型が保証されている
-            productId: validProductId,
-            type: "size_change",
-            meta: { size }
-          }).catch((error) => {
-            if (isDevelopmentMode()) {
-              console.warn("[Atelier Widget] Event send error:", error);
-            }
-          });
-        }
-      },
-      onHeightChange: (height) => {
-        if (eventShopId && eventShopId !== "unknown") {
-          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-          const productIdStr = params.productId || params.externalProductId || "";
-          const validProductId = productIdStr && uuidRegex.test(productIdStr) ? productIdStr : void 0;
-          sendEvent({
-            shopId: eventShopId,
-            // eventShopId !== "unknown" のチェックで string 型が保証されている
-            productId: validProductId,
-            type: "height_change",
-            meta: { height }
-          }).catch((error) => {
-            if (isDevelopmentMode()) {
-              console.warn("[Atelier Widget] Event send error:", error);
-            }
-          });
-        }
-      },
-      onModelLoad: () => {
-      },
-      onModelError: (error) => {
-        if (error instanceof Error && (error.message === "Failed to fetch" || error.message.includes("network") || error.message.includes("connection"))) {
-          return;
-        }
-        console.error("[Atelier Widget] Failed to load 3D model:", error);
-      }
-    };
-    previewInstance = initPreviewPanel(previewOptions);
-    const initialAssetList = buildAssetList(currentSize);
-    if (initialAssetList.length > 0) {
-      initialAssetList.forEach((asset) => {
-        if (asset.category) {
-          activeAssets.set(asset.category, {
-            url: asset.url,
-            category: asset.category
-          });
-        }
+        thumbsRow.appendChild(card);
       });
-      previewInstance.updateAssets(initialAssetList);
-    } else if (isDevelopmentMode()) {
-      previewInstance.updateAssets([{ url: "http://localhost:3000/3d/clo_model_men.glb", category: void 0 }]);
     }
-    fetchOutfitAssets(previewInstance).then(() => {
-      if (outfitAssetsData) {
-        previewInstance.updateOutfitAssets(outfitAssetsData);
+    async function fetchOutfitData() {
+      try {
+        const u = new URL(`${apiBaseUrl}/api/public/assets/by-shop`);
+        if (params.publicKey) u.searchParams.set("publicKey", params.publicKey);
+        if (currentSize) u.searchParams.set("size", currentSize);
+        const excl = params.externalProductId || params.productId;
+        if (excl) u.searchParams.set("excludeProductId", excl);
+        const res = await fetch(u.toString());
+        if (res.ok) {
+          outfitData = await res.json();
+          renderThumbs();
+        }
+      } catch (_) {
       }
-    });
+    }
   }
-  function showErrorInModal(shadowRoot, errorMessage, overlay, contentArea) {
-    if (!overlay || !contentArea) {
-      console.error("[Atelier Widget] Modal elements not provided");
-      return;
-    }
+  function showErrorInModal(_shadowRoot, errorMessage, overlay, contentArea) {
+    if (!overlay || !contentArea) return;
     contentArea.innerHTML = "";
     contentArea.style.cssText = `
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    min-height: 0;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    text-align: center;
+    flex: 1; display: flex; flex-direction: column;
+    overflow: hidden; align-items: center; justify-content: center;
+    padding: 24px; text-align: center;
   `;
-    const errorDiv = document.createElement("div");
-    errorDiv.style.cssText = `
-    color: #dc2626;
-    font-size: 16px;
-    line-height: 1.5;
-    white-space: pre-line;
-  `;
-    errorDiv.textContent = errorMessage;
-    contentArea.appendChild(errorDiv);
+    const div = document.createElement("div");
+    div.style.cssText = "color:#dc2626;font-size:15px;line-height:1.5;white-space:pre-line;";
+    div.textContent = errorMessage;
+    contentArea.appendChild(div);
   }
-  function addFadeInStyle() {
-    if (!document.getElementById("atelier-widget-fade-in-style")) {
-      const style = document.createElement("style");
-      style.id = "atelier-widget-fade-in-style";
-      style.textContent = `
-      @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-      }
-    `;
-      document.head.appendChild(style);
-    }
-  }
-  function createBackButton(onClick) {
-    const backButton = document.createElement("button");
-    backButton.setAttribute("data-atelier-back-button", "true");
-    backButton.innerHTML = `
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width="20" 
-      height="20" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      stroke-width="2" 
-      stroke-linecap="round" 
-      stroke-linejoin="round"
-      style="display: block;"
-    >
-      <path d="m15 18-6-6 6-6"/>
-    </svg>
+  function buildDragBar() {
+    const bar = document.createElement("div");
+    bar.setAttribute("data-atelier-drag-bar", "true");
+    bar.style.cssText = `
+    flex-shrink: 0;
+    display: flex; justify-content: center;
+    padding: 3px 0 2px; cursor: grab; touch-action: none;
   `;
-    backButton.style.cssText = `
+    const pill = document.createElement("div");
+    pill.style.cssText = "width:32px;height:3px;background:#d1d5db;border-radius:99px;";
+    bar.appendChild(pill);
+    return bar;
+  }
+  function makeArrowBtn(symbol) {
+    const btn = document.createElement("button");
+    btn.textContent = symbol;
+    btn.style.cssText = `
+    width: 22px; height: 22px;
+    background: transparent; border: none; outline: none;
+    cursor: pointer; font-size: 18px; color: #111;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1; padding: 0; border-radius: 50%;
+    transition: background 0.15s;
+  `;
+    btn.addEventListener("mouseenter", () => {
+      btn.style.background = "#f3f4f6";
+    });
+    btn.addEventListener("mouseleave", () => {
+      btn.style.background = "transparent";
+    });
+    return btn;
+  }
+  function buildHeightSlider(container, min, max2, initial, onChange) {
+    const plus = document.createElement("div");
+    plus.textContent = "+";
+    plus.style.cssText = `
+    font-size: 12px; font-weight: 700; color: #374151;
+    cursor: pointer; line-height: 1; flex-shrink: 0; user-select: none;
+    width: 100%; text-align: center; padding: 2px 0;
+  `;
+    const trackWrap = document.createElement("div");
+    trackWrap.style.cssText = `
+    flex: 1; min-height: 0; position: relative;
+    display: flex; align-items: center; justify-content: center;
+    margin: 3px 0;
+  `;
+    const track = document.createElement("div");
+    track.style.cssText = "position:absolute;top:0;bottom:0;width:2px;background:#d1d5db;border-radius:1px;left:50%;transform:translateX(-50%);";
+    const valueLabel = document.createElement("div");
+    valueLabel.textContent = `${initial}`;
+    valueLabel.style.cssText = `
     position: absolute;
-    top: 8px;
-    left: 8px;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    padding: 0;
-    width: 30px;
-    height: 30px;
-    border-radius: 8px;
-    z-index: 10001;
-    color: #000;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    transition: all 0.2s ease;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    left: -30px;
+    transform: translateY(-50%);
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+    z-index: 2;
   `;
-    backButton.addEventListener("mouseenter", () => {
-      backButton.style.backgroundColor = "rgba(255, 255, 255, 1)";
-      backButton.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.15)";
-      backButton.style.transform = "translateY(-1px)";
-    });
-    backButton.addEventListener("mouseleave", () => {
-      backButton.style.backgroundColor = "rgba(255, 255, 255, 0.95)";
-      backButton.style.boxShadow = "0 1px 3px rgba(0, 0, 0, 0.1)";
-      backButton.style.transform = "translateY(0)";
-    });
-    backButton.addEventListener("click", onClick);
-    return backButton;
-  }
-  function createContentArea() {
-    const contentArea = document.createElement("div");
-    contentArea.style.cssText = `
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    min-height: 0;
-    align-items: center;
-    justify-content: center;
+    const handle = document.createElement("div");
+    handle.style.cssText = `
+    position: absolute;
+    width: 12px; height: 12px;
+    background: #111; border-radius: 50%;
+    left: 50%; transform: translate(-50%, -50%);
+    cursor: grab; touch-action: none; z-index: 1;
   `;
-    return contentArea;
-  }
-  function createLoadingSpinner() {
-    if (!document.getElementById("atelier-widget-spin-style")) {
-      const style = document.createElement("style");
-      style.id = "atelier-widget-spin-style";
-      style.textContent = `
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+    const minus = document.createElement("div");
+    minus.textContent = "−";
+    minus.style.cssText = `
+    font-size: 12px; font-weight: 700; color: #374151;
+    cursor: pointer; line-height: 1; flex-shrink: 0; user-select: none;
+    width: 100%; text-align: center; padding: 2px 0;
+  `;
+    trackWrap.appendChild(track);
+    trackWrap.appendChild(valueLabel);
+    trackWrap.appendChild(handle);
+    container.appendChild(plus);
+    container.appendChild(trackWrap);
+    container.appendChild(minus);
+    let dragging = false;
+    let currentValue = initial;
+    const valueToY = (v) => {
+      const h = trackWrap.clientHeight;
+      return (1 - (v - min) / (max2 - min)) * h;
+    };
+    const yToValue = (y) => {
+      const h = trackWrap.clientHeight || 1;
+      const ratio = Math.max(0, Math.min(1, y / h));
+      return Math.round(max2 - ratio * (max2 - min));
+    };
+    const positionHandle = (v) => {
+      const y = valueToY(v);
+      handle.style.top = `${y}px`;
+      valueLabel.style.top = `${y}px`;
+      valueLabel.textContent = `${v}`;
+    };
+    requestAnimationFrame(() => positionHandle(currentValue));
+    window.addEventListener("resize", () => positionHandle(currentValue), { passive: true });
+    handle.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      dragging = true;
+      handle.style.cursor = "grabbing";
+      valueLabel.style.opacity = "1";
+    });
+    handle.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      dragging = true;
+      valueLabel.style.opacity = "1";
+    }, { passive: false });
+    document.addEventListener("mousemove", (e) => {
+      if (!dragging) return;
+      const rect = trackWrap.getBoundingClientRect();
+      const v = yToValue(e.clientY - rect.top);
+      if (v !== currentValue) {
+        currentValue = v;
+        positionHandle(v);
+        onChange(v);
       }
-    `;
-      document.head.appendChild(style);
+    });
+    document.addEventListener("touchmove", (e) => {
+      if (!dragging) return;
+      e.preventDefault();
+      const rect = trackWrap.getBoundingClientRect();
+      const v = yToValue(e.touches[0].clientY - rect.top);
+      if (v !== currentValue) {
+        currentValue = v;
+        positionHandle(v);
+        onChange(v);
+      }
+    }, { passive: false });
+    document.addEventListener("mouseup", () => {
+      if (dragging) {
+        dragging = false;
+        handle.style.cursor = "grab";
+        valueLabel.style.opacity = "0";
+      }
+    });
+    document.addEventListener("touchend", () => {
+      if (dragging) {
+        dragging = false;
+        valueLabel.style.opacity = "0";
+      }
+    });
+    plus.addEventListener("click", () => {
+      currentValue = Math.min(max2, currentValue + 1);
+      positionHandle(currentValue);
+      onChange(currentValue);
+    });
+    minus.addEventListener("click", () => {
+      currentValue = Math.max(min, currentValue - 1);
+      positionHandle(currentValue);
+      onChange(currentValue);
+    });
+  }
+  function dismissSheet(sheet, overlay) {
+    sheet.style.animation = "none";
+    sheet.style.transition = "transform 0.3s cubic-bezier(0.32,0.72,0,1)";
+    sheet.style.transform = "translateY(calc(100% - 20px))";
+    overlay.style.animation = "none";
+    overlay.style.transition = "opacity 0.3s ease-out";
+    overlay.style.opacity = "0";
+    if (sheet.__atelierSetOpen) {
+      sheet.__atelierSetOpen(false);
     }
-    const loadingSpinner = document.createElement("div");
-    loadingSpinner.style.cssText = `
-    width: 40px;
-    height: 40px;
-    border: 3px solid #f3f3f3;
-    border-top: 3px solid #333;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  `;
-    return loadingSpinner;
+  }
+  function openSheet(sheet, overlay) {
+    sheet.style.animation = "none";
+    sheet.style.transition = "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)";
+    sheet.style.transform = "translateY(0)";
+    overlay.style.animation = "none";
+    overlay.style.transition = "opacity 0.22s ease-out";
+    overlay.style.opacity = "1";
+    if (sheet.__atelierSetOpen) {
+      sheet.__atelierSetOpen(true);
+    }
+  }
+  function setupDragToDismiss(handle, sheet, overlay, onDismiss) {
+    let startY = 0, curY = 0, dragging = false;
+    let isOpen = true;
+    const sheetHeight = sheet.offsetHeight || parseInt(sheet.style.height) || window.innerHeight * 0.9;
+    const onStart = (y) => {
+      startY = curY = y;
+      dragging = true;
+      sheet.style.transition = "none";
+      overlay.style.transition = "none";
+    };
+    const onMove = (y) => {
+      if (!dragging) return;
+      curY = y;
+      const delta = y - startY;
+      if (isOpen) {
+        const translateY = Math.max(0, delta);
+        sheet.style.transform = `translateY(${translateY}px)`;
+        const opacity = Math.max(0, 1 - translateY / sheetHeight);
+        overlay.style.opacity = String(opacity);
+      } else {
+        const translateY = Math.min(0, delta);
+        sheet.style.transform = `translateY(calc(100% - 20px + ${translateY}px))`;
+        const opacity = Math.min(1, Math.abs(translateY) / sheetHeight);
+        overlay.style.opacity = String(opacity);
+      }
+    };
+    const onEnd = () => {
+      if (!dragging) return;
+      dragging = false;
+      const delta = curY - startY;
+      const threshold = 90;
+      sheet.style.transition = "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)";
+      overlay.style.transition = "opacity 0.3s ease-out";
+      if (isOpen) {
+        if (delta > threshold) {
+          isOpen = false;
+          onDismiss();
+          dismissSheet(sheet, overlay);
+        } else {
+          sheet.style.transform = "translateY(0)";
+          overlay.style.opacity = "1";
+        }
+      } else {
+        if (delta < -threshold) {
+          isOpen = true;
+          openSheet(sheet, overlay);
+        } else {
+          sheet.style.transform = "translateY(calc(100% - 20px))";
+          overlay.style.opacity = "0";
+        }
+      }
+    };
+    sheet.__atelierIsOpen = () => isOpen;
+    sheet.__atelierSetOpen = (open) => {
+      isOpen = open;
+    };
+    handle.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      onStart(e.clientY);
+    });
+    handle.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      onStart(e.touches[0].clientY);
+    }, { passive: false });
+    document.addEventListener("mousemove", (e) => {
+      if (dragging) {
+        e.preventDefault();
+        onMove(e.clientY);
+      }
+    });
+    document.addEventListener("touchmove", (e) => {
+      if (dragging) {
+        e.preventDefault();
+        onMove(e.touches[0].clientY);
+      }
+    }, { passive: false });
+    document.addEventListener("mouseup", onEnd);
+    document.addEventListener("touchend", onEnd);
   }
   function initWidget() {
     const elements = document.querySelectorAll(

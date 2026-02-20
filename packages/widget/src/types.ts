@@ -1,9 +1,5 @@
 export interface WidgetDesignConfig {
-  backgroundImage?: string;
-  backgroundColor?: string;
-  theme?: "light" | "dark";
   button?: {
-    text?: string;
     color?: string;
     radius?: number;
     width?: number;
@@ -12,6 +8,13 @@ export interface WidgetDesignConfig {
     borderWidth?: number;
     borderColor?: string;
     shadow?: boolean;
+    imageUrl?: string;
+    imageRadius?: number;
+    hasImage?: boolean;
+    title?: string;
+    hasTitle?: boolean;
+    subtitle?: string;
+    hasSubtitle?: boolean;
   };
 }
 

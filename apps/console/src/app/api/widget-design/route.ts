@@ -12,11 +12,6 @@ import { getAuthenticatedUser } from "@/lib/auth/middleware";
 // DB行 → フロントエンド用の camelCase に変換
 function toApiFormat(row: Record<string, unknown>) {
   return {
-    backgroundImage: row.background_image ?? "",
-    backgroundColor: row.background_color ?? "#f5f5f5",
-    selectedModelId: row.model_id ?? "clo_model_men",
-    widgetTheme: row.theme ?? "light",
-    buttonText: row.button_text ?? "試着する",
     buttonColor: row.button_color ?? "#ffffff",
     buttonRadius: row.button_radius ?? 8,
     buttonWidth: row.button_width ?? 200,
@@ -25,17 +20,19 @@ function toApiFormat(row: Record<string, unknown>) {
     buttonBorderWidth: row.button_border_width ?? 0,
     buttonBorderColor: row.button_border_color ?? "#000000",
     buttonShadow: row.button_shadow ?? true,
+    buttonImageUrl: row.button_image_url ?? "",
+    buttonImageRadius: row.button_image_radius ?? 0,
+    hasImage: row.has_image ?? false,
+    buttonTitle: row.button_title ?? "試着する",
+    hasTitle: row.has_title ?? true,
+    buttonSubtitle: row.button_subtitle ?? "",
+    hasSubtitle: row.has_subtitle ?? false,
   };
 }
 
 // フロントエンド → DB行の snake_case に変換
 function toDbFormat(body: Record<string, unknown>) {
   const fields: Record<string, unknown> = {};
-  if (body.backgroundImage !== undefined) fields.background_image = body.backgroundImage;
-  if (body.backgroundColor !== undefined) fields.background_color = body.backgroundColor;
-  if (body.selectedModelId !== undefined) fields.model_id = body.selectedModelId;
-  if (body.widgetTheme !== undefined) fields.theme = body.widgetTheme;
-  if (body.buttonText !== undefined) fields.button_text = body.buttonText;
   if (body.buttonColor !== undefined) fields.button_color = body.buttonColor;
   if (body.buttonRadius !== undefined) fields.button_radius = body.buttonRadius;
   if (body.buttonWidth !== undefined) fields.button_width = body.buttonWidth;
@@ -44,6 +41,13 @@ function toDbFormat(body: Record<string, unknown>) {
   if (body.buttonBorderWidth !== undefined) fields.button_border_width = body.buttonBorderWidth;
   if (body.buttonBorderColor !== undefined) fields.button_border_color = body.buttonBorderColor;
   if (body.buttonShadow !== undefined) fields.button_shadow = body.buttonShadow;
+  if (body.buttonImageUrl !== undefined) fields.button_image_url = body.buttonImageUrl;
+  if (body.buttonImageRadius !== undefined) fields.button_image_radius = body.buttonImageRadius;
+  if (body.hasImage !== undefined) fields.has_image = body.hasImage;
+  if (body.buttonTitle !== undefined) fields.button_title = body.buttonTitle;
+  if (body.hasTitle !== undefined) fields.has_title = body.hasTitle;
+  if (body.buttonSubtitle !== undefined) fields.button_subtitle = body.buttonSubtitle;
+  if (body.hasSubtitle !== undefined) fields.has_subtitle = body.hasSubtitle;
   return fields;
 }
 

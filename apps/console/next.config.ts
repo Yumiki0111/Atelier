@@ -33,6 +33,10 @@ const nextConfig: NextConfig = {
             key: "Access-Control-Allow-Headers",
             value: "Content-Type",
           },
+          {
+            key: "Content-Type",
+            value: "model/gltf-binary", // GLBファイル用のContent-Type
+          },
         ],
       },
       {

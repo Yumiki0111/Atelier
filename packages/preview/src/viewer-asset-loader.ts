@@ -45,15 +45,68 @@ export async function loadAssetModel(
   }
 
   const format = getModelFormat(url);
-  const loader = format === "fbx" ? fbxLoader : gltfLoader;
-  debugLog.log("Starting to load asset model:", { url, format, category });
+  
+  // unknown形式の場合、URLから形式を判定
+  let actualFormat = format;
+  if (format === "unknown") {
+    const lowerUrl = url.toLowerCase();
+    if (lowerUrl.includes(".fbx")) {
+      actualFormat = "fbx";
+      debugLog.log("Format was unknown, but detected FBX from URL");
+    } else if (lowerUrl.includes(".glb") || lowerUrl.includes(".gltf")) {
+      actualFormat = "glb";
+      debugLog.log("Format was unknown, but detected GLB/GLTF from URL");
+    }
+  }
+  
+  const loader = actualFormat === "fbx" ? fbxLoader : gltfLoader;
+  debugLog.log("Starting to load asset model:", { url, format: actualFormat, category });
   
   const model = await new Promise<THREE.Group>((resolve, reject) => {
     loader.load(
       url,
       (loaded: any) => {
-        debugLog.log("Asset model loaded successfully:", { url, category });
-        resolve(format === "fbx" ? loaded : (loaded.scene || loaded));
+        const resolvedModel = actualFormat === "fbx" ? loaded : (loaded.scene || loaded);
+        
+        // FBXファイル内のオブジェクトを確認（モデルと服を分離するため）
+        if (actualFormat === "fbx" && resolvedModel) {
+          const objectNames: string[] = [];
+          const objectInfo: Array<{ name: string; type: string; children: number; meshCount: number }> = [];
+          
+          resolvedModel.traverse((child: any) => {
+            if (child.name) {
+              objectNames.push(child.name);
+              let meshCount = 0;
+              if (child instanceof THREE.Mesh || child instanceof THREE.SkinnedMesh) {
+                meshCount = 1;
+              }
+              child.traverse((descendant: any) => {
+                if (descendant instanceof THREE.Mesh || descendant instanceof THREE.SkinnedMesh) {
+                  meshCount++;
+                }
+              });
+              
+              objectInfo.push({
+                name: child.name,
+                type: child.constructor.name,
+                children: child.children?.length || 0,
+                meshCount: meshCount,
+              });
+            }
+          });
+          
+          debugLog.log("FBX file contents:", {
+            url,
+            category,
+            totalObjects: objectNames.length,
+            objectNames: objectNames,
+            objectInfo: objectInfo,
+            rootChildren: resolvedModel.children?.length || 0,
+          });
+        }
+        
+        debugLog.log("Asset model loaded successfully:", { url, category, format: actualFormat });
+        resolve(resolvedModel);
       },
       (progress) => {
         if (progress.lengthComputable && progress.total > 0) {
@@ -90,29 +143,72 @@ export function applyAssetTransform(
     baseModelTransform.originalSize.z
   );
 
-  // 単位変換係数の計算
-  let unitCorrection = 1;
+  debugLog.log("Asset transform calculation:", {
+    assetSize: { x: assetSize.x, y: assetSize.y, z: assetSize.z },
+    assetMaxDim,
+    baseOriginalSize: {
+      x: baseModelTransform.originalSize.x,
+      y: baseModelTransform.originalSize.y,
+      z: baseModelTransform.originalSize.z,
+    },
+    baseMaxDim,
+    baseScale: {
+      x: baseModelTransform.scale.x,
+      y: baseModelTransform.scale.y,
+      z: baseModelTransform.scale.z,
+    },
+  });
+
+  // アセットのスケーリング計算
+  // Blenderで同じ位置に配置されている場合、アセットはベースモデルと同じスケールで表示されるべき
+  // ただし、元のサイズが大きく異なる場合（単位が異なる場合、例：cm vs m）は補正が必要
+  
+  let assetScale: number;
+  
   if (baseMaxDim > 0 && assetMaxDim > 0) {
     const ratio = assetMaxDim / baseMaxDim;
-    if (ratio > 5 || ratio < 0.2) {
+    debugLog.log("Size ratio calculation:", { ratio, assetMaxDim, baseMaxDim });
+    
+    // 比率が非常に大きく異なる場合（100倍以上または1/100以下）は単位が異なる可能性がある
+    // その場合は単位変換を適用
+    if (ratio > 100 || ratio < 0.01) {
       const logRatio = Math.log10(ratio);
-      unitCorrection = 1 / Math.pow(10, Math.round(logRatio));
+      const unitCorrection = 1 / Math.pow(10, Math.round(logRatio));
+      assetScale = unitCorrection * baseModelTransform.scale.x;
+      debugLog.log("Unit correction applied:", { logRatio, unitCorrection, assetScale });
+    } else {
+      // 単位が同じ場合（Blenderで同じスケールで配置されている場合）
+      // 元サイズが異なっても、ベースモデルと同じスケールを適用する
+      // これにより、Blenderで同じスケールで配置されたアセットが正しく表示される
+      assetScale = baseModelTransform.scale.x;
+      debugLog.log("Using base model scale for asset:", { 
+        assetScale, 
+        ratio, 
+        baseMaxDim, 
+        assetMaxDim,
+        baseScale: baseModelTransform.scale.x 
+      });
     }
+  } else {
+    // フォールバック：ベースモデルと同じスケールを適用
+    assetScale = baseModelTransform.scale.x;
+    debugLog.log("Using base model scale as fallback:", { assetScale });
   }
 
   // トランスフォームの適用
   model.position.set(0, 0, 0);
   model.rotation.set(0, 0, 0);
-  
-  const baseScaleFactor = baseModelTransform.scale.x;
-  const combinedScale = unitCorrection * baseScaleFactor;
-  model.scale.set(combinedScale, combinedScale, combinedScale);
+  model.scale.set(assetScale, assetScale, assetScale);
 
   model.position.copy(baseModelTransform.position);
   model.rotation.copy(baseModelTransform.rotation);
   
   debugLog.log("Asset transform applied:", { 
     position: { x: model.position.x, y: model.position.y, z: model.position.z },
-    scale: { x: model.scale.x, y: model.scale.y, z: model.scale.z }
+    scale: { x: model.scale.x, y: model.scale.y, z: model.scale.z },
+    assetScale,
+    baseScaleFactor: baseModelTransform.scale.x,
+    baseMaxDim,
+    assetMaxDim,
   });
 }

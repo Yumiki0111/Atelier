@@ -13,7 +13,7 @@ export interface WidgetParams {
 
 /** 開発環境用のモックウィジェット設定を生成 */
 function createDevMockConfig(): WidgetConfig {
-  const glbUrl = "http://localhost:3000/3d/clo_model_men.glb";
+  const glbUrl = "http://localhost:3000/3d/Model.fbx";
   return {
     enabled: true,
     asset: {

@@ -13,11 +13,13 @@ import { PhoneFrame } from "./PhoneFrame";
 interface PreviewPanelProps {
   selectedProduct?: Product;
   selectedSize?: ProductSize;
+  customModelUrl?: string; // カスタムモデルURL（モデル生成機能用）
 }
 
 export function PreviewPanel({
   selectedProduct,
   selectedSize,
+  customModelUrl,
 }: PreviewPanelProps) {
   const { togglePreview } = useProductSelection();
   const [height, setHeight] = useState(170);
@@ -29,6 +31,8 @@ export function PreviewPanel({
 
   // 現在の3Dビューアに表示中のアセット（カテゴリ→URL のマッピング）
   const activeAssetsRef = useRef<Map<string, { url: string; category: string }>>(new Map());
+  // 前回の商品IDを追跡（商品変更を検知するため）
+  const previousProductIdRef = useRef<string | undefined>(selectedProduct?.id);
 
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const previewInstanceRef = useRef<PreviewPanelInstance | null>(null);
@@ -76,11 +80,16 @@ export function PreviewPanel({
       category: asset.category,
     });
 
-    // コートとジャケットは同じ階層なので、一方を選択したらもう一方を削除
+    // ジャケット、コート、トップスは同じレイヤーなので、一方を選択したら他方を削除
     if (asset.category === "コート") {
       activeAssetsRef.current.delete("ジャケット");
+      activeAssetsRef.current.delete("トップス");
     } else if (asset.category === "ジャケット") {
       activeAssetsRef.current.delete("コート");
+      activeAssetsRef.current.delete("トップス");
+    } else if (asset.category === "トップス") {
+      activeAssetsRef.current.delete("コート");
+      activeAssetsRef.current.delete("ジャケット");
     }
 
     // 全アクティブアセットを3Dビューアに反映
@@ -173,7 +182,10 @@ export function PreviewPanel({
     const currentProductName = selectedProduct?.name;
 
     // ベースモデル（人）のURLを指定（同じリグを持つモデル）
-    const baseModelUrl = "/3d/clo_model_men.glb";
+    const baseModelUrl = "/3d/Model.fbx";
+    
+    // カスタムモデルURLが指定されている場合はそれを優先
+    const modelUrl = customModelUrl || baseModelUrl;
 
     // 新しいインスタンスを初期化（初期化時はアセットなし、後でupdateAssetsで追加）
     // APIベースURLを取得（現在のオリジンを使用）
@@ -188,12 +200,12 @@ export function PreviewPanel({
     
     const instance = initPreviewPanel({
       container: previewContainerRef.current,
-      modelUrl: baseModelUrl, // ベースモデル（人）のURL
+      modelUrl: modelUrl, // カスタムモデルURLまたはベースモデル（人）のURL
       assets: [], // 初期化時は空、後でupdateAssetsで追加
       textureUrl: selectedProduct?.thumbnailUrl,
       apiBaseUrl, // APIベースURLを渡す（widgetと同じ）
       initialHeight: 170, // widgetと同じ固定値
-      minHeight: 150,
+      minHeight: 160,
       maxHeight: 190,
       availableSizes, // widgetと同じ固定値
       initialSize: currentSize,
@@ -211,6 +223,7 @@ export function PreviewPanel({
       },
       onModelLoad: () => {
         // モデル読み込み完了
+        console.log("[PreviewPanel] Model loaded successfully, isLoading = false");
       },
       onModelError: (error) => {
         if (process.env.NODE_ENV === "development") {
@@ -236,41 +249,44 @@ export function PreviewPanel({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProduct?.id]); // 商品が変更されたときのみ再初期化
+  }, [selectedProduct?.id]); // 商品が変更されたときのみ再初期化（customModelUrlはupdateModelUrlで更新）
 
   // サイズが変更されたときに、対応するアセットを更新
   // 注意: 初期化時（previewInstanceRef.currentがnullの場合）は実行しない
   useEffect(() => {
     // 初期化が完了している場合のみ更新
     if (previewInstanceRef.current) {
-      // activeAssetsRefを更新（現在の商品のアセット）
-      activeAssetsRef.current.clear();
+      // 商品が変更された場合は全てクリア
+      const productChanged = previousProductIdRef.current !== selectedProduct?.id;
+      if (productChanged) {
+        activeAssetsRef.current.clear();
+        previousProductIdRef.current = selectedProduct?.id;
+      }
       
-      // アセット情報を準備（カテゴリーごと、すべてのアセットを表示）
-      const assetList: Array<{ url: string; category?: string }> = [];
-      assetsByCategory.forEach((assetArray, _category) => {
-        assetArray.forEach((asset) => {
-          const url = asset.modelUrl || asset.glbUrl || "";
-          if (url) {
-            assetList.push({
-              url,
-              category: asset.category,
-            });
-            // activeAssetsRefにも登録
-            if (asset.category) {
-              activeAssetsRef.current.set(asset.category, {
+      // 新しいサイズのアセットで更新するカテゴリーを取得
+      const newSizeCategories = new Set<string>();
+      assetsByCategory.forEach((assetArray, category) => {
+        if (category) {
+          newSizeCategories.add(category);
+          // 新しいサイズのアセットで更新（最初のアセットを使用）
+          const firstAsset = assetArray[0];
+          if (firstAsset) {
+            const url = firstAsset.modelUrl || firstAsset.glbUrl || "";
+            if (url) {
+              activeAssetsRef.current.set(category, {
                 url,
-                category: asset.category,
+                category: category,
               });
             }
           }
-        });
+        }
       });
       
-      // アセットを更新
-      previewInstanceRef.current.updateAssets(assetList);
+      // 現在のactiveAssetsを全てviewerに反映（新しいサイズのアセット + ユーザーが選択した他のカテゴリー）
+      const allAssets = Array.from(activeAssetsRef.current.values());
+      previewInstanceRef.current.updateAssets(allAssets);
     }
-  }, [assetsByCategory, currentSize, selectedProduct?.name]);
+  }, [assetsByCategory, currentSize, selectedProduct?.id, selectedProduct?.name]);
 
   // サイズ変更時に着せ替えアセットも再取得
   useEffect(() => {
@@ -289,6 +305,14 @@ export function PreviewPanel({
       previewInstanceRef.current.updateHeight(height);
     }
   }, [height]);
+
+  // カスタムモデルURLが変更されたときに更新
+  useEffect(() => {
+    if (previewInstanceRef.current && customModelUrl) {
+      console.log("[PreviewPanel] Updating model URL to:", customModelUrl);
+      previewInstanceRef.current.updateModelUrl(customModelUrl);
+    }
+  }, [customModelUrl]);
 
 
   // Enterキーでモーダルが閉じるのを防ぐ
@@ -364,29 +388,26 @@ export function PreviewPanel({
         </div>
       )}
 
-      {/* Preview container - フレーム画像と赤枠、3Dプレビューを配置 */}
-      <div
-        className="flex-1 relative flex items-center justify-center p-6 bg-white overflow-hidden"
-      >
-        {/* PhoneFrame - フレーム画像と赤枠 */}
-        <PhoneFrame
-          previewContainerRef={previewContainerRef}
-          selectedAsset={selectedAsset}
-          borderRef={borderRef}
-        >
-          {/* 3Dプレビューコンテナ - 赤枠の中に配置 */}
-          <div
-            ref={previewContainerRef}
-            style={{
-              position: 'absolute',
-              left: '0px',
-              top: '0px',
-              width: '100%',
-              height: '100%',
-              zIndex: 10,
-            }}
-          />
-        </PhoneFrame>
+      {/* Preview container */}
+      <div className="flex-1 flex items-center justify-center bg-white overflow-hidden">
+        {/* PhoneFrame — モーフタブと同じ 260×560px に固定 */}
+        <div style={{ width: "260px", height: "560px", flexShrink: 0 }}>
+          <PhoneFrame
+            previewContainerRef={previewContainerRef}
+            selectedAsset={selectedAsset}
+            borderRef={borderRef}
+          >
+            <div
+              ref={previewContainerRef}
+              style={{
+                position: 'absolute',
+                left: 0, top: 0,
+                width: '100%', height: '100%',
+                zIndex: 10,
+              }}
+            />
+          </PhoneFrame>
+        </div>
       </div>
     </div>
   );

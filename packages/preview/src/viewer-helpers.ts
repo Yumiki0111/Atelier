@@ -29,7 +29,7 @@ export function calculateAndSetModelTransform(
 
   const modelHeight = boxAfterScale.max.y - boxAfterScale.min.y;
   const verticalOffset = modelHeight * 0.15;
-  const upwardOffset = 0.1; // モデルを上に移動させるオフセット
+  const upwardOffset = 0.3; // モデルを上に移動させるオフセット（下部切れ対策）
   model.position.set(-centerAfterScale.x, -centerAfterScale.y - verticalOffset + upwardOffset, -centerAfterScale.z);
 
   return {
@@ -46,17 +46,46 @@ export function calculateAndSetModelTransform(
  */
 export function enableShadow(object: THREE.Object3D): void {
   object.traverse((child) => {
-    if (child instanceof THREE.Mesh) {
+    if (child instanceof THREE.Mesh || child instanceof THREE.SkinnedMesh) {
       child.castShadow = true;
       child.receiveShadow = true;
 
       if (child.material) {
-        const material = child.material as THREE.MeshStandardMaterial;
-        if ('colorSpace' in material) {
-          (material as any).colorSpace = 'srgb';
-        } else if ('encoding' in material && (THREE as any).sRGBEncoding !== undefined) {
-          (material as any).encoding = (THREE as any).sRGBEncoding;
-        }
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        materials.forEach((material) => {
+          // すべてのマテリアルタイプに対応
+          if (material instanceof THREE.MeshStandardMaterial) {
+            // 色空間を設定
+            if ('colorSpace' in material) {
+              (material as any).colorSpace = 'srgb';
+            } else if ('encoding' in material && (THREE as any).sRGBEncoding !== undefined) {
+              (material as any).encoding = (THREE as any).sRGBEncoding;
+            }
+            
+            // 彩度と見やすさを向上させる設定
+            // roughnessを下げて光沢を上げる（より鮮やかに見える）
+            if (material.roughness !== undefined) {
+              material.roughness = Math.min(material.roughness * 0.8, 0.9);
+            }
+          } else if (material instanceof THREE.MeshPhongMaterial || 
+                     material instanceof THREE.MeshLambertMaterial ||
+                     material instanceof THREE.MeshBasicMaterial) {
+            // FBXファイルでよく使われるマテリアルタイプにも対応
+            // 色空間を設定
+            if ('colorSpace' in material) {
+              (material as any).colorSpace = 'srgb';
+            } else if ('encoding' in material && (THREE as any).sRGBEncoding !== undefined) {
+              (material as any).encoding = (THREE as any).sRGBEncoding;
+            }
+            
+            // マテリアルが黒（デフォルト）の場合は、肌色を設定しない（元の色を保持）
+            // マテリアルの色が設定されていない場合のみ、デフォルトの色を確認
+            if (material.color && material.color.getHex() === 0x000000) {
+              // 黒の場合は、元のマテリアルの色を保持（FBXファイルから読み込まれた色を使用）
+              // 何もしない（マテリアルの元の色を保持）
+            }
+          }
+        });
       }
     }
   });
@@ -66,10 +95,54 @@ export function enableShadow(object: THREE.Object3D): void {
  * ファイル拡張子からモデル形式を判定
  */
 export function getModelFormat(url: string): "glb" | "fbx" | "unknown" {
-  const lowerUrl = url.toLowerCase();
-  if (lowerUrl.endsWith(".glb") || lowerUrl.endsWith(".gltf")) return "glb";
-  if (lowerUrl.endsWith(".fbx")) return "fbx";
-  return "unknown";
+  try {
+    // URLからクエリパラメータを除去
+    const urlWithoutQuery = url.split("?")[0].split("#")[0];
+    const lowerUrl = urlWithoutQuery.toLowerCase();
+    
+    // 拡張子で判定
+    if (lowerUrl.endsWith(".glb") || lowerUrl.endsWith(".gltf")) return "glb";
+    if (lowerUrl.endsWith(".fbx")) return "fbx";
+    
+    // URLパスから拡張子を抽出（例: /path/to/file.fbx?query=...）
+    const pathMatch = lowerUrl.match(/\.(glb|gltf|fbx)(\?|#|$)/);
+    if (pathMatch) {
+      const ext = pathMatch[1];
+      if (ext === "glb" || ext === "gltf") return "glb";
+      if (ext === "fbx") return "fbx";
+    }
+    
+    // response-content-dispositionパラメータからファイル名を抽出
+    // パターン1: response-content-disposition=attachment; filename=default-filename.FBX
+    // パターン2: response-content-disposition=attachment%3B%20filename%3Ddefault-filename.FBX (URLエンコード)
+    const dispositionMatch = url.match(/response-content-disposition[^&]*filename[=*]'?"?([^"&'%]+)["']?/i);
+    if (dispositionMatch) {
+      // URLデコードが必要な場合がある
+      let filename = decodeURIComponent(dispositionMatch[1]).toLowerCase();
+      // さらにデコードが必要な場合（二重エンコード）
+      if (filename.includes('%')) {
+        filename = decodeURIComponent(filename).toLowerCase();
+      }
+      console.log("[getModelFormat] Extracted filename from disposition:", filename);
+      if (filename.endsWith(".glb") || filename.endsWith(".gltf")) return "glb";
+      if (filename.endsWith(".fbx")) return "fbx";
+    }
+    
+    // URL全体からFBXやGLBの文字列を検索（最後の手段）
+    if (lowerUrl.includes(".fbx") || lowerUrl.includes("filename") && lowerUrl.includes("fbx")) {
+      console.log("[getModelFormat] Detected FBX from URL content");
+      return "fbx";
+    }
+    if (lowerUrl.includes(".glb") || lowerUrl.includes(".gltf")) {
+      console.log("[getModelFormat] Detected GLB/GLTF from URL content");
+      return "glb";
+    }
+    
+    return "unknown";
+  } catch (error) {
+    console.warn("[getModelFormat] Error parsing URL:", url, error);
+    return "unknown";
+  }
 }
 
 /**
@@ -217,10 +290,12 @@ export function setupLights(scene: THREE.Scene): {
   directionalLight2: THREE.DirectionalLight;
   directionalLight3: THREE.DirectionalLight;
 } {
-  const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+  // アンビエントライトを少し明るくして、全体的な明るさを向上
+  const ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
   scene.add(ambientLight);
 
-  const directionalLight1 = new THREE.DirectionalLight(0xffffff, 2.5);
+  // メインのディレクショナルライトを強化（より明るく、彩度を上げる）
+  const directionalLight1 = new THREE.DirectionalLight(0xffffff, 3.0);
   directionalLight1.position.set(10, 10, 5);
   directionalLight1.castShadow = true;
   directionalLight1.shadow.mapSize.width = 4096;
@@ -235,11 +310,12 @@ export function setupLights(scene: THREE.Scene): {
   directionalLight1.shadow.radius = 4;
   scene.add(directionalLight1);
 
-  const directionalLight2 = new THREE.DirectionalLight(0xffffff, 1.2);
+  // 補助ライトも強化
+  const directionalLight2 = new THREE.DirectionalLight(0xffffff, 1.5);
   directionalLight2.position.set(-10, -10, -5);
   scene.add(directionalLight2);
 
-  const directionalLight3 = new THREE.DirectionalLight(0xffffff, 0.8);
+  const directionalLight3 = new THREE.DirectionalLight(0xffffff, 1.2);
   directionalLight3.position.set(0, 10, 0);
   scene.add(directionalLight3);
 

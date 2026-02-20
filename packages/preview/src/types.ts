@@ -50,8 +50,9 @@ export interface PreviewPanelInstance {
   updateModelUrl(modelUrl: string | undefined): void; // GLBとFBXの両方をサポート
   updateAssets(assets: Array<{ url: string; category?: string }>): void; // 着せ替え用アセットを更新
   updateOutfitAssets(data: OutfitAssetsData): void; // 着せ替えパネルのアセットデータを更新
-  updateHeight(height: number): void;
+  updateHeight(height: number, baseHeight?: number): void;
   updateSize(size: ProductSize): void;
   updateProductName(name: string): void; // 商品名を更新
+  toggleAsset?(category: string, visible?: boolean): void; // アセットの表示/非表示を切り替え
   destroy(): void;
 }

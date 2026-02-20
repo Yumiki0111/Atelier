@@ -47,7 +47,7 @@ export function AssetManagementDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2 h-9 min-w-[120px]">
+        <Button variant="outline" size="sm" className="gap-2 h-9 min-w-[120px] justify-start px-3">
           <Package className="h-4 w-4" />
           アセット管理
         </Button>

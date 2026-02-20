@@ -48,11 +48,7 @@ export async function GET(request: NextRequest) {
     }
 
     const design = {
-      backgroundImage: data.background_image || undefined,
-      backgroundColor: data.background_color || undefined,
-      theme: data.theme || "light",
       button: {
-        text: data.button_text || "試着する",
         color: data.button_color || "#ffffff",
         radius: data.button_radius ?? 8,
         width: data.button_width ?? 200,
@@ -61,6 +57,13 @@ export async function GET(request: NextRequest) {
         borderWidth: data.button_border_width ?? 0,
         borderColor: data.button_border_color || "#000000",
         shadow: data.button_shadow ?? true,
+        imageUrl: data.button_image_url || undefined,
+        imageRadius: data.button_image_radius ?? 0,
+        hasImage: data.has_image ?? false,
+        title: data.button_title || "試着する",
+        hasTitle: data.has_title ?? true,
+        subtitle: data.button_subtitle || undefined,
+        hasSubtitle: data.has_subtitle ?? false,
       },
     };
 

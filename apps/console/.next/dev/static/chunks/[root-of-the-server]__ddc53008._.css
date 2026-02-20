@@ -800,6 +800,10 @@
     margin-bottom: calc(var(--spacing) * 3);
   }
 
+  .mb-4 {
+    margin-bottom: calc(var(--spacing) * 4);
+  }
+
   .mb-6 {
     margin-bottom: calc(var(--spacing) * 6);
   }
@@ -854,6 +858,10 @@
 
   .table {
     display: table;
+  }
+
+  .aspect-\[500\/1080\] {
+    aspect-ratio: 500 / 1080;
   }
 
   .size-4 {
@@ -915,6 +923,10 @@
 
   .h-20 {
     height: calc(var(--spacing) * 20);
+  }
+
+  .h-\[600px\] {
+    height: 600px;
   }
 
   .h-\[var\(--radix-select-trigger-height\)\] {
@@ -1021,6 +1033,10 @@
     width: 140px;
   }
 
+  .w-\[calc\(\(100\%-3rem\)\/4\)\] {
+    width: calc(25% - .75rem);
+  }
+
   .w-\[calc\(\(100\%-3rem\)\/5\)\] {
     width: calc(20% - .6rem);
   }
@@ -1043,6 +1059,10 @@
 
   .max-w-6xl {
     max-width: var(--container-6xl);
+  }
+
+  .max-w-\[280px\] {
+    max-width: 280px;
   }
 
   .max-w-full {
@@ -1083,6 +1103,10 @@
 
   .flex-1 {
     flex: 1;
+  }
+
+  .flex-shrink {
+    flex-shrink: 1;
   }
 
   .flex-shrink-0, .shrink-0 {
@@ -1226,6 +1250,10 @@
     gap: calc(var(--spacing) * 4);
   }
 
+  .gap-6 {
+    gap: calc(var(--spacing) * 6);
+  }
+
   :where(.space-y-1 > :not(:last-child)) {
     --tw-space-y-reverse: 0;
     margin-block-start: calc(calc(var(--spacing) * 1) * var(--tw-space-y-reverse));
@@ -1341,6 +1369,21 @@
     border-bottom-width: 1px;
   }
 
+  .border-b-2 {
+    border-bottom-style: var(--tw-border-style);
+    border-bottom-width: 2px;
+  }
+
+  .border-l-2 {
+    border-left-style: var(--tw-border-style);
+    border-left-width: 2px;
+  }
+
+  .border-dashed {
+    --tw-border-style: dashed;
+    border-style: dashed;
+  }
+
   .border-amber-200 {
     border-color: var(--color-amber-200);
   }
@@ -1363,6 +1406,14 @@
 
   .border-gray-200 {
     border-color: var(--color-gray-200);
+  }
+
+  .border-gray-300 {
+    border-color: var(--color-gray-300);
+  }
+
+  .border-gray-900 {
+    border-color: var(--color-gray-900);
   }
 
   .border-green-200 {
@@ -1648,6 +1699,14 @@
     padding-top: calc(var(--spacing) * 0);
   }
 
+  .pt-2 {
+    padding-top: calc(var(--spacing) * 2);
+  }
+
+  .pt-3 {
+    padding-top: calc(var(--spacing) * 3);
+  }
+
   .pt-4 {
     padding-top: calc(var(--spacing) * 4);
   }
@@ -1674,6 +1733,10 @@
 
   .pl-2 {
     padding-left: calc(var(--spacing) * 2);
+  }
+
+  .pl-6 {
+    padding-left: calc(var(--spacing) * 6);
   }
 
   .pl-9 {
@@ -2093,6 +2156,12 @@
   }
 
   @media (hover: hover) {
+    .hover\:bg-blue-700:hover {
+      background-color: var(--color-blue-700);
+    }
+  }
+
+  @media (hover: hover) {
     .hover\:bg-destructive\/80:hover {
       background-color: var(--destructive);
     }
@@ -2363,8 +2432,16 @@
     translate: var(--tw-translate-x) var(--tw-translate-y);
   }
 
+  .data-\[state\=checked\]\:border-blue-600[data-state="checked"] {
+    border-color: var(--color-blue-600);
+  }
+
   .data-\[state\=checked\]\:bg-black[data-state="checked"] {
     background-color: var(--color-black);
+  }
+
+  .data-\[state\=checked\]\:bg-blue-600[data-state="checked"] {
+    background-color: var(--color-blue-600);
   }
 
   .data-\[state\=checked\]\:bg-foreground[data-state="checked"] {
@@ -2373,6 +2450,10 @@
 
   .data-\[state\=checked\]\:text-background[data-state="checked"] {
     color: var(--background);
+  }
+
+  .data-\[state\=checked\]\:text-white[data-state="checked"] {
+    color: var(--color-white);
   }
 
   .data-\[state\=closed\]\:animate-out[data-state="closed"] {
@@ -2520,6 +2601,36 @@
     .md\:text-sm {
       font-size: var(--text-sm);
       line-height: var(--tw-leading, var(--text-sm--line-height));
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .lg\:sticky {
+      position: sticky;
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .lg\:top-6 {
+      top: calc(var(--spacing) * 6);
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .lg\:col-span-1 {
+      grid-column: span 1 / span 1;
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .lg\:col-span-2 {
+      grid-column: span 2 / span 2;
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .lg\:grid-cols-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 
