@@ -28497,7 +28497,7 @@ void main() {
     });
   }
   function init3DViewer(container, options) {
-    const { glbUrl, modelUrl, assets, apiBaseUrl, targetSize = 2.6, onError } = options;
+    const { glbUrl, modelUrl, assets, apiBaseUrl, targetSize = 2.6, onLoad, onError } = options;
     const loadedAssets = /* @__PURE__ */ new Map();
     let baseModel = null;
     let isBaseModelLoaded = false;
@@ -29071,12 +29071,14 @@ void main() {
         const loadedCount = results.filter((r) => r !== null).length;
         debugLog.log("Assets loaded:", { total: sortedAssets.length, loaded: loadedCount, failed: sortedAssets.length - loadedCount });
         updateSceneWithAssets();
+        onLoad == null ? void 0 : onLoad();
       }).catch((error) => {
         console.error("[Atelier Preview] Error loading base model or assets:", error);
         onError == null ? void 0 : onError(error instanceof Error ? error : new Error(String(error)));
       });
     } else {
       baseModelLoadPromise = loadBaseModel(baseModelUrl).then(() => {
+        onLoad == null ? void 0 : onLoad();
       }).catch((error) => {
         console.error("[Atelier Preview] Error loading base model:", error);
         onError == null ? void 0 : onError(error instanceof Error ? error : new Error(String(error)));
@@ -29788,12 +29790,13 @@ void main() {
     contentArea.style.cssText = "flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;";
     const spinWrap = document.createElement("div");
     spinWrap.style.cssText = "flex:1;display:flex;align-items:center;justify-content:center;";
-    const spin = document.createElement("div");
+    const spin = document.createElement("img");
+    spin.src = `${getApiBaseUrl()}/logo.png`;
+    spin.alt = "";
     spin.style.cssText = `
-    width:36px;height:36px;
-    border:3px solid #f0f0f0;border-top-color:#333;
-    border-radius:50%;
-    animation:atelier-spin 0.8s linear infinite;
+    width:56px;height:56px;
+    object-fit:contain;
+    animation:atelier-spin 2s linear infinite;
   `;
     spinWrap.appendChild(spin);
     contentArea.appendChild(spinWrap);
@@ -29811,7 +29814,7 @@ void main() {
     if (!overlay || !contentArea) return;
     injectStyles();
     contentArea.innerHTML = "";
-    contentArea.style.cssText = "flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;";
+    contentArea.style.cssText = "flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;position:relative;";
     const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const eshopId = params.shopId || void 0;
     if (eshopId && eshopId !== "unknown") {
@@ -29841,6 +29844,8 @@ void main() {
     display: flex; flex-direction: column;
     align-items: center; gap: 8px;
     z-index: 20;
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
   `;
     const sliderPanel = document.createElement("div");
     sliderPanel.style.cssText = `
@@ -29848,12 +29853,14 @@ void main() {
     width: 28px; height: 180px;
     display: flex; flex-direction: column; align-items: center;
     user-select: none; touch-action: none; z-index: 20;
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
   `;
     viewerArea.appendChild(viewerEl);
     viewerArea.appendChild(leftPanel);
     viewerArea.appendChild(sliderPanel);
     const bottomPanel = document.createElement("div");
-    bottomPanel.style.cssText = "flex-shrink:0;background:#fff;";
+    bottomPanel.style.cssText = "flex-shrink:0;background:#fff;opacity:0;transition:opacity 0.3s ease-out;";
     const sizeRow = document.createElement("div");
     sizeRow.style.cssText = `
     display: flex; align-items: center; justify-content: center;
@@ -29921,6 +29928,32 @@ void main() {
         if (cleanup2) cleanup2.fn();
       });
     }
+    const loadingOverlay = document.createElement("div");
+    loadingOverlay.style.cssText = `
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    z-index: 30;
+    pointer-events: none;
+  `;
+    const loadingLogoEl = document.createElement("img");
+    loadingLogoEl.src = `${apiBaseUrl}/logo.png`;
+    loadingLogoEl.alt = "";
+    loadingLogoEl.style.cssText = `
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    animation: atelier-spin 2s linear infinite;
+    pointer-events: auto;
+  `;
+    loadingOverlay.appendChild(loadingLogoEl);
+    contentArea.appendChild(loadingOverlay);
     let heightValue = 170;
     const MIN_H = 160, MAX_H = 190;
     let viewer = null;
@@ -29929,12 +29962,33 @@ void main() {
       heightValue = h;
       (_a4 = viewer == null ? void 0 : viewer.updateHeight) == null ? void 0 : _a4.call(viewer, h, 170);
     });
+    function buildAssetList(size) {
+      var _a4, _b2;
+      const arr = ((_b2 = (_a4 = config.asset) == null ? void 0 : _a4.sizes) == null ? void 0 : _b2[size]) || [];
+      return arr.map((a) => ({ url: a.modelUrl || a.glbUrl || "", category: a.category })).filter((a) => a.url);
+    }
+    let initialAssetsLoaded = false;
     const baseModelUrl = `${apiBaseUrl}/3d/Model.fbx`;
     viewer = init3DViewer(viewerEl, {
       modelUrl: baseModelUrl,
-      assets: [],
+      assets: buildAssetList(currentSize),
+      // 初期服も一緒に渡して onLoad まで待つ
       apiBaseUrl,
+      onLoad: () => {
+        loadingOverlay.style.transition = "opacity 0.3s ease-out";
+        loadingOverlay.style.opacity = "0";
+        setTimeout(() => {
+          if (loadingOverlay.parentNode) loadingOverlay.remove();
+        }, 300);
+        leftPanel.style.opacity = "1";
+        sliderPanel.style.opacity = "1";
+        bottomPanel.style.opacity = "1";
+      },
       onError: (err2) => {
+        if (loadingOverlay.parentNode) loadingOverlay.remove();
+        leftPanel.style.opacity = "1";
+        sliderPanel.style.opacity = "1";
+        bottomPanel.style.opacity = "1";
         if (isDevelopmentMode()) console.error("[Atelier Widget] 3D error:", err2);
       }
     });
@@ -29947,11 +30001,6 @@ void main() {
     renderLeftPanelLocal();
     renderCatTabsLocal();
     renderThumbsLocal();
-    function buildAssetList(size) {
-      var _a4, _b2;
-      const arr = ((_b2 = (_a4 = config.asset) == null ? void 0 : _a4.sizes) == null ? void 0 : _b2[size]) || [];
-      return arr.map((a) => ({ url: a.modelUrl || a.glbUrl || "", category: a.category })).filter((a) => a.url);
-    }
     function loadInitialAssets() {
       activeAssets.clear();
       const list = buildAssetList(currentSize);
@@ -29960,7 +30009,11 @@ void main() {
           activeAssets.set(a.category, { id: a.category, url: a.url, thumbnailUrl: null, productName: "", category: a.category });
         }
       });
-      viewer == null ? void 0 : viewer.updateAssets(list);
+      if (initialAssetsLoaded) {
+        viewer == null ? void 0 : viewer.updateAssets(list);
+      } else {
+        initialAssetsLoaded = true;
+      }
     }
     function onSizeChange(size) {
       const newSizeAssets = buildAssetList(size);

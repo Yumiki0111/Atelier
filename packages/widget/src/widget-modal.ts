@@ -88,12 +88,13 @@ export function renderModalWithLoading(
 
   const spinWrap = document.createElement("div");
   spinWrap.style.cssText = "flex:1;display:flex;align-items:center;justify-content:center;";
-  const spin = document.createElement("div");
+  const spin = document.createElement("img");
+  spin.src = `${getApiBaseUrl()}/logo.png`;
+  spin.alt = "";
   spin.style.cssText = `
-    width:36px;height:36px;
-    border:3px solid #f0f0f0;border-top-color:#333;
-    border-radius:50%;
-    animation:atelier-spin 0.8s linear infinite;
+    width:56px;height:56px;
+    object-fit:contain;
+    animation:atelier-spin 2s linear infinite;
   `;
   spinWrap.appendChild(spin);
   contentArea.appendChild(spinWrap);
@@ -125,7 +126,7 @@ export function updateModalWithConfig(
   injectStyles();
 
   contentArea.innerHTML = "";
-  contentArea.style.cssText = "flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;";
+  contentArea.style.cssText = "flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;position:relative;";
 
   /* ── analytics ── */
   const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -176,6 +177,8 @@ export function updateModalWithConfig(
     display: flex; flex-direction: column;
     align-items: center; gap: 8px;
     z-index: 20;
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
   `;
 
   /* ── height slider overlay (absolute, bottom-right) ── */
@@ -185,6 +188,8 @@ export function updateModalWithConfig(
     width: 28px; height: 180px;
     display: flex; flex-direction: column; align-items: center;
     user-select: none; touch-action: none; z-index: 20;
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
   `;
 
   viewerArea.appendChild(viewerEl);
@@ -193,7 +198,7 @@ export function updateModalWithConfig(
 
   /* ── bottom panel ── */
   const bottomPanel = document.createElement("div");
-  bottomPanel.style.cssText = "flex-shrink:0;background:#fff;";
+  bottomPanel.style.cssText = "flex-shrink:0;background:#fff;opacity:0;transition:opacity 0.3s ease-out;";
 
   /* ── size row  ‹ M › ── */
   const sizeRow = document.createElement("div");
@@ -274,6 +279,36 @@ export function updateModalWithConfig(
     });
   }
 
+  // モデルと服が完全に表示されるまでローディングオーバーレイを表示
+  // contentArea に配置して viewerArea 全体を覆う（viewerArea のレイアウト変更の影響を受けない）
+  const loadingOverlay = document.createElement("div");
+  loadingOverlay.style.cssText = `
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    z-index: 30;
+    pointer-events: none;
+  `;
+  const loadingLogoEl = document.createElement("img");
+  loadingLogoEl.src = `${apiBaseUrl}/logo.png`;
+  loadingLogoEl.alt = "";
+  loadingLogoEl.style.cssText = `
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    animation: atelier-spin 2s linear infinite;
+    pointer-events: auto;
+  `;
+  loadingOverlay.appendChild(loadingLogoEl);
+  // contentArea に追加（viewerArea のレイアウト変更の影響を受けない）
+  contentArea.appendChild(loadingOverlay);
+
   // ─── Height slider ──────────────────────────────────────
   let heightValue = 170;
   const MIN_H = 160, MAX_H = 190;
@@ -284,14 +319,42 @@ export function updateModalWithConfig(
     viewer?.updateHeight?.(h, 170);
   });
 
+  // ─── Helpers (defined early for use in init3DViewer) ────────────────────────────────────────────
+
+  function buildAssetList(size: string) {
+    const arr = (config.asset?.sizes?.[size] || []) as Array<{ glbUrl?: string; modelUrl?: string; category?: string }>;
+    return arr
+      .map((a) => ({ url: a.modelUrl || a.glbUrl || "", category: a.category }))
+      .filter((a) => a.url);
+  }
+
+  // 初回は init3DViewer に assets を渡済みなので viewer.updateAssets を重複実行しない
+  let initialAssetsLoaded = false;
+
   // ─── 3D viewer ─────────────────────────────────────────
   const baseModelUrl = `${apiBaseUrl}/3d/Model.fbx`;
+
   viewer = init3DViewer(viewerEl as HTMLElement, {
     modelUrl: baseModelUrl,
-    assets: [],
+    assets: buildAssetList(currentSize),   // 初期服も一緒に渡して onLoad まで待つ
     apiBaseUrl,
-    onLoad: () => {},
+    onLoad: () => {
+      // ローディングオーバーレイをフェードアウト
+      loadingOverlay.style.transition = "opacity 0.3s ease-out";
+      loadingOverlay.style.opacity = "0";
+      setTimeout(() => { if (loadingOverlay.parentNode) loadingOverlay.remove(); }, 300);
+      
+      // モーダル内の全要素をフェードイン
+      leftPanel.style.opacity = "1";
+      sliderPanel.style.opacity = "1";
+      bottomPanel.style.opacity = "1";
+    },
     onError: (err) => {
+      if (loadingOverlay.parentNode) loadingOverlay.remove();
+      // エラー時も要素を表示
+      leftPanel.style.opacity = "1";
+      sliderPanel.style.opacity = "1";
+      bottomPanel.style.opacity = "1";
       if (isDevelopmentMode()) console.error("[Atelier Widget] 3D error:", err);
     },
   });
@@ -309,13 +372,6 @@ export function updateModalWithConfig(
 
   // ─── Helpers ────────────────────────────────────────────
 
-  function buildAssetList(size: string) {
-    const arr = (config.asset?.sizes?.[size] || []) as Array<{ glbUrl?: string; modelUrl?: string; category?: string }>;
-    return arr
-      .map((a) => ({ url: a.modelUrl || a.glbUrl || "", category: a.category }))
-      .filter((a) => a.url);
-  }
-
   function loadInitialAssets() {
     activeAssets.clear();
     const list = buildAssetList(currentSize);
@@ -324,7 +380,12 @@ export function updateModalWithConfig(
         activeAssets.set(a.category, { id: a.category, url: a.url, thumbnailUrl: null, productName: "", category: a.category });
       }
     });
-    viewer?.updateAssets(list);
+    if (initialAssetsLoaded) {
+      viewer?.updateAssets(list);
+    } else {
+      // 初回: init3DViewer に渡し済みなので updateAssets はスキップ
+      initialAssetsLoaded = true;
+    }
   }
 
   function onSizeChange(size: string) {
