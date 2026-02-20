@@ -29609,9 +29609,9 @@ void main() {
     const leftPanel = document.createElement("div");
     leftPanel.setAttribute("data-atelier-left-panel", "true");
     leftPanel.style.cssText = `
-    position: absolute; top: 8px; left: 6px;
+    position: absolute; top: 12px; left: 10px;
     display: flex; flex-direction: column;
-    align-items: center; gap: 6px;
+    align-items: center; gap: 8px;
     z-index: 20;
   `;
     const sliderPanel = document.createElement("div");
@@ -29629,15 +29629,15 @@ void main() {
     const sizeRow = document.createElement("div");
     sizeRow.style.cssText = `
     display: flex; align-items: center; justify-content: center;
-    gap: 8px; padding: 1px 16px 1px;
+    gap: 10px; padding: 4px 20px 4px;
   `;
     const prevBtn = makeArrowBtn("‹");
     const sizeLabel = document.createElement("div");
     sizeLabel.style.cssText = `
-    min-width: 40px; padding: 4px 12px;
-    text-align: center; font-size: 13px; font-weight: 700;
+    min-width: 48px; padding: 6px 14px;
+    text-align: center; font-size: 15px; font-weight: 700;
     color: #fff; background: #3b82f6;
-    border-radius: 4px;
+    border-radius: 6px;
   `;
     sizeLabel.textContent = currentSize;
     const nextBtn = makeArrowBtn("›");
@@ -29664,9 +29664,9 @@ void main() {
     outfitPanelEl.style.cssText = "flex-shrink:0;display:flex;flex-direction:column;background:#fff;";
     const thumbsRow = document.createElement("div");
     thumbsRow.setAttribute("data-atelier-outfit-scroll", "true");
-    thumbsRow.style.cssText = "display:flex;gap:6px;padding:2px 10px 2px;overflow-x:auto;overflow-y:hidden;";
+    thumbsRow.style.cssText = "display:flex;gap:8px;padding:4px 12px 4px;overflow-x:auto;overflow-y:hidden;";
     const catTabs = document.createElement("div");
-    catTabs.style.cssText = "display:flex;gap:2px;padding:2px 10px 5px;overflow-x:auto;";
+    catTabs.style.cssText = "display:flex;gap:4px;padding:4px 12px 8px;overflow-x:auto;";
     outfitPanelEl.appendChild(thumbsRow);
     outfitPanelEl.appendChild(catTabs);
     bottomPanel.appendChild(sizeRow);
@@ -29789,20 +29789,20 @@ void main() {
         const isActive = cat === currentCategory;
         const card = document.createElement("div");
         card.style.cssText = `
-        width: 30px; height: 30px; flex-shrink: 0;
+        width: 44px; height: 44px; flex-shrink: 0;
         border: 2px solid ${isActive ? "#3b82f6" : "#e5e7eb"};
-        border-radius: 6px;
+        border-radius: 8px;
         background: rgba(249,250,251,0.9);
         display: flex; align-items: center; justify-content: center;
         cursor: pointer; overflow: hidden; box-sizing: border-box;
       `;
         const imgWrap = document.createElement("div");
         imgWrap.style.cssText = `
-        width: 24px; height: 24px; flex-shrink: 0;
-        border-radius: 3px; background: #f3f4f6;
+        width: 36px; height: 36px; flex-shrink: 0;
+        border-radius: 4px; background: #f3f4f6;
         overflow: hidden;
         display: flex; align-items: center; justify-content: center;
-        font-size: 8px; color: #9ca3af;
+        font-size: 10px; color: #9ca3af;
       `;
         if (asset == null ? void 0 : asset.thumbnailUrl) {
           const img = document.createElement("img");
@@ -29831,8 +29831,8 @@ void main() {
         const btn = document.createElement("button");
         btn.textContent = cat;
         btn.style.cssText = `
-        padding: 3px 8px;
-        font-size: 9px; font-weight: ${isActive ? "700" : "500"};
+        padding: 6px 12px;
+        font-size: 12px; font-weight: ${isActive ? "700" : "500"};
         color: ${isActive ? "#fff" : "#374151"};
         background: ${isActive ? "#111" : "transparent"};
         border: none; border-radius: 99px;
@@ -29855,7 +29855,7 @@ void main() {
       if (items.length === 0) {
         const msg = document.createElement("div");
         msg.textContent = "アイテムがありません";
-        msg.style.cssText = "font-size:11px;color:#9ca3af;padding:8px;align-self:center;";
+        msg.style.cssText = "font-size:13px;color:#9ca3af;padding:12px;align-self:center;";
         thumbsRow.appendChild(msg);
         return;
       }
@@ -29864,8 +29864,8 @@ void main() {
         const isSelected = item.id === selectedAssetId && ((_a4 = activeAssets.get(item.category)) == null ? void 0 : _a4.id) === item.id;
         const card = document.createElement("div");
         card.style.cssText = `
-        width: 38px; min-width: 38px; height: 38px;
-        border-radius: 7px; background: #fff;
+        width: 50px; min-width: 50px; height: 50px;
+        border-radius: 8px; background: #fff;
         border: 2px solid ${isSelected ? "#3b82f6" : "#e5e7eb"};
         display: flex; align-items: center; justify-content: center;
         cursor: pointer; overflow: hidden;
@@ -29874,11 +29874,11 @@ void main() {
       `;
         const imgWrap = document.createElement("div");
         imgWrap.style.cssText = `
-        width: 28px; height: 28px; flex-shrink: 0;
-        border-radius: 3px; background: #f3f4f6;
+        width: 40px; height: 40px; flex-shrink: 0;
+        border-radius: 4px; background: #f3f4f6;
         overflow: hidden;
         display: flex; align-items: center; justify-content: center;
-        font-size: 8px; color: #9ca3af;
+        font-size: 10px; color: #9ca3af;
       `;
         if (item.thumbnailUrl) {
           const img = document.createElement("img");
@@ -29945,9 +29945,9 @@ void main() {
     const btn = document.createElement("button");
     btn.textContent = symbol;
     btn.style.cssText = `
-    width: 22px; height: 22px;
+    width: 32px; height: 32px;
     background: transparent; border: none; outline: none;
-    cursor: pointer; font-size: 18px; color: #111;
+    cursor: pointer; font-size: 22px; color: #111;
     display: flex; align-items: center; justify-content: center;
     line-height: 1; padding: 0; border-radius: 50%;
     transition: background 0.15s;
