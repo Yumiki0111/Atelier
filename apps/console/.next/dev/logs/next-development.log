@@ -49456,3 +49456,8 @@ Import traces:
 [07:40:48.353] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "g1771040664"
 [07:40:49.115] Server  LOG     [widget-config API] Response: "{\n  \"productId\": \"86e82384-1435-46db-a033-86a85d42ff19\",\n  \"externalProductId\": \"g1771040664\",\n  \"defaultSize\": \"M\",\n  \"sizesKeys\": [\n    \"M\"\n  ],\n  \"sizesCount\": 1,\n  \"sizes\": {\n    \"M\": [\n      {\n        \"hasModelUrl\": true,\n        \"hasGlbUrl\": true,\n        \"category\": \"ジャケット\"\n      }\n    ]\n  }\n}"
 [07:40:55.714] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "g1771040664"
+[07:49:57.475] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "g1771040664"
+[07:50:01.166] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "g1771040664"
+[07:52:07.597] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "g1771040664"
+[07:52:09.677] Server  WARN    [Events API] Invalid productId format (not UUID), setting to null: "g1771040664"
+[07:52:10.460] Server  LOG     [widget-config API] Response: "{\n  \"productId\": \"86e82384-1435-46db-a033-86a85d42ff19\",\n  \"externalProductId\": \"g1771040664\",\n  \"defaultSize\": \"M\",\n  \"sizesKeys\": [\n    \"M\"\n  ],\n  \"sizesCount\": 1,\n  \"sizes\": {\n    \"M\": [\n      {\n        \"hasModelUrl\": true,\n        \"hasGlbUrl\": true,\n        \"category\": \"ジャケット\"\n      }\n    ]\n  }\n}"
