@@ -182,7 +182,8 @@ export function PreviewPanel({
     const currentProductName = selectedProduct?.name;
 
     // ベースモデル（人）のURLを指定（同じリグを持つモデル）
-    const baseModelUrl = "/3d/Model.fbx";
+    // 生成側と揃えるため、model_test.glb を使用する
+    const baseModelUrl = "/3d/model_test.glb";
     
     // カスタムモデルURLが指定されている場合はそれを優先
     const modelUrl = customModelUrl || baseModelUrl;
@@ -353,8 +354,7 @@ export function PreviewPanel({
   return (
     <div 
       ref={rootRef}
-      className="flex h-screen flex-col overflow-hidden bg-white" 
-      style={{ width: '400px' }}
+      className="flex h-screen w-[400px] overflow-hidden bg-white" 
       onKeyDownCapture={(e) => {
         if (e.key === "Enter") {
           const activeElement = document.activeElement;
@@ -369,29 +369,16 @@ export function PreviewPanel({
         }
       }}
     >
-      {/* Header */}
-      <div className="px-6 pt-6 pb-4 flex items-center justify-between border-b bg-white">
-        <h2 className="text-lg font-semibold">プレビュー</h2>
-        <button
-          onClick={togglePreview}
-          className="rounded-lg p-1.5 hover:bg-gray-100 transition-colors"
-          aria-label="プレビューを閉じる"
+      {/* Preview container - PhoneFrameのみを表示（ヘッダーなし） */}
+      <div className="w-full h-full flex items-center justify-center bg-white overflow-hidden">
+        {/* PhoneFrame — iPhone XRサイズ (414 x 896) の75%で固定表示 */}
+        <div 
+          style={{ 
+            width: "310.5px", // 414px * 0.75
+            height: "672px", // 896px * 0.75
+            flexShrink: 0,
+          }}
         >
-          <X className="h-5 w-5" />
-        </button>
-      </div>
-
-      {/* Product info */}
-      {selectedProduct && (
-        <div className="px-6 py-3 text-sm text-gray-600 border-b bg-gray-50">
-          <p className="font-medium">{selectedProduct.name}</p>
-        </div>
-      )}
-
-      {/* Preview container */}
-      <div className="flex-1 flex items-center justify-center bg-white overflow-hidden">
-        {/* PhoneFrame — モーフタブと同じ 260×560px に固定 */}
-        <div style={{ width: "260px", height: "560px", flexShrink: 0 }}>
           <PhoneFrame
             previewContainerRef={previewContainerRef}
             selectedAsset={selectedAsset}
@@ -402,8 +389,10 @@ export function PreviewPanel({
               style={{
                 position: 'absolute',
                 left: 0, top: 0,
-                width: '100%', height: '100%',
+                width: '100%', 
+                height: '100%',
                 zIndex: 10,
+                boxSizing: 'border-box',
               }}
             />
           </PhoneFrame>

@@ -12,6 +12,29 @@ import {
 } from "./viewer-helpers";
 import { debugLog } from "./viewer-debug";
 import { loadAssetModel, applyAssetTransform, type BaseModelTransform } from "./viewer-asset-loader";
+import { applyStaticFit, cleanupStaticFit } from "./static-fit";
+
+/**
+ * 軸ラベル用のスプライトを作成
+ */
+function createAxisLabel(text: string, color: number): THREE.Sprite {
+  const canvas = document.createElement("canvas");
+  canvas.width = 64;
+  canvas.height = 64;
+  const context = canvas.getContext("2d");
+  if (context) {
+    context.fillStyle = `#${color.toString(16).padStart(6, "0")}`;
+    context.font = "bold 48px Arial";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(text, 32, 32);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+  const sprite = new THREE.Sprite(spriteMaterial);
+  sprite.scale.set(0.1, 0.1, 1);
+  return sprite;
+}
 
 /**
  * アセット情報（着せ替え用）
@@ -47,6 +70,7 @@ export interface ViewerInstance {
   updateMorphTarget?(morphTargetName: string, value: number): void;
   updateHeight?(height: number, baseHeight?: number): void;
   toggleAsset?(category: string, visible?: boolean): void; // アセットの表示/非表示を切り替え
+  getCameraRotation?(): { quaternion: THREE.Quaternion; position: THREE.Vector3 } | null; // カメラの回転情報を取得
   destroy(): void;
 }
 
@@ -99,6 +123,8 @@ export function init3DViewer(
     bottom: number; // ボトムス用の基準点（腰の位置）
     center: number; // その他用の基準点（モデルの中心）
   } | null = null;
+  // XYZ軸のグループ（カメラの子要素として配置）
+  let axisGroup: THREE.Group | null = null;
 
   // コンテナサイズ
   const getContainerSize = () => ({
@@ -109,7 +135,7 @@ export function init3DViewer(
 
   // Scene
   const scene = new THREE.Scene();
-  scene.background = null;
+  scene.background = new THREE.Color(0xffffff); // 白背景（スタジオ感を影で表現）
 
   // Camera
   const camera = new THREE.PerspectiveCamera(50, initialWidth / initialHeight, 0.1, 1000);
@@ -139,17 +165,13 @@ export function init3DViewer(
     };
   }
 
-  // Renderer設定
-  if ('outputColorSpace' in renderer) {
-    (renderer as any).outputColorSpace = 'srgb';
-  } else if ('outputEncoding' in renderer && (THREE as any).sRGBEncoding !== undefined) {
-    (renderer as any).outputEncoding = (THREE as any).sRGBEncoding;
-  }
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 2.0; // より明るく、彩度を上げる
+  // Renderer設定（generate側の見え方に寄せる）
+  renderer.toneMapping = THREE.NoToneMapping;
+  renderer.toneMappingExposure = 1.0;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.shadowMap.autoUpdate = true;
+  renderer.shadowMap.needsUpdate = true; // シャドウマップを強制的に更新
   renderer.setClearColor(0x000000, 0);
 
   // Canvas設定
@@ -160,9 +182,9 @@ export function init3DViewer(
   canvasElement.style.zIndex = "1";
   container.appendChild(canvasElement);
 
-  // ライト・地面
+  // ライト・地面（初期位置は後でモデルの足元に合わせて更新）
   setupLights(scene);
-  const { ground, groundGeometry, groundMaterial } = createGround(scene);
+  let { ground, groundGeometry, groundMaterial } = createGround(scene);
 
   // レンダリング関数
   function render() {
@@ -193,13 +215,14 @@ export function init3DViewer(
         });
       });
       
+      // XYZ軸はHTML要素として表示するため、ここでは何もしない
+      
       renderer.render(scene, camera);
     } catch (error) {
       console.error("[Atelier Preview] Error rendering:", error);
     }
   }
 
-  // カメラ制御
   const initialSpherical = new THREE.Spherical();
   initialSpherical.setFromVector3(camera.position);
   setupOrbitControls(canvasElement, camera, initialSpherical.phi, initialRadius, render);
@@ -669,6 +692,134 @@ export function init3DViewer(
       
       scene.add(baseModel);
 
+      // ── 地面の位置をモデルの足元に合わせて更新 ──
+      // モデルの位置調整後、実際のワールド座標での最下点を取得
+      // モデルがシーンに追加された後、ワールド座標を更新
+      model.updateMatrixWorld(true);
+      // ローカル座標での最下点をワールド座標に変換
+      const localMinPoint = new THREE.Vector3(0, box.min.y, 0);
+      const worldMinPoint = model.localToWorld(localMinPoint.clone());
+      const modelFootY = worldMinPoint.y; // ワールド座標でのモデルの最下点（足元）
+      ground.position.y = modelFootY;
+      
+      // シャドウカメラの位置を地面の位置に合わせて調整
+      // すべてのDirectionalLightのシャドウカメラを更新
+      scene.traverse((child) => {
+        if (child instanceof THREE.DirectionalLight && child.castShadow) {
+          // シャドウカメラの位置を地面の位置に合わせて調整
+          const shadowCamera = child.shadow.camera;
+          const shadowRange = 10; // シャドウの範囲
+          shadowCamera.left = -shadowRange;
+          shadowCamera.right = shadowRange;
+          shadowCamera.top = shadowRange;
+          shadowCamera.bottom = -shadowRange;
+          shadowCamera.near = 0.1;
+          shadowCamera.far = 50;
+          // シャドウカメラの位置を地面の少し上に設定
+          shadowCamera.position.set(0, modelFootY + 5, 0);
+          shadowCamera.lookAt(0, modelFootY, 0);
+          shadowCamera.updateProjectionMatrix();
+        }
+      });
+      
+      // ワールド座標でのバウンディングボックスも計算（ログ用）
+      const worldBox = new THREE.Box3().setFromObject(model);
+      console.log("[Atelier Preview] Ground position updated to model foot level:", {
+        modelFootY,
+        worldBoxMin: worldBox.min.y,
+        worldBoxMax: worldBox.max.y,
+        modelPosition: model.position.y,
+        localBoxMin: box.min.y,
+        localMinPoint: localMinPoint.y,
+        worldMinPoint: worldMinPoint.y,
+      });
+
+      // ── XYZ軸を右上に固定（カメラの子要素として配置） ──
+      // 軸の長さ（モデルのスケールに合わせて調整、小さめに）
+      const axisLength = 0.15; // 15cm（小さめ）
+      
+      // カスタムXYZ軸を作成（Blender風：X=赤、Y=オリーブグリーン、Z=青）
+      axisGroup = new THREE.Group();
+      
+      // X軸（赤）- 右方向
+      const xAxisGeometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(axisLength, 0, 0)
+      ]);
+      const xAxisMaterial = new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 2 });
+      const xAxis = new THREE.Line(xAxisGeometry, xAxisMaterial);
+      axisGroup.add(xAxis);
+      
+      // X軸の円形ノード
+      const xNodeGeometry = new THREE.CircleGeometry(0.02, 16);
+      const xNodeMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      const xNode = new THREE.Mesh(xNodeGeometry, xNodeMaterial);
+      xNode.rotation.x = -Math.PI / 2; // 水平に配置
+      xNode.position.set(axisLength, 0, 0);
+      axisGroup.add(xNode);
+      
+      // X軸ラベル
+      const xLabel = createAxisLabel("X", 0xff0000);
+      xLabel.position.set(axisLength + 0.03, 0, 0);
+      axisGroup.add(xLabel);
+      
+      // Y軸（オリーブグリーン）- 左方向
+      const yAxisGeometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(-axisLength * 0.7, 0, 0)
+      ]);
+      const yAxisMaterial = new THREE.LineBasicMaterial({ color: 0x808000, linewidth: 2 });
+      const yAxis = new THREE.Line(yAxisGeometry, yAxisMaterial);
+      axisGroup.add(yAxis);
+      
+      // Y軸の円形ノード
+      const yNodeGeometry = new THREE.CircleGeometry(0.02, 16);
+      const yNodeMaterial = new THREE.MeshBasicMaterial({ color: 0x808000 });
+      const yNode = new THREE.Mesh(yNodeGeometry, yNodeMaterial);
+      yNode.rotation.x = -Math.PI / 2;
+      yNode.position.set(-axisLength * 0.7, 0, 0);
+      axisGroup.add(yNode);
+      
+      // Y軸ラベル
+      const yLabel = createAxisLabel("Y", 0x808000);
+      yLabel.position.set(-axisLength * 0.7 - 0.03, 0, 0);
+      axisGroup.add(yLabel);
+      
+      // Z軸（青）- 上方向
+      const zAxisGeometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(0, axisLength, 0)
+      ]);
+      const zAxisMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff, linewidth: 2 });
+      const zAxis = new THREE.Line(zAxisGeometry, zAxisMaterial);
+      axisGroup.add(zAxis);
+      
+      // Z軸の円形ノード
+      const zNodeGeometry = new THREE.CircleGeometry(0.02, 16);
+      const zNodeMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+      const zNode = new THREE.Mesh(zNodeGeometry, zNodeMaterial);
+      zNode.position.set(0, axisLength, 0);
+      axisGroup.add(zNode);
+      
+      // Z軸ラベル
+      const zLabel = createAxisLabel("Z", 0x0000ff);
+      zLabel.position.set(0, axisLength + 0.03, 0);
+      axisGroup.add(zLabel);
+      
+      // 原点に球を配置
+      const originGeometry = new THREE.SphereGeometry(0.015, 16, 16);
+      const originMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const originSphere = new THREE.Mesh(originGeometry, originMaterial);
+      axisGroup.add(originSphere);
+      
+      // 軸をシーンに追加（画面の右上に固定、カメラの回転に応じて位置と向きを更新）
+      // 初期位置はカメラの前方に配置（render関数内で毎フレーム更新される）
+      axisGroup.position.set(0, 0, 0);
+      
+      // 軸はHTML要素として表示するため、シーンには追加しない
+      // axisGroupは保持するが、レンダリングはしない
+      console.log("[Atelier Preview] XYZ axes will be rendered as HTML overlay");
+
       if (camera) {
         camera.lookAt(0, 0, 0);
         camera.updateProjectionMatrix();
@@ -970,206 +1121,81 @@ export function init3DViewer(
       }
     }
 
-    // 服の位置を調整（拡大縮小せず、位置のみ変更）
-    // モデルの現在のバウンディングボックスを取得
-    const currentBox = new THREE.Box3().setFromObject(baseModel);
-    const currentModelHeight = currentBox.max.y - currentBox.min.y;
-    
-    // 現在の基準点を計算（カテゴリ別）
-    const currentReferencePoints = {
-      top: currentBox.min.y + currentModelHeight * 0.82, // トップス用：肩の位置（頭から腰までの82%の位置）
-      bottom: currentBox.min.y + currentModelHeight * 0.45, // ボトムス用：腰の位置
-      center: currentBox.getCenter(new THREE.Vector3()).y, // その他用：モデルの中心
-    };
-    
-    loadedAssets.forEach((modelArray, category) => {
+    // ── 服の位置更新 + デバウンスシミュレーション ────────────────────────
+    // adjustAssetPositionsForHeight が：
+    //   1. SkinnedMesh を復元（スライダー中はリアルタイムに骨に追従）
+    //   2. 位置を初期値に固定
+    //   3. 400ms 後にシミュレーション実行
+    // をまとめて行う。
+    adjustAssetPositionsForHeight(newHeight, targetBaseHeightCm);
+  }
+
+  // ── 身長変更デバウンス用タイマー ─────────────────────────────────────────
+  let heightSettleTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /**
+   * ベイクメッシュを非表示にして SkinnedMesh を復元する。
+   * 身長変更スライダー操作中にリアルタイムで服が骨に追従できるようにする。
+   */
+  function restoreSkinnedMeshVisibility() {
+    loadedAssets.forEach((modelArray) => {
       modelArray.forEach((assetModel) => {
-        // 初期位置とスケールを取得
-        const initialPosition = assetInitialPositions.get(assetModel);
-        const initialScale = assetInitialScales.get(assetModel);
-        if (!initialPosition || !baseModelInitialReferencePoints) {
-          return;
-        }
-        
-        // nullチェック後の型を確定させるため、ローカル変数に再代入
-        const initialRefPoints = baseModelInitialReferencePoints;
-        
-        // 服のスケールを初期スケールに完全に固定（拡大縮小させない）
-        // ★重要: baseModelのスケール変更（heightRatio）の影響を完全に排除
-        // 服のサイズは常に初期スケールを維持し、baseModelのスケール変更とは独立
-        // ★さらに重要: ワールドマトリックスを無視して、ローカルスケールを強制的にリセット
-        if (initialScale) {
-          // 服のスケールを常に初期スケールに固定（X、Y、Zすべて）
-          // ワールドマトリックスの影響を受けないように、直接ローカルスケールを設定
-          assetModel.scale.copy(initialScale);
-          
-          // グループ内のすべての子要素のスケールも初期値に完全にリセット
-          assetModel.traverse((child) => {
-            if (child instanceof THREE.Mesh || child instanceof THREE.SkinnedMesh) {
-              const childInitialScale = assetChildInitialScales.get(child);
-              if (childInitialScale) {
-                // 子要素のスケールを初期値に完全にリセット（X、Y、Zすべて）
-                child.scale.copy(childInitialScale);
-              }
-            }
-          });
-          
-          // マトリックスを更新してスケール変更を反映
-          assetModel.updateMatrixWorld(true);
-          
-          // デバッグログ（最初の数回のみ）
-          if (Math.random() < 0.1) {
-            console.log("[Atelier Preview] Asset scale fixed:", {
-              category,
-              initialScale: { x: initialScale.x, y: initialScale.y, z: initialScale.z },
-              currentScale: { x: assetModel.scale.x, y: assetModel.scale.y, z: assetModel.scale.z },
-              heightRatio,
-            });
-          }
-        }
-        
-        // カテゴリに応じて基準点を決定
-        const categoryLower = (category || "").toLowerCase();
-        let referencePointType: "top" | "bottom" | "center";
-        let initialReferenceY: number;
-        let currentReferenceY: number;
-        
-        if (
-          categoryLower.includes("トップス") ||
-          categoryLower.includes("シャツ") ||
-          categoryLower.includes("tシャツ") ||
-          categoryLower.includes("t-shirt") ||
-          categoryLower.includes("shirt") ||
-          categoryLower.includes("コート") ||
-          categoryLower.includes("coat") ||
-          categoryLower.includes("ジャケット") ||
-          categoryLower.includes("jacket")
-        ) {
-          // トップス系：上半身の中心を基準
-          referencePointType = "top";
-          initialReferenceY = initialRefPoints.top;
-          currentReferenceY = currentReferencePoints.top;
-        } else if (
-          categoryLower.includes("ボトムス") ||
-          categoryLower.includes("パンツ") ||
-          categoryLower.includes("pants") ||
-          categoryLower.includes("trouser") ||
-          categoryLower.includes("スカート") ||
-          categoryLower.includes("skirt")
-        ) {
-          // ボトムス系：腰の位置を基準
-          referencePointType = "bottom";
-          initialReferenceY = initialRefPoints.bottom;
-          currentReferenceY = currentReferencePoints.bottom;
-        } else {
-          // その他：モデルの中心を基準
-          referencePointType = "center";
-          initialReferenceY = initialRefPoints.center;
-          currentReferenceY = currentReferencePoints.center;
-        }
-        
-        // 基準点の移動量を計算
-        const referencePointOffset = currentReferenceY - initialReferenceY;
-        
-        // 服の位置を調整（基準点の移動に追従）
-        assetModel.position.set(
-          initialPosition.x,
-          initialPosition.y + referencePointOffset,
-          initialPosition.z
-        );
-        
-        console.log("[Atelier Preview] Asset position adjusted:", {
-          category,
-          referencePointType,
-          initialPosition: { y: initialPosition.y },
-          newPosition: { y: assetModel.position.y },
-          initialScale: initialScale ? { x: initialScale.x, y: initialScale.y, z: initialScale.z } : null,
-          currentScale: { x: assetModel.scale.x, y: assetModel.scale.y, z: assetModel.scale.z },
-          referencePointOffset,
-          initialReferenceY,
-          currentReferenceY,
+        assetModel.traverse((child) => {
+          if (!(child instanceof THREE.SkinnedMesh)) return;
+          // SkinnedMesh を表示
+          child.visible = true;
+          // 対応するベイクメッシュを非表示
+          const baked = child.userData["__staticFitBaked"] as THREE.Mesh | undefined;
+          if (baked) baked.visible = false;
         });
       });
     });
-
-    render();
   }
 
-  /** アセットの位置だけを現在の身長に合わせて調整（モデルの身長は変更しない） */
-  function adjustAssetPositionsForHeight(newHeight: number, baseHeightValue: number) {
-    if (!baseModel || !baseModelInitialScale || !baseModelInitialPosition || !baseModelInitialCenter || !baseModelInitialReferencePoints) {
-      return;
-    }
+  /**
+   * 身長変更時の服位置・シミュレーション更新。
+   *
+   * 1. SkinnedMesh を復元 → スライダー操作中はリアルタイムに骨に追従
+   * 2. 服グループ位置を初期値に固定（スキニングベイクが骨から正しい位置を計算するため参照点オフセット不要）
+   * 3. 400ms デバウンス後にシミュレーション再実行
+   */
+  function adjustAssetPositionsForHeight(_newHeight: number, _baseHeightValue: number) {
+    if (!baseModel) return;
 
-    // nullチェック後の型を確定させるため、ローカル変数に再代入
-    const initialRefPoints = baseModelInitialReferencePoints;
+    // 1. SkinnedMesh を表示に戻す（リアルタイム追従）
+    restoreSkinnedMeshVisibility();
 
-    // モデルの現在のバウンディングボックスを取得
-    const currentBox = new THREE.Box3().setFromObject(baseModel);
-    const currentModelHeight = currentBox.max.y - currentBox.min.y;
-    
-    // 現在の基準点を計算（カテゴリ別）
-    const currentReferencePoints = {
-      top: currentBox.min.y + currentModelHeight * 0.82, // トップス用：肩の位置（頭から腰までの82%の位置）
-      bottom: currentBox.min.y + currentModelHeight * 0.45, // ボトムス用：腰の位置
-      center: currentBox.getCenter(new THREE.Vector3()).y, // その他用：モデルの中心
-    };
-    
-    loadedAssets.forEach((modelArray, category) => {
+    // 2. 服グループ位置を初期値に固定
+    loadedAssets.forEach((modelArray) => {
       modelArray.forEach((assetModel) => {
-        // 初期位置を取得
         const initialPosition = assetInitialPositions.get(assetModel);
+        const initialScale    = assetInitialScales.get(assetModel);
         if (!initialPosition) return;
-        
-        // カテゴリに応じて基準点を決定
-        const categoryLower = (category || "").toLowerCase();
-        let initialReferenceY: number;
-        let currentReferenceY: number;
-        
-        if (
-          categoryLower.includes("トップス") ||
-          categoryLower.includes("シャツ") ||
-          categoryLower.includes("tシャツ") ||
-          categoryLower.includes("t-shirt") ||
-          categoryLower.includes("shirt") ||
-          categoryLower.includes("コート") ||
-          categoryLower.includes("coat") ||
-          categoryLower.includes("ジャケット") ||
-          categoryLower.includes("jacket")
-        ) {
-          // トップス系：上半身の中心を基準
-          initialReferenceY = initialRefPoints.top;
-          currentReferenceY = currentReferencePoints.top;
-        } else if (
-          categoryLower.includes("ボトムス") ||
-          categoryLower.includes("パンツ") ||
-          categoryLower.includes("pants") ||
-          categoryLower.includes("trouser") ||
-          categoryLower.includes("スカート") ||
-          categoryLower.includes("skirt")
-        ) {
-          // ボトムス系：腰の位置を基準
-          initialReferenceY = initialRefPoints.bottom;
-          currentReferenceY = currentReferencePoints.bottom;
-        } else {
-          // その他：モデルの中心を基準
-          initialReferenceY = initialRefPoints.center;
-          currentReferenceY = currentReferencePoints.center;
-        }
-        
-        // 基準点の移動量を計算
-        const referencePointOffset = currentReferenceY - initialReferenceY;
-        
-        // 服の位置を調整（基準点の移動に追従）
-        assetModel.position.set(
-          initialPosition.x,
-          initialPosition.y + referencePointOffset,
-          initialPosition.z
-        );
+        assetModel.position.copy(initialPosition);
+        if (initialScale) assetModel.scale.copy(initialScale);
+        assetModel.updateMatrixWorld(true);
       });
     });
-    
+
     render();
+
+    // 3. デバウンス: スライダーが止まってから 400ms 後にシミュレーション実行
+    if (heightSettleTimer) clearTimeout(heightSettleTimer);
+    heightSettleTimer = setTimeout(() => {
+      heightSettleTimer = null;
+      if (loadedAssets.size === 0 || skeletonBones.size === 0 || !baseModel) return;
+      baseModel.updateMatrixWorld(true);
+      applyStaticFit({
+        bones: skeletonBones,
+        loadedAssets,
+        boneInitialScales,
+        baseModel,
+        baseModelInitialScale: baseModelInitialScale ?? undefined,
+        iters: 60,
+        margin: 0.003,
+      });
+      render();
+    }, 400);
   }
 
   // Public API
@@ -1209,6 +1235,13 @@ export function init3DViewer(
         visible: modelArray[0]?.visible,
         assetCount: modelArray.length,
       });
+    },
+    getCameraRotation() {
+      if (!camera) return null;
+      return {
+        quaternion: camera.quaternion.clone(),
+        position: camera.position.clone(),
+      };
     },
     updateAssets(newAssets: AssetInfo[]) {
       // 既存のアセットを削除
@@ -1279,6 +1312,24 @@ export function init3DViewer(
             // アセットの位置だけを調整（モデルの身長は変更しない）
             adjustAssetPositionsForHeight(currentHeight, currentBaseHeight);
           }
+
+          // ── 体型・身長が確定した現在の体に対して、着せた直後に静的フィットを一度だけ適用 ──
+          // （試着ウィジェット / プレビューどちらも、「服を読み込んだタイミング」で軽いシミュレーションをかける）
+          if (baseModel && baseModelInitialScale && loadedAssets.size > 0 && skeletonBones.size > 0) {
+            baseModel.updateMatrixWorld(true);
+
+            applyStaticFit({
+              bones: skeletonBones,
+              loadedAssets,
+              boneInitialScales,
+              baseModel,
+              baseModelInitialScale,
+              iters: 60,
+              margin: 0.003,
+            });
+
+            render();
+          }
         };
 
         loadAssets().catch((error) => {
@@ -1305,6 +1356,9 @@ export function init3DViewer(
           }
         });
       };
+
+      // 静的フィット用ベイク済みメッシュをクリーンアップ
+      cleanupStaticFit(loadedAssets);
 
       // アセットを削除 & dispose
       loadedAssets.forEach((modelArray) => {

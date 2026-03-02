@@ -4,7 +4,7 @@ import { init3DViewer } from "./viewer";
 import type { ViewerInstance } from "./viewer";
 import { getBackgroundImageUrl } from "./viewer-container";
 import { buildHeightSlider } from "./height-slider";
-import { renderCatTabs, renderThumbs, renderLeftPanel, PREVIEW_SIZES, OUTFIT_CATEGORIES } from "./ui-components";
+import { renderCatTabs, renderThumbs, renderLeftPanel, PREVIEW_SIZES, OUTFIT_CATEGORIES, buildAxisOverlay, renderAxis, createAxisControls } from "./ui-components";
 
 // ─── CSS injection ─────────────────────────────────────────────────────────────
 function injectStyles() {
@@ -58,135 +58,191 @@ export function initPreviewPanel(
     height: 100% !important;
     overflow: hidden !important;
     box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background: #fff !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   `;
 
-  // ─── Backdrop ─────────────────────────────────────────
-  const backdrop = document.createElement("div");
-  backdrop.style.cssText = "position:absolute;inset:0;background:rgba(0,0,0,0.48);";
-  container.appendChild(backdrop);
+  // ─── 全面ウィジェットレイアウト（モーダルではなく） ──
+  // バックドロップとボトムシートは削除し、直接コンテナに配置
 
-  // ─── Bottom sheet ──────────────────────────────────────
-  const sheet = document.createElement("div");
-  sheet.style.cssText = `
-    position: absolute; bottom: 0; left: 0; right: 0;
-    height: 96%;
-    background: #fff;
-    border-radius: 16px 16px 0 0;
-    display: flex; flex-direction: column;
-    overflow: hidden;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  `;
-  container.appendChild(sheet);
-
-  // ─── Drag handle ──────────────────────────────────────
-  const dragHandle = document.createElement("div");
-  dragHandle.style.cssText = `
-    flex-shrink: 0; display: flex; justify-content: center;
-    padding: 3px 0 2px;
-  `;
-  const pill = document.createElement("div");
-  pill.style.cssText = "width:32px;height:3px;background:#d1d5db;border-radius:99px;";
-  dragHandle.appendChild(pill);
-  sheet.appendChild(dragHandle);
-
-  // ─── Viewer area (flex:1) ──────────────────────────────
+  // ─── Viewer area (画面上3/4, 白背景) ──────────────────────────────
   const viewerArea = document.createElement("div");
-  viewerArea.style.cssText = "flex:1;min-height:0;position:relative;overflow:hidden;";
+  viewerArea.style.cssText = `
+    flex: 0 0 75%;
+    min-height: 0;
+    position: relative;
+    overflow: hidden;
+    background: #fff;
+  `;
 
   // 3D canvas
   const viewerEl = document.createElement("div");
-  const bgUrl = getBackgroundImageUrl();
-  viewerEl.style.cssText = `
-    position: absolute; inset: 0;
-    ${bgUrl ? `background-image:url(${bgUrl});background-size:cover;background-position:center;` : ""}
-  `;
+  viewerEl.style.cssText = "position: absolute; inset: 0;";
 
-  // Left slots overlay (top-left)
+  // Left slots overlay (top-left) - 4つの正方形ボタン
+  // 上5%をセーフエリアとして確保
   const leftSlots = document.createElement("div");
   leftSlots.style.cssText = `
-    position: absolute; top: 8px; left: 6px;
-    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    position: absolute;
+    top: max(12px, 5vh);
+    left: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
     z-index: 20;
   `;
 
-  // Height slider overlay (bottom-right)
-  const sliderOverlay = document.createElement("div");
-  sliderOverlay.style.cssText = `
-    position: absolute; bottom: 8px; right: 6px;
-    width: 28px; height: 180px;
-    display: flex; flex-direction: column; align-items: center;
-    user-select: none; touch-action: none; z-index: 20;
-  `;
+  // XYZ軸オーバーレイ（右上に固定）
+  const { overlay: axisOverlay, svg: axisSvg } = buildAxisOverlay();
 
   viewerArea.appendChild(viewerEl);
   viewerArea.appendChild(leftSlots);
-  viewerArea.appendChild(sliderOverlay);
-  sheet.appendChild(viewerArea);
+  viewerArea.appendChild(axisOverlay);
+  container.appendChild(viewerArea);
 
   // ─── Bottom panel ──────────────────────────────────────
   const bottomPanel = document.createElement("div");
-  bottomPanel.style.cssText = "flex-shrink:0;background:#fff;";
+  bottomPanel.style.cssText = `
+    flex-shrink: 0;
+    background: #fff;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    gap: 0;
+  `;
 
-  // Size row ‹ M ›
+  // ─── 商品情報行（商品名、サイズ選択、価格） ──
+  const productInfoRow = document.createElement("div");
+  productInfoRow.style.cssText = `
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 6px 12px 4px;
+    padding-top: max(6px, env(safe-area-inset-top));
+  `;
+
+  // 左側：商品名とサイズ選択
+  const leftInfo = document.createElement("div");
+  leftInfo.style.cssText = `
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  `;
+
+  // 商品名
+  const productNameEl = document.createElement("div");
+  productNameEl.style.cssText = `
+    font-size: 12px;
+    font-weight: bold;
+    color: #000;
+    line-height: 1.2;
+  `;
+  productNameEl.textContent = options.productName || "商品名";
+  leftInfo.appendChild(productNameEl);
+
+  // サイズ選択バー
   const sizeRow = document.createElement("div");
   sizeRow.style.cssText = `
-    display: flex; align-items: center; justify-content: center;
-    gap: 8px; padding: 1px 16px 1px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
   `;
-  const prevSizeBtn = makeArrowBtn("‹");
-  const sizeLabel = document.createElement("div");
-  sizeLabel.style.cssText = `
-    min-width: 40px; padding: 4px 12px;
-    text-align: center; font-size: 13px; font-weight: 700;
-    color: #fff; background: #3b82f6;
-    border-radius: 4px;
-  `;
-  sizeLabel.textContent = initialSize as string;
-  const nextSizeBtn = makeArrowBtn("›");
-
+  // サイズボタンをバー形式で作成
   let currentSize = initialSize as string;
-
-  prevSizeBtn.addEventListener("click", () => {
-    const i = (availableSizes as string[]).indexOf(currentSize);
-    if (i > 0) {
-      currentSize = availableSizes[i - 1] as string;
-      sizeLabel.textContent = currentSize;
+  availableSizes.forEach((size) => {
+    const sizeBtn = document.createElement("button");
+    sizeBtn.textContent = size as string;
+    sizeBtn.style.cssText = `
+      padding: 0;
+      font-size: 12px;
+      font-weight: ${size === currentSize ? 'bold' : 'normal'};
+      color: ${size === currentSize ? '#000' : '#666'};
+      background: transparent;
+      border: none;
+      border-bottom: ${size === currentSize ? '2px solid #000' : 'none'};
+      cursor: pointer;
+      transition: all 0.2s;
+      line-height: 1.2;
+    `;
+    sizeBtn.addEventListener("click", () => {
+      currentSize = size as string;
+      // すべてのボタンのスタイルを更新
+      sizeRow.querySelectorAll("button").forEach((btn) => {
+        const btnSize = btn.textContent;
+        btn.style.fontWeight = btnSize === currentSize ? 'bold' : 'normal';
+        btn.style.color = btnSize === currentSize ? '#000' : '#666';
+        btn.style.borderBottom = btnSize === currentSize ? '2px solid #000' : 'none';
+      });
       onSizeChange?.(currentSize as ProductSize);
-    }
+    });
+    sizeRow.appendChild(sizeBtn);
   });
-  nextSizeBtn.addEventListener("click", () => {
-    const i = (availableSizes as string[]).indexOf(currentSize);
-    if (i < availableSizes.length - 1) {
-      currentSize = availableSizes[i + 1] as string;
-      sizeLabel.textContent = currentSize;
-      onSizeChange?.(currentSize as ProductSize);
-    }
-  });
+  leftInfo.appendChild(sizeRow);
 
-  sizeRow.appendChild(prevSizeBtn);
-  sizeRow.appendChild(sizeLabel);
-  sizeRow.appendChild(nextSizeBtn);
+  // 右側：価格
+  const priceEl = document.createElement("div");
+  priceEl.style.cssText = `
+    font-size: 12px;
+    font-weight: bold;
+    color: #000;
+    white-space: nowrap;
+    line-height: 1.2;
+  `;
+  priceEl.textContent = "74,000 JPY";
+
+  productInfoRow.appendChild(leftInfo);
+  productInfoRow.appendChild(priceEl);
+  bottomPanel.appendChild(productInfoRow);
+
+  // 商品情報行の下に区切り線を追加
+  const divider = document.createElement("div");
+  divider.style.cssText = `
+    height: 1px;
+    background: #e5e7eb;
+    margin: 0 12px;
+  `;
+  bottomPanel.appendChild(divider);
 
   // Thumbnails row
   const thumbsRow = document.createElement("div");
   thumbsRow.setAttribute("data-atelier-preview-thumbs", "true");
-  thumbsRow.style.cssText = "display:flex;gap:6px;padding:2px 10px 2px;overflow-x:auto;overflow-y:hidden;";
+  thumbsRow.style.cssText = `
+    display: flex;
+    flex-direction: row;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 4px 12px;
+    align-items: center;
+    min-height: 0;
+  `;
 
   // Category tabs
   const catTabs = document.createElement("div");
   catTabs.setAttribute("data-atelier-preview-cattabs", "true");
-  catTabs.style.cssText = "display:flex;gap:2px;padding:2px 10px 5px;overflow-x:auto;";
+  catTabs.style.cssText = `
+    display: flex;
+    flex-direction: row;
+    gap: 2px;
+    padding: 4px 12px 6px;
+    overflow-x: auto;
+    flex-shrink: 0;
+  `;
 
-  bottomPanel.appendChild(sizeRow);
   bottomPanel.appendChild(thumbsRow);
   bottomPanel.appendChild(catTabs);
-  sheet.appendChild(bottomPanel);
+  container.appendChild(bottomPanel);
 
   // ─── State ────────────────────────────────────────────
   let currentCategory: string = OUTFIT_CATEGORIES[0];
   let currentOutfitData: OutfitAssetsData = outfitAssets || { categories: {} };
   let selectedAssetId: string | null = null;
-  const activeAssets = new Map<string, { url: string; category: string }>();
+  const activeAssets = new Map<string, { url: string; category: string; id?: string }>();
 
   // ─── 3D Viewer ─────────────────────────────────────────
   let viewer: ViewerInstance | null = null;
@@ -199,16 +255,24 @@ export function initPreviewPanel(
     onError: onModelError,
   });
 
-  // ─── Height slider ─────────────────────────────────────
-  buildHeightSlider(sliderOverlay, minHeight, maxHeight, initialHeight, (h) => {
-    viewer?.updateHeight?.(h, initialHeight);
-    onHeightChange?.(h);
-  });
+  // 身長バーはこの画面では不要（削除）
+
+  // ─── XYZ軸コントロール ─────────────────────────────────
+  const axisControls = createAxisControls(
+    axisSvg,
+    () => viewer?.getCameraRotation?.() ?? null
+  );
+
+  // 初期描画
+  setTimeout(() => {
+    renderAxis(axisSvg, () => viewer?.getCameraRotation?.() ?? null);
+    axisControls.start();
+  }, 500);
 
   // ─── Render helpers ────────────────────────────────────
 
   function renderLeftSlots() {
-    // activeAssetsを共通関数用の形式に変換
+    // activeAssetsを共通関数用の形式に変換（アクティブな商品のみ表示）
     const assetsForRender = new Map<string, { url: string; category: string; thumbnailUrl?: string | null }>();
     activeAssets.forEach((wearing, cat) => {
       const items = currentOutfitData.categories[cat] || [];
@@ -220,6 +284,7 @@ export function initPreviewPanel(
       });
     });
     
+    // アクティブな商品のみを表示（空のボタンは表示しない）
     renderLeftPanel(
       leftSlots,
       assetsForRender,
@@ -251,8 +316,13 @@ export function initPreviewPanel(
   }
 
   function renderThumbsLocal() {
+    thumbsRow.innerHTML = "";
+    
+    // 実際のアイテムを表示
     const items: OutfitAssetItem[] = currentOutfitData.categories[currentCategory] || [];
     
+    if (items.length > 0) {
+      // 実際のアイテムがある場合は、それらを表示
     renderThumbs(
       thumbsRow,
       items,
@@ -266,7 +336,7 @@ export function initPreviewPanel(
           onOutfitAssetSelect?.(null, category);
         } else {
           selectedAssetId = item.id;
-          activeAssets.set(item.category, { url: item.modelUrl, category: item.category });
+            activeAssets.set(item.category, { url: item.modelUrl, category: item.category, id: item.id });
           
           // ジャケット、コート、トップスは同じレイヤーなので、一方を選択したら他方を削除
           if (item.category === "コート") {
@@ -288,6 +358,21 @@ export function initPreviewPanel(
       },
       PREVIEW_SIZES
     );
+    } else {
+      // アイテムがない場合は、5つの空のプレースホルダーを表示（PREVIEW_SIZESに合わせて46px x 56px）
+      for (let i = 0; i < 5; i++) {
+        const placeholder = document.createElement("div");
+        placeholder.style.cssText = `
+          width: 46px;
+          height: 56px;
+          flex-shrink: 0;
+          background: #f3f4f6;
+          border: 1px solid #e5e7eb;
+          border-radius: 7px;
+        `;
+        thumbsRow.appendChild(placeholder);
+      }
+    }
   }
 
   // Initial render
@@ -310,6 +395,7 @@ export function initPreviewPanel(
       });
       viewer?.updateAssets(newAssets.map((a) => ({ url: a.url, category: a.category })));
       renderLeftSlots();
+      renderThumbsLocal();
     },
     updateOutfitAssets(data) {
       currentOutfitData = data;
@@ -322,39 +408,30 @@ export function initPreviewPanel(
     },
     updateSize(size) {
       currentSize = size as string;
-      sizeLabel.textContent = size as string;
+      // すべてのサイズボタンのスタイルを更新
+      sizeRow.querySelectorAll("button").forEach((btn) => {
+        const btnSize = btn.textContent;
+        btn.style.fontWeight = btnSize === currentSize ? 'bold' : 'normal';
+        btn.style.color = btnSize === currentSize ? '#000' : '#666';
+        btn.style.borderBottom = btnSize === currentSize ? '2px solid #000' : '2px solid transparent';
+      });
     },
-    updateProductName(_name) {
-      // 商品名はモーフレイアウトでは表示しない
+    updateProductName(name) {
+      if (name && productNameEl) {
+        productNameEl.textContent = name;
+      }
     },
     toggleAsset(category, visible) {
       viewer?.toggleAsset?.(category, visible);
     },
     destroy() {
+      axisControls.stop();
       try { viewer?.destroy(); } catch { /* ignore */ }
       try {
         Array.from(container.children).forEach((c) => { try { c.remove(); } catch { /* ignore */ } });
       } catch { /* ignore */ }
     },
   };
-}
-
-// ─── UI helpers ───────────────────────────────────────────────────────────────
-
-function makeArrowBtn(symbol: string): HTMLElement {
-  const btn = document.createElement("button");
-  btn.textContent = symbol;
-  btn.style.cssText = `
-    width: 22px; height: 22px;
-    background: transparent; border: none; outline: none;
-    cursor: pointer; font-size: 18px; color: #111;
-    display: flex; align-items: center; justify-content: center;
-    line-height: 1; padding: 0; border-radius: 50%;
-    transition: background 0.15s;
-  `;
-  btn.addEventListener("mouseenter", () => { btn.style.background = "#f3f4f6"; });
-  btn.addEventListener("mouseleave", () => { btn.style.background = "transparent"; });
-  return btn;
 }
 
 // buildHeightSlider は height-slider.ts からインポート

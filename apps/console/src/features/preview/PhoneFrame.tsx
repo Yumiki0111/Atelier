@@ -73,9 +73,9 @@ export const PhoneFrame = forwardRef<HTMLDivElement, PhoneFrameProps>(
       style={{
         width: '100%',
         height: '100%',
-        maxWidth: '500px',
-        maxHeight: '1080px',
-        aspectRatio: '500 / 1080',
+        maxWidth: '414px',
+        maxHeight: '896px',
+        aspectRatio: '414 / 896', // iPhone XR のアスペクト比
       }}
     >
         {/* ===== スマートフォン本体 (iPhone 15 Pro 風) ===== */}

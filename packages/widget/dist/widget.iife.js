@@ -18915,6 +18915,145 @@ void main() {
       }
     }
   }
+  class SpriteMaterial extends Material {
+    constructor(parameters) {
+      super();
+      this.isSpriteMaterial = true;
+      this.type = "SpriteMaterial";
+      this.color = new Color(16777215);
+      this.map = null;
+      this.alphaMap = null;
+      this.rotation = 0;
+      this.sizeAttenuation = true;
+      this.transparent = true;
+      this.fog = true;
+      this.setValues(parameters);
+    }
+    copy(source) {
+      super.copy(source);
+      this.color.copy(source.color);
+      this.map = source.map;
+      this.alphaMap = source.alphaMap;
+      this.rotation = source.rotation;
+      this.sizeAttenuation = source.sizeAttenuation;
+      this.fog = source.fog;
+      return this;
+    }
+  }
+  let _geometry;
+  const _intersectPoint = /* @__PURE__ */ new Vector3();
+  const _worldScale = /* @__PURE__ */ new Vector3();
+  const _mvPosition = /* @__PURE__ */ new Vector3();
+  const _alignedPosition = /* @__PURE__ */ new Vector2();
+  const _rotatedPosition = /* @__PURE__ */ new Vector2();
+  const _viewWorldMatrix = /* @__PURE__ */ new Matrix4();
+  const _vA = /* @__PURE__ */ new Vector3();
+  const _vB = /* @__PURE__ */ new Vector3();
+  const _vC = /* @__PURE__ */ new Vector3();
+  const _uvA = /* @__PURE__ */ new Vector2();
+  const _uvB = /* @__PURE__ */ new Vector2();
+  const _uvC = /* @__PURE__ */ new Vector2();
+  class Sprite extends Object3D {
+    constructor(material = new SpriteMaterial()) {
+      super();
+      this.isSprite = true;
+      this.type = "Sprite";
+      if (_geometry === void 0) {
+        _geometry = new BufferGeometry();
+        const float32Array = new Float32Array([
+          -0.5,
+          -0.5,
+          0,
+          0,
+          0,
+          0.5,
+          -0.5,
+          0,
+          1,
+          0,
+          0.5,
+          0.5,
+          0,
+          1,
+          1,
+          -0.5,
+          0.5,
+          0,
+          0,
+          1
+        ]);
+        const interleavedBuffer = new InterleavedBuffer(float32Array, 5);
+        _geometry.setIndex([0, 1, 2, 0, 2, 3]);
+        _geometry.setAttribute("position", new InterleavedBufferAttribute(interleavedBuffer, 3, 0, false));
+        _geometry.setAttribute("uv", new InterleavedBufferAttribute(interleavedBuffer, 2, 3, false));
+      }
+      this.geometry = _geometry;
+      this.material = material;
+      this.center = new Vector2(0.5, 0.5);
+    }
+    raycast(raycaster, intersects2) {
+      if (raycaster.camera === null) {
+        console.error('THREE.Sprite: "Raycaster.camera" needs to be set in order to raycast against sprites.');
+      }
+      _worldScale.setFromMatrixScale(this.matrixWorld);
+      _viewWorldMatrix.copy(raycaster.camera.matrixWorld);
+      this.modelViewMatrix.multiplyMatrices(raycaster.camera.matrixWorldInverse, this.matrixWorld);
+      _mvPosition.setFromMatrixPosition(this.modelViewMatrix);
+      if (raycaster.camera.isPerspectiveCamera && this.material.sizeAttenuation === false) {
+        _worldScale.multiplyScalar(-_mvPosition.z);
+      }
+      const rotation = this.material.rotation;
+      let sin, cos;
+      if (rotation !== 0) {
+        cos = Math.cos(rotation);
+        sin = Math.sin(rotation);
+      }
+      const center = this.center;
+      transformVertex(_vA.set(-0.5, -0.5, 0), _mvPosition, center, _worldScale, sin, cos);
+      transformVertex(_vB.set(0.5, -0.5, 0), _mvPosition, center, _worldScale, sin, cos);
+      transformVertex(_vC.set(0.5, 0.5, 0), _mvPosition, center, _worldScale, sin, cos);
+      _uvA.set(0, 0);
+      _uvB.set(1, 0);
+      _uvC.set(1, 1);
+      let intersect = raycaster.ray.intersectTriangle(_vA, _vB, _vC, false, _intersectPoint);
+      if (intersect === null) {
+        transformVertex(_vB.set(-0.5, 0.5, 0), _mvPosition, center, _worldScale, sin, cos);
+        _uvB.set(0, 1);
+        intersect = raycaster.ray.intersectTriangle(_vA, _vC, _vB, false, _intersectPoint);
+        if (intersect === null) {
+          return;
+        }
+      }
+      const distance = raycaster.ray.origin.distanceTo(_intersectPoint);
+      if (distance < raycaster.near || distance > raycaster.far) return;
+      intersects2.push({
+        distance,
+        point: _intersectPoint.clone(),
+        uv: Triangle.getInterpolation(_intersectPoint, _vA, _vB, _vC, _uvA, _uvB, _uvC, new Vector2()),
+        face: null,
+        object: this
+      });
+    }
+    copy(source, recursive) {
+      super.copy(source, recursive);
+      if (source.center !== void 0) this.center.copy(source.center);
+      this.material = source.material;
+      return this;
+    }
+  }
+  function transformVertex(vertexPosition, mvPosition, center, scale, sin, cos) {
+    _alignedPosition.subVectors(vertexPosition, center).addScalar(0.5).multiply(scale);
+    if (sin !== void 0) {
+      _rotatedPosition.x = cos * _alignedPosition.x - sin * _alignedPosition.y;
+      _rotatedPosition.y = sin * _alignedPosition.x + cos * _alignedPosition.y;
+    } else {
+      _rotatedPosition.copy(_alignedPosition);
+    }
+    vertexPosition.copy(mvPosition);
+    vertexPosition.x += _rotatedPosition.x;
+    vertexPosition.y += _rotatedPosition.y;
+    vertexPosition.applyMatrix4(_viewWorldMatrix);
+  }
   const _basePosition = /* @__PURE__ */ new Vector3();
   const _skinIndex = /* @__PURE__ */ new Vector4();
   const _skinWeight = /* @__PURE__ */ new Vector4();
@@ -19659,6 +19798,13 @@ void main() {
       });
     }
   }
+  class CanvasTexture extends Texture {
+    constructor(canvas, mapping, wrapS, wrapT, magFilter, minFilter, format, type, anisotropy) {
+      super(canvas, mapping, wrapS, wrapT, magFilter, minFilter, format, type, anisotropy);
+      this.isCanvasTexture = true;
+      this.needsUpdate = true;
+    }
+  }
   class Curve {
     constructor() {
       this.type = "Curve";
@@ -19856,6 +20002,53 @@ void main() {
     fromJSON(json) {
       this.arcLengthDivisions = json.arcLengthDivisions;
       return this;
+    }
+  }
+  class CircleGeometry extends BufferGeometry {
+    constructor(radius = 1, segments = 32, thetaStart = 0, thetaLength = Math.PI * 2) {
+      super();
+      this.type = "CircleGeometry";
+      this.parameters = {
+        radius,
+        segments,
+        thetaStart,
+        thetaLength
+      };
+      segments = Math.max(3, segments);
+      const indices = [];
+      const vertices = [];
+      const normals = [];
+      const uvs = [];
+      const vertex2 = new Vector3();
+      const uv = new Vector2();
+      vertices.push(0, 0, 0);
+      normals.push(0, 0, 1);
+      uvs.push(0.5, 0.5);
+      for (let s = 0, i2 = 3; s <= segments; s++, i2 += 3) {
+        const segment = thetaStart + s / segments * thetaLength;
+        vertex2.x = radius * Math.cos(segment);
+        vertex2.y = radius * Math.sin(segment);
+        vertices.push(vertex2.x, vertex2.y, vertex2.z);
+        normals.push(0, 0, 1);
+        uv.x = (vertices[i2] / radius + 1) / 2;
+        uv.y = (vertices[i2 + 1] / radius + 1) / 2;
+        uvs.push(uv.x, uv.y);
+      }
+      for (let i2 = 1; i2 <= segments; i2++) {
+        indices.push(i2, i2 + 1, 0);
+      }
+      this.setIndex(indices);
+      this.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+      this.setAttribute("normal", new Float32BufferAttribute(normals, 3));
+      this.setAttribute("uv", new Float32BufferAttribute(uvs, 2));
+    }
+    copy(source) {
+      super.copy(source);
+      this.parameters = Object.assign({}, source.parameters);
+      return this;
+    }
+    static fromJSON(data) {
+      return new CircleGeometry(data.radius, data.segments, data.thetaStart, data.thetaLength);
     }
   }
   const Earcut = {
@@ -20294,6 +20487,76 @@ void main() {
     for (let i2 = 0; i2 < contour.length; i2++) {
       vertices.push(contour[i2].x);
       vertices.push(contour[i2].y);
+    }
+  }
+  class SphereGeometry extends BufferGeometry {
+    constructor(radius = 1, widthSegments = 32, heightSegments = 16, phiStart = 0, phiLength = Math.PI * 2, thetaStart = 0, thetaLength = Math.PI) {
+      super();
+      this.type = "SphereGeometry";
+      this.parameters = {
+        radius,
+        widthSegments,
+        heightSegments,
+        phiStart,
+        phiLength,
+        thetaStart,
+        thetaLength
+      };
+      widthSegments = Math.max(3, Math.floor(widthSegments));
+      heightSegments = Math.max(2, Math.floor(heightSegments));
+      const thetaEnd = Math.min(thetaStart + thetaLength, Math.PI);
+      let index = 0;
+      const grid = [];
+      const vertex2 = new Vector3();
+      const normal = new Vector3();
+      const indices = [];
+      const vertices = [];
+      const normals = [];
+      const uvs = [];
+      for (let iy = 0; iy <= heightSegments; iy++) {
+        const verticesRow = [];
+        const v = iy / heightSegments;
+        let uOffset = 0;
+        if (iy === 0 && thetaStart === 0) {
+          uOffset = 0.5 / widthSegments;
+        } else if (iy === heightSegments && thetaEnd === Math.PI) {
+          uOffset = -0.5 / widthSegments;
+        }
+        for (let ix = 0; ix <= widthSegments; ix++) {
+          const u = ix / widthSegments;
+          vertex2.x = -radius * Math.cos(phiStart + u * phiLength) * Math.sin(thetaStart + v * thetaLength);
+          vertex2.y = radius * Math.cos(thetaStart + v * thetaLength);
+          vertex2.z = radius * Math.sin(phiStart + u * phiLength) * Math.sin(thetaStart + v * thetaLength);
+          vertices.push(vertex2.x, vertex2.y, vertex2.z);
+          normal.copy(vertex2).normalize();
+          normals.push(normal.x, normal.y, normal.z);
+          uvs.push(u + uOffset, 1 - v);
+          verticesRow.push(index++);
+        }
+        grid.push(verticesRow);
+      }
+      for (let iy = 0; iy < heightSegments; iy++) {
+        for (let ix = 0; ix < widthSegments; ix++) {
+          const a = grid[iy][ix + 1];
+          const b = grid[iy][ix];
+          const c = grid[iy + 1][ix];
+          const d = grid[iy + 1][ix + 1];
+          if (iy !== 0 || thetaStart > 0) indices.push(a, b, d);
+          if (iy !== heightSegments - 1 || thetaEnd < Math.PI) indices.push(b, c, d);
+        }
+      }
+      this.setIndex(indices);
+      this.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+      this.setAttribute("normal", new Float32BufferAttribute(normals, 3));
+      this.setAttribute("uv", new Float32BufferAttribute(uvs, 2));
+    }
+    copy(source) {
+      super.copy(source);
+      this.parameters = Object.assign({}, source.parameters);
+      return this;
+    }
+    static fromJSON(data) {
+      return new SphereGeometry(data.radius, data.widthSegments, data.heightSegments, data.phiStart, data.phiLength, data.thetaStart, data.thetaLength);
     }
   }
   class MeshStandardMaterial extends Material {
@@ -28181,24 +28444,6 @@ void main() {
       if (child instanceof Mesh || child instanceof SkinnedMesh) {
         child.castShadow = true;
         child.receiveShadow = true;
-        if (child.material) {
-          const materials = Array.isArray(child.material) ? child.material : [child.material];
-          materials.forEach((material) => {
-            if (material instanceof MeshStandardMaterial) {
-              if ("colorSpace" in material) {
-                material.colorSpace = "srgb";
-              }
-              if (material.roughness !== void 0) {
-                material.roughness = Math.min(material.roughness * 0.8, 0.9);
-              }
-            } else if (material instanceof MeshPhongMaterial || material instanceof MeshLambertMaterial || material instanceof MeshBasicMaterial) {
-              if ("colorSpace" in material) {
-                material.colorSpace = "srgb";
-              }
-              if (material.color && material.color.getHex() === 0) ;
-            }
-          });
-        }
       }
     });
   }
@@ -28240,9 +28485,55 @@ void main() {
   }
   function setupOrbitControls(canvasElement, camera, fixedPhi, fixedRadius, render) {
     let isDragging = false;
-    let previousMousePosition = { x: 0 };
+    let previousMousePosition = { x: 0, y: 0 };
+    const spherical = new Spherical();
+    spherical.setFromVector3(camera.position);
+    const MIN_PHI = Math.PI * 0.3;
+    const MAX_PHI = Math.PI * 0.75;
+    const MIN_RADIUS = fixedRadius * 0.75;
+    const MAX_RADIUS = fixedRadius * 1.3;
+    const ROT_SPEED = 6e-3;
+    const VERT_SPEED = 6e-3;
+    const ZOOM_SPEED = 1e-3;
+    const DAMPING = 0.82;
+    const MIN_VELOCITY = 1e-4;
+    let velTheta = 0;
+    let velPhi = 0;
+    let inertiaRafId = null;
+    function stopInertia() {
+      if (inertiaRafId !== null) {
+        cancelAnimationFrame(inertiaRafId);
+        inertiaRafId = null;
+      }
+      velTheta = 0;
+      velPhi = 0;
+    }
+    function applyCameraFromSpherical() {
+      spherical.phi = Math.max(MIN_PHI, Math.min(MAX_PHI, spherical.phi));
+      spherical.radius = Math.max(MIN_RADIUS, Math.min(MAX_RADIUS, spherical.radius));
+      camera.position.setFromSpherical(spherical);
+      camera.lookAt(0, 0, 0);
+      render();
+    }
+    function startInertia() {
+      if (inertiaRafId !== null) return;
+      function loop() {
+        velTheta *= DAMPING;
+        velPhi *= DAMPING;
+        if (Math.abs(velTheta) < MIN_VELOCITY && Math.abs(velPhi) < MIN_VELOCITY) {
+          inertiaRafId = null;
+          return;
+        }
+        spherical.theta -= velTheta;
+        spherical.phi -= velPhi;
+        applyCameraFromSpherical();
+        inertiaRafId = requestAnimationFrame(loop);
+      }
+      inertiaRafId = requestAnimationFrame(loop);
+    }
     canvasElement.addEventListener("mousedown", (e) => {
       e.preventDefault();
+      stopInertia();
       isDragging = true;
       previousMousePosition = { x: e.clientX, y: e.clientY };
       canvasElement.style.cursor = "grabbing";
@@ -28251,58 +28542,66 @@ void main() {
       if (!isDragging) return;
       e.preventDefault();
       const deltaX = e.clientX - previousMousePosition.x;
-      const spherical = new Spherical();
-      spherical.setFromVector3(camera.position);
-      spherical.theta -= deltaX * 0.01;
-      spherical.phi = fixedPhi;
-      spherical.radius = fixedRadius;
-      camera.position.setFromSpherical(spherical);
-      camera.lookAt(0, 0, 0);
-      render();
+      const deltaY = e.clientY - previousMousePosition.y;
+      velTheta = deltaX * ROT_SPEED;
+      velPhi = deltaY * VERT_SPEED;
+      spherical.theta -= velTheta;
+      spherical.phi -= velPhi;
+      applyCameraFromSpherical();
       previousMousePosition = { x: e.clientX, y: e.clientY };
     });
-    canvasElement.addEventListener("mouseup", () => {
+    const onDragEnd = () => {
+      if (!isDragging) return;
       isDragging = false;
       canvasElement.style.cursor = "grab";
-    });
-    canvasElement.addEventListener("mouseleave", () => {
-      isDragging = false;
-      canvasElement.style.cursor = "grab";
-    });
+      startInertia();
+    };
+    canvasElement.addEventListener("mouseup", onDragEnd);
+    canvasElement.addEventListener("mouseleave", onDragEnd);
     canvasElement.addEventListener("touchstart", (e) => {
       e.preventDefault();
       if (e.touches.length === 1) {
+        stopInertia();
         isDragging = true;
         previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       }
-    });
+    }, { passive: false });
     canvasElement.addEventListener("touchmove", (e) => {
       if (!isDragging || e.touches.length !== 1) return;
       e.preventDefault();
       const deltaX = e.touches[0].clientX - previousMousePosition.x;
-      const spherical = new Spherical();
-      spherical.setFromVector3(camera.position);
-      spherical.theta -= deltaX * 0.01;
-      spherical.phi = fixedPhi;
-      spherical.radius = fixedRadius;
-      camera.position.setFromSpherical(spherical);
-      camera.lookAt(0, 0, 0);
-      render();
+      const deltaY = e.touches[0].clientY - previousMousePosition.y;
+      velTheta = deltaX * ROT_SPEED;
+      velPhi = deltaY * VERT_SPEED;
+      spherical.theta -= velTheta;
+      spherical.phi -= velPhi;
+      applyCameraFromSpherical();
       previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    });
+    }, { passive: false });
     canvasElement.addEventListener("touchend", () => {
+      if (!isDragging) return;
       isDragging = false;
+      startInertia();
     });
+    canvasElement.addEventListener(
+      "wheel",
+      (e) => {
+        e.preventDefault();
+        spherical.radius *= 1 + e.deltaY * ZOOM_SPEED;
+        applyCameraFromSpherical();
+      },
+      { passive: false }
+    );
     canvasElement.style.cursor = "grab";
   }
   function setupLights(scene) {
-    const ambientLight = new AmbientLight(16777215, 2);
+    const ambientLight = new AmbientLight(16777215, 0.6);
     scene.add(ambientLight);
-    const directionalLight1 = new DirectionalLight(16777215, 3);
-    directionalLight1.position.set(10, 10, 5);
+    const directionalLight1 = new DirectionalLight(16777215, 1.5);
+    directionalLight1.position.set(5, 8, 5);
     directionalLight1.castShadow = true;
-    directionalLight1.shadow.mapSize.width = 4096;
-    directionalLight1.shadow.mapSize.height = 4096;
+    directionalLight1.shadow.mapSize.width = 2048;
+    directionalLight1.shadow.mapSize.height = 2048;
     directionalLight1.shadow.camera.near = 0.5;
     directionalLight1.shadow.camera.far = 50;
     directionalLight1.shadow.camera.left = -10;
@@ -28310,22 +28609,31 @@ void main() {
     directionalLight1.shadow.camera.top = 10;
     directionalLight1.shadow.camera.bottom = -10;
     directionalLight1.shadow.bias = -1e-4;
+    directionalLight1.shadow.normalBias = 0.02;
     directionalLight1.shadow.radius = 4;
     scene.add(directionalLight1);
-    const directionalLight2 = new DirectionalLight(16777215, 1.5);
-    directionalLight2.position.set(-10, -10, -5);
+    const directionalLight2 = new DirectionalLight(16777215, 0.7);
+    directionalLight2.position.set(-5, 6, 3);
     scene.add(directionalLight2);
-    const directionalLight3 = new DirectionalLight(16777215, 1.2);
-    directionalLight3.position.set(0, 10, 0);
+    const directionalLight3 = new DirectionalLight(16777215, 0.5);
+    directionalLight3.position.set(0, 4, -8);
     scene.add(directionalLight3);
-    return { ambientLight, directionalLight1, directionalLight2, directionalLight3 };
+    const directionalLight4 = new DirectionalLight(16777215, 0.6);
+    directionalLight4.position.set(0, 12, 0);
+    scene.add(directionalLight4);
+    const directionalLight5 = new DirectionalLight(16777215, 0.4);
+    directionalLight5.position.set(8, 5, 2);
+    scene.add(directionalLight5);
+    return { ambientLight, directionalLight1, directionalLight2, directionalLight3, directionalLight4, directionalLight5 };
   }
-  function createGround(scene) {
+  function createGround(scene, modelFootY) {
     const groundGeometry = new PlaneGeometry(20, 20);
     const groundMaterial = new MeshStandardMaterial({
-      color: 16777215,
+      color: 16119285,
+      // 少しグレーがかった白で影をより見やすく
       transparent: true,
-      opacity: 0
+      opacity: 0.6
+      // 影をより濃く見えるように不透明度を上げる
     });
     const ground = new Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;
@@ -28496,6 +28804,567 @@ void main() {
       assetMaxDim
     });
   }
+  function findBone(bones, nameSuffix) {
+    const iter = Array.isArray(bones) ? bones : Array.from(bones.values());
+    for (const bone of iter) {
+      if (bone.name === nameSuffix || bone.name.endsWith(nameSuffix)) {
+        return bone;
+      }
+    }
+    return null;
+  }
+  function makeCapsuleBetweenBones(boneA, boneB, radius) {
+    const a = new Vector3();
+    const b = new Vector3();
+    boneA.getWorldPosition(a);
+    boneB.getWorldPosition(b);
+    return { a, b, r: radius };
+  }
+  function buildBodyCapsules(bones) {
+    const CONFIGS = [
+      { a: "Hips", b: "Chest", r: 0.15 },
+      { a: "Spine", b: "Chest", r: 0.15 },
+      { a: "Hips", b: "Spine", r: 0.17 },
+      { a: "LeftUpLeg", b: "LeftLeg", r: 0.13 },
+      { a: "RightUpLeg", b: "RightLeg", r: 0.13 },
+      { a: "LeftArm", b: "LeftForeArm", r: 0.09 },
+      { a: "RightArm", b: "RightForeArm", r: 0.09 },
+      { a: "LeftShoulder", b: "LeftArm", r: 0.1 },
+      { a: "RightShoulder", b: "RightArm", r: 0.1 }
+    ];
+    const capsules = [];
+    for (const cfg of CONFIGS) {
+      const bA = findBone(bones, cfg.a);
+      const bB = findBone(bones, cfg.b);
+      if (bA && bB) capsules.push(makeCapsuleBetweenBones(bA, bB, cfg.r));
+    }
+    return capsules;
+  }
+  const _bv0 = new Vector3();
+  const _bv1 = new Vector3();
+  const _bm = new Matrix4();
+  function computeSkinnedVertex(skinned, index, target) {
+    if (typeof skinned.boneTransform === "function") {
+      skinned.boneTransform(index, target);
+      return;
+    }
+    const geo = skinned.geometry;
+    const posA = geo.attributes.position;
+    const siAttr = geo.attributes.skinIndex;
+    const swAttr = geo.attributes.skinWeight;
+    if (!siAttr || !swAttr) {
+      target.set(posA.getX(index), posA.getY(index), posA.getZ(index));
+      return;
+    }
+    const skeleton = skinned.skeleton;
+    const bones = skeleton.bones;
+    const bInvs = skeleton.boneInverses;
+    const bind = skinned.bindMatrix;
+    const bindInv = skinned.bindMatrixInverse;
+    _bv0.set(posA.getX(index), posA.getY(index), posA.getZ(index));
+    _bv0.applyMatrix4(bind);
+    target.set(0, 0, 0);
+    const siArr = siAttr.array;
+    const swArr = swAttr.array;
+    const siSize = siAttr.itemSize;
+    const swSize = swAttr.itemSize;
+    const siOff = index * siSize;
+    const swOff = index * swSize;
+    for (let j = 0; j < 4; j++) {
+      const w = swArr[swOff + j];
+      if (!w) continue;
+      const bi = Math.floor(siArr[siOff + j]);
+      if (bi < 0 || bi >= bones.length) continue;
+      _bm.multiplyMatrices(bones[bi].matrixWorld, bInvs[bi]);
+      _bv1.copy(_bv0).applyMatrix4(_bm);
+      target.addScaledVector(_bv1, w);
+    }
+    target.applyMatrix4(bindInv);
+  }
+  function bakeSkinnedMeshGeometry(skinned) {
+    const srcGeo = skinned.geometry;
+    const count = srcGeo.attributes.position.count;
+    const baked = srcGeo.clone();
+    const arr = new Float32Array(count * 3);
+    const tmp = new Vector3();
+    for (let i2 = 0; i2 < count; i2++) {
+      computeSkinnedVertex(skinned, i2, tmp);
+      arr[i2 * 3] = tmp.x;
+      arr[i2 * 3 + 1] = tmp.y;
+      arr[i2 * 3 + 2] = tmp.z;
+    }
+    baked.setAttribute("position", new BufferAttribute(arr, 3));
+    baked.computeVertexNormals();
+    return baked;
+  }
+  function buildBodySurface(baseModel, maxPoints = 600) {
+    const rawPos = [];
+    const rawNorm = [];
+    new Matrix4();
+    const tmpVec = new Vector3();
+    const tmpNorm = new Vector3();
+    baseModel.traverse((obj) => {
+      const lname = obj.name.toLowerCase();
+      if (!lname.includes("body")) return;
+      if (lname.includes("mask_")) return;
+      let posAttr;
+      let normAttr;
+      let worldMat;
+      if (obj instanceof SkinnedMesh) {
+        obj.updateMatrixWorld(true);
+        const bakedGeo = bakeSkinnedMeshGeometry(obj);
+        posAttr = bakedGeo.attributes.position;
+        normAttr = bakedGeo.attributes.normal;
+        worldMat = obj.matrixWorld;
+        const count2 = posAttr.count;
+        for (let i2 = 0; i2 < count2; i2++) {
+          tmpVec.set(posAttr.getX(i2), posAttr.getY(i2), posAttr.getZ(i2)).applyMatrix4(worldMat);
+          rawPos.push(tmpVec.x, tmpVec.y, tmpVec.z);
+          if (normAttr) {
+            tmpNorm.set(normAttr.getX(i2), normAttr.getY(i2), normAttr.getZ(i2)).transformDirection(worldMat);
+            rawNorm.push(tmpNorm.x, tmpNorm.y, tmpNorm.z);
+          } else {
+            rawNorm.push(0, 1, 0);
+          }
+        }
+        bakedGeo.dispose();
+      } else if (obj instanceof Mesh) {
+        obj.updateMatrixWorld(true);
+        posAttr = obj.geometry.attributes.position;
+        normAttr = obj.geometry.attributes.normal;
+        worldMat = obj.matrixWorld;
+        const count2 = posAttr.count;
+        for (let i2 = 0; i2 < count2; i2++) {
+          tmpVec.set(posAttr.getX(i2), posAttr.getY(i2), posAttr.getZ(i2)).applyMatrix4(worldMat);
+          rawPos.push(tmpVec.x, tmpVec.y, tmpVec.z);
+          if (normAttr) {
+            tmpNorm.set(normAttr.getX(i2), normAttr.getY(i2), normAttr.getZ(i2)).transformDirection(worldMat);
+            rawNorm.push(tmpNorm.x, tmpNorm.y, tmpNorm.z);
+          } else {
+            rawNorm.push(0, 1, 0);
+          }
+        }
+      }
+    });
+    const totalVerts = rawPos.length / 3;
+    if (totalVerts === 0) {
+      console.warn("[StaticFit] buildBodySurface: no body vertices found");
+      return null;
+    }
+    const step = Math.max(1, Math.floor(totalVerts / maxPoints));
+    const count = Math.ceil(totalVerts / step);
+    const posX = new Float32Array(count);
+    const posY = new Float32Array(count);
+    const posZ = new Float32Array(count);
+    const normX = new Float32Array(count);
+    const normY = new Float32Array(count);
+    const normZ = new Float32Array(count);
+    for (let k = 0; k < count; k++) {
+      const i2 = k * step;
+      posX[k] = rawPos[i2 * 3];
+      posY[k] = rawPos[i2 * 3 + 1];
+      posZ[k] = rawPos[i2 * 3 + 2];
+      normX[k] = rawNorm[i2 * 3];
+      normY[k] = rawNorm[i2 * 3 + 1];
+      normZ[k] = rawNorm[i2 * 3 + 2];
+    }
+    console.log(`[StaticFit] buildBodySurface: ${totalVerts} → ${count} representative points`);
+    return { posX, posY, posZ, normX, normY, normZ, count };
+  }
+  function pointToSegmentSq(p, a, b, closest) {
+    const ab = b.clone().sub(a);
+    const ap = p.clone().sub(a);
+    const lenSq = ab.lengthSq();
+    const t = lenSq < 1e-12 ? 0 : Math.max(0, Math.min(1, ap.dot(ab) / lenSq));
+    closest.copy(ab).multiplyScalar(t).add(a);
+    return p.distanceToSquared(closest);
+  }
+  function pushOutOfCapsule(pWorld, cap, margin) {
+    const closest = new Vector3();
+    const distSq = pointToSegmentSq(pWorld, cap.a, cap.b, closest);
+    const thresh = cap.r + margin;
+    if (distSq < thresh * thresh) {
+      const dist = Math.sqrt(distSq);
+      const dir = dist > 1e-6 ? pWorld.clone().sub(closest).divideScalar(dist) : new Vector3(0, 0, 1);
+      pWorld.copy(closest).addScaledVector(dir, thresh);
+      return true;
+    }
+    return false;
+  }
+  const SOFT_FIT_KEY = "__softFitData";
+  function getOrBuildSoftFitData(geo) {
+    const anyGeo = geo;
+    if (anyGeo.userData[SOFT_FIT_KEY]) return anyGeo.userData[SOFT_FIT_KEY];
+    const posAttr = geo.getAttribute("position");
+    if (!posAttr) return null;
+    const indexAttr = geo.getIndex();
+    const vertexCount = posAttr.count;
+    let indices;
+    if (indexAttr) {
+      const src = indexAttr.array;
+      indices = new Uint32Array(indexAttr.count);
+      for (let i2 = 0; i2 < indexAttr.count; i2++) indices[i2] = src[i2];
+    } else {
+      const tc = Math.floor(vertexCount / 3);
+      indices = new Uint32Array(tc * 3);
+      for (let i2 = 0; i2 < tc * 3; i2++) indices[i2] = i2;
+    }
+    const edgeSet = /* @__PURE__ */ new Set();
+    const edgesArr = [];
+    const addEdge = (a, b) => {
+      const i2 = Math.min(a, b), j = Math.max(a, b);
+      const key = `${i2}_${j}`;
+      if (edgeSet.has(key)) return;
+      edgeSet.add(key);
+      edgesArr.push(i2, j);
+    };
+    for (let i2 = 0; i2 < indices.length; i2 += 3) {
+      addEdge(indices[i2], indices[i2 + 1]);
+      addEdge(indices[i2 + 1], indices[i2 + 2]);
+      addEdge(indices[i2 + 2], indices[i2]);
+    }
+    const edges = new Uint32Array(edgesArr);
+    const restLengths = new Float32Array(edges.length / 2);
+    const v0 = new Vector3(), v1 = new Vector3();
+    for (let e = 0; e < edges.length; e += 2) {
+      v0.set(posAttr.getX(edges[e]), posAttr.getY(edges[e]), posAttr.getZ(edges[e]));
+      v1.set(posAttr.getX(edges[e + 1]), posAttr.getY(edges[e + 1]), posAttr.getZ(edges[e + 1]));
+      restLengths[e / 2] = v0.distanceTo(v1);
+    }
+    const data = { edges, restLengths, vertexCount };
+    anyGeo.userData[SOFT_FIT_KEY] = data;
+    return data;
+  }
+  const TOP_ANCHOR_RATIO = 0.15;
+  const SIM_DT = 0.016;
+  const SIM_GRAVITY = -4;
+  const SIM_DAMPING = 0.97;
+  const SIM_STIFFNESS = 0.65;
+  function resolveBodyCollisionOnBakedMesh(bakedMesh, capsulesOrSurface, steps, margin = 3e-3) {
+    bakedMesh.updateMatrixWorld(true);
+    const worldMat = bakedMesh.matrixWorld;
+    const invWorldMat = worldMat.clone().invert();
+    const geo = bakedMesh.geometry;
+    const posAttr = geo.attributes.position;
+    const count = posAttr.count;
+    if (count === 0) return;
+    const isSurface = (v) => !Array.isArray(v) && "posX" in v;
+    const useSurface = isSurface(capsulesOrSurface);
+    const surface = useSurface ? capsulesOrSurface : null;
+    const capsules = useSurface ? [] : capsulesOrSurface;
+    if (!useSurface && capsules.length === 0) return;
+    const cur = new Float32Array(count * 3);
+    const prev = new Float32Array(count * 3);
+    const tmp = new Vector3();
+    for (let i2 = 0; i2 < count; i2++) {
+      tmp.set(posAttr.getX(i2), posAttr.getY(i2), posAttr.getZ(i2));
+      tmp.applyMatrix4(worldMat);
+      const k = i2 * 3;
+      cur[k] = prev[k] = tmp.x;
+      cur[k + 1] = prev[k + 1] = tmp.y;
+      cur[k + 2] = prev[k + 2] = tmp.z;
+    }
+    const pinned = new Uint8Array(count);
+    {
+      let maxY = -Infinity, minY = Infinity;
+      for (let i2 = 0; i2 < count; i2++) {
+        const y = cur[i2 * 3 + 1];
+        if (y > maxY) maxY = y;
+        if (y < minY) minY = y;
+      }
+      const yRange = maxY - minY;
+      if (yRange > 1e-4) {
+        const anchorYMin = maxY - yRange * TOP_ANCHOR_RATIO;
+        let pinnedCount = 0;
+        for (let i2 = 0; i2 < count; i2++) {
+          if (cur[i2 * 3 + 1] >= anchorYMin) {
+            pinned[i2] = 1;
+            pinnedCount++;
+          }
+        }
+        console.log(`[StaticFit] Anchored ${pinnedCount}/${count} vertices (top ${(TOP_ANCHOR_RATIO * 100).toFixed(0)}% by Y)`);
+      }
+    }
+    const softFit = getOrBuildSoftFitData(geo);
+    const dt2 = SIM_DT * SIM_DT;
+    for (let step = 0; step < steps; step++) {
+      for (let i2 = 0; i2 < count; i2++) {
+        if (pinned[i2]) continue;
+        const k = i2 * 3;
+        const vx = (cur[k] - prev[k]) * SIM_DAMPING;
+        const vy = (cur[k + 1] - prev[k + 1]) * SIM_DAMPING;
+        const vz = (cur[k + 2] - prev[k + 2]) * SIM_DAMPING;
+        prev[k] = cur[k];
+        prev[k + 1] = cur[k + 1];
+        prev[k + 2] = cur[k + 2];
+        cur[k] += vx;
+        cur[k + 1] += vy + SIM_GRAVITY * dt2;
+        cur[k + 2] += vz;
+      }
+      if (softFit) {
+        const { edges, restLengths } = softFit;
+        for (let e = 0, eCount = edges.length; e < eCount; e += 2) {
+          const i2 = edges[e];
+          const j = edges[e + 1];
+          const pi = i2 * 3;
+          const pj = j * 3;
+          const dx = cur[pj] - cur[pi];
+          const dy = cur[pj + 1] - cur[pi + 1];
+          const dz = cur[pj + 2] - cur[pi + 2];
+          const len2 = dx * dx + dy * dy + dz * dz;
+          if (len2 < 1e-10) continue;
+          const len = Math.sqrt(len2);
+          const rest = restLengths[e >> 1];
+          if (rest <= 0) continue;
+          const diff = (len - rest) / len;
+          const corr = SIM_STIFFNESS * diff * 0.5;
+          const wi = pinned[i2] ? 0 : 1;
+          const wj = pinned[j] ? 0 : 1;
+          const tot = wi + wj;
+          if (tot < 1e-6) continue;
+          if (!pinned[i2]) {
+            const si = wi / tot;
+            cur[pi] += dx * corr * si;
+            cur[pi + 1] += dy * corr * si;
+            cur[pi + 2] += dz * corr * si;
+          }
+          if (!pinned[j]) {
+            const sj = wj / tot;
+            cur[pj] -= dx * corr * sj;
+            cur[pj + 1] -= dy * corr * sj;
+            cur[pj + 2] -= dz * corr * sj;
+          }
+        }
+      }
+      if (step % 2 === 0) {
+        if (surface) {
+          const { posX, posY, posZ, normX, normY, normZ, count: sc } = surface;
+          for (let i2 = 0; i2 < count; i2++) {
+            const k = i2 * 3;
+            const cx = cur[k];
+            const cy = cur[k + 1];
+            const cz = cur[k + 2];
+            let nearDistSq = Infinity;
+            let nearIdx = -1;
+            for (let j = 0; j < sc; j++) {
+              const dx = cx - posX[j];
+              const dy = cy - posY[j];
+              const dz = cz - posZ[j];
+              const d2 = dx * dx + dy * dy + dz * dz;
+              if (d2 < nearDistSq) {
+                nearDistSq = d2;
+                nearIdx = j;
+              }
+            }
+            if (nearIdx < 0) continue;
+            const bx = posX[nearIdx];
+            const by = posY[nearIdx];
+            const bz = posZ[nearIdx];
+            const nx = normX[nearIdx];
+            const ny = normY[nearIdx];
+            const nz = normZ[nearIdx];
+            const dot = (cx - bx) * nx + (cy - by) * ny + (cz - bz) * nz;
+            if (dot < margin) {
+              cur[k] = bx + nx * margin;
+              cur[k + 1] = by + ny * margin;
+              cur[k + 2] = bz + nz * margin;
+              prev[k] = cur[k];
+              prev[k + 1] = cur[k + 1];
+              prev[k + 2] = cur[k + 2];
+            }
+          }
+        } else {
+          for (let i2 = 0; i2 < count; i2++) {
+            if (pinned[i2]) continue;
+            const k = i2 * 3;
+            tmp.set(cur[k], cur[k + 1], cur[k + 2]);
+            for (const cap of capsules) pushOutOfCapsule(tmp, cap, margin);
+            cur[k] = tmp.x;
+            cur[k + 1] = tmp.y;
+            cur[k + 2] = tmp.z;
+          }
+        }
+      }
+    }
+    for (let i2 = 0; i2 < count; i2++) {
+      tmp.set(cur[i2 * 3], cur[i2 * 3 + 1], cur[i2 * 3 + 2]);
+      tmp.applyMatrix4(invWorldMat);
+      posAttr.setXYZ(i2, tmp.x, tmp.y, tmp.z);
+    }
+    posAttr.needsUpdate = true;
+    geo.computeVertexNormals();
+  }
+  const BAKED_MESH_KEY = "__staticFitBaked";
+  const INITIAL_SCALE_KEY = "__staticFitInitialScale";
+  function getOrCreateBakedMesh(source) {
+    if (source.userData[BAKED_MESH_KEY]) {
+      return source.userData[BAKED_MESH_KEY];
+    }
+    const bakedGeo = bakeSkinnedMeshGeometry(source);
+    const bakedMesh = new Mesh(bakedGeo, source.material);
+    bakedMesh.name = `${source.name}__baked`;
+    bakedMesh.castShadow = source.castShadow;
+    bakedMesh.receiveShadow = source.receiveShadow;
+    const initialScale = source.scale.clone();
+    source.userData[INITIAL_SCALE_KEY] = initialScale;
+    bakedMesh.scale.copy(initialScale);
+    if (source.parent) source.parent.add(bakedMesh);
+    source.userData[BAKED_MESH_KEY] = bakedMesh;
+    return bakedMesh;
+  }
+  function refreshBakedGeometry(source, bakedMesh) {
+    const srcGeo = source.geometry;
+    const count = srcGeo.attributes.position.count;
+    const posAttr = bakedMesh.geometry.attributes.position;
+    if (posAttr.count !== count) {
+      bakedMesh.geometry.dispose();
+      bakedMesh.geometry = bakeSkinnedMeshGeometry(source);
+      return;
+    }
+    const tmp = new Vector3();
+    for (let i2 = 0; i2 < count; i2++) {
+      computeSkinnedVertex(source, i2, tmp);
+      posAttr.setXYZ(i2, tmp.x, tmp.y, tmp.z);
+    }
+    posAttr.needsUpdate = true;
+    bakedMesh.geometry.computeVertexNormals();
+    delete bakedMesh.geometry.userData[SOFT_FIT_KEY];
+  }
+  function applyStaticFit(opts) {
+    const {
+      bones,
+      loadedAssets,
+      boneInitialScales,
+      baseModel,
+      baseModelInitialScale,
+      iters = 60,
+      // シミュレーションステップ数（Verlet + PBD）
+      margin = 3e-3
+    } = opts;
+    let collision = null;
+    if (baseModel) {
+      baseModel.updateMatrixWorld(true);
+      const surface = buildBodySurface(baseModel, 600);
+      if (surface && surface.count > 0) {
+        collision = surface;
+      }
+    }
+    if (!collision) {
+      const capsules = buildBodyCapsules(bones);
+      if (capsules.length === 0) {
+        console.warn("[StaticFit] No body surface or capsules available");
+        return;
+      }
+      collision = capsules;
+      console.log("[StaticFit] Using capsule fallback (no baseModel)");
+    } else {
+      console.log("[StaticFit] Using body mesh surface collision");
+    }
+    let baseModelScaleBackup = null;
+    const useSurfaceCollision = !Array.isArray(collision);
+    if (!useSurfaceCollision && baseModel && baseModelInitialScale && !baseModel.scale.equals(baseModelInitialScale)) {
+      baseModelScaleBackup = baseModel.scale.clone();
+      baseModel.scale.copy(baseModelInitialScale);
+      baseModel.updateMatrixWorld(true);
+    }
+    const boneScaleBackup = /* @__PURE__ */ new Map();
+    let sharedSkeleton = null;
+    if (boneInitialScales) {
+      const boneArray = Array.isArray(bones) ? bones : Array.from(bones.values());
+      for (const bone of boneArray) {
+        const initS = boneInitialScales.get(bone);
+        if (initS && !bone.scale.equals(initS)) {
+          boneScaleBackup.set(bone, bone.scale.clone());
+          bone.scale.copy(initS);
+        }
+      }
+      if (boneScaleBackup.size > 0) {
+        for (const modelArray of loadedAssets.values()) {
+          for (const assetGroup of modelArray) {
+            assetGroup.traverse((child) => {
+              if (child instanceof SkinnedMesh && child.skeleton && !sharedSkeleton) {
+                sharedSkeleton = child.skeleton;
+              }
+            });
+            if (sharedSkeleton) break;
+          }
+          if (sharedSkeleton) break;
+        }
+        if (sharedSkeleton) sharedSkeleton.update();
+      }
+    }
+    loadedAssets.forEach((modelArray) => {
+      modelArray.forEach((assetGroup) => {
+        assetGroup.traverse((child) => {
+          if (!(child instanceof SkinnedMesh)) return;
+          const source = child;
+          source.skeleton.update();
+          source.updateMatrixWorld(true);
+          source.visible = false;
+          const bakedMesh = getOrCreateBakedMesh(source);
+          bakedMesh.position.copy(source.position);
+          bakedMesh.rotation.copy(source.rotation);
+          const initScale = source.userData[INITIAL_SCALE_KEY] ?? source.scale.clone();
+          if (!source.userData[INITIAL_SCALE_KEY]) {
+            source.userData[INITIAL_SCALE_KEY] = initScale.clone();
+          }
+          bakedMesh.scale.copy(initScale);
+          bakedMesh.updateMatrixWorld(true);
+          refreshBakedGeometry(source, bakedMesh);
+          resolveBodyCollisionOnBakedMesh(
+            bakedMesh,
+            collision,
+            iters,
+            margin
+          );
+          bakedMesh.visible = true;
+        });
+      });
+    });
+    if (boneScaleBackup.size > 0) {
+      for (const [bone, scale] of boneScaleBackup.entries()) bone.scale.copy(scale);
+      if (sharedSkeleton) sharedSkeleton.update();
+    }
+    if (baseModel && baseModelScaleBackup) {
+      baseModel.scale.copy(baseModelScaleBackup);
+      baseModel.updateMatrixWorld(true);
+    }
+  }
+  function cleanupStaticFit(loadedAssets) {
+    loadedAssets.forEach((modelArray) => {
+      modelArray.forEach((assetGroup) => {
+        assetGroup.traverse((child) => {
+          var _a3;
+          if (!(child instanceof SkinnedMesh)) return;
+          child.visible = true;
+          const baked = child.userData[BAKED_MESH_KEY];
+          if (baked) {
+            baked.geometry.dispose();
+            (_a3 = baked.parent) == null ? void 0 : _a3.remove(baked);
+            delete child.userData[BAKED_MESH_KEY];
+          }
+        });
+      });
+    });
+  }
+  function createAxisLabel(text, color) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 64;
+    canvas.height = 64;
+    const context = canvas.getContext("2d");
+    if (context) {
+      context.fillStyle = `#${color.toString(16).padStart(6, "0")}`;
+      context.font = "bold 48px Arial";
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText(text, 32, 32);
+    }
+    const texture = new CanvasTexture(canvas);
+    const spriteMaterial = new SpriteMaterial({ map: texture });
+    const sprite = new Sprite(spriteMaterial);
+    sprite.scale.set(0.1, 0.1, 1);
+    return sprite;
+  }
   function init3DViewer(container, options) {
     const { glbUrl, modelUrl, assets, apiBaseUrl, targetSize = 2.6, onLoad, onError } = options;
     const loadedAssets = /* @__PURE__ */ new Map();
@@ -28518,13 +29387,14 @@ void main() {
     const assetChildInitialScales = /* @__PURE__ */ new Map();
     const assetCategories = /* @__PURE__ */ new Map();
     let baseModelInitialReferencePoints = null;
+    let axisGroup = null;
     const getContainerSize = () => ({
       width: container.clientWidth || 800,
       height: container.clientHeight || 600
     });
     const { width: initialWidth, height: initialHeight } = getContainerSize();
     const scene = new Scene();
-    scene.background = null;
+    scene.background = new Color(16777215);
     const camera = new PerspectiveCamera(50, initialWidth / initialHeight, 0.1, 1e3);
     const initialRadius = 3.5;
     camera.position.set(0, 0, initialRadius);
@@ -28553,14 +29423,12 @@ void main() {
         }
       };
     }
-    if ("outputColorSpace" in renderer) {
-      renderer.outputColorSpace = "srgb";
-    }
-    renderer.toneMapping = ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 2;
+    renderer.toneMapping = NoToneMapping;
+    renderer.toneMappingExposure = 1;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = PCFSoftShadowMap;
     renderer.shadowMap.autoUpdate = true;
+    renderer.shadowMap.needsUpdate = true;
     renderer.setClearColor(0, 0);
     const canvasElement = renderer.domElement;
     canvasElement.style.touchAction = "none";
@@ -28569,7 +29437,7 @@ void main() {
     canvasElement.style.zIndex = "1";
     container.appendChild(canvasElement);
     setupLights(scene);
-    const { ground, groundGeometry, groundMaterial } = createGround(scene);
+    let { ground, groundGeometry, groundMaterial } = createGround(scene);
     function render() {
       if (!scene || !camera) {
         console.warn("[Atelier Preview] Scene or camera is not initialized");
@@ -28963,6 +29831,91 @@ void main() {
           boxMax: box.max.y
         });
         scene.add(baseModel);
+        model.updateMatrixWorld(true);
+        const localMinPoint = new Vector3(0, box.min.y, 0);
+        const worldMinPoint = model.localToWorld(localMinPoint.clone());
+        const modelFootY = worldMinPoint.y;
+        ground.position.y = modelFootY;
+        scene.traverse((child) => {
+          if (child instanceof DirectionalLight && child.castShadow) {
+            const shadowCamera = child.shadow.camera;
+            const shadowRange = 10;
+            shadowCamera.left = -shadowRange;
+            shadowCamera.right = shadowRange;
+            shadowCamera.top = shadowRange;
+            shadowCamera.bottom = -shadowRange;
+            shadowCamera.near = 0.1;
+            shadowCamera.far = 50;
+            shadowCamera.position.set(0, modelFootY + 5, 0);
+            shadowCamera.lookAt(0, modelFootY, 0);
+            shadowCamera.updateProjectionMatrix();
+          }
+        });
+        const worldBox = new Box3().setFromObject(model);
+        console.log("[Atelier Preview] Ground position updated to model foot level:", {
+          modelFootY,
+          worldBoxMin: worldBox.min.y,
+          worldBoxMax: worldBox.max.y,
+          modelPosition: model.position.y,
+          localBoxMin: box.min.y,
+          localMinPoint: localMinPoint.y,
+          worldMinPoint: worldMinPoint.y
+        });
+        const axisLength = 0.15;
+        axisGroup = new Group();
+        const xAxisGeometry = new BufferGeometry().setFromPoints([
+          new Vector3(0, 0, 0),
+          new Vector3(axisLength, 0, 0)
+        ]);
+        const xAxisMaterial = new LineBasicMaterial({ color: 16711680, linewidth: 2 });
+        const xAxis = new Line(xAxisGeometry, xAxisMaterial);
+        axisGroup.add(xAxis);
+        const xNodeGeometry = new CircleGeometry(0.02, 16);
+        const xNodeMaterial = new MeshBasicMaterial({ color: 16711680 });
+        const xNode = new Mesh(xNodeGeometry, xNodeMaterial);
+        xNode.rotation.x = -Math.PI / 2;
+        xNode.position.set(axisLength, 0, 0);
+        axisGroup.add(xNode);
+        const xLabel = createAxisLabel("X", 16711680);
+        xLabel.position.set(axisLength + 0.03, 0, 0);
+        axisGroup.add(xLabel);
+        const yAxisGeometry = new BufferGeometry().setFromPoints([
+          new Vector3(0, 0, 0),
+          new Vector3(-axisLength * 0.7, 0, 0)
+        ]);
+        const yAxisMaterial = new LineBasicMaterial({ color: 8421376, linewidth: 2 });
+        const yAxis = new Line(yAxisGeometry, yAxisMaterial);
+        axisGroup.add(yAxis);
+        const yNodeGeometry = new CircleGeometry(0.02, 16);
+        const yNodeMaterial = new MeshBasicMaterial({ color: 8421376 });
+        const yNode = new Mesh(yNodeGeometry, yNodeMaterial);
+        yNode.rotation.x = -Math.PI / 2;
+        yNode.position.set(-axisLength * 0.7, 0, 0);
+        axisGroup.add(yNode);
+        const yLabel = createAxisLabel("Y", 8421376);
+        yLabel.position.set(-axisLength * 0.7 - 0.03, 0, 0);
+        axisGroup.add(yLabel);
+        const zAxisGeometry = new BufferGeometry().setFromPoints([
+          new Vector3(0, 0, 0),
+          new Vector3(0, axisLength, 0)
+        ]);
+        const zAxisMaterial = new LineBasicMaterial({ color: 255, linewidth: 2 });
+        const zAxis = new Line(zAxisGeometry, zAxisMaterial);
+        axisGroup.add(zAxis);
+        const zNodeGeometry = new CircleGeometry(0.02, 16);
+        const zNodeMaterial = new MeshBasicMaterial({ color: 255 });
+        const zNode = new Mesh(zNodeGeometry, zNodeMaterial);
+        zNode.position.set(0, axisLength, 0);
+        axisGroup.add(zNode);
+        const zLabel = createAxisLabel("Z", 255);
+        zLabel.position.set(0, axisLength + 0.03, 0);
+        axisGroup.add(zLabel);
+        const originGeometry = new SphereGeometry(0.015, 16, 16);
+        const originMaterial = new MeshBasicMaterial({ color: 16777215 });
+        const originSphere = new Mesh(originGeometry, originMaterial);
+        axisGroup.add(originSphere);
+        axisGroup.position.set(0, 0, 0);
+        console.log("[Atelier Preview] XYZ axes will be rendered as HTML overlay");
         if (camera) {
           camera.lookAt(0, 0, 0);
           camera.updateProjectionMatrix();
@@ -29180,123 +30133,51 @@ void main() {
           });
         }
       }
-      const currentBox = new Box3().setFromObject(baseModel);
-      const currentModelHeight = currentBox.max.y - currentBox.min.y;
-      const currentReferencePoints = {
-        top: currentBox.min.y + currentModelHeight * 0.82,
-        // トップス用：肩の位置（頭から腰までの82%の位置）
-        bottom: currentBox.min.y + currentModelHeight * 0.45,
-        // ボトムス用：腰の位置
-        center: currentBox.getCenter(new Vector3()).y
-        // その他用：モデルの中心
-      };
-      loadedAssets.forEach((modelArray, category) => {
+      adjustAssetPositionsForHeight();
+    }
+    let heightSettleTimer = null;
+    function restoreSkinnedMeshVisibility() {
+      loadedAssets.forEach((modelArray) => {
         modelArray.forEach((assetModel) => {
-          const initialPosition = assetInitialPositions.get(assetModel);
-          const initialScale = assetInitialScales.get(assetModel);
-          if (!initialPosition || !baseModelInitialReferencePoints) {
-            return;
-          }
-          const initialRefPoints = baseModelInitialReferencePoints;
-          if (initialScale) {
-            assetModel.scale.copy(initialScale);
-            assetModel.traverse((child) => {
-              if (child instanceof Mesh || child instanceof SkinnedMesh) {
-                const childInitialScale = assetChildInitialScales.get(child);
-                if (childInitialScale) {
-                  child.scale.copy(childInitialScale);
-                }
-              }
-            });
-            assetModel.updateMatrixWorld(true);
-            if (Math.random() < 0.1) {
-              console.log("[Atelier Preview] Asset scale fixed:", {
-                category,
-                initialScale: { x: initialScale.x, y: initialScale.y, z: initialScale.z },
-                currentScale: { x: assetModel.scale.x, y: assetModel.scale.y, z: assetModel.scale.z },
-                heightRatio
-              });
-            }
-          }
-          const categoryLower = (category || "").toLowerCase();
-          let referencePointType;
-          let initialReferenceY;
-          let currentReferenceY;
-          if (categoryLower.includes("トップス") || categoryLower.includes("シャツ") || categoryLower.includes("tシャツ") || categoryLower.includes("t-shirt") || categoryLower.includes("shirt") || categoryLower.includes("コート") || categoryLower.includes("coat") || categoryLower.includes("ジャケット") || categoryLower.includes("jacket")) {
-            referencePointType = "top";
-            initialReferenceY = initialRefPoints.top;
-            currentReferenceY = currentReferencePoints.top;
-          } else if (categoryLower.includes("ボトムス") || categoryLower.includes("パンツ") || categoryLower.includes("pants") || categoryLower.includes("trouser") || categoryLower.includes("スカート") || categoryLower.includes("skirt")) {
-            referencePointType = "bottom";
-            initialReferenceY = initialRefPoints.bottom;
-            currentReferenceY = currentReferencePoints.bottom;
-          } else {
-            referencePointType = "center";
-            initialReferenceY = initialRefPoints.center;
-            currentReferenceY = currentReferencePoints.center;
-          }
-          const referencePointOffset = currentReferenceY - initialReferenceY;
-          assetModel.position.set(
-            initialPosition.x,
-            initialPosition.y + referencePointOffset,
-            initialPosition.z
-          );
-          console.log("[Atelier Preview] Asset position adjusted:", {
-            category,
-            referencePointType,
-            initialPosition: { y: initialPosition.y },
-            newPosition: { y: assetModel.position.y },
-            initialScale: initialScale ? { x: initialScale.x, y: initialScale.y, z: initialScale.z } : null,
-            currentScale: { x: assetModel.scale.x, y: assetModel.scale.y, z: assetModel.scale.z },
-            referencePointOffset,
-            initialReferenceY,
-            currentReferenceY
+          assetModel.traverse((child) => {
+            if (!(child instanceof SkinnedMesh)) return;
+            child.visible = true;
+            const baked = child.userData["__staticFitBaked"];
+            if (baked) baked.visible = false;
           });
         });
       });
-      render();
     }
-    function adjustAssetPositionsForHeight(newHeight, baseHeightValue) {
-      if (!baseModel || !baseModelInitialScale || !baseModelInitialPosition || !baseModelInitialCenter || !baseModelInitialReferencePoints) {
-        return;
-      }
-      const initialRefPoints = baseModelInitialReferencePoints;
-      const currentBox = new Box3().setFromObject(baseModel);
-      const currentModelHeight = currentBox.max.y - currentBox.min.y;
-      const currentReferencePoints = {
-        top: currentBox.min.y + currentModelHeight * 0.82,
-        // トップス用：肩の位置（頭から腰までの82%の位置）
-        bottom: currentBox.min.y + currentModelHeight * 0.45,
-        // ボトムス用：腰の位置
-        center: currentBox.getCenter(new Vector3()).y
-        // その他用：モデルの中心
-      };
-      loadedAssets.forEach((modelArray, category) => {
+    function adjustAssetPositionsForHeight(_newHeight, _baseHeightValue) {
+      if (!baseModel) return;
+      restoreSkinnedMeshVisibility();
+      loadedAssets.forEach((modelArray) => {
         modelArray.forEach((assetModel) => {
           const initialPosition = assetInitialPositions.get(assetModel);
+          const initialScale = assetInitialScales.get(assetModel);
           if (!initialPosition) return;
-          const categoryLower = (category || "").toLowerCase();
-          let initialReferenceY;
-          let currentReferenceY;
-          if (categoryLower.includes("トップス") || categoryLower.includes("シャツ") || categoryLower.includes("tシャツ") || categoryLower.includes("t-shirt") || categoryLower.includes("shirt") || categoryLower.includes("コート") || categoryLower.includes("coat") || categoryLower.includes("ジャケット") || categoryLower.includes("jacket")) {
-            initialReferenceY = initialRefPoints.top;
-            currentReferenceY = currentReferencePoints.top;
-          } else if (categoryLower.includes("ボトムス") || categoryLower.includes("パンツ") || categoryLower.includes("pants") || categoryLower.includes("trouser") || categoryLower.includes("スカート") || categoryLower.includes("skirt")) {
-            initialReferenceY = initialRefPoints.bottom;
-            currentReferenceY = currentReferencePoints.bottom;
-          } else {
-            initialReferenceY = initialRefPoints.center;
-            currentReferenceY = currentReferencePoints.center;
-          }
-          const referencePointOffset = currentReferenceY - initialReferenceY;
-          assetModel.position.set(
-            initialPosition.x,
-            initialPosition.y + referencePointOffset,
-            initialPosition.z
-          );
+          assetModel.position.copy(initialPosition);
+          if (initialScale) assetModel.scale.copy(initialScale);
+          assetModel.updateMatrixWorld(true);
         });
       });
       render();
+      if (heightSettleTimer) clearTimeout(heightSettleTimer);
+      heightSettleTimer = setTimeout(() => {
+        heightSettleTimer = null;
+        if (loadedAssets.size === 0 || skeletonBones.size === 0 || !baseModel) return;
+        baseModel.updateMatrixWorld(true);
+        applyStaticFit({
+          bones: skeletonBones,
+          loadedAssets,
+          boneInitialScales,
+          baseModel,
+          baseModelInitialScale: baseModelInitialScale ?? void 0,
+          iters: 60,
+          margin: 3e-3
+        });
+        render();
+      }, 400);
     }
     return {
       updateGlbUrl(newGlbUrl) {
@@ -29331,6 +30212,13 @@ void main() {
           visible: (_a3 = modelArray[0]) == null ? void 0 : _a3.visible,
           assetCount: modelArray.length
         });
+      },
+      getCameraRotation() {
+        if (!camera) return null;
+        return {
+          quaternion: camera.quaternion.clone(),
+          position: camera.position.clone()
+        };
       },
       updateAssets(newAssets) {
         loadedAssets.forEach((modelArray) => {
@@ -29383,6 +30271,19 @@ void main() {
               });
               adjustAssetPositionsForHeight();
             }
+            if (baseModel && baseModelInitialScale && loadedAssets.size > 0 && skeletonBones.size > 0) {
+              baseModel.updateMatrixWorld(true);
+              applyStaticFit({
+                bones: skeletonBones,
+                loadedAssets,
+                boneInitialScales,
+                baseModel,
+                baseModelInitialScale,
+                iters: 60,
+                margin: 3e-3
+              });
+              render();
+            }
           };
           loadAssets().catch((error) => {
             console.error("[Atelier Preview] Error updating assets:", error);
@@ -29407,6 +30308,7 @@ void main() {
             }
           });
         };
+        cleanupStaticFit(loadedAssets);
         loadedAssets.forEach((modelArray) => {
           modelArray.forEach((model) => {
             if (scene.children.includes(model)) {
@@ -29448,137 +30350,6 @@ void main() {
       }
     };
   }
-  function buildHeightSlider(container, min, max2, initial, onChange) {
-    const plus = document.createElement("div");
-    plus.textContent = "+";
-    plus.style.cssText = `
-    font-size: 12px; font-weight: 700; color: #374151;
-    cursor: pointer; line-height: 1; flex-shrink: 0; user-select: none;
-    width: 100%; text-align: center; padding: 2px 0;
-    position: relative;
-  `;
-    const valueLabel = document.createElement("div");
-    valueLabel.textContent = `${initial}`;
-    valueLabel.style.cssText = `
-    position: absolute;
-    top: -20px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 13px;
-    font-weight: 600;
-    color: #374151;
-    white-space: nowrap;
-    opacity: 0;
-    transition: opacity 0.2s;
-    pointer-events: none;
-    z-index: 2;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 2px 6px;
-    border-radius: 4px;
-  `;
-    plus.appendChild(valueLabel);
-    const trackWrap = document.createElement("div");
-    trackWrap.style.cssText = `
-    flex: 1; min-height: 0; position: relative;
-    display: flex; align-items: center; justify-content: center;
-    margin: 3px 0;
-  `;
-    const track = document.createElement("div");
-    track.style.cssText = "position:absolute;top:0;bottom:0;width:2px;background:#d1d5db;border-radius:1px;left:50%;transform:translateX(-50%);";
-    const handle = document.createElement("div");
-    handle.style.cssText = `
-    position: absolute;
-    width: 12px; height: 12px;
-    background: #111; border-radius: 50%;
-    left: 50%; transform: translate(-50%, -50%);
-    cursor: grab; touch-action: none; z-index: 1;
-  `;
-    const minus = document.createElement("div");
-    minus.textContent = "−";
-    minus.style.cssText = `
-    font-size: 12px; font-weight: 700; color: #374151;
-    cursor: pointer; line-height: 1; flex-shrink: 0; user-select: none;
-    width: 100%; text-align: center; padding: 2px 0;
-  `;
-    trackWrap.appendChild(track);
-    trackWrap.appendChild(handle);
-    container.appendChild(plus);
-    container.appendChild(trackWrap);
-    container.appendChild(minus);
-    let dragging = false;
-    let currentValue = initial;
-    const valueToY = (v) => {
-      const h = trackWrap.clientHeight;
-      return (1 - (v - min) / (max2 - min)) * h;
-    };
-    const yToValue = (y) => {
-      const h = trackWrap.clientHeight || 1;
-      const ratio = Math.max(0, Math.min(1, y / h));
-      return Math.round(max2 - ratio * (max2 - min));
-    };
-    const positionHandle = (v) => {
-      const y = valueToY(v);
-      handle.style.top = `${y}px`;
-      valueLabel.textContent = `${v}`;
-    };
-    requestAnimationFrame(() => positionHandle(currentValue));
-    window.addEventListener("resize", () => positionHandle(currentValue), { passive: true });
-    handle.addEventListener("mousedown", (e) => {
-      e.preventDefault();
-      dragging = true;
-      handle.style.cursor = "grabbing";
-      valueLabel.style.opacity = "1";
-    });
-    handle.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      dragging = true;
-      valueLabel.style.opacity = "1";
-    }, { passive: false });
-    document.addEventListener("mousemove", (e) => {
-      if (!dragging) return;
-      const rect = trackWrap.getBoundingClientRect();
-      const v = yToValue(e.clientY - rect.top);
-      if (v !== currentValue) {
-        currentValue = v;
-        positionHandle(v);
-        onChange(v);
-      }
-    });
-    document.addEventListener("touchmove", (e) => {
-      if (!dragging) return;
-      e.preventDefault();
-      const rect = trackWrap.getBoundingClientRect();
-      const v = yToValue(e.touches[0].clientY - rect.top);
-      if (v !== currentValue) {
-        currentValue = v;
-        positionHandle(v);
-        onChange(v);
-      }
-    }, { passive: false });
-    document.addEventListener("mouseup", () => {
-      if (dragging) {
-        dragging = false;
-        handle.style.cursor = "grab";
-        valueLabel.style.opacity = "0";
-      }
-    });
-    document.addEventListener("touchend", () => {
-      if (dragging) {
-        dragging = false;
-        valueLabel.style.opacity = "0";
-      }
-    });
-    plus.addEventListener("click", () => {
-      currentValue = Math.min(max2, currentValue + 1);
-      positionHandle(currentValue);
-      onChange(currentValue);
-    });
-    minus.addEventListener("click", () => {
-      currentValue = Math.max(min, currentValue - 1);
-      positionHandle(currentValue);
-      onChange(currentValue);
-    });
-  }
   const OUTFIT_CATEGORIES = ["トップス", "ボトムス", "ジャケット", "コート"];
   const WIDGET_SIZES = {
     leftPanel: {
@@ -29592,7 +30363,8 @@ void main() {
       fontSize: 12
     },
     thumbs: {
-      cardSize: 50,
+      cardWidth: 62,
+      cardHeight: 76,
       imageSize: 40,
       fontSize: 10,
       borderRadius: 8,
@@ -29607,20 +30379,31 @@ void main() {
     if (!cats.includes(selectedCategory)) {
       selectedCategory = cats[0] || OUTFIT_CATEGORIES[0];
     }
-    cats.forEach((cat) => {
+    const sortedCats = [...cats].sort((a, b) => {
+      const indexA = OUTFIT_CATEGORIES.indexOf(a);
+      const indexB = OUTFIT_CATEGORIES.indexOf(b);
+      if (indexA === -1 && indexB === -1) return 0;
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    });
+    sortedCats.forEach((cat) => {
       const isActive = cat === selectedCategory;
       const btn = document.createElement("button");
       btn.textContent = cat;
       btn.style.cssText = `
       padding: ${sizes.catTabs.padding};
       font-size: ${sizes.catTabs.fontSize}px;
-      font-weight: ${isActive ? "700" : "500"};
-      color: ${isActive ? "#fff" : "#374151"};
-      background: ${isActive ? "#111" : "transparent"};
-      border: none; border-radius: 99px;
-      cursor: pointer; white-space: nowrap;
-      flex-shrink: 0; outline: none;
-      transition: background 0.15s, color 0.15s;
+      font-weight: ${isActive ? "bold" : "normal"};
+      color: ${isActive ? "#fff" : "#666"};
+      background: ${isActive ? "#000" : "transparent"};
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      outline: none;
+      transition: all 0.2s;
     `;
       btn.addEventListener("click", () => {
         onCategoryChange(cat);
@@ -29648,9 +30431,9 @@ void main() {
       const isSelected = item.id === selectedAssetId && (((_a3 = activeAssets.get(item.category)) == null ? void 0 : _a3.id) === item.id || ((_b2 = activeAssets.get(item.category)) == null ? void 0 : _b2.url) === item.modelUrl);
       const card = document.createElement("div");
       card.style.cssText = `
-      width: ${sizes.thumbs.cardSize}px;
-      min-width: ${sizes.thumbs.cardSize}px;
-      height: ${sizes.thumbs.cardSize}px;
+      width: ${sizes.thumbs.cardWidth}px;
+      min-width: ${sizes.thumbs.cardWidth}px;
+      height: ${sizes.thumbs.cardHeight}px;
       border-radius: ${sizes.thumbs.borderRadius}px;
       background: #fff;
       border: 2px solid ${isSelected ? "#3b82f6" : "#e5e7eb"};
@@ -29661,8 +30444,8 @@ void main() {
     `;
       const imgWrap = document.createElement("div");
       imgWrap.style.cssText = `
-      width: ${sizes.thumbs.imageSize}px;
-      height: ${sizes.thumbs.imageSize}px;
+      width: calc(100% - 8px);
+      height: calc(100% - 8px);
       flex-shrink: 0;
       border-radius: ${sizes.thumbs.borderRadius === 8 ? 4 : 3}px;
       background: #f3f4f6;
@@ -29702,9 +30485,9 @@ void main() {
       width: ${sizes.leftPanel.cardSize}px;
       height: ${sizes.leftPanel.cardSize}px;
       flex-shrink: 0;
-      border: 2px solid ${isActive ? "#3b82f6" : "#e5e7eb"};
+      border: 2px solid ${isActive ? "#3b82f6" : "#fff"};
       border-radius: ${sizes.leftPanel.borderRadius}px;
-      background: rgba(249,250,251,0.9);
+      background: #fff;
       display: flex; align-items: center; justify-content: center;
       cursor: pointer; overflow: hidden; box-sizing: border-box;
     `;
@@ -29734,6 +30517,209 @@ void main() {
       });
       container.appendChild(card);
     });
+  }
+  function buildAxisOverlay() {
+    const overlay = document.createElement("div");
+    overlay.setAttribute("data-atelier-axis-overlay", "true");
+    overlay.style.cssText = `
+    position: absolute;
+    top: max(12px, 5vh);
+    right: 10px;
+    width: 50px;
+    height: 50px;
+    z-index: 20;
+    pointer-events: none;
+    overflow: visible;
+  `;
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("width", "50");
+    svg.setAttribute("height", "50");
+    svg.setAttribute("viewBox", "-25 -25 50 50");
+    svg.setAttribute("overflow", "visible");
+    svg.style.cssText = "width: 100%; height: 100%;";
+    overlay.appendChild(svg);
+    return { overlay, svg };
+  }
+  function renderAxis(axisSvg, getCameraRotation) {
+    const cameraInfo = getCameraRotation();
+    if (!cameraInfo) return;
+    axisSvg.innerHTML = "";
+    const quaternion = cameraInfo.quaternion;
+    const invQuaternion = quaternion.clone().invert();
+    const threeX = new Vector3(1, 0, 0);
+    const threeY = new Vector3(0, 1, 0);
+    const threeZ = new Vector3(0, 0, 1);
+    threeX.applyQuaternion(invQuaternion);
+    threeY.applyQuaternion(invQuaternion);
+    threeZ.applyQuaternion(invQuaternion);
+    const worldX = threeX;
+    const worldY = threeZ;
+    const worldZ = threeY;
+    const axisLength = 18;
+    const originX = -5;
+    const originY = 0;
+    function makeLine(x2, y2, color) {
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", String(originX));
+      line.setAttribute("y1", String(originY));
+      line.setAttribute("x2", String(x2));
+      line.setAttribute("y2", String(y2));
+      line.setAttribute("stroke", color);
+      line.setAttribute("stroke-width", "2");
+      return line;
+    }
+    function makeCircle(cx, cy, color) {
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("cx", String(cx));
+      circle.setAttribute("cy", String(cy));
+      circle.setAttribute("r", "3");
+      circle.setAttribute("fill", color);
+      return circle;
+    }
+    function makeText(x2, y, label, color) {
+      const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      text.setAttribute("x", String(x2));
+      text.setAttribute("y", String(y));
+      text.setAttribute("fill", color);
+      text.setAttribute("font-size", "10");
+      text.setAttribute("font-weight", "bold");
+      text.textContent = label;
+      return text;
+    }
+    const xEndX = originX + worldX.x * axisLength;
+    const xEndY = originY - worldX.y * axisLength;
+    axisSvg.appendChild(makeLine(xEndX, xEndY, "#ff0000"));
+    axisSvg.appendChild(makeCircle(xEndX, xEndY, "#ff0000"));
+    axisSvg.appendChild(makeText(xEndX + 3, xEndY + 4, "X", "#ff0000"));
+    const yEndX = originX + worldY.x * axisLength * 0.7;
+    const yEndY = originY - worldY.y * axisLength * 0.7;
+    axisSvg.appendChild(makeLine(yEndX, yEndY, "#808000"));
+    axisSvg.appendChild(makeCircle(yEndX, yEndY, "#808000"));
+    axisSvg.appendChild(makeText(yEndX - 4, yEndY - 4, "Y", "#808000"));
+    const zEndX = originX + worldZ.x * axisLength;
+    const zEndY = originY - worldZ.y * axisLength;
+    axisSvg.appendChild(makeLine(zEndX, zEndY, "#0000ff"));
+    axisSvg.appendChild(makeCircle(zEndX, zEndY, "#0000ff"));
+    axisSvg.appendChild(makeText(zEndX - 4, zEndY - 4, "Z", "#0000ff"));
+    const originCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    originCircle.setAttribute("cx", String(originX));
+    originCircle.setAttribute("cy", String(originY));
+    originCircle.setAttribute("r", "2");
+    originCircle.setAttribute("fill", "#ffffff");
+    axisSvg.appendChild(originCircle);
+  }
+  function createAxisControls(axisSvg, getCameraRotation) {
+    let intervalId = null;
+    function start() {
+      if (intervalId !== null) return;
+      intervalId = window.setInterval(() => renderAxis(axisSvg, getCameraRotation), 100);
+    }
+    function stop() {
+      if (intervalId !== null) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    }
+    return { start, stop };
+  }
+  function dismissSheet(sheet, overlay) {
+    sheet.style.animation = "none";
+    sheet.style.transition = "transform 0.3s cubic-bezier(0.32,0.72,0,1)";
+    sheet.style.transform = "translateY(calc(100% - 20px))";
+    overlay.style.animation = "none";
+    overlay.style.transition = "opacity 0.3s ease-out";
+    overlay.style.opacity = "0";
+    setTimeout(() => {
+      overlay.style.pointerEvents = "none";
+    }, 320);
+    if (sheet.__atelierSetOpen) sheet.__atelierSetOpen(false);
+  }
+  function openSheet(sheet, overlay) {
+    overlay.style.pointerEvents = "auto";
+    sheet.style.animation = "none";
+    sheet.style.transition = "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)";
+    sheet.style.transform = "translateY(0)";
+    overlay.style.animation = "none";
+    overlay.style.transition = "opacity 0.22s ease-out";
+    overlay.style.opacity = "1";
+    if (sheet.__atelierSetOpen) sheet.__atelierSetOpen(true);
+  }
+  function setupDragToDismiss(handle, sheet, overlay, onDismiss) {
+    let startY = 0, curY = 0, dragging = false;
+    let isOpen = true;
+    const sheetHeight = sheet.offsetHeight || parseInt(sheet.style.height) || window.innerHeight * 0.9;
+    const onStart = (y) => {
+      startY = curY = y;
+      dragging = true;
+      sheet.style.transition = "none";
+      overlay.style.transition = "none";
+    };
+    const onMove = (y) => {
+      if (!dragging) return;
+      curY = y;
+      const delta = y - startY;
+      if (isOpen) {
+        const translateY = Math.max(0, delta);
+        sheet.style.transform = `translateY(${translateY}px)`;
+        overlay.style.opacity = String(Math.max(0, 1 - translateY / sheetHeight));
+      } else {
+        const translateY = Math.min(0, delta);
+        sheet.style.transform = `translateY(calc(100% - 20px + ${translateY}px))`;
+        overlay.style.opacity = String(Math.min(1, Math.abs(translateY) / sheetHeight));
+      }
+    };
+    const onEnd = () => {
+      if (!dragging) return;
+      dragging = false;
+      const delta = curY - startY;
+      const threshold = 90;
+      sheet.style.transition = "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)";
+      overlay.style.transition = "opacity 0.3s ease-out";
+      if (isOpen) {
+        if (delta > threshold) {
+          isOpen = false;
+          onDismiss();
+          dismissSheet(sheet, overlay);
+        } else {
+          sheet.style.transform = "translateY(0)";
+          overlay.style.opacity = "1";
+        }
+      } else {
+        if (delta < -threshold) {
+          isOpen = true;
+          openSheet(sheet, overlay);
+        } else {
+          sheet.style.transform = "translateY(calc(100% - 20px))";
+          overlay.style.opacity = "0";
+        }
+      }
+    };
+    sheet.__atelierIsOpen = () => isOpen;
+    sheet.__atelierSetOpen = (open) => {
+      isOpen = open;
+    };
+    handle.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      onStart(e.clientY);
+    });
+    handle.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      onStart(e.touches[0].clientY);
+    }, { passive: false });
+    document.addEventListener("mousemove", (e) => {
+      if (dragging) {
+        e.preventDefault();
+        onMove(e.clientY);
+      }
+    });
+    document.addEventListener("touchmove", (e) => {
+      if (dragging) {
+        e.preventDefault();
+        onMove(e.touches[0].clientY);
+      }
+    }, { passive: false });
+    document.addEventListener("mouseup", onEnd);
+    document.addEventListener("touchend", onEnd);
   }
   function injectStyles() {
     if (document.getElementById("atelier-bs-styles")) return;
@@ -29767,24 +30753,13 @@ void main() {
     overlay.setAttribute("data-atelier-modal-overlay", "true");
     overlay.style.cssText = `
     position: fixed !important; inset: 0 !important;
-    background: rgba(0,0,0,0.48) !important;
+    background: #fff !important;
     z-index: 10000 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
     opacity: 0; animation: atelier-fade-in 0.22s ease-out forwards;
   `;
-    const sheet = document.createElement("div");
-    sheet.setAttribute("data-atelier-sheet", "true");
-    sheet.style.cssText = `
-    position: absolute; bottom: 0; left: 0; right: 0;
-    height: 95%;
-    background: #fff;
-    border-radius: 16px 16px 0 0;
-    display: flex; flex-direction: column;
-    overflow: hidden;
-    transform: translateY(calc(100% - 20px));
-    animation: atelier-slide-up 0.35s cubic-bezier(0.32, 0.72, 0, 1) forwards;
-  `;
-    const dragBar = buildDragBar();
-    sheet.appendChild(dragBar);
     const contentArea = document.createElement("div");
     contentArea.setAttribute("data-atelier-content-area", "true");
     contentArea.style.cssText = "flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;";
@@ -29800,17 +30775,15 @@ void main() {
   `;
     spinWrap.appendChild(spin);
     contentArea.appendChild(spinWrap);
-    sheet.appendChild(contentArea);
-    overlay.appendChild(sheet);
+    overlay.appendChild(contentArea);
     document.body.appendChild(overlay);
     const cleanup = { fn: () => {
     } };
-    setupDragToDismiss(dragBar, sheet, overlay, () => cleanup.fn());
     overlay.__atelierCleanup = cleanup;
     return { overlay, contentArea };
   }
   function updateModalWithConfig(_shadowRoot, config, params, overlay, contentArea) {
-    var _a3;
+    var _a3, _b2;
     if (!overlay || !contentArea) return;
     injectStyles();
     contentArea.innerHTML = "";
@@ -29834,79 +30807,299 @@ void main() {
     let currentCategory = OUTFIT_CATEGORIES[0];
     let selectedAssetId = null;
     const viewerArea = document.createElement("div");
-    viewerArea.style.cssText = "flex:1;min-height:0;position:relative;overflow:hidden;";
+    viewerArea.style.cssText = `
+    flex: 0 0 75%;
+    min-height: 0;
+    position: relative;
+    overflow: hidden;
+    background: #fff;
+  `;
     const viewerEl = document.createElement("div");
     viewerEl.style.cssText = "position:absolute;inset:0;";
+    const genderOverlay = document.createElement("div");
+    genderOverlay.style.cssText = `
+    position:absolute;
+    top:16px;
+    left:50%;
+    transform:translateX(-50%);
+    display:flex;
+    gap:8px;
+    z-index:25;
+    opacity:0;
+    transition:opacity 0.3s ease-out;
+  `;
     const leftPanel = document.createElement("div");
     leftPanel.setAttribute("data-atelier-left-panel", "true");
     leftPanel.style.cssText = `
-    position: absolute; top: 12px; left: 10px;
+    position: absolute; top: max(12px, 5vh); left: 10px;
     display: flex; flex-direction: column;
     align-items: center; gap: 8px;
     z-index: 20;
     opacity: 0;
     transition: opacity 0.3s ease-out;
   `;
-    const sliderPanel = document.createElement("div");
-    sliderPanel.style.cssText = `
-    position: absolute; bottom: 8px; right: 20px;
-    width: 28px; height: 180px;
-    display: flex; flex-direction: column; align-items: center;
-    user-select: none; touch-action: none; z-index: 20;
-    opacity: 0;
-    transition: opacity 0.3s ease-out;
-  `;
+    const { overlay: axisOverlay, svg: axisSvg } = buildAxisOverlay();
     viewerArea.appendChild(viewerEl);
     viewerArea.appendChild(leftPanel);
-    viewerArea.appendChild(sliderPanel);
+    viewerArea.appendChild(axisOverlay);
     const bottomPanel = document.createElement("div");
-    bottomPanel.style.cssText = "flex-shrink:0;background:#fff;opacity:0;transition:opacity 0.3s ease-out;";
+    bottomPanel.style.cssText = `
+    flex-shrink: 0;
+    background: #fff;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    gap: 0;
+  `;
+    const productInfoRow = document.createElement("div");
+    productInfoRow.style.cssText = `
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 6px 12px 4px;
+    padding-top: max(6px, env(safe-area-inset-top));
+  `;
+    const leftInfo = document.createElement("div");
+    leftInfo.style.cssText = `
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  `;
+    const productNameEl = document.createElement("div");
+    productNameEl.style.cssText = `
+    font-size: 12px;
+    font-weight: bold;
+    color: #000;
+    line-height: 1.2;
+  `;
+    productNameEl.textContent = ((_b2 = config.asset) == null ? void 0 : _b2.productName) || "商品名";
+    leftInfo.appendChild(productNameEl);
     const sizeRow = document.createElement("div");
     sizeRow.style.cssText = `
-    display: flex; align-items: center; justify-content: center;
-    gap: 10px; padding: 4px 20px 4px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
   `;
-    const prevBtn = makeArrowBtn("‹");
-    const sizeLabel = document.createElement("div");
-    sizeLabel.style.cssText = `
-    min-width: 48px; padding: 6px 14px;
-    text-align: center; font-size: 15px; font-weight: 700;
-    color: #fff; background: #3b82f6;
-    border-radius: 6px;
+    SIZES.forEach((size) => {
+      const sizeBtn = document.createElement("button");
+      sizeBtn.textContent = size;
+      sizeBtn.style.cssText = `
+      padding: 0;
+      font-size: 12px;
+      font-weight: ${size === currentSize ? "bold" : "normal"};
+      color: ${size === currentSize ? "#000" : "#666"};
+      background: transparent;
+      border: none;
+      border-bottom: ${size === currentSize ? "2px solid #000" : "none"};
+      cursor: pointer;
+      transition: all 0.2s;
+      line-height: 1.2;
+    `;
+      sizeBtn.addEventListener("click", () => {
+        currentSize = size;
+        sizeRow.querySelectorAll("button").forEach((btn) => {
+          const btnSize = btn.textContent;
+          btn.style.fontWeight = btnSize === currentSize ? "bold" : "normal";
+          btn.style.color = btnSize === currentSize ? "#000" : "#666";
+          btn.style.borderBottom = btnSize === currentSize ? "2px solid #000" : "none";
+        });
+        onSizeChange(currentSize);
+      });
+      sizeRow.appendChild(sizeBtn);
+    });
+    leftInfo.appendChild(sizeRow);
+    const priceEl = document.createElement("div");
+    priceEl.style.cssText = `
+    font-size: 12px;
+    font-weight: bold;
+    color: #000;
+    white-space: nowrap;
+    line-height: 1.2;
   `;
-    sizeLabel.textContent = currentSize;
-    const nextBtn = makeArrowBtn("›");
-    prevBtn.addEventListener("click", () => {
-      const i2 = SIZES.indexOf(currentSize);
-      if (i2 > 0) {
-        currentSize = SIZES[i2 - 1];
-        sizeLabel.textContent = currentSize;
-        onSizeChange(currentSize);
-      }
-    });
-    nextBtn.addEventListener("click", () => {
-      const i2 = SIZES.indexOf(currentSize);
-      if (i2 < SIZES.length - 1) {
-        currentSize = SIZES[i2 + 1];
-        sizeLabel.textContent = currentSize;
-        onSizeChange(currentSize);
-      }
-    });
-    sizeRow.appendChild(prevBtn);
-    sizeRow.appendChild(sizeLabel);
-    sizeRow.appendChild(nextBtn);
-    const outfitPanelEl = document.createElement("div");
-    outfitPanelEl.style.cssText = "flex-shrink:0;display:flex;flex-direction:column;background:#fff;";
+    priceEl.textContent = "74,000 JPY";
+    productInfoRow.appendChild(leftInfo);
+    productInfoRow.appendChild(priceEl);
+    bottomPanel.appendChild(productInfoRow);
+    const divider = document.createElement("div");
+    divider.style.cssText = `
+    height: 1px;
+    background: #e5e7eb;
+    margin: 0 12px;
+  `;
+    bottomPanel.appendChild(divider);
     const thumbsRow = document.createElement("div");
     thumbsRow.setAttribute("data-atelier-outfit-scroll", "true");
-    thumbsRow.style.cssText = "display:flex;gap:8px;padding:4px 12px 4px;overflow-x:auto;overflow-y:hidden;";
+    thumbsRow.style.cssText = `
+    display: flex;
+    flex-direction: row;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 4px 12px;
+    align-items: center;
+    min-height: 0;
+  `;
+    for (let i2 = 0; i2 < 5; i2++) {
+      const placeholder = document.createElement("div");
+      placeholder.style.cssText = `
+      width: 62px;
+      height: 76px;
+      flex-shrink: 0;
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+    `;
+      thumbsRow.appendChild(placeholder);
+    }
     const catTabs = document.createElement("div");
-    catTabs.style.cssText = "display:flex;gap:4px;padding:4px 12px 8px;overflow-x:auto;";
-    outfitPanelEl.appendChild(thumbsRow);
-    outfitPanelEl.appendChild(catTabs);
-    bottomPanel.appendChild(sizeRow);
-    bottomPanel.appendChild(outfitPanelEl);
+    catTabs.style.cssText = `
+    display: flex;
+    flex-direction: row;
+    gap: 2px;
+    padding: 4px 12px 6px;
+    overflow-x: auto;
+    flex-shrink: 0;
+  `;
+    bottomPanel.appendChild(thumbsRow);
+    bottomPanel.appendChild(catTabs);
+    const setupPanel = document.createElement("div");
+    setupPanel.style.cssText = `
+    flex-shrink:0;
+    padding:20px 20px 24px;
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+    opacity:0;
+    transition:opacity 0.3s ease-out;
+    background:#fff;
+  `;
+    let currentGender = "male";
+    function makeGenderButton(label, value) {
+      const btn = document.createElement("button");
+      btn.textContent = label;
+      btn.style.cssText = `
+      padding:10px 20px;
+      font-size:15px;
+      font-weight:700;
+      border-radius:8px;
+      border:${value === currentGender ? "none" : "1px solid #111"};
+      cursor:pointer;
+      background:${value === currentGender ? "#111" : "rgba(255,255,255,0.95)"};
+      color:${value === currentGender ? "#fff" : "#111"};
+      transition:background 0.15s,color 0.15s,border 0.15s;
+      backdrop-filter:blur(4px);
+      box-shadow:0 2px 8px rgba(0,0,0,0.1);
+    `;
+      btn.addEventListener("click", () => {
+        currentGender = value;
+        maleBtn.style.background = currentGender === "male" ? "#111" : "#fff";
+        maleBtn.style.color = currentGender === "male" ? "#fff" : "#111";
+        maleBtn.style.border = currentGender === "male" ? "none" : "1px solid #111";
+        femaleBtn.style.background = currentGender === "female" ? "#111" : "#fff";
+        femaleBtn.style.color = currentGender === "female" ? "#fff" : "#111";
+        femaleBtn.style.border = currentGender === "female" ? "none" : "1px solid #111";
+      });
+      return btn;
+    }
+    const maleBtn = makeGenderButton("男性", "male");
+    const femaleBtn = makeGenderButton("女性", "female");
+    genderOverlay.appendChild(maleBtn);
+    genderOverlay.appendChild(femaleBtn);
+    function buildLabeledSlider(label, min, max2, initial, step = 1) {
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex;flex-direction:column;gap:8px;width:100%;";
+      const labelRow = document.createElement("div");
+      labelRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;font-size:14px;color:#111;";
+      const labelSpan = document.createElement("span");
+      labelSpan.textContent = label;
+      labelSpan.style.cssText = "font-weight:500;";
+      const valueSpan = document.createElement("span");
+      valueSpan.textContent = String(initial);
+      valueSpan.style.cssText = "font-weight:700;";
+      labelRow.appendChild(labelSpan);
+      labelRow.appendChild(valueSpan);
+      const input = document.createElement("input");
+      input.type = "range";
+      input.min = String(min);
+      input.max = String(max2);
+      input.step = String(step);
+      input.value = String(initial);
+      input.style.cssText = `
+      width:100%;
+      height:4px;
+      border-radius:2px;
+      background:#e5e7eb;
+      outline:none;
+      -webkit-appearance:none;
+    `;
+      const style = document.createElement("style");
+      style.textContent = `
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #111;
+        cursor: pointer;
+      }
+      input[type="range"]::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #111;
+        cursor: pointer;
+        border: none;
+      }
+    `;
+      if (!document.getElementById("atelier-slider-styles")) {
+        style.id = "atelier-slider-styles";
+        document.head.appendChild(style);
+      }
+      row.appendChild(labelRow);
+      row.appendChild(input);
+      return { row, input, valueLabel: valueSpan };
+    }
+    const MIN_H = 160, MAX_H = 190;
+    let setupHeightValue = 170;
+    const heightSlider = buildLabeledSlider("身長", MIN_H, MAX_H, setupHeightValue, 1);
+    let bodyValue = 0;
+    const bodySlider = buildLabeledSlider("体型", 0, 100, 0, 1);
+    const slidersRow = document.createElement("div");
+    slidersRow.style.cssText = "display:flex;flex-direction:column;gap:16px;width:100%;";
+    slidersRow.appendChild(heightSlider.row);
+    slidersRow.appendChild(bodySlider.row);
+    const startBtn = document.createElement("button");
+    startBtn.textContent = "試着を始める";
+    startBtn.style.cssText = `
+    margin-top:4px;
+    width:100%;
+    padding:14px 0;
+    font-size:16px;
+    font-weight:700;
+    border-radius:999px;
+    border:none;
+    cursor:pointer;
+    background:#000;
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:4px;
+  `;
+    const arrowIcon = document.createElement("span");
+    arrowIcon.textContent = "▶";
+    arrowIcon.style.cssText = "font-size:12px;";
+    startBtn.appendChild(arrowIcon);
+    setupPanel.appendChild(slidersRow);
+    setupPanel.appendChild(startBtn);
+    startBtn.addEventListener("click", () => {
+      enterTryOnStep();
+    });
     contentArea.appendChild(viewerArea);
+    contentArea.appendChild(setupPanel);
     contentArea.appendChild(bottomPanel);
     const dragArea = document.createElement("div");
     dragArea.style.cssText = `
@@ -29955,24 +31148,37 @@ void main() {
     loadingOverlay.appendChild(loadingLogoEl);
     contentArea.appendChild(loadingOverlay);
     let heightValue = 170;
-    const MIN_H = 160, MAX_H = 190;
     let viewer = null;
-    buildHeightSlider(sliderPanel, MIN_H, MAX_H, heightValue, (h) => {
+    let canAdjustBody = true;
+    heightSlider.input.addEventListener("input", () => {
       var _a4;
-      heightValue = h;
-      (_a4 = viewer == null ? void 0 : viewer.updateHeight) == null ? void 0 : _a4.call(viewer, h, 170);
+      if (!canAdjustBody) return;
+      const v = parseInt(heightSlider.input.value, 10);
+      setupHeightValue = isNaN(v) ? setupHeightValue : v;
+      heightSlider.valueLabel.textContent = String(setupHeightValue);
+      heightValue = setupHeightValue;
+      (_a4 = viewer == null ? void 0 : viewer.updateHeight) == null ? void 0 : _a4.call(viewer, heightValue, 170);
+    });
+    bodySlider.input.addEventListener("input", () => {
+      var _a4;
+      if (!canAdjustBody) return;
+      const v = parseInt(bodySlider.input.value, 10);
+      bodyValue = isNaN(v) ? bodyValue : v;
+      bodySlider.valueLabel.textContent = String(bodyValue);
+      const normalized = Math.max(0, Math.min(1, bodyValue / 100));
+      (_a4 = viewer == null ? void 0 : viewer.updateMorphTarget) == null ? void 0 : _a4.call(viewer, "body", normalized);
     });
     function buildAssetList(size) {
-      var _a4, _b2;
-      const arr = ((_b2 = (_a4 = config.asset) == null ? void 0 : _a4.sizes) == null ? void 0 : _b2[size]) || [];
+      var _a4, _b3;
+      const arr = ((_b3 = (_a4 = config.asset) == null ? void 0 : _a4.sizes) == null ? void 0 : _b3[size]) || [];
       return arr.map((a) => ({ url: a.modelUrl || a.glbUrl || "", category: a.category })).filter((a) => a.url);
     }
     let initialAssetsLoaded = false;
-    const baseModelUrl = `${apiBaseUrl}/3d/Model.fbx`;
+    const baseModelUrl = `${apiBaseUrl}/3d/model_test.glb`;
     viewer = init3DViewer(viewerEl, {
       modelUrl: baseModelUrl,
-      assets: buildAssetList(currentSize),
-      // 初期服も一緒に渡して onLoad まで待つ
+      assets: [],
+      // 初期ステップでは素体のみ（服は後で読み込む）
       apiBaseUrl,
       onLoad: () => {
         loadingOverlay.style.transition = "opacity 0.3s ease-out";
@@ -29980,27 +31186,60 @@ void main() {
         setTimeout(() => {
           if (loadingOverlay.parentNode) loadingOverlay.remove();
         }, 300);
-        leftPanel.style.opacity = "1";
-        sliderPanel.style.opacity = "1";
-        bottomPanel.style.opacity = "1";
+        setupPanel.style.opacity = "1";
       },
       onError: (err2) => {
         if (loadingOverlay.parentNode) loadingOverlay.remove();
         leftPanel.style.opacity = "1";
-        sliderPanel.style.opacity = "1";
         bottomPanel.style.opacity = "1";
         if (isDevelopmentMode()) console.error("[Atelier Widget] 3D error:", err2);
       }
     });
+    const axisControls = createAxisControls(
+      axisSvg,
+      () => {
+        var _a4;
+        return ((_a4 = viewer == null ? void 0 : viewer.getCameraRotation) == null ? void 0 : _a4.call(viewer)) ?? null;
+      }
+    );
     const cleanup = overlay.__atelierCleanup;
     if (cleanup) cleanup.fn = () => {
+      axisControls.stop();
       viewer == null ? void 0 : viewer.destroy();
     };
-    loadInitialAssets();
-    fetchOutfitData();
-    renderLeftPanelLocal();
-    renderCatTabsLocal();
-    renderThumbsLocal();
+    setTimeout(() => {
+      renderAxis(axisSvg, () => {
+        var _a4;
+        return ((_a4 = viewer == null ? void 0 : viewer.getCameraRotation) == null ? void 0 : _a4.call(viewer)) ?? null;
+      });
+      axisControls.start();
+    }, 500);
+    let tryOnEntered = false;
+    function enterTryOnStep() {
+      var _a4, _b3;
+      if (tryOnEntered) return;
+      tryOnEntered = true;
+      setupPanel.style.display = "none";
+      leftPanel.style.opacity = "1";
+      bottomPanel.style.display = "flex";
+      bottomPanel.style.opacity = "1";
+      heightValue = setupHeightValue;
+      (_a4 = viewer == null ? void 0 : viewer.updateHeight) == null ? void 0 : _a4.call(viewer, heightValue, 170);
+      const normalized = Math.max(0, Math.min(1, bodyValue / 100));
+      (_b3 = viewer == null ? void 0 : viewer.updateMorphTarget) == null ? void 0 : _b3.call(viewer, "body", normalized);
+      canAdjustBody = false;
+      heightSlider.input.disabled = true;
+      bodySlider.input.disabled = true;
+      initialAssetsLoaded = true;
+      loadInitialAssets();
+      fetchOutfitData();
+      renderLeftPanelLocal();
+      renderCatTabsLocal();
+      renderThumbsLocal();
+    }
+    startBtn.addEventListener("click", () => {
+      enterTryOnStep();
+    });
     function loadInitialAssets() {
       activeAssets.clear();
       const list = buildAssetList(currentSize);
@@ -30122,22 +31361,38 @@ void main() {
       );
     }
     function renderThumbsLocal() {
+      thumbsRow.innerHTML = "";
       const items = outfitData.categories[currentCategory] || [];
-      renderThumbs(
-        thumbsRow,
-        items,
-        currentCategory,
-        selectedAssetId,
-        activeAssets,
-        (item, category) => {
-          if (item === null) {
-            handleAssetSelect(null, category);
-          } else {
-            handleAssetSelect(item);
-          }
-        },
-        WIDGET_SIZES
-      );
+      if (items.length > 0) {
+        renderThumbs(
+          thumbsRow,
+          items,
+          currentCategory,
+          selectedAssetId,
+          activeAssets,
+          (item, category) => {
+            if (item === null) {
+              handleAssetSelect(null, category);
+            } else {
+              handleAssetSelect(item);
+            }
+          },
+          WIDGET_SIZES
+        );
+      } else {
+        for (let i2 = 0; i2 < 5; i2++) {
+          const placeholder = document.createElement("div");
+          placeholder.style.cssText = `
+          width: ${WIDGET_SIZES.thumbs.cardWidth}px;
+          height: ${WIDGET_SIZES.thumbs.cardHeight}px;
+          flex-shrink: 0;
+          background: #f3f4f6;
+          border: 1px solid #e5e7eb;
+          border-radius: ${WIDGET_SIZES.thumbs.borderRadius}px;
+        `;
+          thumbsRow.appendChild(placeholder);
+        }
+      }
     }
     async function fetchOutfitData() {
       try {
@@ -30149,6 +31404,32 @@ void main() {
         const res = await fetch(u.toString());
         if (res.ok) {
           outfitData = await res.json();
+          const currentProductId = params.productId || params.externalProductId;
+          if (currentProductId && config.asset) {
+            const initialAssets = buildAssetList(currentSize);
+            initialAssets.forEach((asset) => {
+              if (asset.category && asset.url) {
+                const categoryItems = outfitData.categories[asset.category] || [];
+                const exists = categoryItems.some((item) => item.modelUrl === asset.url);
+                if (!exists && config.asset) {
+                  const outfitItem = {
+                    id: currentProductId,
+                    // 商品IDをIDとして使用
+                    productId: currentProductId,
+                    productName: config.asset.productName || "商品名",
+                    modelUrl: asset.url,
+                    thumbnailUrl: config.asset.thumbnailUrl || null,
+                    category: asset.category,
+                    size: currentSize
+                  };
+                  if (!outfitData.categories[asset.category]) {
+                    outfitData.categories[asset.category] = [];
+                  }
+                  outfitData.categories[asset.category].unshift(outfitItem);
+                }
+              }
+            });
+          }
           renderThumbsLocal();
         }
       } catch (_) {
@@ -30167,143 +31448,6 @@ void main() {
     div.style.cssText = "color:#dc2626;font-size:15px;line-height:1.5;white-space:pre-line;";
     div.textContent = errorMessage;
     contentArea.appendChild(div);
-  }
-  function buildDragBar() {
-    const bar = document.createElement("div");
-    bar.setAttribute("data-atelier-drag-bar", "true");
-    bar.style.cssText = `
-    flex-shrink: 0;
-    display: flex; justify-content: center;
-    padding: 3px 0 2px; cursor: grab; touch-action: none;
-  `;
-    const pill = document.createElement("div");
-    pill.style.cssText = "width:32px;height:3px;background:#d1d5db;border-radius:99px;";
-    bar.appendChild(pill);
-    return bar;
-  }
-  function makeArrowBtn(symbol) {
-    const btn = document.createElement("button");
-    btn.textContent = symbol;
-    btn.style.cssText = `
-    width: 32px; height: 32px;
-    background: transparent; border: none; outline: none;
-    cursor: pointer; font-size: 22px; color: #111;
-    display: flex; align-items: center; justify-content: center;
-    line-height: 1; padding: 0; border-radius: 50%;
-    transition: background 0.15s;
-  `;
-    btn.addEventListener("mouseenter", () => {
-      btn.style.background = "#f3f4f6";
-    });
-    btn.addEventListener("mouseleave", () => {
-      btn.style.background = "transparent";
-    });
-    return btn;
-  }
-  function dismissSheet(sheet, overlay) {
-    sheet.style.animation = "none";
-    sheet.style.transition = "transform 0.3s cubic-bezier(0.32,0.72,0,1)";
-    sheet.style.transform = "translateY(calc(100% - 20px))";
-    overlay.style.animation = "none";
-    overlay.style.transition = "opacity 0.3s ease-out";
-    overlay.style.opacity = "0";
-    setTimeout(() => {
-      overlay.style.pointerEvents = "none";
-    }, 320);
-    if (sheet.__atelierSetOpen) {
-      sheet.__atelierSetOpen(false);
-    }
-  }
-  function openSheet(sheet, overlay) {
-    overlay.style.pointerEvents = "auto";
-    sheet.style.animation = "none";
-    sheet.style.transition = "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)";
-    sheet.style.transform = "translateY(0)";
-    overlay.style.animation = "none";
-    overlay.style.transition = "opacity 0.22s ease-out";
-    overlay.style.opacity = "1";
-    if (sheet.__atelierSetOpen) {
-      sheet.__atelierSetOpen(true);
-    }
-  }
-  function setupDragToDismiss(handle, sheet, overlay, onDismiss) {
-    let startY = 0, curY = 0, dragging = false;
-    let isOpen = true;
-    const sheetHeight = sheet.offsetHeight || parseInt(sheet.style.height) || window.innerHeight * 0.9;
-    const onStart = (y) => {
-      startY = curY = y;
-      dragging = true;
-      sheet.style.transition = "none";
-      overlay.style.transition = "none";
-    };
-    const onMove = (y) => {
-      if (!dragging) return;
-      curY = y;
-      const delta = y - startY;
-      if (isOpen) {
-        const translateY = Math.max(0, delta);
-        sheet.style.transform = `translateY(${translateY}px)`;
-        const opacity = Math.max(0, 1 - translateY / sheetHeight);
-        overlay.style.opacity = String(opacity);
-      } else {
-        const translateY = Math.min(0, delta);
-        sheet.style.transform = `translateY(calc(100% - 20px + ${translateY}px))`;
-        const opacity = Math.min(1, Math.abs(translateY) / sheetHeight);
-        overlay.style.opacity = String(opacity);
-      }
-    };
-    const onEnd = () => {
-      if (!dragging) return;
-      dragging = false;
-      const delta = curY - startY;
-      const threshold = 90;
-      sheet.style.transition = "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)";
-      overlay.style.transition = "opacity 0.3s ease-out";
-      if (isOpen) {
-        if (delta > threshold) {
-          isOpen = false;
-          onDismiss();
-          dismissSheet(sheet, overlay);
-        } else {
-          sheet.style.transform = "translateY(0)";
-          overlay.style.opacity = "1";
-        }
-      } else {
-        if (delta < -threshold) {
-          isOpen = true;
-          openSheet(sheet, overlay);
-        } else {
-          sheet.style.transform = "translateY(calc(100% - 20px))";
-          overlay.style.opacity = "0";
-        }
-      }
-    };
-    sheet.__atelierIsOpen = () => isOpen;
-    sheet.__atelierSetOpen = (open) => {
-      isOpen = open;
-    };
-    handle.addEventListener("mousedown", (e) => {
-      e.preventDefault();
-      onStart(e.clientY);
-    });
-    handle.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      onStart(e.touches[0].clientY);
-    }, { passive: false });
-    document.addEventListener("mousemove", (e) => {
-      if (dragging) {
-        e.preventDefault();
-        onMove(e.clientY);
-      }
-    });
-    document.addEventListener("touchmove", (e) => {
-      if (dragging) {
-        e.preventDefault();
-        onMove(e.touches[0].clientY);
-      }
-    }, { passive: false });
-    document.addEventListener("mouseup", onEnd);
-    document.addEventListener("touchend", onEnd);
   }
   function initWidget() {
     const elements = document.querySelectorAll(

@@ -15,11 +15,6 @@ const navigationItems = [
   { href: "/install", label: "埋め込みスニペット", icon: "/icon/book.png" },
 ];
 
-const devTestItems = [
-  { href: "/model-generate", label: "Generate", icon: "/icon/palet.png" },
-  { href: "/test-morph", label: "Morph", icon: "/icon/palet.png" },
-];
-
 const bottomItems = [
   { href: "/settings", label: "アカウント設定", icon: "/icon/setting.png" },
   { href: "/logout", label: "ログアウト", icon: "/icon/log_out.png" },
@@ -115,47 +110,6 @@ export function Sidebar() {
           );
         })}
         
-        {/* 開発用テストタブ */}
-        {!isCollapsed && (
-          <div className="pt-4 mt-4 border-t">
-            <div className="text-xs font-semibold text-gray-400 mb-2 px-3">
-              開発テスト
-            </div>
-          </div>
-        )}
-        {devTestItems.map((item) => {
-          const isActive = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center rounded-lg py-3 text-sm font-medium transition-colors overflow-hidden",
-                isCollapsed ? "justify-center px-2" : "gap-3 px-3",
-                isActive
-                  ? "bg-gray-100 text-gray-900"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              )}
-              title={isCollapsed ? item.label : undefined}
-            >
-              <Image
-                src={item.icon}
-                alt={item.label}
-                width={20}
-                height={20}
-                className="h-5 w-5 object-contain flex-shrink-0"
-              />
-              <span
-                className={cn(
-                  "whitespace-nowrap overflow-hidden transition-opacity duration-300",
-                  isCollapsed ? "opacity-0 w-0" : "opacity-100"
-                )}
-              >
-                {item.label}
-              </span>
-            </Link>
-          );
-        })}
       </nav>
 
       {/* Bottom items */}
