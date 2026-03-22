@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAuthenticatedUser } from "@/lib/auth/middleware";
-import {
-  createProductSchema,
-  updateProductSchema,
-} from "@atelier/shared";
+import { createProductSchema } from "@atelier/shared";
+import { ZodError } from "zod";
+import { stripGarmentSpecForStorage } from "@/lib/products/stripGarmentSpecForStorage";
 
 // GET /api/products - List products
 export async function GET(request: NextRequest) {
@@ -61,6 +60,7 @@ export async function GET(request: NextRequest) {
       brand: p.brand,
       category: p.category,
       thumbnailUrl: p.thumbnail_url,
+      garmentSpec: p.garment_spec ?? undefined,
       createdAt: p.created_at,
       updatedAt: p.updated_at,
     }));
@@ -107,6 +107,8 @@ export async function POST(request: NextRequest) {
     // shopIdを認証情報から取得（リクエストのshopIdは無視）
     validated.shopId = auth.shopId;
 
+    const garmentSpecStored = stripGarmentSpecForStorage(validated.garmentSpec);
+
     const { data, error } = await supabaseAdmin
       .from("products")
       .insert({
@@ -116,6 +118,7 @@ export async function POST(request: NextRequest) {
         brand: validated.brand || null,
         category: validated.category || null,
         thumbnail_url: validated.thumbnailUrl || null,
+        ...(garmentSpecStored != null ? { garment_spec: garmentSpecStored } : {}),
       })
       .select()
       .single();
@@ -146,15 +149,16 @@ export async function POST(request: NextRequest) {
       sizeTypeId: data.size_type_id,
       thumbnailUrl: data.thumbnail_url,
       previewImageUrl: data.preview_image_url,
+      garmentSpec: data.garment_spec ?? undefined,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };
 
     return NextResponse.json(product, { status: 201 });
   } catch (error) {
-    if (error instanceof Error && error.name === "ZodError") {
+    if (error instanceof ZodError) {
       return NextResponse.json(
-        { error: "Invalid request body", details: error },
+        { error: "Invalid request body", details: error.flatten() },
         { status: 400 }
       );
     }

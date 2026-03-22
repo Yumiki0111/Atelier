@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import type { CustomGarmentData, ShoulderDebug } from "./types";
-import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { DevPanelSection } from "./FittingControlsUI";
 import { genericMeasureOnlyGradingActive } from "./generic";
@@ -18,13 +17,10 @@ function parseCmLocal(raw: string): number | undefined {
 export function FittingControlsCustomPanels({
   customGarmentData,
   shoulderDebug,
-  hasUploadedGenericSvg = false,
   onCustomGarmentApply,
 }: {
   customGarmentData: CustomGarmentData;
   shoulderDebug: ShoulderDebug | null;
-  /** 汎用トップで path が入っているとき（3/4/5 が無いので着丈・袖丈をここで直接変えられる） */
-  hasUploadedGenericSvg?: boolean;
   onCustomGarmentApply: (data: CustomGarmentData) => void;
 }) {
   // サイズプリセット管理
@@ -63,6 +59,7 @@ export function FittingControlsCustomPanels({
     const next = [...sizePresets, { label, length: len, sleeve: slv }];
     onCustomGarmentApply({
       ...customGarmentData,
+      size: { ...customGarmentData.size, length: len, sleeve: slv },
       genericSymmetricTop: { ...customGarmentData.genericSymmetricTop, sizePresets: next },
     });
     setPresetLabel("");
@@ -86,59 +83,6 @@ export function FittingControlsCustomPanels({
     <>
       {isGenericTop && (
         <DevPanelSection title="サイズプリセット">
-          {hasUploadedGenericSvg ? (
-            <div className="mb-2 rounded-md border border-sky-200/80 bg-sky-50/60 px-2 py-2">
-              <p className="mb-1.5 text-[9px] font-semibold text-sky-900">アップロード SVG — 現在の採寸（cm）</p>
-              <p className="mb-2 text-[8px] leading-snug text-sky-800/90">
-                左の 3/4/5 は非表示のため、ここで着丈・袖丈を変えるとグレーディングに反映されます。
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <label className="flex flex-col gap-0.5 text-[9px] text-slate-600">
-                  <span className="font-medium">着丈(A)</span>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    step={0.5}
-                    min={35}
-                    max={120}
-                    className="rounded-md border border-slate-200 bg-white px-2 py-1.5 font-mono text-[11px] outline-none focus:ring-2 focus:ring-sky-400/40"
-                    value={customGarmentData.size.length}
-                    onChange={(e) => {
-                      const n = Number(e.target.value);
-                      if (!Number.isFinite(n) || n <= 0) return;
-                      onCustomGarmentApply({
-                        ...customGarmentData,
-                        size: { ...customGarmentData.size, length: n },
-                      });
-                    }}
-                  />
-                </label>
-                <label className="flex flex-col gap-0.5 text-[9px] text-slate-600">
-                  <span className="font-medium">袖丈(D)</span>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    step={0.5}
-                    min={15}
-                    max={100}
-                    className="rounded-md border border-slate-200 bg-white px-2 py-1.5 font-mono text-[11px] outline-none focus:ring-2 focus:ring-sky-400/40"
-                    value={customGarmentData.size.sleeve}
-                    onChange={(e) => {
-                      const n = Number(e.target.value);
-                      if (!Number.isFinite(n) || n <= 0) return;
-                      onCustomGarmentApply({
-                        ...customGarmentData,
-                        size: { ...customGarmentData.size, sleeve: n },
-                      });
-                    }}
-                  />
-                </label>
-              </div>
-            </div>
-          ) : null}
-          <p className="text-[9px] leading-snug text-slate-500">
-            着丈/袖丈をセットで登録してワンタッチ切り替え。ブローゾンの 3/4/5 に相当。
-          </p>
           {!measureGradingReady && (
             <p className="mt-2 text-[10px] leading-snug text-amber-700">
               「連結頂点 #（採寸・参考）」で袖丈・着丈の区間を入れると、プレースを保ったままサイズ表の着丈・袖丈に合わせて伸縮します。
@@ -228,70 +172,6 @@ export function FittingControlsCustomPanels({
           </div>
         </DevPanelSection>
       )}
-
-      <DevPanelSection title="ランドマーク（連結 #）">
-        <p className="text-[9px] leading-snug text-slate-500">
-          自動推定がズレるとき：連結頂点で左肩/右肩/裾中央を指定します（肩Yは左右平均）。
-        </p>
-        <div className="mt-2 flex items-center justify-between gap-2 rounded-md bg-slate-100/80 px-2 py-1.5">
-          <span className="text-[10px] font-medium text-slate-600">自動推定</span>
-          <Switch
-            checked={customGarmentData.landmarkIndexMode === "manual"}
-            onCheckedChange={(manual) => {
-              if (manual) {
-                onCustomGarmentApply({
-                  ...customGarmentData,
-                  landmarkIndexMode: "manual",
-                  landmarkVertexIndices: customGarmentData.landmarkVertexIndices ?? {},
-                });
-              } else {
-                const next = { ...customGarmentData };
-                next.landmarkIndexMode = "auto";
-                delete next.landmarkVertexIndices;
-                onCustomGarmentApply(next);
-              }
-            }}
-            aria-label="ランドマークを手動（連結番号）に切り替え"
-          />
-          <span className="text-[10px] font-medium text-slate-600">手動（連結 #）</span>
-        </div>
-        {customGarmentData.landmarkIndexMode === "manual" ? (
-          <div className="mt-2 grid gap-2 sm:grid-cols-3">
-            {(
-              [
-                ["shoulderLeft", "左肩"] as const,
-                ["shoulderRight", "右肩"] as const,
-                ["hemCenter", "裾中央"] as const,
-              ] as const
-            ).map(([key, label]) => (
-              <label key={key} className="flex flex-col gap-1 text-[10px]">
-                <span className="font-medium text-slate-600">{label}（連結 #）</span>
-                <input
-                  className="rounded-md bg-slate-100/90 px-2 py-1.5 font-mono text-[11px] outline-none ring-0 focus:bg-white focus:ring-2 focus:ring-sky-400/30"
-                  inputMode="numeric"
-                  placeholder="例: 120"
-                  value={customGarmentData.landmarkVertexIndices?.[key] !== undefined ? String(customGarmentData.landmarkVertexIndices[key]) : ""}
-                  onChange={(e) => {
-                    const v = parseIndex(e.target.value);
-                    const prev = customGarmentData.landmarkVertexIndices ?? {};
-                    const nextVi = { ...prev };
-                    if (v === undefined) {
-                      delete nextVi[key];
-                    } else {
-                      nextVi[key] = v;
-                    }
-                    onCustomGarmentApply({
-                      ...customGarmentData,
-                      landmarkIndexMode: "manual",
-                      landmarkVertexIndices: Object.keys(nextVi).length > 0 ? nextVi : {},
-                    });
-                  }}
-                />
-              </label>
-            ))}
-          </div>
-        ) : null}
-      </DevPanelSection>
 
       <DevPanelSection title="肩の頂点インデックス（連結）">
         <p className="text-[9px] leading-snug text-slate-500">肩Yをこの連結頂点で固定します。</p>

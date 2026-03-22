@@ -5,7 +5,6 @@
 
 import type { CustomGarmentData, GarmentType } from "./types";
 import { getPathPoints } from "./pathUtils";
-import { getEffectiveCustomLandmarks } from "./customLandmarkResolve";
 
 /** ジャケットの肩点インデックス（パス順） */
 export const JACKET_SHOULDER_INDEX = 92;
@@ -121,7 +120,7 @@ export function getShoulderSeamYForData(data: CustomGarmentData): number {
     if (outline.length > idx) return outline[idx][1];
   }
   const band = 15;
-  const c = getEffectiveCustomLandmarks(data);
+  const c = data.landmarks;
   const raw = shoulderContourFromPath(
     data.pathDs,
     c.shoulderY - band,
@@ -132,4 +131,42 @@ export function getShoulderSeamYForData(data: CustomGarmentData): number {
   return outer.length > 0
     ? Math.max(c.shoulderY, Math.max(...outer.map((p) => p[1])))
     : c.shoulderY;
+}
+
+/** 点列の X 範囲の中点（胴〜袖を含む輪郭の「左右中央」近似） */
+export function boundingCenterX(points: [number, number][]): number {
+  if (points.length === 0) return 0;
+  let minX = Infinity;
+  let maxX = -Infinity;
+  for (const p of points) {
+    minX = Math.min(minX, p[0]);
+    maxX = Math.max(maxX, p[0]);
+  }
+  return (minX + maxX) / 2;
+}
+
+/**
+ * 袖丈計測弦に直交する方向へ `normalDistance` だけ離すとき、胴中心より腕の外側（左袖は X が小さい側）になる候補を選ぶ。
+ * 採寸オーバーレイ・服プロットの袖丈デバッグ位置に使用。
+ */
+export function anchorSleeveMeasureDebugOnArmOuter(
+  sx: number,
+  sy: number,
+  ex: number,
+  ey: number,
+  bodyCenterX: number,
+  normalDistance: number
+): [number, number] {
+  const mx = (sx + ex) / 2;
+  const my = (sy + ey) / 2;
+  const dx = ex - sx;
+  const dy = ey - sy;
+  const L = Math.hypot(dx, dy) || 1;
+  const nx = -dy / L;
+  const ny = dx / L;
+  const d = normalDistance;
+  const a: [number, number] = [mx + nx * d, my + ny * d];
+  const b: [number, number] = [mx - nx * d, my - ny * d];
+  const onLeftSideOfBody = mx < bodyCenterX;
+  return onLeftSideOfBody ? (a[0] <= b[0] ? a : b) : a[0] >= b[0] ? a : b;
 }

@@ -14,7 +14,6 @@ import {
   applyGenericMeasureOnlyGrading,
   genericMeasureOnlyGradingActive,
 } from "../generic";
-import { getEffectiveCustomLandmarks } from "../customLandmarkResolve";
 import { getScalableSpec, shouldApplyScaleScaling, toTopLandmarks } from "./scalableSpec";
 
 /** 着丈連結 # の |ΔY|（design px）。measure-only は baseline 着丈比の胴スケール後（袖は scaleSleevePathToSpec 後） */
@@ -120,7 +119,7 @@ export function buildCustomTransformedPathsWithVertexPlots(
   shoulderOriginY?: number,
   opts?: BuildCustomTransformedPathsOptions
 ): CustomGarmentTransformResult {
-  const lmBase = getEffectiveCustomLandmarks(data);
+  const lmBase = data.landmarks;
   const placementLockToModelRig = opts?.placementLockToModelRig === true;
   const lm = { ...lmBase };
   const scalableSpec = getScalableSpec(data.pathDs, data.presetId);

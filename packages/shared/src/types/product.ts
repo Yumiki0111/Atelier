@@ -13,6 +13,8 @@ export interface Product {
   brand?: string;
   category?: ProductCategory;
   thumbnailUrl?: string;
+  /** 開発フィットから登録した SVG＋採寸・グレーディング（リグ・デバッグ除く） */
+  garmentSpec?: unknown;
   createdAt: string;
   updatedAt: string;
 }

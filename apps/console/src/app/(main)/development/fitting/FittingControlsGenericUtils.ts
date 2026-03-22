@@ -1,8 +1,7 @@
 import type { CustomGarmentData, SizeMeasure } from "./types";
 import type { GenericSymmetricTopSizeKey } from "./generic/getGenericSymmetricTopPreset";
 import { parseLineRangeInput, formatLineRangeInput } from "./generic";
-import { getPathPoints, globalVertexBoundsForPath, totalPathVertices } from "./pathUtils";
-import { pathBBoxFeatures } from "./generic";
+import { globalVertexBoundsForPath, totalPathVertices } from "./pathUtils";
 import type { ScalableGarmentSpec } from "./types";
 
 export type GenericDraft = {
@@ -19,14 +18,6 @@ export type GenericDraft = {
   sleeveMeasureVertexEnd?: number;
   lengthMeasureVertexStart?: number;
   lengthMeasureVertexEnd?: number;
-};
-
-export type PathCatalogRow = {
-  i: number;
-  n: number;
-  f: { width: number; height: number } | null;
-  g0: number | null;
-  g1: number | null;
 };
 
 export function emptyGenericDraft(): GenericDraft {
@@ -96,16 +87,6 @@ export function computeInnerSleeveVertexSpan(ds: string[] | undefined, draft: Ge
   const tot = totalPathVertices(ds);
   if (tot === 0 || lo < 0 || hi >= tot) return null;
   return { gStart: lo, gEnd: hi };
-}
-
-export function computePathCatalogRows(ds: string[] | undefined): PathCatalogRow[] | null {
-  if (!ds?.length) return null;
-  return ds.map((d, i) => {
-    const pts = getPathPoints(d);
-    const f = pathBBoxFeatures(ds, i);
-    const gb = globalVertexBoundsForPath(ds, i);
-    return { i, n: pts.length, f, g0: gb?.[0] ?? null, g1: gb?.[1] ?? null };
-  });
 }
 
 export function pathOverlapsVertexDraft(

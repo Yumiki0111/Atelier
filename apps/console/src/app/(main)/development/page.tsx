@@ -4,7 +4,6 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { FittingControls } from "./fitting/FittingControls";
 import { FittingCanvas } from "./fitting/FittingCanvas";
 import { sizeEqual, landmarksEqual } from "./fitting/fittingStateUtils";
-import { getEffectiveCustomLandmarks } from "./fitting/customLandmarkResolve";
 import { getGenericSymmetricTopPreset } from "./fitting/generic/getGenericSymmetricTopPreset";
 import type {
   GarmentType,
@@ -14,6 +13,7 @@ import type {
   ShoulderDebug,
   GenericVertexPlotHighlight,
 } from "./fitting/types";
+import { DevelopmentProductRegisterPanel } from "./DevelopmentProductRegisterPanel";
 
 const ANIM_DURATION_MS = 300;
 const STORAGE_KEY = "atelier-dev-fitting";
@@ -90,10 +90,7 @@ export default function DevelopmentPage() {
       prev &&
       prev.pathDs === newData.pathDs &&
       (!sizeEqual(prev.size, newData.size) ||
-        !landmarksEqual(
-          getEffectiveCustomLandmarks(prev),
-          getEffectiveCustomLandmarks(newData)
-        ))
+        !landmarksEqual(prev.landmarks, newData.landmarks))
     ) {
       setAnimFromCustom(prev);
       setAnimToCustom(newData);
@@ -152,7 +149,10 @@ export default function DevelopmentPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden overscroll-none">
-      <h1 className="shrink-0 py-2 text-xl font-semibold">開発</h1>
+      <div className="flex shrink-0 flex-col gap-2 py-2">
+        <h1 className="text-xl font-semibold">開発</h1>
+        <DevelopmentProductRegisterPanel garment={garment} customGarmentData={customGarmentData} />
+      </div>
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden rounded-lg bg-[#f0ede8] p-3 lg:flex-row lg:items-stretch lg:gap-4">
         <div className="relative min-h-0 min-h-[min(55dvh,520px)] flex-1 overflow-hidden lg:order-2 lg:min-h-0">
           <FittingCanvas

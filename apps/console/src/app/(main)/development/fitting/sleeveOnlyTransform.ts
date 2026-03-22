@@ -4,8 +4,7 @@
  * 袖付け付近は重み 0 で placeFn のままなので、肩のプレース位置は動かさない。
  */
 
-import type { BodyZones, CustomLandmarks, ScalableGarmentSpec } from "./types";
-import { underarmJunctionSlideY } from "./underarmJunctionSlide";
+import type { CustomLandmarks, ScalableGarmentSpec } from "./types";
 import { tPath, getPathPoints, getPathsBBox, collectPtsGlobalVertexRange, flattenSvgPathToPolyline } from "./pathUtils";
 import { BODY_CX } from "./constants";
 import {
@@ -70,11 +69,6 @@ export interface SleeveOnlyTransformParams {
    * `scaleSleevePathToSpec` の garmentLengthPx。指定時は designHem−designShoulder の代わりに使う（着丈紫とプレースを一致）。
    */
   garmentLengthPxOverride?: number;
-  /**
-   * 脇〜袖付け交点を体と同じ式で縦にずらす（`placeFn` 後のボディ座標に加算）。未指定なら従来どおり。
-   */
-  junctionXScale?: number;
-  junctionZones?: BodyZones;
 }
 
 type SleeveOnlyCtx = {
@@ -100,8 +94,6 @@ type SleeveOnlyCtx = {
   originX: number;
   centerSnapThresh: number;
   debugFitting: boolean;
-  junctionXScale?: number;
-  junctionZones?: BodyZones;
 };
 
 function buildSleeveOnlyCtx(p: SleeveOnlyTransformParams): SleeveOnlyCtx {
@@ -118,8 +110,6 @@ function buildSleeveOnlyCtx(p: SleeveOnlyTransformParams): SleeveOnlyCtx {
     leftArmPts,
     rightArmPts,
     place,
-    junctionXScale: junctionXScaleIn,
-    junctionZones: junctionZonesIn,
   } = p;
 
   const bbox = getPathsBBox(pathDs);
@@ -208,10 +198,7 @@ function buildSleeveOnlyCtx(p: SleeveOnlyTransformParams): SleeveOnlyCtx {
   const leftArmRange = Math.max(1, attachLx - leftWristGx);
   const rightArmRange = Math.max(1, rightWristGx - attachRx);
 
-  /**
-   * `sessionStorage.setItem("DEBUG_SLEEVE_JUNCTION","1")` で有効。
-   * 補足: `junctionXScale`/`junctionZones` 指定時は脇帯で縦スライドを付与。未指定時は従来どおり。
-   */
+  /** `sessionStorage.setItem("DEBUG_SLEEVE_JUNCTION","1")` で有効。 */
   if (typeof sessionStorage !== "undefined" && sessionStorage.getItem("DEBUG_SLEEVE_JUNCTION") === "1") {
     try {
       const si = config.sleevePathLeft;
@@ -275,8 +262,6 @@ function buildSleeveOnlyCtx(p: SleeveOnlyTransformParams): SleeveOnlyCtx {
     originX,
     centerSnapThresh,
     debugFitting,
-    junctionXScale: junctionXScaleIn,
-    junctionZones: junctionZonesIn,
   };
 }
 
@@ -337,12 +322,7 @@ function makeVertexFn(pathIdx: number, ctx: SleeveOnlyCtx): (gx: number, gy: num
     pathIdxInConfigRange(pathIdx, seamPathRight, seamPathRightEnd);
 
   return (gx: number, gy: number): [number, number] => {
-    const pt0 = placeFn(gx, gy);
-    let pt: [number, number] = pt0;
-    if (ctx.junctionXScale != null && ctx.junctionZones) {
-      const dy = underarmJunctionSlideY(pt0[0], pt0[1], ctx.junctionXScale, ctx.junctionZones);
-      if (Math.abs(dy) > 1e-9) pt = [pt0[0], pt0[1] + dy];
-    }
+    const pt = placeFn(gx, gy);
 
     if (isOuterArmPath) {
       const yFactor = Math.max(0, Math.min(1, (lm.hemY - gy) / hemFadeBuffer));

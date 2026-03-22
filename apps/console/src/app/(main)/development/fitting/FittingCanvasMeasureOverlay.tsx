@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { MeasureOverlayData } from "./types";
 import { BZ } from "./constants";
 
@@ -62,7 +63,7 @@ export function FittingCanvasMeasureOverlay({
             </text>
             {heightMeasuredDiffers ? (
               <text x={lineX + 24} y={midY + 18} fontSize={10} fill="#64748b" fontFamily="sans-serif" dominantBaseline="middle">
-                画面上（実測）{measuredHeightCm.toFixed(1)}cm
+                画面上（基準体170の頭〜足スパン換算）{measuredHeightCm.toFixed(1)}cm
               </text>
             ) : null}
           </>
@@ -105,11 +106,45 @@ export function FittingCanvasMeasureOverlay({
             {(() => {
               const inputLen = g.size.length;
               const measuredLen = g.lengthMeasuredCm;
+              const geom = g.lengthGeomDebug;
               const lengthMeasuredDiffers =
                 measuredLen != null &&
                 Number.isFinite(measuredLen) &&
                 Math.abs(measuredLen - inputLen) > CM_INPUT_VS_MEASURED_EPS;
               const midLengthY = (lengthTopY + hemY) / 2;
+              const lengthDebugLine = geom
+                ? g.lengthCmFromSizeInput
+                  ? `実寸デバッグ 縦差 ${geom.px}px · サイズ表着丈 ${inputLen}cm（ラベル同期） · ボディ換算 ${geom.cm.toFixed(1)}cm`
+                  : `実寸デバッグ 縦差 ${geom.px}px → ${geom.cm.toFixed(1)}cm`
+                : null;
+              let lengthSubLine: ReactNode = null;
+              if (lengthDebugLine != null) {
+                lengthSubLine = (
+                  <text
+                    x={lineLengthX + 24}
+                    y={midLengthY + 18}
+                    fontSize={10}
+                    fill="#64748b"
+                    fontFamily="sans-serif"
+                    dominantBaseline="middle"
+                  >
+                    {lengthDebugLine}
+                  </text>
+                );
+              } else if (lengthMeasuredDiffers && measuredLen != null) {
+                lengthSubLine = (
+                  <text
+                    x={lineLengthX + 24}
+                    y={midLengthY + 18}
+                    fontSize={10}
+                    fill="#64748b"
+                    fontFamily="sans-serif"
+                    dominantBaseline="middle"
+                  >
+                    画面上（実測）{measuredLen.toFixed(1)}cm
+                  </text>
+                );
+              }
               return (
                 <>
                   <text
@@ -122,25 +157,14 @@ export function FittingCanvasMeasureOverlay({
                     dominantBaseline="middle"
                   >
                     着丈 {inputLen}cm（入力）
-                    {(inputLen < 40 || inputLen > 95) && measuredLen == null && (
+                    {(inputLen < 40 || inputLen > 95) && measuredLen == null && !geom && (
                       <tspan fontSize={10} fill="#b91c1c">
                         {" "}
                         （要確認）
                       </tspan>
                     )}
                   </text>
-                  {lengthMeasuredDiffers ? (
-                    <text
-                      x={lineLengthX + 24}
-                      y={midLengthY + 18}
-                      fontSize={10}
-                      fill="#64748b"
-                      fontFamily="sans-serif"
-                      dominantBaseline="middle"
-                    >
-                      画面上（実測）{measuredLen!.toFixed(1)}cm
-                    </text>
-                  ) : null}
+                  {lengthSubLine}
                 </>
               );
             })()}
@@ -166,6 +190,7 @@ export function FittingCanvasMeasureOverlay({
               const [ex, ey] = g.sleeveEnd;
               const inputSleeve = g.size.sleeve;
               const measuredSleeve = g.sleeveMeasuredCm;
+              const sleeveGeom = g.sleeveGeomDebug;
               const sleeveMeasuredDiffers =
                 measuredSleeve != null &&
                 Number.isFinite(measuredSleeve) &&
@@ -184,6 +209,18 @@ export function FittingCanvasMeasureOverlay({
               const hasPath = g.sleevePathPoints && g.sleevePathPoints.length >= 2;
               const strokeColor = hasPath ? "#dc2626" : "#c026d3";
               const fillColor = hasPath ? "#b91c1c" : "#a21caf";
+              const pathHint = hasPath ? " · 赤線＝計測区間" : " · 肩〜袖口";
+              let sleeveDebugLine: string;
+              if (sleeveGeom) {
+                const base = g.sleeveCmFromSizeInput
+                  ? `実寸デバッグ 縦差 ${sleeveGeom.px}px · サイズ表袖 ${inputSleeve}cm（ラベル同期） · ボディ換算 ${sleeveGeom.cm.toFixed(1)}cm`
+                  : `実寸デバッグ 縦差 ${sleeveGeom.px}px → ${sleeveGeom.cm.toFixed(1)}cm`;
+                sleeveDebugLine = base + pathHint;
+              } else if (sleeveMeasuredDiffers && measuredSleeve != null) {
+                sleeveDebugLine = `画面上（両端の縦差）${measuredSleeve.toFixed(1)}cm · ${hasPath ? "赤線＝計測区間" : "肩〜袖口"}`;
+              } else {
+                sleeveDebugLine = hasPath ? "赤線＝計測区間" : "肩〜袖口";
+              }
               return (
                 <>
                   {/* 袖丈計測ライン（左内側ライン沿い・赤線） */}
@@ -198,9 +235,11 @@ export function FittingCanvasMeasureOverlay({
                     >
                       <title>
                         袖丈 入力 {inputSleeve}cm
-                        {measuredSleeve != null
-                          ? ` · 画面上の実長（折れ線） ${measuredSleeve.toFixed(1)}cm`
-                          : ""}
+                        {sleeveGeom != null
+                          ? ` · 実寸デバッグ 縦差 ${sleeveGeom.px}px → ${sleeveGeom.cm.toFixed(1)}cm`
+                          : measuredSleeve != null
+                            ? ` · 画面上 ${measuredSleeve.toFixed(1)}cm`
+                            : ""}
                       </title>
                     </path>
                   ) : (
@@ -224,10 +263,7 @@ export function FittingCanvasMeasureOverlay({
                     袖丈 {inputSleeve}cm（入力）
                   </text>
                   <text x={slMidX + labelOffset} y={slMidY + 18} fontSize={10} fill="#64748b" fontFamily="sans-serif" dominantBaseline="middle">
-                    {sleeveMeasuredDiffers && measuredSleeve != null
-                      ? `画面上（両端|ΔY|）${measuredSleeve.toFixed(1)}cm · `
-                      : ""}
-                    {hasPath ? "赤線＝計測区間" : "肩〜袖口"}
+                    {sleeveDebugLine}
                   </text>
                 </>
               );

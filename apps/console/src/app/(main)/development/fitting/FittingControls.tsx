@@ -4,7 +4,6 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
   type ChangeEvent,
@@ -19,7 +18,6 @@ import type {
   GenericVertexPlotHighlight,
 } from "./types";
 import { calcFitFromSize, jacketFitLabel } from "./fitCalc";
-import { GENERIC_TOP_SIZE_BY_KEY } from "./generic/genericDevDefaults";
 import { FileText, ImagePlus } from "lucide-react";
 import { getPathPoints, measureSleeveLengthFromPath, vertexRangeToCoveringPathRange } from "./pathUtils";
 import { getGenericSymmetricTopPreset } from "./generic/getGenericSymmetricTopPreset";
@@ -34,22 +32,16 @@ import {
   emptyGenericDraft,
   type GenericDraft,
   isLineTupleStored,
-  computePathCatalogRows,
 } from "./FittingControlsGenericUtils";
 import {
   splitGarmentPathsFromSvg,
   getLandmarksFromPaths,
   parseSvgPaths,
 } from "./customGarmentUtils";
-import { getEffectiveCustomLandmarks, inferLandmarksFromRigPaths } from "./customLandmarkResolve";
+import { inferLandmarksFromRigPaths } from "./customLandmarkResolve";
 import { FittingControlsCustomPanels } from "./FittingControlsCustomPanels";
 import { FittingControlsPathCatalogPanel } from "./FittingControlsPathCatalogPanel";
 import { DevPanelSection, PanelSwitchRow } from "./FittingControlsUI";
-import { computeRigArmAngleDebug } from "./fittingCanvasCompute";
-
-function formatRigDeg(v: number): string {
-  return Number.isFinite(v) ? `${v.toFixed(1)}°` : "—";
-}
 
 function measureVertexRangeStr(a: number | undefined, b: number | undefined): string {
   if (a == null || b == null || !Number.isFinite(a) || !Number.isFinite(b)) return "";
@@ -166,92 +158,11 @@ export function FittingControls({
   onGenericVertexPlotHighlightChange,
   className,
 }: FittingControlsProps) {
-  const rigArmAngleUi = useMemo(() => computeRigArmAngleDebug(height, weight), [height, weight]);
-
   const isGenericTopActive = customGarmentData?.presetId === "genericSymmetricTop";
   /** アップロード等で path が入っている汎用トップ */
   const hasUploadedGenericSvg =
     isGenericTopActive && customGarmentData != null && customGarmentData.pathDs.length > 0;
 
-  const handleSelectGenericSymmetricTop = (size?: "3" | "4" | "5") => {
-    onGarmentChange("custom");
-    const presetKey = size ?? "4";
-    const tmpl = getGenericSymmetricTopPreset(presetKey);
-    const prev = customGarmentData;
-
-    if (!size && hasUploadedGenericSvg && prev) {
-      if (prev.presetId !== "genericSymmetricTop") {
-        onCustomGarmentApply({
-          ...prev,
-          presetId: "genericSymmetricTop",
-          genericSymmetricTop: {
-            ...(prev.genericSymmetricTop ?? { applied: false }),
-            sizePresets:
-              prev.genericSymmetricTop?.sizePresets ?? tmpl.genericSymmetricTop?.sizePresets,
-          },
-        });
-      }
-      return;
-    }
-
-    const pg = prev?.genericSymmetricTop;
-    const fourSeams =
-      isLineTupleStored(pg?.seamOuterLeft) &&
-      isLineTupleStored(pg?.seamOuterRight) &&
-      isLineTupleStored(pg?.sleeveInnerLeft) &&
-      isLineTupleStored(pg?.sleeveInnerRight);
-    const pathMatchOrUpload =
-      prev?.presetId === "genericSymmetricTop" &&
-      (hasUploadedGenericSvg || prev.pathDs === tmpl.pathDs);
-    const prevKeepsRanges = pathMatchOrUpload && fourSeams;
-
-    let next: CustomGarmentData =
-      hasUploadedGenericSvg && prev
-        ? { ...prev, size: tmpl.size, presetId: "genericSymmetricTop" }
-        : { ...tmpl };
-
-    const sameMeasureAsPrev =
-      prev != null && prev.size.length === tmpl.size.length && prev.size.sleeve === tmpl.size.sleeve;
-
-    if (prevKeepsRanges && pg) {
-      const hadAppliedFit = pg.applied === true;
-      const preserveGradingState = hadAppliedFit || sameMeasureAsPrev;
-      next = {
-        ...next,
-        genericSymmetricTop: {
-          applied: hadAppliedFit ? true : sameMeasureAsPrev ? (pg.applied ?? false) : false,
-          seamOuterLeft: pg.seamOuterLeft!,
-          seamOuterRight: pg.seamOuterRight!,
-          sleeveInnerLeft: pg.sleeveInnerLeft!,
-          sleeveInnerRight: pg.sleeveInnerRight!,
-          sizePresets: pg.sizePresets ?? tmpl.genericSymmetricTop?.sizePresets,
-          ...(pg.sleeveMeasureVertexStart != null ? { sleeveMeasureVertexStart: pg.sleeveMeasureVertexStart } : {}),
-          ...(pg.sleeveMeasureVertexEnd != null ? { sleeveMeasureVertexEnd: pg.sleeveMeasureVertexEnd } : {}),
-          ...(pg.lengthMeasureVertexStart != null ? { lengthMeasureVertexStart: pg.lengthMeasureVertexStart } : {}),
-          ...(pg.lengthMeasureVertexEnd != null ? { lengthMeasureVertexEnd: pg.lengthMeasureVertexEnd } : {}),
-          ...(preserveGradingState && pg.lockedTopology ? { lockedTopology: pg.lockedTopology } : {}),
-          ...(preserveGradingState && pg.gradingBaselineLengthCm != null
-            ? { gradingBaselineLengthCm: pg.gradingBaselineLengthCm }
-            : {}),
-          ...(preserveGradingState && pg.gradingBaselineSleeveCm != null
-            ? { gradingBaselineSleeveCm: pg.gradingBaselineSleeveCm }
-            : {}),
-        },
-      };
-    } else if (hasUploadedGenericSvg && prev) {
-      next = {
-        ...prev,
-        size: tmpl.size,
-        presetId: "genericSymmetricTop",
-        genericSymmetricTop: {
-          ...(prev.genericSymmetricTop ?? { applied: false }),
-          sizePresets: tmpl.genericSymmetricTop?.sizePresets ?? prev.genericSymmetricTop?.sizePresets,
-        },
-      };
-    }
-
-    onCustomGarmentApply(next);
-  };
   const [genericDraft, setGenericDraft] = useState<GenericDraft>(emptyGenericDraft());
   const genericDraftRef = useRef(genericDraft);
   genericDraftRef.current = genericDraft;
@@ -473,17 +384,6 @@ export function FittingControls({
     onGenericVertexPlotHighlightChange,
   ]);
 
-  const currentTopPresetSize = (): "3" | "4" | "5" | null => {
-    if (!customGarmentData?.size) return null;
-    const s = customGarmentData.size;
-    for (const key of ["3", "4", "5"] as const) {
-      const o = GENERIC_TOP_SIZE_BY_KEY[key];
-      if (o.length === s.length && o.shoulder === s.shoulder && o.chest === s.chest && o.sleeve === s.sleeve)
-        return key;
-    }
-    return null;
-  };
-
   const fit = calcFitFromSize(height, weight, customGarmentData?.size ?? null);
   const fitLabel = jacketFitLabel(fit.chestDiff);
   const sizeSpec = customGarmentData?.size ?? null;
@@ -533,15 +433,12 @@ export function FittingControls({
         pathDs: garmentPathDs,
         debugRigPathDs: rigPathDs,
         landmarks: mergedLandmarks,
-        landmarkIndexMode: rigLm != null ? "auto" : base.landmarkIndexMode,
-        landmarkVertexIndices: rigLm != null ? {} : base.landmarkVertexIndices,
         size: {
           shoulder: base.size.shoulder,
           chest: base.size.chest,
           length: lengthCm,
           sleeve: base.size.sleeve,
         },
-        useShoulderSeamYFromLandmarks: rigLm != null,
         presetId: "genericSymmetricTop",
         genericSymmetricTop: {
           applied: false,
@@ -575,11 +472,6 @@ export function FittingControls({
   );
 
   // path カタログ（path 一覧パネル用）
-  const pathCatalogRows = useMemo(
-    () => (isGenericTopActive && customGarmentData ? computePathCatalogRows(customGarmentData.pathDs) ?? [] : []),
-    [isGenericTopActive, customGarmentData]
-  );
-
   return (
     <div
       className={cn(
@@ -587,9 +479,51 @@ export function FittingControls({
         className
       )}
     >
+      <header className="shrink-0 border-b border-slate-200/80 pb-2">
+        <h1 className="text-sm font-bold tracking-tight text-slate-900">フィット検証</h1>
+        <p className="mt-0.5 text-[10px] leading-snug text-slate-500">
+          参照 SVG を読み込み、採寸は数値入力・パス一覧で商品に合わせてください。
+        </p>
+      </header>
+
+      <DevPanelSection title="体型">
+        <div className="space-y-3">
+          <div>
+            <label className="flex items-baseline justify-between text-[11px] text-slate-600">
+              <span>身長</span>
+              <span className="font-semibold tabular-nums text-slate-900">{height} cm</span>
+            </label>
+            <input
+              type="range"
+              min={150}
+              max={195}
+              value={height}
+              step={1}
+              onChange={(e) => onHeightChange(+e.target.value)}
+              className="mt-1.5 h-2 w-full cursor-pointer accent-sky-600"
+            />
+          </div>
+          <div>
+            <label className="flex items-baseline justify-between text-[11px] text-slate-600">
+              <span>体重</span>
+              <span className="font-semibold tabular-nums text-slate-900">{weight} kg</span>
+            </label>
+            <input
+              type="range"
+              min={40}
+              max={100}
+              value={weight}
+              step={1}
+              onChange={(e) => onWeightChange(+e.target.value)}
+              className="mt-1.5 h-2 w-full cursor-pointer accent-slate-600"
+            />
+          </div>
+        </div>
+      </DevPanelSection>
+
       <div className="shrink-0 space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[12px] font-medium text-slate-700">参照 SVG をアップロード</span>
+          <span className="text-[12px] font-medium text-slate-700">参照 SVG</span>
           <FileText className="h-4 w-4 shrink-0 text-sky-600" aria-hidden />
         </div>
         <input
@@ -623,276 +557,28 @@ export function FittingControls({
             }
           }}
           className={cn(
-            "flex aspect-square w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed bg-slate-50/80 px-3 py-6 text-center transition-colors",
+            "flex min-h-[96px] w-full flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed bg-slate-50/80 px-3 py-3 text-center transition-colors",
             isDraggingSvg
               ? "border-sky-400 bg-sky-50/90"
               : "border-slate-300/90 hover:border-sky-300 hover:bg-slate-50"
           )}
         >
-          <div className="relative text-slate-400">
-            <ImagePlus className="h-14 w-14" strokeWidth={1.25} aria-hidden />
-          </div>
+          <ImagePlus className="h-9 w-9 text-slate-400" strokeWidth={1.25} aria-hidden />
           {hasUploadedGenericSvg ? (
-            <span className="text-[9px] font-medium text-sky-700">SVG 読込済み（再アップロードで切替）</span>
-          ) : null}
+            <span className="text-[10px] font-medium text-sky-700">読込済み · クリックで差し替え</span>
+          ) : (
+            <span className="text-[10px] text-slate-500">クリックまたはドロップ</span>
+          )}
         </button>
         {uploadError ? <p className="text-center text-[10px] text-red-600">{uploadError}</p> : null}
       </div>
-
-      {garment === "custom" && customGarmentData ? (
-        <FittingControlsCustomPanels
-          customGarmentData={customGarmentData}
-          shoulderDebug={shoulderDebug}
-          hasUploadedGenericSvg={hasUploadedGenericSvg}
-          onCustomGarmentApply={onCustomGarmentApply}
-        />
-      ) : null}
-
-      {isGenericTopActive && customGarmentData && pathCatalogRows.length > 0 ? (
-        <FittingControlsPathCatalogPanel
-          pathCatalogRows={pathCatalogRows}
-          showMeasureVertexControls={isGenericTopActive}
-          customGarmentData={customGarmentData}
-          genericDraft={genericDraft}
-          setGenericDraft={setGenericDraft}
-          measureVertexRangeSectionFocusedRef={measureVertexRangeSectionFocusedRef}
-        />
-      ) : null}
-
-      <header className="shrink-0 pb-1">
-        <h1 className="text-sm font-bold tracking-tight text-slate-900">フィット検証</h1>
-      </header>
-
-      <DevPanelSection title="キャンバス表示">
-        <div className="flex flex-col gap-0.5">
-          <PanelSwitchRow
-            id="dev-fit-show-garment"
-            label="服の表示"
-            checked={showGarment}
-            onToggle={onToggleGarment}
-          />
-          <PanelSwitchRow
-            id="dev-fit-measure-overlay"
-            label="採寸オーバーレイ"
-            checked={showMeasureOverlay}
-            onToggle={onToggleMeasureOverlay}
-          />
-          <PanelSwitchRow
-            id="dev-fit-plot-garment"
-            label="服のプロット"
-            checked={showPlotCoords}
-            onToggle={onTogglePlotCoords}
-          />
-          <PanelSwitchRow
-            id="dev-fit-plot-body"
-            label="モデルのプロット"
-            checked={showBodyPlotCoords}
-            onToggle={onToggleBodyPlotCoords}
-          />
-          <PanelSwitchRow
-            id="dev-fit-rig-angle-diagram"
-            label="肩リグ角度（図）"
-            checked={showRigAngleDiagram}
-            onToggle={onToggleRigAngleDiagram}
-          />
-          <PanelSwitchRow
-            id="dev-fit-show-rig-body"
-            label="リグボディ"
-            checked={rigBodyEnabled}
-            onToggle={onToggleRigBody}
-          />
-          <PanelSwitchRow
-            id="dev-fit-show-rig-garment"
-            label="服のリグ"
-            checked={rigGarmentEnabled}
-            onToggle={onToggleRigGarment}
-          />
-          {garment === "custom" && customGarmentData ? (
-            <PanelSwitchRow
-              id="dev-fit-use-rig-landmarks"
-              label="リグ肩/裾ランドマーク"
-              checked={customGarmentData.useShoulderSeamYFromLandmarks ?? false}
-              onToggle={() => {
-                const next = !(customGarmentData.useShoulderSeamYFromLandmarks ?? false);
-                if (!next) {
-                  const autoLm = getLandmarksFromPaths(customGarmentData.pathDs) ?? customGarmentData.landmarks;
-                  onCustomGarmentApply({
-                    ...customGarmentData,
-                    useShoulderSeamYFromLandmarks: false,
-                    landmarkIndexMode: "auto",
-                    landmarks: autoLm,
-                    landmarkVertexIndices: {},
-                  });
-                  return;
-                }
-                const ds = customGarmentData.debugRigPathDs ?? [];
-                const rigLm = ds.length ? inferLandmarksFromRigPaths(ds) : null;
-                if (!rigLm) {
-                  onCustomGarmentApply({ ...customGarmentData, useShoulderSeamYFromLandmarks: false });
-                  return;
-                }
-                const autoLmToggle = getLandmarksFromPaths(customGarmentData.pathDs);
-                const effHemYToggle =
-                  autoLmToggle?.hemY != null && autoLmToggle.hemY > rigLm.hemY
-                    ? autoLmToggle.hemY
-                    : rigLm.hemY;
-                const MODEL_RIG_H_T = 6431;
-                const lenPxToggle = effHemYToggle - rigLm.shoulderY;
-                const rigLenCmToggle = Number.isFinite(lenPxToggle)
-                  ? (lenPxToggle * REF_HEIGHT_CM) / MODEL_RIG_H_T
-                  : null;
-                onCustomGarmentApply({
-                  ...customGarmentData,
-                  useShoulderSeamYFromLandmarks: true,
-                  landmarkIndexMode: "auto",
-                  landmarks: { ...rigLm, hemY: effHemYToggle },
-                  landmarkVertexIndices: {},
-                  size: {
-                    ...customGarmentData.size,
-                    ...(rigLenCmToggle != null ? { length: rigLenCmToggle } : {}),
-                  },
-                });
-              }}
-            />
-          ) : null}
-        </div>
-        <p className="mt-2 text-[10px] leading-snug text-slate-400">
-          開発: 採寸の入力と画面上の差をコンソールに出す{" "}
-          <code className="rounded bg-slate-100 px-0.5 font-mono text-[9px]">sessionStorage.DEBUG_FITTING_MEASURE=1</code>
-          。キャンバス左上のリグ等テキストは{" "}
-          <code className="rounded bg-slate-100 px-0.5 font-mono text-[9px]">DEBUG_FITTING_CANVAS=1</code>
-        </p>
-      </DevPanelSection>
-
-      <DevPanelSection title="モデル腕リグ（数値）">
-        <p className="mb-1.5 text-[10px] leading-snug text-slate-500">
-          <code className="rounded bg-slate-100 px-0.5 font-mono text-[9px]">DEBUG_RIG_ARM</code>{" "}
-          と同じ定義。肩角度＝中心縦（下向き）との内角 ψ、袖付け根＝体の外側水平との内角、θ＝肩→袖先の方位（atan2、+Y
-          下）。
-        </p>
-        <div className="rounded-md border border-slate-200/80 bg-white/50 px-2 py-1.5">
-          <table className="w-full border-collapse text-[11px] tabular-nums text-slate-800">
-            <thead>
-              <tr className="text-left text-[9px] font-medium text-slate-400">
-                <th className="pb-1 pr-2 font-normal">側</th>
-                <th className="pb-1 pr-2 font-normal">肩 ψ</th>
-                <th className="pb-1 pr-2 font-normal">袖付け根</th>
-                <th className="pb-1 font-normal">θ</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="py-0.5 pr-2 text-slate-500">左</td>
-                <td className="py-0.5 pr-2">{formatRigDeg(rigArmAngleUi.interiorShoulderVerticalDegL)}</td>
-                <td className="py-0.5 pr-2">{formatRigDeg(rigArmAngleUi.sleeveRootHorizontalDegL)}</td>
-                <td className="py-0.5">{formatRigDeg(rigArmAngleUi.warpedArmAxisDegL)}</td>
-              </tr>
-              <tr>
-                <td className="py-0.5 pr-2 text-slate-500">右</td>
-                <td className="py-0.5 pr-2">{formatRigDeg(rigArmAngleUi.interiorShoulderVerticalDegR)}</td>
-                <td className="py-0.5 pr-2">{formatRigDeg(rigArmAngleUi.sleeveRootHorizontalDegR)}</td>
-                <td className="py-0.5">{formatRigDeg(rigArmAngleUi.warpedArmAxisDegR)}</td>
-              </tr>
-            </tbody>
-          </table>
-          <p className="mt-1.5 border-t border-slate-200/60 pt-1 text-[9px] tabular-nums text-slate-400">
-            胴スキニング Δθ　L {formatRigDeg(rigArmAngleUi.skinningDeltaThetaDegL)}　R{" "}
-            {formatRigDeg(rigArmAngleUi.skinningDeltaThetaDegR)}
-          </p>
-        </div>
-      </DevPanelSection>
-
-      <div className="flex shrink-0 flex-col gap-4">
-        <DevPanelSection title="体型">
-          <div className="space-y-3">
-            <div>
-              <label className="flex items-baseline justify-between text-[11px] text-slate-600">
-                <span>身長</span>
-                <span className="font-semibold tabular-nums text-slate-900">{height} cm</span>
-              </label>
-              <input
-                type="range"
-                min={150}
-                max={195}
-                value={height}
-                step={1}
-                onChange={(e) => onHeightChange(+e.target.value)}
-                className="mt-1.5 h-2 w-full cursor-pointer accent-sky-600"
-              />
-            </div>
-            <div>
-              <label className="flex items-baseline justify-between text-[11px] text-slate-600">
-                <span>体重</span>
-                <span className="font-semibold tabular-nums text-slate-900">{weight} kg</span>
-              </label>
-              <input
-                type="range"
-                min={40}
-                max={100}
-                value={weight}
-                step={1}
-                onChange={(e) => onWeightChange(+e.target.value)}
-                className="mt-1.5 h-2 w-full cursor-pointer accent-slate-600"
-              />
-            </div>
-          </div>
-        </DevPanelSection>
-
-        <DevPanelSection title="服のプリセット">
-          <div className="flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={() => handleSelectGenericSymmetricTop()}
-              className={cn(
-                "w-full rounded-lg px-3 py-2.5 text-left text-[11px] font-bold transition-colors",
-                isGenericTopActive
-                  ? "bg-emerald-700 text-white hover:bg-emerald-600"
-                  : "bg-emerald-50/70 text-emerald-800 hover:bg-emerald-100/80"
-              )}
-            >
-              {hasUploadedGenericSvg ? "汎用フィット（アップロード中）" : "汎用フィット（トップ）"}
-            </button>
-            {hasUploadedGenericSvg ? (
-              <p className="text-[9px] leading-snug text-slate-500">
-                SVG アップロード済み。袖丈・着丈の連結 # を入れると自動反映され、プレースを保ったままグレーディングできます。
-              </p>
-            ) : (
-              <p className="text-[9px] leading-snug text-slate-500">
-                参照 SVG をアップロードするか、サイズ 3/4/5 で採寸プリセットを選んでから調整してください。
-              </p>
-            )}
-          </div>
-        </DevPanelSection>
-      </div>
-
-      {!hasUploadedGenericSvg ? (
-        <DevPanelSection title="サイズ（採寸プリセット）">
-          <div className="flex gap-2">
-            {(["3", "4", "5"] as const).map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => handleSelectGenericSymmetricTop(s)}
-                className={cn(
-                  "min-h-10 min-w-0 flex-1 rounded-lg text-sm font-bold transition-colors",
-                  currentTopPresetSize() === s
-                    ? "bg-slate-900 text-white"
-                    : "bg-slate-100/80 text-slate-600 hover:bg-slate-200/80"
-                )}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </DevPanelSection>
-      ) : null}
 
       <DevPanelSection title="採寸・フィット">
         <div className="text-[11px] leading-snug text-slate-600">
         {sizeSpec && (
           <>
             <b className="text-gray-800">
-              {hasUploadedGenericSvg ? "アップロード SVG 採寸" : "Auralee 汎用トップ 採寸（プリセット）"}
+              {hasUploadedGenericSvg ? "カスタム SVG の採寸" : "採寸（入力値）"}
             </b>
             <table className="my-0.5 w-full border-collapse text-[11px]">
               <tbody>
@@ -915,7 +601,7 @@ export function FittingControls({
                   <td>
                     <b>{sizeSpec.sleeve}cm</b>
                     {customGarmentData?.pathDs && customGarmentData.landmarks && (() => {
-                      const lm = getEffectiveCustomLandmarks(customGarmentData);
+                      const lm = customGarmentData.landmarks;
                       const refLength = 75.0;
                       const pxPerCm = (lm.hemY - lm.shoulderY) / (sizeSpec?.length ?? refLength) || 34.3;
                       const innerRange = parseLineRangeInput(genericDraft.sleeveInnerLeft);
@@ -987,6 +673,82 @@ export function FittingControls({
           {fitLabel === "loose" && "↔ ゆったり"}
         </div>
       </DevPanelSection>
+
+      {garment === "custom" && customGarmentData ? (
+        <FittingControlsCustomPanels
+          customGarmentData={customGarmentData}
+          shoulderDebug={shoulderDebug}
+          onCustomGarmentApply={onCustomGarmentApply}
+        />
+      ) : null}
+
+      {isGenericTopActive && customGarmentData && customGarmentData.pathDs.length > 0 ? (
+        <FittingControlsPathCatalogPanel
+          showMeasureVertexControls={isGenericTopActive}
+          genericDraft={genericDraft}
+          setGenericDraft={setGenericDraft}
+          measureVertexRangeSectionFocusedRef={measureVertexRangeSectionFocusedRef}
+        />
+      ) : null}
+
+      <details className="group rounded-lg border border-slate-200/80 bg-slate-50/40 [&_summary::-webkit-details-marker]:hidden">
+        <summary className="cursor-pointer list-none px-2 py-2 text-[11px] font-semibold text-slate-600 hover:bg-slate-100/60">
+          <span className="mr-1 inline-block text-slate-400 transition-transform group-open:rotate-90">▶</span>
+          表示・オーバーレイ・リグ（開発用）
+        </summary>
+        <div className="border-t border-slate-200/60 px-2 pb-2 pt-1">
+          <div className="flex flex-col gap-0.5">
+            <PanelSwitchRow
+              id="dev-fit-show-garment"
+              label="服の表示"
+              checked={showGarment}
+              onToggle={onToggleGarment}
+            />
+            <PanelSwitchRow
+              id="dev-fit-measure-overlay"
+              label="採寸オーバーレイ"
+              checked={showMeasureOverlay}
+              onToggle={onToggleMeasureOverlay}
+            />
+            <PanelSwitchRow
+              id="dev-fit-plot-garment"
+              label="服のプロット"
+              checked={showPlotCoords}
+              onToggle={onTogglePlotCoords}
+            />
+            <PanelSwitchRow
+              id="dev-fit-plot-body"
+              label="モデルのプロット"
+              checked={showBodyPlotCoords}
+              onToggle={onToggleBodyPlotCoords}
+            />
+            <PanelSwitchRow
+              id="dev-fit-rig-angle-diagram"
+              label="肩リグ角度（図）"
+              checked={showRigAngleDiagram}
+              onToggle={onToggleRigAngleDiagram}
+            />
+            <PanelSwitchRow
+              id="dev-fit-show-rig-body"
+              label="リグボディ"
+              checked={rigBodyEnabled}
+              onToggle={onToggleRigBody}
+            />
+            <PanelSwitchRow
+              id="dev-fit-show-rig-garment"
+              label="服のリグ"
+              checked={rigGarmentEnabled}
+              onToggle={onToggleRigGarment}
+            />
+          </div>
+          <p className="mt-2 text-[10px] leading-snug text-slate-400">
+            コンソール:{" "}
+            <code className="rounded bg-slate-100 px-0.5 font-mono text-[9px]">DEBUG_FITTING_MEASURE</code> /{" "}
+            <code className="rounded bg-slate-100 px-0.5 font-mono text-[9px]">DEBUG_FITTING_CANVAS</code> /{" "}
+            <code className="rounded bg-slate-100 px-0.5 font-mono text-[9px]">DEBUG_RIG_ARM</code>
+          </p>
+        </div>
+      </details>
     </div>
   );
 }

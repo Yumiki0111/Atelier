@@ -1,10 +1,9 @@
 /**
- * カスタム服のランドマークを「連結頂点 #」から復元（手動モード）。
- * customGarmentUtils / generic との循環参照を避けるため独立モジュール。
+ * リグ用直線 path 群から肩・裾の参照座標（CustomLandmarks 形）を推定する。
  */
 
-import type { CustomGarmentData, CustomLandmarks } from "./types";
-import { getPathPoints, pointAtGlobalVertexIndex } from "./pathUtils";
+import type { CustomLandmarks } from "./types";
+import { getPathPoints } from "./pathUtils";
 
 function roundTo(v: number, step: number): number {
   if (!Number.isFinite(v)) return v;
@@ -12,19 +11,14 @@ function roundTo(v: number, step: number): number {
 }
 
 /**
- * リグっぽい「直線パス群」から、トップス用ランドマーク
- * `shoulderY / shoulderLx / shoulderRx / hemY / hemCx` を推定する。
+ * リグっぽい「直線パス群」から、トップス用の肩Y・肩幅・裾を推定する。
  *
  * 前提: リグは直線（M/L/H/V中心）で、肩幅と裾がはっきり出る。
  */
 export function inferLandmarksFromRigPaths(rigPathDs: string[]): CustomLandmarks | null {
-  // 曲線コマンドを含む path は、リグ抽出漏れ/紛れ込みの可能性があるので除外する。
   const straightPathDs = rigPathDs.filter((d) => !/[CcQqSsTtAa]/.test(d));
   if (straightPathDs.length < 4) return null;
 
-  // axis（中心縦線）みたいに x 方向の幅が極端に小さい直線が混ざると、
-  // overallMaxY（= 裾推定）が足側に引っ張られてズレやすい。
-  // そこで「x幅が小さいが y幅が長い」path を候補として除外してから推定する。
   const pathStats: Array<{ pts: [number, number][]; xSpan: number; ySpan: number }> = [];
   for (const d of straightPathDs) {
     const pts = getPathPoints(d);
@@ -77,7 +71,6 @@ export function inferLandmarksFromRigPaths(rigPathDs: string[]): CustomLandmarks
   if (!Number.isFinite(ySpan) || ySpan < 200) return null;
   const xSpan = overallMaxX - overallMinX;
 
-  // y は端点の離散値になっているはずなので、誤差を吸収しつつ band で絞る。
   const yEps = Math.max(2, ySpan * 0.0009);
   const shoulderBandMin = overallMinY + ySpan * 0.1;
   const shoulderBandMax = overallMinY + ySpan * 0.35;
@@ -105,7 +98,6 @@ export function inferLandmarksFromRigPaths(rigPathDs: string[]): CustomLandmarks
         if (x > maxX) maxX = x;
       }
       const span = maxX - minX;
-      // 裾付近は肩より横幅が狭くなり得るので、閾値を厳しすぎない。
       if (span < xSpan * 0.18) continue;
 
       const xEps = Math.max(2, span * 0.01);
@@ -151,68 +143,5 @@ export function inferLandmarksFromRigPaths(rigPathDs: string[]): CustomLandmarks
     shoulderRx,
     hemY,
     hemCx: (hemMinX + hemMaxX) / 2,
-  };
-}
-
-export function isManualLandmarkIndicesComplete(data: CustomGarmentData): boolean {
-  if (data.landmarkIndexMode !== "manual") return false;
-  const v = data.landmarkVertexIndices;
-  if (!v) return false;
-  const a = v.shoulderLeft;
-  const b = v.shoulderRight;
-  const c = v.hemCenter;
-  return (
-    typeof a === "number" &&
-    typeof b === "number" &&
-    typeof c === "number" &&
-    Number.isFinite(a) &&
-    Number.isFinite(b) &&
-    Number.isFinite(c)
-  );
-}
-
-export function resolveLandmarksFromVertexIndices(
-  pathDs: string[],
-  vi: { shoulderLeft: number; shoulderRight: number; hemCenter: number }
-): CustomLandmarks | null {
-  const pL = pointAtGlobalVertexIndex(pathDs, vi.shoulderLeft);
-  const pR = pointAtGlobalVertexIndex(pathDs, vi.shoulderRight);
-  const pH = pointAtGlobalVertexIndex(pathDs, vi.hemCenter);
-  if (!pL || !pR || !pH) return null;
-  return {
-    shoulderLx: pL[0],
-    shoulderRx: pR[0],
-    shoulderY: (pL[1] + pR[1]) / 2,
-    hemY: pH[1],
-    hemCx: pH[0],
-  };
-}
-
-export function getEffectiveCustomLandmarks(data: CustomGarmentData): CustomLandmarks {
-  const base = data.landmarks;
-  if (data.landmarkIndexMode !== "manual" || !data.landmarkVertexIndices) return base;
-  const v = data.landmarkVertexIndices;
-  if (
-    typeof v.shoulderLeft !== "number" ||
-    typeof v.shoulderRight !== "number" ||
-    typeof v.hemCenter !== "number" ||
-    !Number.isFinite(v.shoulderLeft) ||
-    !Number.isFinite(v.shoulderRight) ||
-    !Number.isFinite(v.hemCenter)
-  ) {
-    return base;
-  }
-  const resolved = resolveLandmarksFromVertexIndices(data.pathDs, {
-    shoulderLeft: Math.trunc(v.shoulderLeft),
-    shoulderRight: Math.trunc(v.shoulderRight),
-    hemCenter: Math.trunc(v.hemCenter),
-  });
-  if (!resolved) return base;
-  return {
-    ...resolved,
-    ...(base.garmentLengthOverride != null ? { garmentLengthOverride: base.garmentLengthOverride } : {}),
-    ...(base.bodyShoulderOffsetY != null ? { bodyShoulderOffsetY: base.bodyShoulderOffsetY } : {}),
-    ...(base.totalWidth != null ? { totalWidth: base.totalWidth } : {}),
-    ...(base.maxWidthRatio != null ? { maxWidthRatio: base.maxWidthRatio } : {}),
   };
 }

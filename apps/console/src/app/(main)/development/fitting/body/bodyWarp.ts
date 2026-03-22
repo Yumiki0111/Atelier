@@ -21,18 +21,15 @@ function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
-/**
- * xScale=1（60kg）でも腹周りが細く見えないよう、胸〜ウエスト間だけ常に横に膨らます。
- * `1 + d*係数` の d=0 では効かない帯の見た目用。
- */
-const REST_BELLY_BREADTH = 0.1;
+/** xScale=1 時の胴パッド。`sin(πt)` は腰で 0 になるので `sin(πt/2)` にする */
+const REST_BELLY_BREADTH = 0.13;
 
 function restBellyBoost(y: number, z: BodyZones): number {
   if (y < z.chest || y > z.waist) return 0;
   const span = z.waist - z.chest;
   if (span < 1e-6) return 0;
   const t = (y - z.chest) / span;
-  return REST_BELLY_BREADTH * Math.sin(Math.PI * t);
+  return REST_BELLY_BREADTH * Math.sin((Math.PI / 2) * t);
 }
 
 export function torsoXFactor(y: number, z: BodyZones, xs: number): number {
@@ -48,7 +45,7 @@ export function torsoXFactor(y: number, z: BodyZones, xs: number): number {
     [z.armpit, 0],
     [z.chest, 1.18],
     [z.belly, 1.28],
-    [z.waist, 1.2],
+    [z.waist, 1.26],
     [z.hip, 1.12],
     [z.crotch, 0.96],
     [z.knee, 0.78],

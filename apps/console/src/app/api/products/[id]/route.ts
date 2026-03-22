@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAuthenticatedUser } from "@/lib/auth/middleware";
 import { updateProductSchema } from "@atelier/shared";
 import { ZodError } from "zod";
+import { stripGarmentSpecForStorage } from "@/lib/products/stripGarmentSpecForStorage";
 
 // GET /api/products/:id - Get product by ID
 export async function GET(
@@ -57,6 +58,7 @@ export async function GET(
       brand: data.brand,
       category: data.category,
       thumbnailUrl: data.thumbnail_url,
+      garmentSpec: data.garment_spec ?? undefined,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };
@@ -110,6 +112,9 @@ export async function PATCH(
       // 空文字列の場合はnullに変換
       updateData.thumbnail_url = validated.thumbnailUrl === "" ? null : validated.thumbnailUrl;
     }
+    if (validated.garmentSpec !== undefined) {
+      updateData.garment_spec = stripGarmentSpecForStorage(validated.garmentSpec);
+    }
 
     updateData.updated_at = new Date().toISOString();
 
@@ -160,6 +165,7 @@ export async function PATCH(
       brand: data.brand,
       category: data.category,
       thumbnailUrl: data.thumbnail_url,
+      garmentSpec: data.garment_spec ?? undefined,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };

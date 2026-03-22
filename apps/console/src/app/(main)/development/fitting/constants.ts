@@ -84,8 +84,6 @@ export const BODY_ARM_OUTLINE_L: [number, number][] = [
 
 /** 腕の上側の線の山の頂点（袖の膨らみで服の輪郭を合わせる基準）。左腕アウトラインのインデックス。 */
 export const BODY_ARM_PEAK_INDEX = 2;
-/** 左腕アウトライン上、脇下付近（BZ.armpit に近い Y）の頂点インデックス */
-export const BODY_ARM_ARMPIT_ROW_INDEX = 3;
 
 /** 右腕アウトライン（左を BODY_CX で反転） */
 export const BODY_ARM_OUTLINE_R: [number, number][] = BODY_ARM_OUTLINE_L.map(

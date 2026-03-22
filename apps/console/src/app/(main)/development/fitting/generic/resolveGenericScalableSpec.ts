@@ -9,7 +9,6 @@ import {
   CALIB_GARMENT_LENGTH_SPAN_PX,
   inferLengthCmFromLandmarks,
 } from "../garmentBase";
-import { getEffectiveCustomLandmarks } from "../customLandmarkResolve";
 import { pointAtGlobalVertexIndex } from "../pathUtils";
 import { buildSymmetricTopTopologyFromGlobalVertices, type SymmetricTopGlobalVertexRanges } from "./inferSymmetricTop";
 import { buildGenericScalableSpec, type BuildGenericScalableSpecOptions } from "./buildGenericSpec";
@@ -88,7 +87,7 @@ export function resolveGenericScalableSpec(data: CustomGarmentData): ScalableGar
 
   const gt = data.genericSymmetricTop;
   const pathDs = data.pathDs;
-  const lm = getEffectiveCustomLandmarks(data);
+  const lm = data.landmarks;
   const size = data.size;
 
   const allFour =

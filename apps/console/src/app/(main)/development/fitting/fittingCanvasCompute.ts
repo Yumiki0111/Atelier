@@ -35,15 +35,13 @@ import {
   BODY_CX,
   BODY_ARM_OUTLINE_L,
   BODY_ARM_PEAK_INDEX,
-  BODY_ARM_ARMPIT_ROW_INDEX,
   SH,
   JK,
   REF_HEIGHT_CM,
   REF_WEIGHT_KG,
-  BASE_SHOULDER_HALF,
 } from "./constants";
 import { buildRigSkinSegments, deformBodyPointToRig } from "./rigSkin2D";
-import { getEffectiveCustomLandmarks, inferLandmarksFromRigPaths, isManualLandmarkIndicesComplete } from "./customLandmarkResolve";
+import { inferLandmarksFromRigPaths } from "./customLandmarkResolve";
 import { getScalableSpec } from "./customGarmentUtils";
 import { resolveGenericScalableSpec } from "./generic";
 import { scaleModelViewToBodyTemplate } from "./modelRigData";
@@ -78,7 +76,6 @@ export interface UseFittingCanvasDataParams {
 }
 
 export type FittingCanvasRigLandmarksDebug = {
-  useShoulderSeamYFromLandmarks: boolean;
   inferredFromRig: boolean;
   rigShoulderY: number | null;
   rigHemY: number | null;
@@ -166,136 +163,6 @@ const RIG_ALIGN_HEAD_SCALE_BLEND_MIN = 0.38;
 /** 服リグあり: 全リグ点の bbox 上端合わせだと服がわずかに下に見えるため、テンプレ空間で上へ寄せる量（px）。+Y は下向きなので rigAlign の dy から減算 */
 /** カスタム服: テンプレ空間でモデルリグと服リグを平行移動だけ合わせる（スケールはしない。追従は後段の rigTemplateToRigView） */
 type CustomRigAlign = { enabled: false } | { enabled: true; dx: number; dy: number };
-
-function smoothstep01(t: number): number {
-  const s = Math.max(0, Math.min(1, t));
-  return s * s * (3 - 2 * s);
-}
-
-/** `bodyWarp` の胴中央列／腕帯境界と揃え、Y 帯だけだと脇下〜腰の腕ラインまで pure warp が乗るのを防ぐ */
-const TORSO_RIG_SKIN_ARM_START = BASE_SHOULDER_HALF * 0.7;
-const TORSO_RIG_SKIN_ARM_END = BASE_SHOULDER_HALF * 1.05;
-
-function torsoRigSkinBlendX(px: number, py: number, z: BodyZones): number {
-  const absDx = Math.abs(px - BODY_CX);
-  let armEnd = TORSO_RIG_SKIN_ARM_END;
-  let armStart = TORSO_RIG_SKIN_ARM_START;
-  if (py >= z.armpit - 50 && py <= z.chest + 35) {
-    armEnd *= 1.42;
-    armStart *= 1.06;
-  }
-  if (absDx <= armStart) return 1;
-  if (absDx >= armEnd) return 0;
-  return smoothstep01((armEnd - absDx) / (armEnd - armStart));
-}
-
-/** テンプレで胴脇線とみなす X 帯（BODY_CX からの距離・外〜内） */
-const SIDE_SEAM_OUTER_DX = 298;
-const SIDE_SEAM_INNER_DX = 228;
-/** 腕外線より内側だけ脇合わせブレンドする（外輪郭本体は動かさない） */
-const UNDERARM_VS_OUTER_ARM_MARGIN = 10;
-
-/** 基準左腕アウトライン（肩→袖先）の Y における腕外線の X。左は体中心より左＝小さい x が外側。 */
-function outerArmLeftXAtY(py: number): number {
-  const pts = BODY_ARM_OUTLINE_L;
-  if (py <= pts[0]![1]) return pts[0]![0];
-  const last = pts[pts.length - 1]!;
-  if (py >= last[1]) return last[0];
-  for (let i = 0; i < pts.length - 1; i++) {
-    const [x0, y0] = pts[i]!;
-    const [x1, y1] = pts[i + 1]!;
-    if (py >= y0 && py <= y1) {
-      const t = y1 === y0 ? 0 : (py - y0) / (y1 - y0);
-      return x0 + t * (x1 - x0);
-    }
-  }
-  return last[0];
-}
-
-function outerArmRightXAtY(py: number): number {
-  return 2 * BODY_CX - outerArmLeftXAtY(py);
-}
-
-/** テンプレ上の胴〜脇あたりの基準半幅（`warp` の dx に掛かる帯の代表）。 */
-const SIDE_SEAM_REF_HALF = 264;
-
-/**
- * 胴脇線はスナップせず `warp` の結果のまま（Y で spread が変わるので曲がる）。
- * 腕下だけ `seamTargetX*`（同じワープでテンプレ基準点を写した X）へブレンドして体型に追従させる。
- * 腕外線（`BODY_ARM_OUTLINE_L` / R の外輪郭）はマージンより内側に入った点だけブレンドする。
- */
-function alignUnderarmToSideSeam(
-  px: number,
-  py: number,
-  out: [number, number],
-  z: BodyZones,
-  seamTargetXL: (templateY: number) => number,
-  seamTargetXR: (templateY: number) => number,
-  attachYL: number,
-  attachYR: number
-): [number, number] {
-  const sideXL = seamTargetXL(py);
-  const sideXR = seamTargetXR(py);
-
-  const band = 92;
-  const yLoL = Math.min(z.shoulder - 18, attachYL - 105);
-  const yHiL = attachYL + 62;
-  const outerXL = outerArmLeftXAtY(py) + UNDERARM_VS_OUTER_ARM_MARGIN;
-  if (
-    px < BODY_CX &&
-    py >= yLoL &&
-    py <= yHiL &&
-    px > outerXL &&
-    px < BODY_CX - SIDE_SEAM_OUTER_DX - 6
-  ) {
-    const dy = Math.abs(py - attachYL) / band;
-    const yW = Math.max(0, 1 - dy * dy);
-    const gap = BODY_CX - SIDE_SEAM_OUTER_DX - px;
-    const inward = smoothstep01(Math.max(0, gap) / 168);
-    const pull = yW * inward * 0.94;
-    if (pull > 1e-5) {
-      return [out[0] + (sideXL - out[0]) * pull, out[1]];
-    }
-  }
-
-  const yLoR = Math.min(z.shoulder - 18, attachYR - 105);
-  const yHiR = attachYR + 62;
-  const outerXR = outerArmRightXAtY(py) - UNDERARM_VS_OUTER_ARM_MARGIN;
-  if (
-    px > BODY_CX &&
-    py >= yLoR &&
-    py <= yHiR &&
-    px < outerXR &&
-    px > BODY_CX + SIDE_SEAM_OUTER_DX + 6
-  ) {
-    const dy = Math.abs(py - attachYR) / band;
-    const yW = Math.max(0, 1 - dy * dy);
-    const gap = px - (BODY_CX + SIDE_SEAM_OUTER_DX);
-    const inward = smoothstep01(Math.max(0, gap) / 168);
-    const pull = yW * inward * 0.94;
-    if (pull > 1e-5) {
-      return [out[0] + (sideXR - out[0]) * pull, out[1]];
-    }
-  }
-
-  return out;
-}
-
-/**
- * 赤リグのスキン追従と pure `warp` のブレンド係数（大きいほど `warp` 側）。
- * - 脇〜腰の胴ドーム: 1 に近ぼかし、リグ由来の横方向のブレを抑える（服プレースとのズレも減る）。
- * - 脇より上（肩・首）・腰より下: 0 近くでリグ追従を維持し、身長スライダー＋脊髄・腕リグの見えを失わない。
- */
-function torsoRigSkinBlendT(py: number, z: BodyZones): number {
-  if (py < z.armpit || py > z.hip) return 0;
-  if (py >= z.chest && py <= z.waist) return 1;
-  if (py < z.chest) {
-    const span = Math.max(8, z.chest - z.armpit);
-    return smoothstep01((py - z.armpit) / span);
-  }
-  const span = Math.max(8, z.hip - z.waist);
-  return 1 - smoothstep01((py - z.waist) / span);
-}
 
 function applyCustomRigAlignInPlace(x: number, y: number, a: CustomRigAlign): [number, number] {
   if (!a.enabled) return [x, y];
@@ -1031,30 +898,10 @@ const warpPlain = (x: number, y: number): [number, number] =>
 
 const armPeakIdxL = Math.min(BODY_ARM_PEAK_INDEX, Math.max(0, leftArmOutline.length - 1));
 const armPeakIdxR = Math.min(BODY_ARM_PEAK_INDEX, Math.max(0, rightArmOutline.length - 1));
-const armAttachIdxL = Math.min(BODY_ARM_ARMPIT_ROW_INDEX, Math.max(0, leftArmOutline.length - 1));
-const armAttachIdxR = Math.min(BODY_ARM_ARMPIT_ROW_INDEX, Math.max(0, rightArmOutline.length - 1));
-const attachYL = leftArmOutline[armAttachIdxL]![1];
-const attachYR = rightArmOutline[armAttachIdxR]![1];
-const seamTargetXL = (ty: number) => warpFn(BODY_CX - SIDE_SEAM_REF_HALF, ty)[0];
-const seamTargetXR = (ty: number) => warpFn(BODY_CX + SIDE_SEAM_REF_HALF, ty)[0];
 
 const bodyFollowFn = (x: number, y: number): [number, number] => {
-  if (rigSkinSegments == null) {
-    const w = warpFn(x, y);
-    return alignUnderarmToSideSeam(x, y, w, zones, seamTargetXL, seamTargetXR, attachYL, attachYR);
-  }
-  const plain = warpPlain(x, y);
-  const rigged = deformBodyPointToRig(x, y, rigSkinSegments, warpPlain);
-  const bt = torsoRigSkinBlendT(y, zones) * torsoRigSkinBlendX(x, y, zones);
-  let out: [number, number] =
-    bt <= 1e-6
-      ? rigged
-      : [
-          rigged[0] + (plain[0] - rigged[0]) * bt,
-          rigged[1] + (plain[1] - rigged[1]) * bt,
-        ];
-  out = alignUnderarmToSideSeam(x, y, out, zones, seamTargetXL, seamTargetXR, attachYL, attachYR);
-  return out;
+  if (rigSkinSegments == null) return warpFn(x, y);
+  return deformBodyPointToRig(x, y, rigSkinSegments, warpPlain);
 };
 
 /** 腕山: 体輪郭と同じ `bodyFollowFn`（`warpArmOutline` だけだとリグスキン後のシルエットとズレる） */
@@ -1141,16 +988,28 @@ if (garment === "jacket") {
   jacketDetail = detail;
   const size = JACKET_SIZES[jacketSize] ?? JACKET_SIZES["4"];
   const jacketOutlinePts = getPathPoints(fill);
+  const { yScale: yScaleJacketMeasure } = getBodyParams(height, REF_WEIGHT_KG);
+  const bodyPxPerCmJacket = bodyHeight(yScaleJacketMeasure) / height;
+  const jkSl = place(JK.sh_lx, JK.sh_y);
+  const jkSr = place(JK.sh_rx, JK.sh_y);
+  const jkHem = place(JK.cx, JK.hem_y);
+  const jkSleeveStart = place(JK.sh_lx, JK.sh_y);
+  const jkSleeveEnd = place(JK.tip_lx, JK.tip_y);
+  const jkShoulderY = (jkSl[1] + jkSr[1]) / 2;
+  const jkLenPx = Math.abs(jkHem[1] - jkShoulderY);
+  const jkSlvPx = Math.abs(jkSleeveEnd[1] - jkSleeveStart[1]);
   garmentOverlay = {
-    shoulderLeft: place(JK.sh_lx, JK.sh_y),
-    shoulderRight: place(JK.sh_rx, JK.sh_y),
-    hemCenter: place(JK.cx, JK.hem_y),
+    shoulderLeft: jkSl,
+    shoulderRight: jkSr,
+    hemCenter: jkHem,
     size,
     sizeLabel: `ジャケット サイズ ${jacketSize}`,
     chestLeft: place(JK.pit_lx, JK.pit_y),
     chestRight: place(JK.pit_rx, JK.pit_y),
-    sleeveStart: place(JK.sh_lx, JK.sh_y),
-    sleeveEnd: place(JK.tip_lx, JK.tip_y),
+    sleeveStart: jkSleeveStart,
+    sleeveEnd: jkSleeveEnd,
+    lengthGeomDebug: { px: Math.round(jkLenPx), cm: jkLenPx / bodyPxPerCmJacket },
+    sleeveGeomDebug: { px: Math.round(jkSlvPx), cm: jkSlvPx / bodyPxPerCmJacket },
   };
   // ジャケット時も shoulderDebug を渡す（未設定だと肩リグ図が腕アウトライン肩のまま）
   shoulderDebug = {
@@ -1244,16 +1103,28 @@ if (garment === "jacket") {
   const shirtSleeveSeamL = shirtLeftHalfAtShoulder.length > 0 ? shirtLeftHalfAtShoulder.reduce((a, b) => (a[0] > b[0] ? a : b)) : [shirtVisualLx, shoulderSeamY] as [number, number];
   const shirtLeftSleeve = shirtAllOutline.filter((p) => p[0] < shirtCenterX && p[1] > shoulderSeamY);
   const shirtSleeveEnd = shirtLeftSleeve.length > 0 ? shirtLeftSleeve.reduce((a, b) => (a[1] > b[1] ? a : b)) : [SH.tip_lx, SH.tip_y] as [number, number];
+  const { yScale: yScaleShirtMeasure } = getBodyParams(height, REF_WEIGHT_KG);
+  const bodyPxPerCmShirt = bodyHeight(yScaleShirtMeasure) / height;
+  const shirtSl = placement.place(shirtVisualLx, shoulderSeamY);
+  const shirtSr = placement.place(shirtVisualRx, shoulderSeamY);
+  const shirtHem = placement.place(lm.hemCx, lm.hemY);
+  const shirtSleeveA = placement.place(shirtSleeveSeamL[0], shirtSleeveSeamL[1]);
+  const shirtSleeveB = placement.place(shirtSleeveEnd[0], shirtSleeveEnd[1]);
+  const shirtShoulderY = (shirtSl[1] + shirtSr[1]) / 2;
+  const shirtLenPx = Math.abs(shirtHem[1] - shirtShoulderY);
+  const shirtSlvPx = Math.abs(shirtSleeveB[1] - shirtSleeveA[1]);
   garmentOverlay = {
-    shoulderLeft: placement.place(shirtVisualLx, shoulderSeamY),
-    shoulderRight: placement.place(shirtVisualRx, shoulderSeamY),
-    hemCenter: placement.place(lm.hemCx, lm.hemY),
+    shoulderLeft: shirtSl,
+    shoulderRight: shirtSr,
+    hemCenter: shirtHem,
     size,
     sizeLabel: `シャツ ${shirtSize}`,
     chestLeft: placement.place(SH.bod_lx, SH.bod_y),
     chestRight: placement.place(SH.bod_rx, SH.bod_y),
-    sleeveStart: placement.place(shirtSleeveSeamL[0], shirtSleeveSeamL[1]),
-    sleeveEnd: placement.place(shirtSleeveEnd[0], shirtSleeveEnd[1]),
+    sleeveStart: shirtSleeveA,
+    sleeveEnd: shirtSleeveB,
+    lengthGeomDebug: { px: Math.round(shirtLenPx), cm: shirtLenPx / bodyPxPerCmShirt },
+    sleeveGeomDebug: { px: Math.round(shirtSlvPx), cm: shirtSlvPx / bodyPxPerCmShirt },
   };
   shoulderDebug = {
     bodyShoulderContour,
@@ -1263,10 +1134,9 @@ if (garment === "jacket") {
     garmentType: "shirt",
   };
 } else if (garment === "custom" && customGarmentData) {
-  const c = getEffectiveCustomLandmarks(customGarmentData);
+  const c = customGarmentData.landmarks;
   /** 服 SVG 内のリグ線あり。重ねリグは `rigTemplateToRigView` でモデルと一致。服 path はロック時、肩線剛体合わせ（スケールなし） */
   const hasGarmentRig = (customGarmentData.debugRigPathDs?.length ?? 0) > 0;
-  const useShoulderSeamYFromLandmarks = !!customGarmentData.useShoulderSeamYFromLandmarks;
   const rigPathCountMatchesModel =
     hasGarmentRig &&
     rigLinePaths != null &&
@@ -1281,7 +1151,6 @@ if (garment === "jacket") {
 
   if (customGarmentData.debugRigPathDs?.length) {
     rigLandmarksDebug = {
-      useShoulderSeamYFromLandmarks,
       inferredFromRig: rigLm != null,
       rigShoulderY: rigLm?.shoulderY ?? null,
       rigHemY: rigLm?.hemY ?? null,
@@ -1295,7 +1164,6 @@ if (garment === "jacket") {
     };
   } else {
     rigLandmarksDebug = {
-      useShoulderSeamYFromLandmarks,
       inferredFromRig: false,
       rigShoulderY: null,
       rigHemY: null,
@@ -1312,15 +1180,12 @@ if (garment === "jacket") {
   const presetShoulderIdx = customGarmentData.shoulderPointIndex;
   const usePresetShoulder =
     presetShoulderIdx != null && customAllOutline.length > presetShoulderIdx;
-  const manualLmSeamY = isManualLandmarkIndicesComplete(customGarmentData);
   // shoulderSeamY: デザイン座標でのどのYをボディ肩ラインに対応させるか。
   // - モデルリグロックかつリグから推定できた場合 → リグ肩Y（服とリグを同じ place で貼る）
-  // - rig付きアップロード / 手動ランドマーク → c.shoulderY（ランドマーク座標系と一致するので直接使う）
   // - preset shoulder index → その頂点Y
   // - それ以外 → 幾何推定（outer collar 最下端）
   const shoulderSeamY = (() => {
     if (useRigLandmarksForPlacement && rigLm) return rigLm.shoulderY;
-    if (useShoulderSeamYFromLandmarks || manualLmSeamY) return c.shoulderY;
     if (usePresetShoulder) return customAllOutline[presetShoulderIdx][1];
     const band = 15;
     const customRaw = shoulderContourFromPath(
@@ -1421,7 +1286,7 @@ if (garment === "jacket") {
     } else {
       garmentPts = customRigPathDs.flatMap((d) => getPathPoints(d));
       if (garmentPts.length < 2) return { enabled: false };
-      if (!useShoulderSeamYFromLandmarks || !rigLineWarpedPathsGarment?.length) return { enabled: false };
+      if (!rigLineWarpedPathsGarment?.length) return { enabled: false };
       modelPts = rigLineWarpedPathsGarment.flatMap((d) => getPathPoints(d));
     }
     if (modelPts.length < 2) return { enabled: false };
@@ -1481,8 +1346,8 @@ if (garment === "jacket") {
     animProgress < 1
   ) {
     // アニメーション: pathDs が同じでも from/to のリグロック・推定肩はそれぞれ評価
-    const fromC = getEffectiveCustomLandmarks(fromCustomGarmentData);
-    const toC = getEffectiveCustomLandmarks(toCustomGarmentData);
+    const fromC = fromCustomGarmentData.landmarks;
+    const toC = toCustomGarmentData.landmarks;
     const fromLocked = placementLockToModelRigFor(fromCustomGarmentData);
     const toLocked = placementLockToModelRigFor(toCustomGarmentData);
     const fromRlm = fromCustomGarmentData.debugRigPathDs?.length
@@ -1492,17 +1357,9 @@ if (garment === "jacket") {
       ? inferLandmarksFromRigPaths(toCustomGarmentData.debugRigPathDs)
       : null;
     const shoulderYFrom =
-      fromLocked && fromRlm
-        ? fromRlm.shoulderY
-        : fromCustomGarmentData.useShoulderSeamYFromLandmarks
-          ? fromC.shoulderY
-          : getShoulderSeamYForData(fromCustomGarmentData);
+      fromLocked && fromRlm ? fromRlm.shoulderY : getShoulderSeamYForData(fromCustomGarmentData);
     const shoulderYTo =
-      toLocked && toRlm
-        ? toRlm.shoulderY
-        : toCustomGarmentData.useShoulderSeamYFromLandmarks
-          ? toC.shoulderY
-          : getShoulderSeamYForData(toCustomGarmentData);
+      toLocked && toRlm ? toRlm.shoulderY : getShoulderSeamYForData(toCustomGarmentData);
     const fromMerged = {
       ...fromCustomGarmentData,
       landmarks:
@@ -1628,10 +1485,13 @@ if (garment === "jacket") {
   );
   const leftSleeve = leftSleeveStrict.length > 0 ? leftSleeveStrict : customAllOutline.filter((p) => p[0] < centerXGarment && p[1] > shoulderSeamY);
   const sleeveEndPt = leftSleeve.length > 0 ? leftSleeve.reduce((a, b) => (a[1] > b[1] ? a : b)) : null;
-  /** `buildCustomTransformedPaths` の第2引数 h と同じにし、着丈・袖の cm 換算をプレースと一致させる */
-  const heightCmForGarmentPlacement = rigGeometryLockedToModel ? REF_HEIGHT_CM : height;
-  const { yScale: yScaleGarmentMeasure } = getBodyParams(heightCmForGarmentPlacement, REF_WEIGHT_KG);
-  const bodyPxPerCm = bodyHeight(yScaleGarmentMeasure) / heightCmForGarmentPlacement;
+  /**
+   * 着丈・袖の cm 換算は `buildTopPlacement(..., lengthCalibrationHeightCm: REF_HEIGHT_CM)` の
+   * `bodyPxPerCm = bodyHeight(yScaleCal)/REF_HEIGHT_CM` と一致させる。
+   * 身長スライダーは体型ワープ用で、服の縦グレード分母に載せない（195cm 入力で袖・着丈デバッグが歪むのを防ぐ）。
+   */
+  const { yScale: yScaleGarmentMeasure } = getBodyParams(REF_HEIGHT_CM, REF_WEIGHT_KG);
+  const bodyPxPerCm = bodyHeight(yScaleGarmentMeasure) / REF_HEIGHT_CM;
   // 袖丈: `scaleSleevePathToSpec` と同じく端点の |ΔY|（design で定義）に相当するよう、ボディ上の端点 |ΔY| を bodyPxPerCm で cm 化。赤線は経路の見た目。
   let sleeveStart: [number, number] | undefined;
   let sleeveEnd: [number, number] | undefined;
@@ -1749,6 +1609,22 @@ if (garment === "jacket") {
     }
   }
 
+  const lengthGeomDebug: { px: number; cm: number } = lengthPathLengthDebug
+    ? { px: lengthPathLengthDebug.px, cm: lengthPathLengthDebug.cm }
+    : {
+        px: Math.round(Math.abs(hemCenter[1] - shoulderYForLength)),
+        cm: Math.abs(hemCenter[1] - shoulderYForLength) / bodyPxPerCm,
+      };
+  const sleeveGeomDebug: { px: number; cm: number } | undefined =
+    sleevePathLengthDebug != null
+      ? { px: sleevePathLengthDebug.px, cm: sleevePathLengthDebug.cm }
+      : sleeveStart != null && sleeveEnd != null
+        ? {
+            px: Math.round(Math.abs(sleeveEnd[1] - sleeveStart[1])),
+            cm: Math.abs(sleeveEnd[1] - sleeveStart[1]) / bodyPxPerCm,
+          }
+        : undefined;
+
   garmentOverlay = {
     shoulderLeft: designToGarmentCanvas(visualShoulderLx, shoulderSeamY),
     shoulderRight: designToGarmentCanvas(visualShoulderRx, shoulderSeamY),
@@ -1758,13 +1634,15 @@ if (garment === "jacket") {
     ...(lengthMeasureTop ? { lengthMeasureTop } : {}),
     ...(lengthCmFromSizeInput ? { lengthCmFromSizeInput: true } : {}),
     ...(sleeveCmFromSizeInput ? { sleeveCmFromSizeInput: true } : {}),
-    sizeLabel: customGarmentData.presetId === "genericSymmetricTop" ? "Auralee 汎用トップ" : "カスタム服",
+    sizeLabel: customGarmentData.presetId === "genericSymmetricTop" ? "汎用トップ" : "カスタム服",
     chestLeft: designToGarmentCanvas(chestMinX, chestMidY),
     chestRight: designToGarmentCanvas(chestMaxX, chestMidY),
     sleeveStart,
     sleeveEnd,
     sleeveMeasuredCm,
     sleevePathPoints,
+    lengthGeomDebug,
+    ...(sleeveGeomDebug ? { sleeveGeomDebug } : {}),
   };
 
   const debugFittingMeasure =

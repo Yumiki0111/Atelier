@@ -197,8 +197,6 @@ export function runGenericSymmetricTopFitManual(
     rightShoulder,
     leftArmPts,
     rightArmPts,
-    junctionXScale: xScale,
-    junctionZones: zones,
     ...(purpleDyPlacement != null ? { garmentLengthPxOverride: purpleDyPlacement } : {}),
   };
   const pathDsOut = applySleeveOnlyGarmentTransform(sleeveParams);
@@ -272,8 +270,6 @@ export function runGenericSymmetricTopFitWithTopology(
     rightShoulder,
     leftArmPts,
     rightArmPts,
-    junctionXScale: xScale,
-    junctionZones: zones,
     ...(purpleDyPlacement != null ? { garmentLengthPxOverride: purpleDyPlacement } : {}),
   };
   const pathDsOut = applySleeveOnlyGarmentTransform(sleeveParams);

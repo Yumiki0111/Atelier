@@ -26,11 +26,16 @@ export const productSchema = z.object({
   updatedAt: z.string().datetime(),
 });
 
-export const createProductSchema = productSchema.omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const createProductSchema = productSchema
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .extend({
+    /** クライアントでサニタイズ済み。サーバーでも危険キーを除去する */
+    garmentSpec: z.unknown().optional(),
+  });
 
 export const updateProductSchema = createProductSchema.partial();
 

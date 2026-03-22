@@ -3,18 +3,11 @@ export type GarmentType = "shirt" | "jacket" | "custom";
 /** 組み込みジャケットのサイズ（JACKET_SIZES のキー） */
 export type JacketSize = "3" | "4" | "5";
 
-/** カスタム服のランドマークを連結頂点で手動指定するときのキー（服プロット # と同じ 0 起算） */
-export interface CustomLandmarkVertexIndices {
-  shoulderLeft: number;
-  shoulderRight: number;
-  hemCenter: number;
-}
-
 /** アップロードした商品SVG＋採寸。モデル(170/60)に対する比率で変換して着用する */
 export interface CustomGarmentData {
   /** 元SVGの path の d 属性の配列 */
   pathDs: string[];
-  /** 元SVG座標系でのランドマーク */
+  /** 元SVG座標系での肩・裾などの参照点（path 推定またはリグ推定） */
   landmarks: CustomLandmarks;
   /** この1サイズの採寸（cm） */
   size: SizeMeasure;
@@ -22,12 +15,6 @@ export interface CustomGarmentData {
   photoDerived?: boolean;
   /** 指定時は肩ラインにこの頂点インデックス（全path結合順）を使う。実験ジャケット92、Group11は15 */
   shoulderPointIndex?: number;
-  /**
-   * manual かつ shoulderLeft/Right/hemCenter が揃っているとき、landmarks の数値より連結頂点から座標を復元する。
-   */
-  landmarkIndexMode?: "auto" | "manual";
-  /** 連結頂点（服プロット # と同じ 0 起算）で肩左右・裾中央を指定 */
-  landmarkVertexIndices?: Partial<CustomLandmarkVertexIndices>;
   /** 指定時はこれらの頂点（全path結合順）をボディの首の線分に固定して変形する。テスト1: [84,158], テスト2: [37,86] */
   neckPinIndices?: number[];
   /** 開発フィット: 汎用トップ（アップロード SVG 想定） */
@@ -93,13 +80,6 @@ export interface CustomGarmentData {
    * フィット計算から除外した上で別途表示するための raw path d 配列。
    */
   debugRigPathDs?: string[];
-
-  /**
-   * true のとき、useFittingCanvasData 側の shoulderSeamY 再推定を無効化して
-   * landmarks.shoulderY をそのまま shoulderSeamY として使う。
-   * リグ由来のランドマーク整列のために使用する。
-   */
-  useShoulderSeamYFromLandmarks?: boolean;
 }
 
 /**
@@ -173,7 +153,7 @@ export interface ScalableGarmentSpec {
   gradingHemAlignStripHalf?: number;
 }
 
-/** アップロードSVG内のランドマーク（そのSVGのviewBox座標） */
+/** アップロードSVG内の肩・裾などの参照座標（viewBox座標） */
 export interface CustomLandmarks {
   shoulderY: number;
   shoulderLx: number;
@@ -296,5 +276,12 @@ export interface MeasureOverlayData {
     lengthCmFromSizeInput?: boolean;
     /** 汎用トップ：`sleeveMeasuredCm` は `size.sleeve`（袖丈 D） */
     sleeveCmFromSizeInput?: boolean;
+    /**
+     * 着丈ガイドと同じ定義の |ΔY|（px）と bodyPxPerCm 換算 cm。
+     * 汎用トップで `lengthMeasuredCm` を入力 A に揃えてもこちらは画面上の幾何のまま。
+     */
+    lengthGeomDebug?: { px: number; cm: number };
+    /** 袖丈：端点の |ΔY|（px/cm）。袖計測インデックスなし時は推定肩〜袖口の |ΔY| */
+    sleeveGeomDebug?: { px: number; cm: number };
   } | null;
 }

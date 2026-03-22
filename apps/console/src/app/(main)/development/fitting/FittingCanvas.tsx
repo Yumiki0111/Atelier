@@ -123,8 +123,8 @@ export function FittingCanvas({
   const debugLines: string[] = [];
   if (rigGarmentEnabled && garment === "custom") {
     debugLines.push(
-      `customRigPathDs: ${customRigPathDs.length} | rigLandmarks: ${
-        customGarmentData?.useShoulderSeamYFromLandmarks ? "on" : "off"
+      `customRigPathDs: ${customRigPathDs.length} | rig place: ${
+        rigLandmarksDebug?.useRigLandmarksForPlacement ? "rigLm" : "lm"
       }`
     );
   }
