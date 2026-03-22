@@ -1,0 +1,450 @@
+/**
+ * sleeveOnly パイプライン: 着丈・袖丈のグレーディング＋プレースメント。
+ * 外腕シームは肩ピボット周りにブレンド回転し、ワープ後の腕アウトラインに沿わせる（無いと袖と体の隙間が出やすい）。
+ * 袖付け付近は重み 0 で placeFn のままなので、肩のプレース位置は動かさない。
+ */
+
+import type { BodyZones, CustomLandmarks, ScalableGarmentSpec } from "./types";
+import { underarmJunctionSlideY } from "./underarmJunctionSlide";
+import { tPath, getPathPoints, getPathsBBox, collectPtsGlobalVertexRange, flattenSvgPathToPolyline } from "./pathUtils";
+import { BODY_CX } from "./constants";
+import {
+  scaleBodyToSpec,
+  scaleSleevePathToSpec,
+  computeSleeveRotations,
+  computeGradingHemAlignTargetY,
+  rotateAround,
+  type ArmLogicConfig,
+} from "./coatArmLogic";
+
+function pathIdxInConfigRange(pathIdx: number, start: number, end?: number): boolean {
+  const e = end ?? start;
+  const lo = Math.min(start, e);
+  const hi = Math.max(start, e);
+  return pathIdx >= lo && pathIdx <= hi;
+}
+
+function collectPtsLineRange(pathDs: string[], start: number, end?: number): [number, number][] {
+  const e = end ?? start;
+  const lo = Math.min(start, e);
+  const hi = Math.max(start, e);
+  const out: [number, number][] = [];
+  for (let i = lo; i <= hi; i++) {
+    const d = pathDs[i];
+    if (d) out.push(...getPathPoints(d));
+  }
+  return out;
+}
+
+/**
+ * sleeveOnly 系で sleevePath が「実質的に胴体サイド（肩〜裾）」なら
+ * body スケール対象として扱うための判定。
+ */
+export function shouldScaleSleevePathAsBody(pathD: string, spec: ScalableGarmentSpec): boolean {
+  const pts = getPathPoints(pathD);
+  if (pts.length < 2) return false;
+  const ys = pts.map((p) => p[1]);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  const shoulderBand = 140;
+  const hemBand = 140;
+  const reachesShoulder = minY <= spec.designShoulderY + shoulderBand;
+  const reachesHem = maxY >= spec.designHemY - hemBand;
+  return reachesShoulder && reachesHem;
+}
+
+export interface SleeveOnlyTransformParams {
+  pathDs: string[];
+  landmarks: CustomLandmarks;
+  scalableSpec: ScalableGarmentSpec;
+  specLengthCm: number;
+  specSleeveCm: number;
+  config: ArmLogicConfig;
+  place: (x: number, y: number) => [number, number];
+  placeFn: (x: number, y: number) => [number, number];
+  leftShoulder: [number, number];
+  rightShoulder: [number, number];
+  leftArmPts: [number, number][];
+  rightArmPts: [number, number][];
+  /**
+   * `scaleSleevePathToSpec` の garmentLengthPx。指定時は designHem−designShoulder の代わりに使う（着丈紫とプレースを一致）。
+   */
+  garmentLengthPxOverride?: number;
+  /**
+   * 脇〜袖付け交点を体と同じ式で縦にずらす（`placeFn` 後のボディ座標に加算）。未指定なら従来どおり。
+   */
+  junctionXScale?: number;
+  junctionZones?: BodyZones;
+}
+
+type SleeveOnlyCtx = {
+  pathDs: string[];
+  lm: CustomLandmarks;
+  scalableSpec: ScalableGarmentSpec;
+  specLengthCm: number;
+  specSleeveCm: number;
+  config: ArmLogicConfig;
+  placeFn: (x: number, y: number) => [number, number];
+  leftShoulder: [number, number];
+  rightShoulder: [number, number];
+  garmentLengthPx: number;
+  sleeveRotationL: number;
+  sleeveRotationR: number;
+  scaleSleeve: boolean;
+  scaleBody: (pathIdx: number) => boolean;
+  hemFadeBuffer: number;
+  attachLx: number;
+  attachRx: number;
+  leftArmRange: number;
+  rightArmRange: number;
+  originX: number;
+  centerSnapThresh: number;
+  debugFitting: boolean;
+  junctionXScale?: number;
+  junctionZones?: BodyZones;
+};
+
+function buildSleeveOnlyCtx(p: SleeveOnlyTransformParams): SleeveOnlyCtx {
+  const {
+    pathDs,
+    landmarks: lm,
+    scalableSpec: specIn,
+    specLengthCm,
+    specSleeveCm,
+    config,
+    placeFn,
+    leftShoulder,
+    rightShoulder,
+    leftArmPts,
+    rightArmPts,
+    place,
+    junctionXScale: junctionXScaleIn,
+    junctionZones: junctionZonesIn,
+  } = p;
+
+  const bbox = getPathsBBox(pathDs);
+  const originX = bbox ? (bbox.minX + bbox.maxX) / 2 : (lm.shoulderLx + lm.shoulderRx) / 2;
+  const spanX = bbox && bbox.maxX > bbox.minX ? bbox.maxX - bbox.minX : 400;
+  let scalableSpec = specIn;
+  if (specIn.gradingHemAlignOriginX != null && Number.isFinite(specIn.gradingHemAlignOriginX)) {
+    const targetY = computeGradingHemAlignTargetY(pathDs, specIn, specIn.designShoulderY);
+    const stripHalf = Math.max(20, spanX * 0.052);
+    scalableSpec = {
+      ...specIn,
+      gradingHemAlignTargetY: targetY,
+      gradingHemAlignStripHalf: stripHalf,
+    };
+  }
+
+  const garmentLengthPx =
+    p.garmentLengthPxOverride != null && Number.isFinite(p.garmentLengthPxOverride) && p.garmentLengthPxOverride > 1
+      ? p.garmentLengthPxOverride
+      : scalableSpec.designHemY - scalableSpec.designShoulderY;
+  const { sleeveRotationL, sleeveRotationR } = computeSleeveRotations(
+    pathDs,
+    config,
+    specSleeveCm,
+    garmentLengthPx,
+    place,
+    leftShoulder,
+    rightShoulder,
+    leftArmPts,
+    rightArmPts
+  );
+  const debugFitting = typeof sessionStorage !== "undefined" && sessionStorage.getItem("DEBUG_FITTING") === "1";
+  const scaleSleeve = true;
+  const scaleBody = (pathIdx: number) => scalableSpec.bodyPathIndices.includes(pathIdx);
+  const {
+    seamPathLeft,
+    seamPathLeftEnd,
+    seamPathRight,
+    seamPathRightEnd,
+  } = config;
+
+  const centerSnapThresh = 3;
+  const attachLxFallback = config.attachLSvg[0];
+  const attachRxFallback = config.attachRSvg[0];
+  const hemFadeBuffer = Math.max(120, (lm.hemY - lm.shoulderY) * 0.075);
+
+  let leftWristGx = attachLxFallback;
+  let rightWristGx = attachRxFallback;
+  const leftSeamPtsForWrist =
+    config.seamOuterLeftVertices != null
+      ? collectPtsGlobalVertexRange(pathDs, config.seamOuterLeftVertices[0], config.seamOuterLeftVertices[1])
+      : collectPtsLineRange(pathDs, seamPathLeft, seamPathLeftEnd);
+  const rightSeamPtsForWrist =
+    config.seamOuterRightVertices != null
+      ? collectPtsGlobalVertexRange(pathDs, config.seamOuterRightVertices[0], config.seamOuterRightVertices[1])
+      : collectPtsLineRange(pathDs, seamPathRight, seamPathRightEnd);
+  for (const pt of leftSeamPtsForWrist) {
+    if (pt[0] < leftWristGx) leftWristGx = pt[0];
+  }
+  for (const pt of rightSeamPtsForWrist) {
+    if (pt[0] > rightWristGx) rightWristGx = pt[0];
+  }
+  let attachLx = attachLxFallback;
+  if (leftSeamPtsForWrist.length > 0) {
+    let bestDist = Infinity;
+    for (const pt of leftSeamPtsForWrist) {
+      const dist = Math.abs(pt[1] - lm.shoulderY);
+      if (dist < bestDist) {
+        bestDist = dist;
+        attachLx = pt[0];
+      }
+    }
+  }
+  let attachRx = attachRxFallback;
+  if (rightSeamPtsForWrist.length > 0) {
+    let bestDist = Infinity;
+    for (const pt of rightSeamPtsForWrist) {
+      const dist = Math.abs(pt[1] - lm.shoulderY);
+      if (dist < bestDist) {
+        bestDist = dist;
+        attachRx = pt[0];
+      }
+    }
+  }
+
+  const leftArmRange = Math.max(1, attachLx - leftWristGx);
+  const rightArmRange = Math.max(1, rightWristGx - attachRx);
+
+  /**
+   * `sessionStorage.setItem("DEBUG_SLEEVE_JUNCTION","1")` で有効。
+   * 補足: `junctionXScale`/`junctionZones` 指定時は脇帯で縦スライドを付与。未指定時は従来どおり。
+   */
+  if (typeof sessionStorage !== "undefined" && sessionStorage.getItem("DEBUG_SLEEVE_JUNCTION") === "1") {
+    try {
+      const si = config.sleevePathLeft;
+      const so = config.seamPathLeft;
+      const innerD = pathDs[si];
+      const outerD = pathDs[so];
+      if (innerD && outerD) {
+        const iPts = getPathPoints(innerD);
+        const oPts = getPathPoints(outerD);
+        let outerMaxLw = 0;
+        let outerVertsNearShoulderWithZeroW = 0;
+        const band = lm.shoulderY + (lm.hemY - lm.shoulderY) * 0.35;
+        for (const [gx, gy] of oPts) {
+          const yFactor = Math.max(0, Math.min(1, (lm.hemY - gy) / hemFadeBuffer));
+          const lw = Math.max(0, Math.min(1, (attachLx - gx) / leftArmRange)) * yFactor;
+          outerMaxLw = Math.max(outerMaxLw, lw);
+          if (gy <= band && lw < 0.01) outerVertsNearShoulderWithZeroW++;
+        }
+        console.log("[DEBUG_SLEEVE_JUNCTION]", {
+          innerPathIdx: si,
+          outerPathIdx: so,
+          innerVerts: iPts.length,
+          outerVerts: oPts.length,
+          hemFadeBuffer: Math.round(hemFadeBuffer),
+          attachLx: Math.round(attachLx * 10) / 10,
+          leftArmRange: Math.round(leftArmRange * 10) / 10,
+          outerMaxLeftBlendWeight: outerMaxLw.toFixed(3),
+          outerVertsNearShoulderBandWithZeroBlend: outerVertsNearShoulderWithZeroW,
+          causes: [
+            "内袖(sleeveInner*)は makeVertexFn で isOuterArmPath=false → 腕回転ブレンドなし、place のアフィンのみ",
+            "外腕は (attachLx-gx)/range * yFactor でブレンド。袖付け付近は意図的に重み0",
+            "getBodyParams の体重は xScale のみ → place の deltaY は体重で変わらない（縦の交点ずれは別ロジックが必要）",
+          ],
+        });
+      }
+    } catch (e) {
+      console.warn("[DEBUG_SLEEVE_JUNCTION] failed", e);
+    }
+  }
+
+  return {
+    pathDs,
+    lm,
+    scalableSpec,
+    specLengthCm,
+    specSleeveCm,
+    config,
+    placeFn,
+    leftShoulder,
+    rightShoulder,
+    garmentLengthPx,
+    sleeveRotationL,
+    sleeveRotationR,
+    scaleSleeve,
+    scaleBody,
+    hemFadeBuffer,
+    attachLx,
+    attachRx,
+    leftArmRange,
+    rightArmRange,
+    originX,
+    centerSnapThresh,
+    debugFitting,
+    junctionXScale: junctionXScaleIn,
+    junctionZones: junctionZonesIn,
+  };
+}
+
+function dToUseForPath(d: string, pathIdx: number, ctx: SleeveOnlyCtx): string {
+  const {
+    scalableSpec,
+    specLengthCm,
+    specSleeveCm,
+    garmentLengthPx,
+    scaleSleeve,
+    scaleBody,
+    config,
+  } = ctx;
+  const {
+    sleevePathLeft,
+    sleevePathLeftEnd,
+    sleevePathRight,
+    sleevePathRightEnd,
+  } = config;
+
+  let dToUse = d;
+  if (pathIdxInConfigRange(pathIdx, sleevePathLeft, sleevePathLeftEnd) || pathIdxInConfigRange(pathIdx, sleevePathRight, sleevePathRightEnd)) {
+    // 着丈は胴体パスと同じ裾線を共有するため、袖パスでも先に scaleBodyToSpec をかけてから袖スケールする。
+    // さもないと scaleSleeve のみになり、裾中央（内袖の H 先端など）だけ着丈スライダーに合わせられない。
+    const bodyForThisPath =
+      scaleBody(pathIdx) || (!scaleSleeve && shouldScaleSleevePathAsBody(d, scalableSpec));
+    if (bodyForThisPath) {
+      dToUse = scaleBodyToSpec(dToUse, pathIdx, scalableSpec, specLengthCm, scalableSpec.designShoulderY);
+    }
+    if (scaleSleeve) {
+      dToUse = scaleSleevePathToSpec(dToUse, scalableSpec, specSleeveCm, garmentLengthPx);
+    }
+  } else if (scaleBody(pathIdx)) {
+    dToUse = scaleBodyToSpec(d, pathIdx, scalableSpec, specLengthCm, scalableSpec.designShoulderY);
+  }
+  return dToUse;
+}
+
+function makeVertexFn(pathIdx: number, ctx: SleeveOnlyCtx): (gx: number, gy: number) => [number, number] {
+  const {
+    lm,
+    scalableSpec,
+    placeFn,
+    leftShoulder,
+    rightShoulder,
+    hemFadeBuffer,
+    attachLx,
+    attachRx,
+    leftArmRange,
+    rightArmRange,
+    originX,
+    centerSnapThresh,
+    config,
+  } = ctx;
+  const { seamPathLeft, seamPathLeftEnd, seamPathRight, seamPathRightEnd } = config;
+  const isOuterArmPath =
+    pathIdxInConfigRange(pathIdx, seamPathLeft, seamPathLeftEnd) ||
+    pathIdxInConfigRange(pathIdx, seamPathRight, seamPathRightEnd);
+
+  return (gx: number, gy: number): [number, number] => {
+    const pt0 = placeFn(gx, gy);
+    let pt: [number, number] = pt0;
+    if (ctx.junctionXScale != null && ctx.junctionZones) {
+      const dy = underarmJunctionSlideY(pt0[0], pt0[1], ctx.junctionXScale, ctx.junctionZones);
+      if (Math.abs(dy) > 1e-9) pt = [pt0[0], pt0[1] + dy];
+    }
+
+    if (isOuterArmPath) {
+      const yFactor = Math.max(0, Math.min(1, (lm.hemY - gy) / hemFadeBuffer));
+      const leftWeight = Math.max(0, Math.min(1, (attachLx - gx) / leftArmRange)) * yFactor;
+      if (leftWeight > 0) {
+        const rotated = rotateAround(pt, leftShoulder, ctx.sleeveRotationL);
+        return [
+          pt[0] * (1 - leftWeight) + rotated[0] * leftWeight,
+          pt[1] * (1 - leftWeight) + rotated[1] * leftWeight,
+        ];
+      }
+      const rightWeight = Math.max(0, Math.min(1, (gx - attachRx) / rightArmRange)) * yFactor;
+      if (rightWeight > 0) {
+        const rotated = rotateAround(pt, rightShoulder, ctx.sleeveRotationR);
+        return [
+          pt[0] * (1 - rightWeight) + rotated[0] * rightWeight,
+          pt[1] * (1 - rightWeight) + rotated[1] * rightWeight,
+        ];
+      }
+    }
+
+    if (scalableSpec.snapCenterXToBody === true && Math.abs(gx - originX) < centerSnapThresh) {
+      return [BODY_CX, pt[1]];
+    }
+    return pt;
+  };
+}
+
+function renderOnePath(d: string, pathIdx: number, ctx: SleeveOnlyCtx): string {
+  if (getPathPoints(d).length <= 2) return "";
+
+  const dToUse = dToUseForPath(d, pathIdx, ctx);
+  const { seamPathLeft, seamPathLeftEnd, seamPathRight, seamPathRightEnd } = ctx.config;
+  const isOuterArmPath =
+    pathIdxInConfigRange(pathIdx, seamPathLeft, seamPathLeftEnd) ||
+    pathIdxInConfigRange(pathIdx, seamPathRight, seamPathRightEnd);
+
+  const fn = makeVertexFn(pathIdx, ctx);
+  const skipFlatten =
+    typeof sessionStorage !== "undefined" && sessionStorage.getItem("DEBUG_NO_SEAM_FLATTEN") === "1";
+  const dForTransform =
+    isOuterArmPath && !skipFlatten ? flattenSvgPathToPolyline(dToUse, 16, 12) : dToUse;
+  return tPath(dForTransform, fn);
+}
+
+function plotPointsOnePath(d: string, pathIdx: number, ctx: SleeveOnlyCtx): [number, number][] {
+  const pts = getPathPoints(d);
+  if (pts.length === 0) return [];
+  if (pts.length <= 2) return pts.map(([gx, gy]) => ctx.placeFn(gx, gy));
+
+  const dToUse = dToUseForPath(d, pathIdx, ctx);
+  const fn = makeVertexFn(pathIdx, ctx);
+  return getPathPoints(dToUse).map(([gx, gy]) => fn(gx, gy));
+}
+
+/**
+ * 服プロット用: 各 path の SVG 連結頂点（着丈・袖スケール後の座標）に、描画と同じ fn をかけたボディ座標。
+ * flatten による中間点はプロットに含めない（# は入力 path の頂点だけ）。
+ */
+export function customGarmentVertexPlotsSleeveOnlyBodySpace(p: SleeveOnlyTransformParams): [number, number][] {
+  const ctx = buildSleeveOnlyCtx(p);
+  const out: [number, number][] = [];
+  for (let i = 0; i < p.pathDs.length; i++) {
+    out.push(...plotPointsOnePath(p.pathDs[i]!, i, ctx));
+  }
+  return out;
+}
+
+/** `config.sleeveOnly` が true のパイプラインから呼ぶ。false のときは呼び出し側で分岐。 */
+export function applySleeveOnlyGarmentTransform(p: SleeveOnlyTransformParams): string[] {
+  const ctx = buildSleeveOnlyCtx(p);
+  let scaledSleevePaths = 0;
+  const scaledSleevePathIdxs: number[] = [];
+
+  const out = p.pathDs.map((d, pathIdx) => {
+    if (getPathPoints(d).length <= 2) return "";
+    if (ctx.debugFitting) {
+      const { sleevePathLeft, sleevePathLeftEnd, sleevePathRight, sleevePathRightEnd } = ctx.config;
+      if (
+        pathIdxInConfigRange(pathIdx, sleevePathLeft, sleevePathLeftEnd) ||
+        pathIdxInConfigRange(pathIdx, sleevePathRight, sleevePathRightEnd)
+      ) {
+        scaledSleevePaths++;
+        scaledSleevePathIdxs.push(pathIdx);
+      }
+    }
+    return renderOnePath(d, pathIdx, ctx);
+  });
+
+  if (ctx.debugFitting) {
+    console.log("[DEBUG_FITTING][sleeveOnlyTransform]", {
+      specSleeveCm: ctx.specSleeveCm,
+      scaledSleevePaths,
+      scaledSleevePathIdxs,
+      sleeveMeasureIndices: ctx.scalableSpec.sleeveMeasureIndices,
+      sleeve: {
+        lengthStartIdx: ctx.scalableSpec.sleeve.lengthStartIdx,
+        lengthEndIdx: ctx.scalableSpec.sleeve.lengthEndIdx,
+        cuffIdx: ctx.scalableSpec.sleeve.cuffIdx,
+      },
+    });
+  }
+
+  return out;
+}

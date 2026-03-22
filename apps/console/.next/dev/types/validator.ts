@@ -56,6 +56,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../../src/app/(main)/development/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/development">> = Specific
+  const handler = {} as typeof import("../../../src/app/(main)/development/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../../src/app/(main)/install/page.tsx
 {
   type __IsExpected<Specific extends AppPageConfig<"/install">> = Specific
@@ -114,6 +123,24 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 {
   type __IsExpected<Specific extends AppPageConfig<"/auth/set-password">> = Specific
   const handler = {} as typeof import("../../../src/app/auth/set-password/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../src/app/dashboard/new/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/dashboard/new">> = Specific
+  const handler = {} as typeof import("../../../src/app/dashboard/new/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../src/app/dashboard/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/dashboard">> = Specific
+  const handler = {} as typeof import("../../../src/app/dashboard/page.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check
@@ -285,6 +312,24 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/events">> = Specific
   const handler = {} as typeof import("../../../src/app/api/events/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../src/app/api/garment/photo-to-svg/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/garment/photo-to-svg">> = Specific
+  const handler = {} as typeof import("../../../src/app/api/garment/photo-to-svg/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../src/app/api/garment/remove-background/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/garment/remove-background">> = Specific
+  const handler = {} as typeof import("../../../src/app/api/garment/remove-background/route.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check

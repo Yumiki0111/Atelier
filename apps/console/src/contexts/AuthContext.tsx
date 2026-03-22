@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase/client";
+import { supabase, setAuthFetchFailureCallback } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
 interface AuthContextType {
@@ -24,6 +24,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userRole, setUserRole] = useState<"owner" | "member" | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+
+  // 認証トークン取得失敗時にセッションをクリアし、リトライの連鎖を止める
+  useEffect(() => {
+    setAuthFetchFailureCallback(() => {
+      supabase.auth.signOut();
+    });
+    return () => setAuthFetchFailureCallback(null);
+  }, []);
 
   // ユーザー情報とshop_idを取得
   useEffect(() => {
@@ -64,11 +72,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        // shop_id を取得
-        fetchShopId(session.user.id, session.access_token);
+        // shop_id を取得（await して reject を捕捉し、未処理の "Failed to fetch" を防ぐ）
+        try {
+          await fetchShopId(session.user.id, session.access_token);
+        } catch (shopIdError) {
+          if (process.env.NODE_ENV === "development") {
+            console.warn("[AuthContext] fetchShopId failed on init:", shopIdError);
+          }
+          setShopId("default_shop");
+          setUserRole(null);
+        } finally {
+          setIsLoading(false);
+        }
       } else {
         setIsLoading(false);
       }
+    }).catch((err) => {
+      if (!isMounted) return;
+      console.warn("[AuthContext] Initial session handling failed:", err);
+      setShopId("default_shop");
+      setUserRole(null);
+      setIsLoading(false);
     });
 
     // 認証状態の変更を監視
@@ -124,43 +148,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log("[AuthContext] Using provided access token, calling API...");
       }
 
-      // タイムアウト付きでAPIエンドポイントを呼び出し
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => {
-        if (process.env.NODE_ENV === "development") {
-          console.error("[AuthContext] Request timeout, aborting...");
-        }
-        controller.abort();
-      }, 10000); // 10秒でタイムアウト
+      const response = await fetch("/api/auth/shop-id", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
 
-      let response: Response;
-      try {
-        if (process.env.NODE_ENV === "development") {
-          console.log("[AuthContext] Making fetch request to /api/auth/shop-id");
-        }
-        response = await fetch("/api/auth/shop-id", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-          signal: controller.signal,
-        });
-        if (process.env.NODE_ENV === "development") {
-          console.log("[AuthContext] Fetch completed, status:", response.status);
-        }
-        clearTimeout(timeoutId);
-      } catch (fetchError: any) {
-        clearTimeout(timeoutId);
-        console.error("[AuthContext] Fetch error:", fetchError);
-        if (fetchError.name === "AbortError") {
-          if (process.env.NODE_ENV === "development") {
-            console.error("[AuthContext] fetchShopId timeout after 10 seconds");
-          }
-          setShopId("default_shop");
-          setIsLoading(false);
-          return;
-        }
-        throw fetchError;
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AuthContext] Fetch completed, status:", response.status);
       }
 
       if (!response.ok) {
@@ -237,24 +233,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (process.env.NODE_ENV === "development") {
         console.log("[AuthContext] Attempting login for email:", email);
       }
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      let data: { user: any; session: any } | null = null;
+      let error: any = null;
+      try {
+        const result = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        data = result.data;
+        error = result.error;
+      } catch (supabaseError: any) {
+        // ネットワークエラー・Abort・Supabase の AuthRetryableFetchError を捕捉
+        const msg = String(supabaseError?.message ?? "");
+        const name = String(supabaseError?.name ?? "");
+        const isNetworkError =
+          name === "AuthRetryableFetchError" ||
+          name === "TypeError" ||
+          msg === "Failed to fetch" ||
+          name === "AbortError" ||
+          msg.toLowerCase().includes("fetch") ||
+          msg.toLowerCase().includes("network");
+        if (isNetworkError) {
+          throw new Error(
+            "Supabase に接続できません。NEXT_PUBLIC_SUPABASE_URL とネットワークを確認してください。"
+          );
+        }
+        throw supabaseError;
+      }
 
       if (error) {
-        console.error("[AuthContext] Login error:", {
-          message: error.message,
-          status: error.status,
-          name: error.name,
-        });
+        if (process.env.NODE_ENV === "development") {
+          console.error("[AuthContext] Login error:", {
+            message: error.message,
+            status: error.status,
+            name: error.name,
+          });
+        }
         setIsLoading(false);
-        
+
+        // 接続エラー（Supabase が throw せず result.error で返す場合）
+        const msg = String(error?.message ?? "");
+        const name = String(error?.name ?? "");
+        if (
+          name === "AuthRetryableFetchError" ||
+          name === "TypeError" ||
+          msg === "Failed to fetch" ||
+          msg.toLowerCase().includes("fetch") ||
+          msg.toLowerCase().includes("network")
+        ) {
+          throw new Error(
+            "Supabase に接続できません。NEXT_PUBLIC_SUPABASE_URL とネットワークを確認してください。"
+          );
+        }
         // メール未確認エラーの場合、より分かりやすいメッセージを表示
         if (error.message.includes("Email not confirmed") || error.message.includes("email_not_confirmed")) {
           throw new Error("メールアドレスの確認が必要です。サインアップ時に送信されたメールを確認してください。");
         }
-        
+
         throw error;
       }
 
@@ -284,18 +319,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
         if (!postLoginResponse.ok) {
-          const postLoginError = await postLoginResponse.json();
-          console.error("[AuthContext] post-login API error:", postLoginError);
-          
+          const postLoginError = await postLoginResponse.json().catch(() => ({}));
+          const errorMessage = postLoginError?.message || postLoginError?.error;
+
           // 招待されていない場合は特別なエラーメッセージ
           if (postLoginResponse.status === 403) {
             setIsLoading(false);
-            throw new Error(postLoginError.message || "このメールアドレスは招待されていません。管理者に連絡してください。");
+            throw new Error(errorMessage || "このメールアドレスは招待されていません。管理者に連絡してください。");
           }
-          
-          // その他のエラーは警告だけ出して続行
-          if (process.env.NODE_ENV === "development") {
-            console.warn("[AuthContext] post-login failed, trying to fetch shop_id directly...");
+
+          if (process.env.NODE_ENV === "development" && postLoginResponse.status !== 403) {
+            console.warn("[AuthContext] post-login failed:", postLoginResponse.status, postLoginError);
           }
         } else {
           if (process.env.NODE_ENV === "development") {

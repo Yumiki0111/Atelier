@@ -47,6 +47,8 @@ if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelper
 "use strict";
 
 __turbopack_context__.s([
+    "setAuthFetchFailureCallback",
+    ()=>setAuthFetchFailureCallback,
     "supabase",
     ()=>supabase
 ]);
@@ -57,7 +59,55 @@ const supabaseUrl = ("TURBOPACK compile-time value", "https://aeuccvcdwijoojfcgj
 const supabaseAnonKey = ("TURBOPACK compile-time value", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFldWNjdmNkd2lqb29qZmNnampzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkzMTAxMzUsImV4cCI6MjA4NDg4NjEzNX0.U45Qp8PfXlVk2vhQ8SmF25nBvxDzLGznr5iw-6sa_l0");
 if ("TURBOPACK compile-time falsy", 0) //TURBOPACK unreachable
 ;
+/** Called once when an auth token/refresh request fails so we can clear session and stop retry storm */ let authFetchFailureCallback = null;
+let authFetchFailureHandled = false;
+function setAuthFetchFailureCallback(cb) {
+    authFetchFailureCallback = cb;
+    authFetchFailureHandled = false;
+}
+function isAuthTokenRefreshRequest(url, init) {
+    try {
+        const u = new URL(url, supabaseUrl);
+        if (!u.pathname.includes("/auth/v1/token")) return false;
+    } catch  {
+        if (!url.includes("token")) return false;
+    }
+    // リフレッシュ時のみ 401 を返す。ログイン (grant_type=password) の失敗はそのまま throw する
+    const body = init?.body;
+    if (body == null) return false;
+    const raw = typeof body === "string" ? body : body?.toString?.() ?? "";
+    return raw.includes("grant_type=refresh_token") || raw.includes("refresh_token=");
+}
+const supabaseFetch = async (input, init)=>{
+    const url = typeof input === "string" ? input : input instanceof Request ? input.url : String(input);
+    try {
+        return await fetch(input, init);
+    } catch (err) {
+        if (isAuthTokenRefreshRequest(url, init) && authFetchFailureCallback && !authFetchFailureHandled) {
+            authFetchFailureHandled = true;
+            try {
+                authFetchFailureCallback();
+            } catch (_) {
+            // ignore so we don't mask the original error
+            }
+            // リフレッシュ失敗時のみ 401 を返してリトライを止める。ログイン失敗は throw のまま
+            return new Response(JSON.stringify({
+                error: "session_refresh_failed",
+                message: "Failed to fetch"
+            }), {
+                status: 401,
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            });
+        }
+        throw err;
+    }
+};
 const supabase = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__["createClient"])(supabaseUrl, supabaseAnonKey, {
+    global: {
+        fetch: supabaseFetch
+    },
     auth: {
         persistSession: true,
         autoRefreshToken: true,
@@ -96,6 +146,19 @@ function AuthProvider({ children }) {
     const [userRole, setUserRole] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [isLoading, setIsLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(true);
     const router = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRouter"])();
+    // 認証トークン取得失敗時にセッションをクリアし、リトライの連鎖を止める
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
+        "AuthProvider.useEffect": ()=>{
+            (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["setAuthFetchFailureCallback"])({
+                "AuthProvider.useEffect": ()=>{
+                    __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["supabase"].auth.signOut();
+                }
+            }["AuthProvider.useEffect"]);
+            return ({
+                "AuthProvider.useEffect": ()=>(0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["setAuthFetchFailureCallback"])(null)
+            })["AuthProvider.useEffect"];
+        }
+    }["AuthProvider.useEffect"], []);
     // ユーザー情報とshop_idを取得
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "AuthProvider.useEffect": ()=>{
@@ -135,11 +198,29 @@ function AuthProvider({ children }) {
                                 console.log("[AuthContext] post-login error (may be expected):", postLoginError);
                             }
                         }
-                        // shop_id を取得
-                        fetchShopId(session.user.id, session.access_token);
+                        // shop_id を取得（await して reject を捕捉し、未処理の "Failed to fetch" を防ぐ）
+                        try {
+                            await fetchShopId(session.user.id, session.access_token);
+                        } catch (shopIdError) {
+                            if ("TURBOPACK compile-time truthy", 1) {
+                                console.warn("[AuthContext] fetchShopId failed on init:", shopIdError);
+                            }
+                            setShopId("default_shop");
+                            setUserRole(null);
+                        } finally{
+                            setIsLoading(false);
+                        }
                     } else {
                         setIsLoading(false);
                     }
+                }
+            }["AuthProvider.useEffect"]).catch({
+                "AuthProvider.useEffect": (err)=>{
+                    if (!isMounted) return;
+                    console.warn("[AuthContext] Initial session handling failed:", err);
+                    setShopId("default_shop");
+                    setUserRole(null);
+                    setIsLoading(false);
                 }
             }["AuthProvider.useEffect"]);
             // 認証状態の変更を監視
@@ -193,42 +274,14 @@ function AuthProvider({ children }) {
             if ("TURBOPACK compile-time truthy", 1) {
                 console.log("[AuthContext] Using provided access token, calling API...");
             }
-            // タイムアウト付きでAPIエンドポイントを呼び出し
-            const controller = new AbortController();
-            const timeoutId = setTimeout(()=>{
-                if ("TURBOPACK compile-time truthy", 1) {
-                    console.error("[AuthContext] Request timeout, aborting...");
+            const response = await fetch("/api/auth/shop-id", {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${accessToken}`
                 }
-                controller.abort();
-            }, 10000); // 10秒でタイムアウト
-            let response;
-            try {
-                if ("TURBOPACK compile-time truthy", 1) {
-                    console.log("[AuthContext] Making fetch request to /api/auth/shop-id");
-                }
-                response = await fetch("/api/auth/shop-id", {
-                    method: "GET",
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`
-                    },
-                    signal: controller.signal
-                });
-                if ("TURBOPACK compile-time truthy", 1) {
-                    console.log("[AuthContext] Fetch completed, status:", response.status);
-                }
-                clearTimeout(timeoutId);
-            } catch (fetchError) {
-                clearTimeout(timeoutId);
-                console.error("[AuthContext] Fetch error:", fetchError);
-                if (fetchError.name === "AbortError") {
-                    if ("TURBOPACK compile-time truthy", 1) {
-                        console.error("[AuthContext] fetchShopId timeout after 10 seconds");
-                    }
-                    setShopId("default_shop");
-                    setIsLoading(false);
-                    return;
-                }
-                throw fetchError;
+            });
+            if ("TURBOPACK compile-time truthy", 1) {
+                console.log("[AuthContext] Fetch completed, status:", response.status);
             }
             if (!response.ok) {
                 const errorData = await response.json().catch(()=>({
@@ -303,17 +356,40 @@ function AuthProvider({ children }) {
             if ("TURBOPACK compile-time truthy", 1) {
                 console.log("[AuthContext] Attempting login for email:", email);
             }
-            const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["supabase"].auth.signInWithPassword({
-                email,
-                password
-            });
-            if (error) {
-                console.error("[AuthContext] Login error:", {
-                    message: error.message,
-                    status: error.status,
-                    name: error.name
+            let data = null;
+            let error = null;
+            try {
+                const result = await __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$supabase$2f$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["supabase"].auth.signInWithPassword({
+                    email,
+                    password
                 });
+                data = result.data;
+                error = result.error;
+            } catch (supabaseError) {
+                // ネットワークエラー・Abort・Supabase の AuthRetryableFetchError を捕捉
+                const msg = String(supabaseError?.message ?? "");
+                const name = String(supabaseError?.name ?? "");
+                const isNetworkError = name === "AuthRetryableFetchError" || name === "TypeError" || msg === "Failed to fetch" || name === "AbortError" || msg.toLowerCase().includes("fetch") || msg.toLowerCase().includes("network");
+                if (isNetworkError) {
+                    throw new Error("Supabase に接続できません。NEXT_PUBLIC_SUPABASE_URL とネットワークを確認してください。");
+                }
+                throw supabaseError;
+            }
+            if (error) {
+                if ("TURBOPACK compile-time truthy", 1) {
+                    console.error("[AuthContext] Login error:", {
+                        message: error.message,
+                        status: error.status,
+                        name: error.name
+                    });
+                }
                 setIsLoading(false);
+                // 接続エラー（Supabase が throw せず result.error で返す場合）
+                const msg = String(error?.message ?? "");
+                const name = String(error?.name ?? "");
+                if (name === "AuthRetryableFetchError" || name === "TypeError" || msg === "Failed to fetch" || msg.toLowerCase().includes("fetch") || msg.toLowerCase().includes("network")) {
+                    throw new Error("Supabase に接続できません。NEXT_PUBLIC_SUPABASE_URL とネットワークを確認してください。");
+                }
                 // メール未確認エラーの場合、より分かりやすいメッセージを表示
                 if (error.message.includes("Email not confirmed") || error.message.includes("email_not_confirmed")) {
                     throw new Error("メールアドレスの確認が必要です。サインアップ時に送信されたメールを確認してください。");
@@ -342,16 +418,15 @@ function AuthProvider({ children }) {
                     }
                 });
                 if (!postLoginResponse.ok) {
-                    const postLoginError = await postLoginResponse.json();
-                    console.error("[AuthContext] post-login API error:", postLoginError);
+                    const postLoginError = await postLoginResponse.json().catch(()=>({}));
+                    const errorMessage = postLoginError?.message || postLoginError?.error;
                     // 招待されていない場合は特別なエラーメッセージ
                     if (postLoginResponse.status === 403) {
                         setIsLoading(false);
-                        throw new Error(postLoginError.message || "このメールアドレスは招待されていません。管理者に連絡してください。");
+                        throw new Error(errorMessage || "このメールアドレスは招待されていません。管理者に連絡してください。");
                     }
-                    // その他のエラーは警告だけ出して続行
-                    if ("TURBOPACK compile-time truthy", 1) {
-                        console.warn("[AuthContext] post-login failed, trying to fetch shop_id directly...");
+                    if (("TURBOPACK compile-time value", "development") === "development" && postLoginResponse.status !== 403) {
+                        console.warn("[AuthContext] post-login failed:", postLoginResponse.status, postLoginError);
                     }
                 } else {
                     if ("TURBOPACK compile-time truthy", 1) {
@@ -496,11 +571,11 @@ function AuthProvider({ children }) {
         children: children
     }, void 0, false, {
         fileName: "[project]/atelier/apps/console/src/contexts/AuthContext.tsx",
-        lineNumber: 431,
+        lineNumber: 465,
         columnNumber: 5
     }, this);
 }
-_s(AuthProvider, "S74gPyWP06fCr9RyO+nRwPLF94E=", false, function() {
+_s(AuthProvider, "HqJBuou6S/58HphD2o10t3tpHMw=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRouter"]
     ];

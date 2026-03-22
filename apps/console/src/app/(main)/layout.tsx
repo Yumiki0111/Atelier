@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { ProductSelectionProvider } from "@/contexts/ProductSelectionContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { cn } from "@/lib/utils";
 
 export default function MainLayout({
   children,
@@ -39,11 +40,21 @@ export default function MainLayout({
     return null;
   }
 
+  const isDevelopment =
+    pathname === "/development" || pathname?.startsWith("/development/");
+
   return (
     <ProductSelectionProvider>
       <div className="flex h-screen overflow-hidden">
         <Sidebar />
-        <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
+        <main
+          className={cn(
+            "flex-1 bg-gray-50 p-6",
+            isDevelopment
+              ? "flex min-h-0 flex-col overflow-hidden overscroll-none"
+              : "overflow-y-auto"
+          )}
+        >
           {children}
         </main>
       </div>

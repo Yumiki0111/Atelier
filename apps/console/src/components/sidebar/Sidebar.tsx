@@ -9,10 +9,11 @@ import { cn } from "@/lib/utils";
 
 const navigationItems = [
   { href: "/", label: "ダッシュボード", icon: "/icon/home.png" },
-  { href: "/widget-design", label: "インターフェース", icon: "/icon/palet.png" },
+  // { href: "/widget-design", label: "インターフェース", icon: "/icon/palet.png" }, // 無効化
   { href: "/database/products", label: "商品データベース", icon: "/icon/jacket.png" },
   { href: "/analytics", label: "アナリティクス", icon: "/icon/analysis.png" },
   { href: "/install", label: "埋め込みスニペット", icon: "/icon/book.png" },
+  { href: "/development", label: "開発", icon: "/icon/setting.png" },
 ];
 
 const bottomItems = [
@@ -109,7 +110,6 @@ export function Sidebar() {
             </Link>
           );
         })}
-        
       </nav>
 
       {/* Bottom items */}

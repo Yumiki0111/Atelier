@@ -42,8 +42,11 @@ function LoginForm() {
       // ログイン成功後、ログイン関数内でリダイレクトが実行される
       // 念のため、isAuthenticatedが更新されたらリダイレクト
     } catch (error: any) {
-      console.error("ログインエラー:", error);
-      setError(error.message || "ログインに失敗しました");
+      const message = error?.message || "ログインに失敗しました";
+      if (process.env.NODE_ENV === "development") {
+        console.error("ログインエラー:", error);
+      }
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -116,8 +119,13 @@ function LoginForm() {
             )}
 
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+              <div className="p-3 bg-red-50 border border-red-200 rounded-md space-y-1">
                 <p className="text-sm text-red-600">{error}</p>
+                {error.includes("NEXT_PUBLIC_SUPABASE_URL") && (
+                  <p className="text-xs text-red-500">
+                    apps/console/.env.local に NEXT_PUBLIC_SUPABASE_URL と NEXT_PUBLIC_SUPABASE_ANON_KEY を設定し、Supabase ダッシュボードでプロジェクトが有効か確認してください。
+                  </p>
+                )}
               </div>
             )}
 
