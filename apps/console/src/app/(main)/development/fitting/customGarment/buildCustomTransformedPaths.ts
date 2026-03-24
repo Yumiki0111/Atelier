@@ -1,15 +1,15 @@
-import type { CustomGarmentData, BodyZones } from "../types";
-import { buildTopPlacement } from "../garmentBase";
-import { scaleModelViewToBodyTemplate } from "../modelRigData";
-import { tPath, getPathPoints, pointAtGlobalVertexIndex } from "../pathUtils";
-import { BODY_CX, REF_HEIGHT_CM } from "../constants";
+import type { CustomGarmentData, BodyZones } from "../lib/types";
+import { buildTopPlacement } from "../lib/garmentBase";
+import { scaleModelViewToBodyTemplate } from "../lib/modelRigData";
+import { tPath, getPathPoints, pointAtGlobalVertexIndex } from "../lib/pathUtils";
+import { BODY_CX, REF_HEIGHT_CM } from "../lib/constants";
 import {
   getBodyParams,
   getZonesAnchored,
   getBodyOutlineHalfW,
   warpArmOutline,
   getInterpolatedArmOutline,
-} from "../bodyUtils";
+} from "../lib/bodyUtils";
 import {
   applyGenericMeasureOnlyGrading,
   genericMeasureOnlyGradingActive,

@@ -1,5 +1,7 @@
 # 汎用フィット（`generic/`）
 
+全体の正典・禁止事項は親ディレクトリの **[`FITTING_CANON.md`](../FITTING_CANON.md)**（§10 ほか）。
+
 開発フィットの **カスタム服**は `presetId: "genericSymmetricTop"` のみ。同梱ブローゾン SVG・`blousonFixed` 経路は廃止済み。初期状態は **path 空**（[`getGenericSymmetricTopPreset`](./getGenericSymmetricTopPreset.ts)）で、**参照 SVG アップロード**で `pathDs` とランドマークが入る。サイズ表 3/4/5 の数値は [`genericDevDefaults.ts`](./genericDevDefaults.ts) の `GENERIC_TOP_SIZE_BY_KEY`。
 
 ## 流れ（自動判定なし）

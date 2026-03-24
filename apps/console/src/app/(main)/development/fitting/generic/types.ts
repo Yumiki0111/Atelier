@@ -2,8 +2,8 @@
  * 汎用フィット層の型（特定アセットの path 定数に依存しない）
  */
 
-import type { ScalableGarmentSpec } from "../types";
-import type { ArmLogicConfig } from "../coatArmLogic";
+import type { ScalableGarmentSpec } from "../lib/types";
+import type { ArmLogicConfig } from "../lib/coatArmLogic";
 
 /** 輪郭線インデックス（0 起算）の包含範囲。単一線は from === to */
 export interface LineIndexRange {

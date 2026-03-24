@@ -2,7 +2,7 @@
 
 import type { MutableRefObject } from "react";
 import type { GenericDraft } from "./FittingControlsGenericUtils";
-import { parseLineRangeInput } from "./generic";
+import { parseLineRangeInput } from "../generic";
 import { DevPanelSection } from "./FittingControlsUI";
 
 export function FittingControlsPathCatalogPanel({

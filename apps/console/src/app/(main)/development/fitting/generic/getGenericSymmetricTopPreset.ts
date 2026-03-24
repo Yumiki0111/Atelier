@@ -1,4 +1,4 @@
-import type { CustomGarmentData } from "../types";
+import type { CustomGarmentData } from "../lib/types";
 import {
   GENERIC_DEV_PLACEHOLDER_LANDMARKS,
   genericTopSizeForKey,

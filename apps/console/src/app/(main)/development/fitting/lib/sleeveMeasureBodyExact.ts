@@ -1,4 +1,4 @@
-import type { LineIndexRange } from "./generic/types";
+import type { LineIndexRange } from "../generic/types";
 import { getPathPoints, globalVertexBoundsForPath } from "./pathUtils";
 
 function globalSpanForInnerRange(

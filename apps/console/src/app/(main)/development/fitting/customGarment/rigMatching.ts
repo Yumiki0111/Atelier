@@ -1,5 +1,5 @@
-import { getPathPoints } from "../pathUtils";
-import { MODEL_RIG_LINE_PATH_DS } from "../modelRigData";
+import { getPathPoints } from "../lib/pathUtils";
+import { MODEL_RIG_LINE_PATH_DS } from "../lib/modelRigData";
 
 export type RigPathEndpoints = { min: [number, number]; max: [number, number] };
 

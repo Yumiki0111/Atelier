@@ -1,10 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { CustomGarmentData, ShoulderDebug } from "./types";
+import type { CustomGarmentData, ShoulderDebug } from "../lib/types";
 import { cn } from "@/lib/utils";
 import { DevPanelSection } from "./FittingControlsUI";
-import { genericMeasureOnlyGradingActive } from "./generic";
+import { genericMeasureOnlyGradingActive } from "../generic";
 import { parseIndex } from "./FittingControlsGenericUtils";
 
 function parseCmLocal(raw: string): number | undefined {

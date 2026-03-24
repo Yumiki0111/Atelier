@@ -1,8 +1,8 @@
-import type { CustomGarmentData, SizeMeasure } from "./types";
-import type { GenericSymmetricTopSizeKey } from "./generic/getGenericSymmetricTopPreset";
-import { parseLineRangeInput, formatLineRangeInput } from "./generic";
-import { globalVertexBoundsForPath, totalPathVertices } from "./pathUtils";
-import type { ScalableGarmentSpec } from "./types";
+import type { CustomGarmentData, SizeMeasure } from "../lib/types";
+import type { GenericSymmetricTopSizeKey } from "../generic/getGenericSymmetricTopPreset";
+import { parseLineRangeInput, formatLineRangeInput } from "../generic";
+import { globalVertexBoundsForPath, totalPathVertices } from "../lib/pathUtils";
+import type { ScalableGarmentSpec } from "../lib/types";
 
 export type GenericDraft = {
   /** 「42」または「8-120」形式（連結頂点インデックスの包含範囲） */

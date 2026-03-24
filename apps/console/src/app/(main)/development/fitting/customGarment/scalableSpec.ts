@@ -1,6 +1,6 @@
-import type { CustomGarmentData, CustomLandmarks, ScalableGarmentSpec } from "../types";
-import type { TopLandmarks } from "../garmentBase";
-import type { ArmLogicConfig } from "../coatArmLogic";
+import type { CustomGarmentData, CustomLandmarks, ScalableGarmentSpec } from "../lib/types";
+import type { TopLandmarks } from "../lib/garmentBase";
+import type { ArmLogicConfig } from "../lib/coatArmLogic";
 
 /** 旧ブローゾン経路は廃止。汎用トップは `resolveGenericScalableSpec` を使用 */
 export function getScalableSpec(

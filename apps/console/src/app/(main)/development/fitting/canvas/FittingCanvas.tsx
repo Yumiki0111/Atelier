@@ -8,9 +8,9 @@ import type {
   CustomGarmentData,
   ShoulderDebug,
   GenericVertexPlotHighlight,
-} from "./types";
+} from "../lib/types";
 import { useFittingCanvasData } from "./useFittingCanvasData";
-import { shouldSuppressGarmentPathRender } from "./pathUtils";
+import { shouldSuppressGarmentPathRender } from "../lib/pathUtils";
 import { FittingCanvasPlotOverlay } from "./FittingCanvasPlotOverlay";
 import { FittingCanvasMeasureOverlay } from "./FittingCanvasMeasureOverlay";
 import { FittingCanvasRigAngleDiagram } from "./FittingCanvasRigAngleDiagram";

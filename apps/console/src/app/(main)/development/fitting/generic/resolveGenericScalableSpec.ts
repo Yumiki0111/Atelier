@@ -3,13 +3,13 @@
  * 幾何推定は行わない（自動判定なし）。
  */
 
-import type { CustomGarmentData, CustomLandmarks, ScalableGarmentSpec, SizeMeasure } from "../types";
+import type { CustomGarmentData, CustomLandmarks, ScalableGarmentSpec, SizeMeasure } from "../lib/types";
 import {
   CALIB_GARMENT_LENGTH_CM,
   CALIB_GARMENT_LENGTH_SPAN_PX,
   inferLengthCmFromLandmarks,
-} from "../garmentBase";
-import { pointAtGlobalVertexIndex } from "../pathUtils";
+} from "../lib/garmentBase";
+import { pointAtGlobalVertexIndex } from "../lib/pathUtils";
 import { buildSymmetricTopTopologyFromGlobalVertices, type SymmetricTopGlobalVertexRanges } from "./inferSymmetricTop";
 import { buildGenericScalableSpec, type BuildGenericScalableSpecOptions } from "./buildGenericSpec";
 

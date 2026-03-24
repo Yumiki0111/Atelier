@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { CustomGarmentData, GarmentType } from "./fitting/types";
-import { sanitizeCustomGarmentForProductDb } from "./fitting/sanitizeCustomGarmentForProductDb";
+import type { CustomGarmentData, GarmentType } from "./fitting/lib/types";
+import { sanitizeCustomGarmentForProductDb } from "./fitting/lib/sanitizeCustomGarmentForProductDb";
 import { useAddProduct } from "@/features/products/useProducts";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";

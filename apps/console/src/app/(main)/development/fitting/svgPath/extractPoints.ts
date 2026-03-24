@@ -1,4 +1,4 @@
-import type { PointTransform } from "../types";
+import type { PointTransform } from "../lib/types";
 import { NUM_ONLY_RE, tokenize } from "./tokenize";
 
 export function extractPoints(d: string, fn: PointTransform): [number, number][] {

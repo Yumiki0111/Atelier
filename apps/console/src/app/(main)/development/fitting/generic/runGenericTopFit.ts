@@ -3,21 +3,21 @@
  * 4 区間が `customGarmentData` にあれば `applied` なしでも実行可能（基準着丈は幾何または Apply 時 baseline）。
  */
 
-import type { CustomLandmarks, SizeMeasure } from "../types";
-import type { TopLandmarks } from "../garmentBase";
-import { buildTopPlacement } from "../garmentBase";
-import { tPath, getPathPoints, pointAtGlobalVertexIndex } from "../pathUtils";
-import { REF_HEIGHT_CM } from "../constants";
+import type { CustomLandmarks, SizeMeasure } from "../lib/types";
+import type { TopLandmarks } from "../lib/garmentBase";
+import { buildTopPlacement } from "../lib/garmentBase";
+import { tPath, getPathPoints, pointAtGlobalVertexIndex } from "../lib/pathUtils";
+import { REF_HEIGHT_CM } from "../lib/constants";
 import {
   getBodyParams,
   getZonesAnchored,
   warpArmOutline,
   getInterpolatedArmOutline,
-} from "../bodyUtils";
+} from "../lib/bodyUtils";
 import {
   applySleeveOnlyGarmentTransform,
   customGarmentVertexPlotsSleeveOnlyBodySpace,
-} from "../sleeveOnlyTransform";
+} from "../lib/sleeveOnlyTransform";
 import {
   buildSymmetricTopTopologyFromGlobalVertices,
   type SymmetricTopGlobalVertexRanges,

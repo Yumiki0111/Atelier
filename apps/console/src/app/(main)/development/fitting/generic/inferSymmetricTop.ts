@@ -3,7 +3,7 @@
  * 本番 UI は連結頂点インデックス範囲。path 範囲への変換は vertexRangeToCoveringPathRange。infer は開発用 selfCheck 向け。
  */
 
-import type { CustomLandmarks } from "../types";
+import type { CustomLandmarks } from "../lib/types";
 import type { InferredSymmetricTopTopology, LineIndexRange, TopologyInferenceResult } from "./types";
 import { allPathFeatures, nearestPointOnPath } from "./pathFeatures";
 import { normalizeLineRange } from "./lineRangeUtils";
@@ -11,7 +11,7 @@ import {
   collectPtsGlobalVertexRange,
   totalPathVertices,
   vertexRangeToCoveringPathRange,
-} from "../pathUtils";
+} from "../lib/pathUtils";
 
 /** 手入力・推定ともに使う 4 役割の範囲 */
 export interface SymmetricTopTopologyIndices {

@@ -1,4 +1,4 @@
-import { BODY_CX, BZ, BODY_LEFT_OUTLINE, BODY_ARM_OUTLINE_L } from "../constants";
+import { BODY_CX, BZ, BODY_LEFT_OUTLINE, BODY_ARM_OUTLINE_L } from "../lib/constants";
 
 export function getBodyOutlineHalfW(bodyY: number, yScale: number): number {
   const baseY = bodyY <= BZ.head_bot ? bodyY : BZ.head_bot + (bodyY - BZ.head_bot) / yScale;

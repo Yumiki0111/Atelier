@@ -1,4 +1,4 @@
-import type { BodyZones } from "../types";
+import type { BodyZones } from "../lib/types";
 import {
   BODY_CX,
   BZ,
@@ -8,7 +8,7 @@ import {
   BODY_ARM_PEAK_INDEX,
   ARM_OUTLINE_BY_HEIGHT_CM,
   ARM_OUTLINE_HEIGHT_KEYS,
-} from "../constants";
+} from "../lib/constants";
 import { getAnchorYOffset } from "./bodyZones";
 import { armOutlineX } from "./bodyOutlineSample";
 

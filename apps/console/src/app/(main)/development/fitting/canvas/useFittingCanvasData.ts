@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { loadBPATHS_RIG_LINES } from "./pathData";
+import { loadBPATHS_RIG_LINES } from "../lib/pathData";
 import {
   computeFittingCanvasSnapshot,
   type UseFittingCanvasDataParams,
   type FittingCanvasSnapshot,
-} from "./fittingCanvasCompute";
+} from "../compute/fittingCanvasCompute";
 
 export type { UseFittingCanvasDataParams, FittingCanvasSnapshot };
 

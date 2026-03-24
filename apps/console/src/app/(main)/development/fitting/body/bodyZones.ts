@@ -1,5 +1,5 @@
-import type { BodyZones } from "../types";
-import { BZ } from "../constants";
+import type { BodyZones } from "../lib/types";
+import { BZ } from "../lib/constants";
 
 export function getZones(yScale: number): BodyZones {
   const z: Record<string, number> = {};

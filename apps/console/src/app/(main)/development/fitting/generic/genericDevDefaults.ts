@@ -2,7 +2,7 @@
  * 開発用汎用トップの既定（サイズ表・プレースホルダー座標）。
  * 同梱 SVG には依存しない。アップロード前の空状態と applySvgText のベースに使う。
  */
-import type { CustomLandmarks, SizeMeasure } from "../types";
+import type { CustomLandmarks, SizeMeasure } from "../lib/types";
 
 /** サイズ 3,4,5（着丈A, 肩幅B, 身幅C, 袖丈D cm）— 旧ブローゾン表と同一数値 */
 export const GENERIC_TOP_SIZE_BY_KEY: Record<"3" | "4" | "5", SizeMeasure> = {

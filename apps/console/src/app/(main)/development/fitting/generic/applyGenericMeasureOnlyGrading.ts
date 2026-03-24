@@ -6,14 +6,14 @@
  * - 袖丈: 袖 path のみ scaleSleevePathToSpec（連結 # があるとき）。
  */
 
-import type { CustomGarmentData, CustomLandmarks, ScalableGarmentSpec, SizeMeasure } from "../types";
-import { scaleBodyToSpec, scaleSleevePathToSpec } from "../coatArmLogic";
+import type { CustomGarmentData, CustomLandmarks, ScalableGarmentSpec, SizeMeasure } from "../lib/types";
+import { scaleBodyToSpec, scaleSleevePathToSpec } from "../lib/coatArmLogic";
 import {
   cumulativePathPointOffsets,
   getPathPoints,
   pointAtGlobalVertexIndex,
   vertexRangeToCoveringPathRange,
-} from "../pathUtils";
+} from "../lib/pathUtils";
 import { resolveGenericGradingBodyLengthCmReference } from "./resolveGenericScalableSpec";
 
 function hasDistinctVertexPair(a: unknown, b: unknown): boolean {

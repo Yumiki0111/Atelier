@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { FittingControls } from "./fitting/FittingControls";
-import { FittingCanvas } from "./fitting/FittingCanvas";
-import { sizeEqual, landmarksEqual } from "./fitting/fittingStateUtils";
+import { FittingControls } from "./fitting/controls/FittingControls";
+import { FittingCanvas } from "./fitting/canvas/FittingCanvas";
+import { sizeEqual, landmarksEqual } from "./fitting/lib/fittingStateUtils";
 import { getGenericSymmetricTopPreset } from "./fitting/generic/getGenericSymmetricTopPreset";
 import type {
   GarmentType,
@@ -12,7 +12,7 @@ import type {
   CustomGarmentData,
   ShoulderDebug,
   GenericVertexPlotHighlight,
-} from "./fitting/types";
+} from "./fitting/lib/types";
 import { DevelopmentProductRegisterPanel } from "./DevelopmentProductRegisterPanel";
 
 const ANIM_DURATION_MS = 300;

@@ -2,9 +2,9 @@
  * 推定トポロジー + ランドマーク + 採寸から ScalableGarmentSpec / ArmLogicConfig を組み立てる。
  */
 
-import type { CustomLandmarks, ScalableGarmentSpec, SizeMeasure } from "../types";
-import type { ArmLogicConfig } from "../coatArmLogic";
-import { getPathPoints, cumulativePathPointOffsets } from "../pathUtils";
+import type { CustomLandmarks, ScalableGarmentSpec, SizeMeasure } from "../lib/types";
+import type { ArmLogicConfig } from "../lib/coatArmLogic";
+import { getPathPoints, cumulativePathPointOffsets } from "../lib/pathUtils";
 import type { GenericFitResolved, InferredSymmetricTopTopology } from "./types";
 
 /** buildGenericScalableSpec のオプション */

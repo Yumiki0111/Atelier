@@ -1,4 +1,4 @@
-import type { BodyZones } from "../types";
+import type { BodyZones } from "../lib/types";
 import {
   BODY_ARM_OUTLINE_L,
   BODY_ARM_OUTLINE_R,
@@ -6,7 +6,7 @@ import {
   ARM_OUTLINE_HEIGHT_KEYS,
   REF_HEIGHT_CM,
   REF_WEIGHT_KG,
-} from "../constants";
+} from "../lib/constants";
 import { getBodyParams } from "./bodyParams";
 import { getZonesAnchored } from "./bodyZones";
 import { warp, type WarpOptions } from "./bodyWarp";

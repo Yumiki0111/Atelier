@@ -1,4 +1,4 @@
-import { getPathPoints } from "../pathUtils";
+import { getPathPoints } from "../lib/pathUtils";
 
 export interface PathBBoxFeatures {
   pathIndex: number;

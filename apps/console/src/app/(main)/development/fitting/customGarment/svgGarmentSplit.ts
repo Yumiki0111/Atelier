@@ -1,6 +1,6 @@
-import type { CustomLandmarks } from "../types";
-import { getPathPoints, getPathsBBox } from "../pathUtils";
-import { MODEL_RIG_LINE_PATH_DS } from "../modelRigData";
+import type { CustomLandmarks } from "../lib/types";
+import { getPathPoints, getPathsBBox } from "../lib/pathUtils";
+import { MODEL_RIG_LINE_PATH_DS } from "../lib/modelRigData";
 import { MODEL_RIG_ENDPOINTS } from "./rigMatching";
 
 function getBBoxOfPathPoints(points: [number, number][]) {

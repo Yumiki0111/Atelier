@@ -1,4 +1,4 @@
-import type { PointTransform } from "../types";
+import type { PointTransform } from "../lib/types";
 import { NUM_ONLY_RE, round10, tokenize } from "./tokenize";
 
 export function tPath(d: string, fn: PointTransform): string {
