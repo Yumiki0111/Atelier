@@ -1,4 +1,7 @@
-import { mirrorSleeveMeasureRangeToOppositeInner } from "../lib/sleeveMeasureBodyExact";
+import {
+  mirrorLeftGlobalVertexToRightInner,
+  mirrorSleeveMeasureRangeToOppositeInner,
+} from "../lib/sleeveMeasureBodyExact";
 import { getScalableSpec } from "../lib/customGarmentUtils";
 import { resolveGenericScalableSpec } from "../generic";
 import type { CustomGarmentData, GenericVertexPlotHighlight } from "../lib/types";
@@ -66,7 +69,11 @@ export function vertexHighlightRoles(i: number, h: GenericVertexPlotHighlight | 
   pushIf("右・外腕", h.seamOuterRight);
   pushIf("左・脇〜袖付け", h.sleeveInnerLeft);
   pushIf("右・脇〜袖付け", h.sleeveInnerRight);
-  pushIf("袖丈計測", h.sleeveMeasure);
+  if (h.sleeveMeasureVertexChain != null && h.sleeveMeasureVertexChain.length > 0) {
+    if (h.sleeveMeasureVertexChain.includes(i)) roles.push("袖丈計測");
+  } else {
+    pushIf("袖丈計測", h.sleeveMeasure);
+  }
   return roles;
 }
 
@@ -82,6 +89,27 @@ export function mirroredSleeveMeasureRangeForPlot(
     topology.sleeveInnerRight,
     leftRange
   );
+}
+
+/** 左袖丈の連結 # 列を右内袖上の対応点列に写す（順序維持）。 */
+export function mirrorSleeveVertexChainForPlot(
+  data: CustomGarmentData,
+  leftChain: number[]
+): number[] | null {
+  const topology = data.genericSymmetricTop?.lockedTopology ?? null;
+  if (!topology) return null;
+  const out: number[] = [];
+  for (const g of leftChain) {
+    const r = mirrorLeftGlobalVertexToRightInner(
+      data.pathDs,
+      topology.sleeveInnerLeft,
+      topology.sleeveInnerRight,
+      g
+    );
+    if (r == null) return null;
+    out.push(r);
+  }
+  return out;
 }
 
 export function getCustomSleeveMeasureIndexRange(data: CustomGarmentData): [number, number] | null {

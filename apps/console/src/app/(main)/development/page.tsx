@@ -71,6 +71,7 @@ export default function DevelopmentPage() {
   const [genericVertexPlotHighlight, setGenericVertexPlotHighlight] = useState<GenericVertexPlotHighlight | null>(
     null
   );
+  const [hoveredGarmentVertexIndex, setHoveredGarmentVertexIndex] = useState<number | null>(null);
   const rafRef = useRef<number | null>(null);
   const startRef = useRef<number | null>(null);
 
@@ -176,6 +177,12 @@ export default function DevelopmentPage() {
             rigGarmentEnabled={rigGarmentEnabled}
             onShoulderDebugChange={setShoulderDebug}
             genericVertexPlotHighlight={genericVertexPlotHighlight}
+            onGarmentVertexHover={setHoveredGarmentVertexIndex}
+            garmentVertexPickEnabled={
+              garment === "custom" &&
+              customGarmentData?.presetId === "genericSymmetricTop" &&
+              showPlotCoords
+            }
           />
         </div>
         <FittingControls
@@ -208,6 +215,7 @@ export default function DevelopmentPage() {
           onToggleRigGarment={() => setRigGarmentEnabled((v) => !v)}
           shoulderDebug={shoulderDebug}
           onGenericVertexPlotHighlightChange={handleGenericVertexPlotHighlightChange}
+          hoveredGarmentVertexIndex={hoveredGarmentVertexIndex}
         />
       </div>
     </div>

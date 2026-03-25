@@ -32,6 +32,70 @@ export function parseLineRangeInput(raw: string): [number, number] | undefined {
   return a <= b ? [a, b] : [b, a];
 }
 
+/**
+ * カンマ区切りの連結頂点列（順序そのまま）。連続・単調は不要（例: `5,4,3,2,1,9`）。
+ * 2 個以上の整数が必要。
+ */
+export function parseSleeveMeasureVertexList(raw: string): number[] | undefined {
+  const s = normalizeLineRangeInputString(raw);
+  if (s === "") return undefined;
+  if (!/[,，、]/.test(s)) return undefined;
+  const parts = s.split(/[,，、]+/).map((p) => p.trim()).filter(Boolean);
+  if (parts.length < 2) return undefined;
+  const nums: number[] = [];
+  for (const p of parts) {
+    const a = Math.trunc(Number(p));
+    if (!Number.isFinite(a)) return undefined;
+    nums.push(a);
+  }
+  return nums;
+}
+
+/**
+ * 袖丈連結: `8-15` / `8`（従来）に加え、カンマ列は **入力順の両端** を始点・終点（`5,4,3,2,1,9` → [5,9]）。
+ * `buildGenericScalableSpec` 等では必要に応じて min/max に正規化される。
+ */
+export function parseSleeveMeasureVertexInput(raw: string): [number, number] | undefined {
+  const s = normalizeLineRangeInputString(raw);
+  if (s === "") return undefined;
+  const list = parseSleeveMeasureVertexList(s);
+  if (list && list.length >= 2) {
+    const g0 = list[0]!;
+    const g1 = list[list.length - 1]!;
+    if (g0 === g1) return undefined;
+    return [g0, g1];
+  }
+  return parseLineRangeInput(s);
+}
+
+/**
+ * キャンバスでホバー中の # を r で追加。既存が `a-b` のときは新しいチェーンとして `v` から開始。
+ */
+export function appendSleeveMeasureVertexWithR(currentRaw: string, v: number): string {
+  const n = Math.trunc(v);
+  if (!Number.isFinite(n)) return currentRaw.trim();
+  const t = normalizeLineRangeInputString(currentRaw);
+  if (t === "") return String(n);
+
+  const chainExisting = parseSleeveMeasureVertexList(t);
+  if (chainExisting) {
+    const last = chainExisting[chainExisting.length - 1]!;
+    if (n === last) return currentRaw.trim();
+    return `${t},${n}`;
+  }
+
+  const range = parseLineRangeInput(t);
+  if (range) {
+    const [a, b] = range;
+    if (a === b) {
+      if (n === a) return currentRaw.trim();
+      return `${a},${n}`;
+    }
+    return String(n);
+  }
+  return String(n);
+}
+
 export function formatLineRangeInput(t: [number, number] | undefined): string {
   if (!t) return "";
   const [a, b] = t;

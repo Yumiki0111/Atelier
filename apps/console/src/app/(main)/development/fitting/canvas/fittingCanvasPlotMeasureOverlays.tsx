@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import type { CustomGarmentData, ShoulderDebug } from "../lib/types";
+import type { CustomGarmentData, GenericVertexPlotHighlight, ShoulderDebug } from "../lib/types";
 import {
   getCustomLengthMeasureIndexRange,
   getCustomSleeveMeasureIndexRange,
   MAX_MEASURE_POLYLINE_VERTICES,
+  mirrorSleeveVertexChainForPlot,
   mirroredSleeveMeasureRangeForPlot,
   subsamplePolylineForDisplay,
 } from "./fittingCanvasPlotOverlayUtils";
@@ -11,8 +12,12 @@ import {
 /** IIFE + `&&` 連鎖だと TS が `() => JSX.Element` と誤推論することがあるため関数に切り出す */
 export function sleeveMeasureOverlayNode(
   sd: ShoulderDebug,
-  customGarmentData: CustomGarmentData
+  customGarmentData: CustomGarmentData,
+  genericVertexPlotHighlight?: GenericVertexPlotHighlight | null
 ): ReactNode {
+  const chainGt = customGarmentData.genericSymmetricTop?.sleeveMeasureVertexChain;
+  const chainHl = genericVertexPlotHighlight?.sleeveMeasureVertexChain;
+  const chain = chainHl != null && chainHl.length >= 2 ? chainHl : chainGt;
   const fromDebug = sd.sleeveMeasurePlotRange;
   let startIdx: number;
   let endIdx: number;
@@ -32,28 +37,55 @@ export function sleeveMeasureOverlayNode(
     }
     return out;
   };
-  const ptsL = collectPts(startIdx, endIdx);
+  const collectPtsByIndices = (indices: number[]): [number, number][] => {
+    const out: [number, number][] = [];
+    for (const gi of indices) {
+      const p = sd.garmentShoulderPoints[gi];
+      if (p) out.push(p);
+    }
+    return out;
+  };
+
+  let ptsL: [number, number][];
+  let titleLeft: string;
+  if (chain != null && chain.length >= 2) {
+    ptsL = collectPtsByIndices(chain);
+    titleLeft = `#${chain.join(",#")}`;
+  } else {
+    ptsL = collectPts(startIdx, endIdx);
+    titleLeft = `#${startIdx}〜#${endIdx}`;
+  }
   if (ptsL.length < 2) return null;
 
-  let rLo: number;
-  let rHi: number;
+  let rLo = 0;
+  let rHi = 0;
   let hasRight = false;
+  let ptsR: [number, number][] = [];
   if (sd.sleeveMeasurePlotRangeRight) {
     rLo = Math.min(sd.sleeveMeasurePlotRangeRight[0], sd.sleeveMeasurePlotRangeRight[1]);
     rHi = Math.max(sd.sleeveMeasurePlotRangeRight[0], sd.sleeveMeasurePlotRangeRight[1]);
     hasRight = true;
+    ptsR = collectPts(rLo, rHi);
+  } else if (chain != null && chain.length >= 2) {
+    const rightChain = mirrorSleeveVertexChainForPlot(customGarmentData, chain);
+    if (rightChain && rightChain.length >= 2) {
+      ptsR = collectPtsByIndices(rightChain);
+      rLo = Math.min(...rightChain);
+      rHi = Math.max(...rightChain);
+      hasRight = ptsR.length >= 2;
+    }
   } else {
     const mr = mirroredSleeveMeasureRangeForPlot(customGarmentData, [startIdx, endIdx]);
     if (mr) {
       rLo = Math.min(mr[0], mr[1]);
       rHi = Math.max(mr[0], mr[1]);
       hasRight = true;
+      ptsR = collectPts(rLo, rHi);
     } else {
       rLo = 0;
       rHi = 0;
     }
   }
-  const ptsR = hasRight ? collectPts(rLo, rHi) : [];
   const hasRightDraw = hasRight && ptsR.length >= 2;
 
   const ptsDrawL = subsamplePolylineForDisplay(ptsL, MAX_MEASURE_POLYLINE_VERTICES);
@@ -69,7 +101,7 @@ export function sleeveMeasureOverlayNode(
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        <title>{`袖丈計測 左 #${startIdx}〜#${endIdx}${titleSuffix} · 入力 ${specSleeveCm}cm（左右同 cm）`}</title>
+        <title>{`袖丈計測 左 ${titleLeft}${titleSuffix} · 入力 ${specSleeveCm}cm（左右同 cm）`}</title>
       </path>
       {hasRightDraw ? (
         <path
@@ -122,7 +154,7 @@ export function lengthMeasureOverlayNode(sd: ShoulderDebug, customGarmentData: C
   const specLengthCm = customGarmentData.size.length;
   const dbg = sd.lengthPathLengthDebug;
   const titleExtra =
-    dbg != null ? ` · 画面上換算 ${dbg.cm.toFixed(1)}cm（|ΔY| ${dbg.px.toFixed(0)}px）` : "";
+    dbg != null ? ` · 幾何数値 ${dbg.cm.toFixed(1)}cm（|ΔY| ${dbg.px.toFixed(0)}px）` : "";
   return (
     <g>
       <path
@@ -133,7 +165,7 @@ export function lengthMeasureOverlayNode(sd: ShoulderDebug, customGarmentData: C
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        <title>{`着丈計測 #${startIdx}〜#${endIdx} · 入力 ${specLengthCm}cm${titleExtra}`}</title>
+        <title>{`着丈計測 #${startIdx}〜#${endIdx} · 入力値 ${specLengthCm}cm${titleExtra}`}</title>
       </path>
     </g>
   );

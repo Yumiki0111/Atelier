@@ -14,6 +14,8 @@ import {
   formatLineRangeInput,
   genericMeasureOnlyGradingActive,
   parseLineRangeInput,
+  parseSleeveMeasureVertexInput,
+  parseSleeveMeasureVertexList,
 } from "../generic";
 import {
   emptyGenericDraft,
@@ -24,6 +26,15 @@ import {
   coalesceMeasureDraftFromGt,
   measureVertexRangeStr,
 } from "./FittingControlsMeasureDraft";
+
+/** 連結 # の入力中に毎キーで onCustomGarmentApply → 服の再計算が走りシルエットが跳ぶのを防ぐ */
+const MEASURE_VERTEX_SYNC_DEBOUNCE_MS = 450;
+
+function numberArraysEqual(a: number[] | undefined, b: number[] | undefined): boolean {
+  if (a === b) return true;
+  if (a == null || b == null || a.length !== b.length) return false;
+  return a.every((v, i) => v === b[i]);
+}
 
 export function useFittingControlsGenericDraftSync(params: {
   isGenericTopActive: boolean;
@@ -50,6 +61,11 @@ export function useFittingControlsGenericDraftSync(params: {
   useLayoutEffect(() => {
     genericDraftRef.current = genericDraft;
   }, [genericDraft]);
+
+  const customGarmentDataRef = useRef(customGarmentData);
+  useLayoutEffect(() => {
+    customGarmentDataRef.current = customGarmentData;
+  }, [customGarmentData]);
 
   const measureVertexRangeSectionFocusedRef = useRef(false);
 
@@ -83,7 +99,10 @@ export function useFittingControlsGenericDraftSync(params: {
       isLineTupleStored(gt?.sleeveInnerRight);
 
     if (allFourStored) {
-      const sleeveStr = measureVertexRangeStr(gt.sleeveMeasureVertexStart, gt.sleeveMeasureVertexEnd);
+      const sleeveStr =
+        gt.sleeveMeasureVertexChain != null && gt.sleeveMeasureVertexChain.length >= 2
+          ? gt.sleeveMeasureVertexChain.join(",")
+          : measureVertexRangeStr(gt.sleeveMeasureVertexStart, gt.sleeveMeasureVertexEnd);
       const lengthStr = measureVertexRangeStr(gt.lengthMeasureVertexStart, gt.lengthMeasureVertexEnd);
       const d = genericDraftRef.current;
       const forceMeasureFromGt = presetBumped || pathDsChanged;
@@ -101,6 +120,7 @@ export function useFittingControlsGenericDraftSync(params: {
             d.sleeveMeasureVertexStart,
             d.sleeveMeasureVertexEnd,
             forceMeasureFromGt,
+            parseSleeveMeasureVertexInput,
           );
       const lengthCoalesced = skipMeasureCoalesce
         ? {
@@ -114,6 +134,7 @@ export function useFittingControlsGenericDraftSync(params: {
             d.lengthMeasureVertexStart,
             d.lengthMeasureVertexEnd,
             forceMeasureFromGt,
+            parseLineRangeInput,
           );
       setGenericDraft({
         seamOuterLeft: formatLineRangeInput(gt.seamOuterLeft),
@@ -138,16 +159,16 @@ export function useFittingControlsGenericDraftSync(params: {
   }, [isGenericTopActive, customGarmentData, presetSizeKey]);
 
   useEffect(() => {
-    if (!customGarmentData) return;
     if (!isGenericTopActive) return;
-    const dataSnap = customGarmentData;
     const t = window.setTimeout(() => {
+      const dataSnap = customGarmentDataRef.current;
+      if (!dataSnap) return;
       const d = genericDraftRef.current;
       const gt0 = dataSnap.genericSymmetricTop ?? {};
       const merged: Record<string, unknown> = { ...gt0 };
       const sleeveRaw = d.sleeveMeasureRange.trim();
       const lengthRaw = d.lengthMeasureRange.trim();
-      const nextS = parseLineRangeInput(sleeveRaw);
+      const nextS = parseSleeveMeasureVertexInput(sleeveRaw);
       const nextL = parseLineRangeInput(lengthRaw);
       const sleeveIncomplete = sleeveRaw !== "" && nextS == null;
       const lengthIncomplete = lengthRaw !== "" && nextL == null;
@@ -157,6 +178,9 @@ export function useFittingControlsGenericDraftSync(params: {
       ];
       const nextSn = nextS ? norm(nextS) : null;
       const nextLn = nextL ? norm(nextL) : null;
+      /** 単一 # のみ（例: 入力途中の「8」）は区間未確定として gt に載せない（再計算で服が跳ぶのを防ぐ） */
+      const sleeveDegenerate = nextSn != null && nextSn[0] === nextSn[1];
+      const lengthDegenerate = nextLn != null && nextLn[0] === nextLn[1];
       const curS =
         gt0.sleeveMeasureVertexStart != null && gt0.sleeveMeasureVertexEnd != null
           ? norm([gt0.sleeveMeasureVertexStart, gt0.sleeveMeasureVertexEnd])
@@ -168,7 +192,7 @@ export function useFittingControlsGenericDraftSync(params: {
       const same = (a: [number, number] | null, b: [number, number] | null) =>
         (a == null && b == null) || (a != null && b != null && a[0] === b[0] && a[1] === b[1]);
       let touched = false;
-      if (!sleeveIncomplete) {
+      if (!sleeveIncomplete && !sleeveDegenerate) {
         if (nextSn == null) {
           if (curS != null) {
             delete merged.sleeveMeasureVertexStart;
@@ -181,7 +205,7 @@ export function useFittingControlsGenericDraftSync(params: {
           touched = true;
         }
       }
-      if (!lengthIncomplete) {
+      if (!lengthIncomplete && !lengthDegenerate) {
         if (nextLn == null) {
           if (curL != null) {
             delete merged.lengthMeasureVertexStart;
@@ -194,6 +218,23 @@ export function useFittingControlsGenericDraftSync(params: {
           touched = true;
         }
       }
+      if (!sleeveIncomplete) {
+        const nextList = parseSleeveMeasureVertexList(sleeveRaw);
+        const chainValid =
+          nextList != null &&
+          nextList.length >= 2 &&
+          nextList[0] !== nextList[nextList.length - 1];
+        const curChain = gt0.sleeveMeasureVertexChain;
+        if (chainValid && nextList) {
+          if (!numberArraysEqual(nextList, curChain)) {
+            merged.sleeveMeasureVertexChain = [...nextList];
+            touched = true;
+          }
+        } else if (curChain != null && curChain.length > 0) {
+          delete merged.sleeveMeasureVertexChain;
+          touched = true;
+        }
+      }
       if (!touched) return;
       const keys = Object.keys(merged);
       onCustomGarmentApply({
@@ -202,9 +243,9 @@ export function useFittingControlsGenericDraftSync(params: {
           ? { genericSymmetricTop: merged as NonNullable<CustomGarmentData["genericSymmetricTop"]> }
           : { genericSymmetricTop: undefined }),
       });
-    }, 0);
+    }, MEASURE_VERTEX_SYNC_DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [isGenericTopActive, customGarmentData, genericDraft.sleeveMeasureRange, genericDraft.lengthMeasureRange, onCustomGarmentApply]);
+  }, [isGenericTopActive, genericDraft.sleeveMeasureRange, genericDraft.lengthMeasureRange, onCustomGarmentApply]);
 
   useLayoutEffect(() => {
     if (!isGenericTopActive || !customGarmentData) return;
@@ -242,10 +283,19 @@ export function useFittingControlsGenericDraftSync(params: {
       return;
     }
     const next: GenericVertexPlotHighlight = {};
-    const sm0 = genericDraft.sleeveMeasureVertexStart;
-    const sm1 = genericDraft.sleeveMeasureVertexEnd;
-    if (sm0 != null && sm1 != null && Number.isFinite(sm0) && Number.isFinite(sm1)) {
-      next.sleeveMeasure = [Math.min(sm0, sm1), Math.max(sm0, sm1)];
+    const slRaw = genericDraft.sleeveMeasureRange.trim();
+    const slList = parseSleeveMeasureVertexList(slRaw);
+    if (slList != null && slList.length >= 2 && slList[0] !== slList[slList.length - 1]) {
+      next.sleeveMeasureVertexChain = slList;
+      const a = slList[0]!;
+      const b = slList[slList.length - 1]!;
+      next.sleeveMeasure = [Math.min(a, b), Math.max(a, b)];
+    } else {
+      const sm0 = genericDraft.sleeveMeasureVertexStart;
+      const sm1 = genericDraft.sleeveMeasureVertexEnd;
+      if (sm0 != null && sm1 != null && Number.isFinite(sm0) && Number.isFinite(sm1)) {
+        next.sleeveMeasure = [Math.min(sm0, sm1), Math.max(sm0, sm1)];
+      }
     }
     const lm0 = genericDraft.lengthMeasureVertexStart;
     const lm1 = genericDraft.lengthMeasureVertexEnd;
@@ -255,6 +305,7 @@ export function useFittingControlsGenericDraftSync(params: {
     onGenericVertexPlotHighlightChange(next);
   }, [
     isGenericTopActive,
+    genericDraft.sleeveMeasureRange,
     genericDraft.sleeveMeasureVertexStart,
     genericDraft.sleeveMeasureVertexEnd,
     genericDraft.lengthMeasureVertexStart,

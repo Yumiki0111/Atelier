@@ -1,4 +1,4 @@
-/** 入力 cm と画面上の換算 cm を別行に出す閾値（浮動小数の揺れを無視） */
+/** 入力値と幾何数値の比較用閾値（浮動小数の揺れを無視） */
 export const CM_INPUT_VS_MEASURED_EPS = 0.2;
 
 const ARROW = 14;

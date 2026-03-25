@@ -2,7 +2,7 @@
 
 import type { MutableRefObject } from "react";
 import type { GenericDraft } from "./FittingControlsGenericUtils";
-import { parseLineRangeInput } from "../generic";
+import { parseLineRangeInput, parseSleeveMeasureVertexInput, parseSleeveMeasureVertexList } from "../generic";
 import { DevPanelSection } from "./FittingControlsUI";
 
 export function FittingControlsPathCatalogPanel({
@@ -10,16 +10,19 @@ export function FittingControlsPathCatalogPanel({
   genericDraft,
   setGenericDraft,
   measureVertexRangeSectionFocusedRef,
+  hoveredGarmentVertexIndex,
 }: {
   showMeasureVertexControls: boolean;
   genericDraft: GenericDraft;
   setGenericDraft: (next: GenericDraft | ((p: GenericDraft) => GenericDraft)) => void;
   measureVertexRangeSectionFocusedRef: MutableRefObject<boolean>;
+  hoveredGarmentVertexIndex?: number | null;
 }) {
   return (
     <DevPanelSection title="連結頂点 #（採寸）">
       <p className="text-[9px] leading-snug text-slate-600">
-        袖丈・着丈は連結頂点の区間（例: <strong>8-15</strong>）を入力します。
+        袖丈は区間（<strong>8-15</strong>）またはカンマ区切りで順に（<strong>5,4,3,2,1,9</strong> のように非連続・逆順も可）。服プロット ON
+        のとき # をホバーして <kbd className="rounded bg-slate-200 px-0.5 font-mono">r</kbd> で順に追加できます。
       </p>
 
       {showMeasureVertexControls ? (
@@ -40,11 +43,11 @@ export function FittingControlsPathCatalogPanel({
               <span>連結 # の区間</span>
               <input
                 className="rounded-md border border-slate-200 bg-white px-2 py-1 font-mono text-[10px] outline-none focus:ring-2 focus:ring-red-300/50"
-                placeholder='例: 8-15 または空欄'
+                placeholder="例: 8-15 / 8,9,10,11 / 空欄"
                 value={genericDraft.sleeveMeasureRange}
                 onChange={(e) => {
                   const raw = e.target.value;
-                  const t = parseLineRangeInput(raw);
+                  const t = parseSleeveMeasureVertexInput(raw);
                   setGenericDraft((p) => ({
                     ...p,
                     sleeveMeasureRange: raw,
@@ -54,14 +57,32 @@ export function FittingControlsPathCatalogPanel({
                 }}
               />
             </label>
+            {hoveredGarmentVertexIndex != null && Number.isFinite(hoveredGarmentVertexIndex) ? (
+              <p className="font-mono text-[9px] text-slate-600">
+                ホバー中: #{hoveredGarmentVertexIndex}（<kbd className="rounded bg-slate-200 px-0.5">r</kbd> で追加）
+              </p>
+            ) : null}
             {(() => {
-              const t = parseLineRangeInput(genericDraft.sleeveMeasureRange.trim());
+              const raw = genericDraft.sleeveMeasureRange.trim();
+              const list = parseSleeveMeasureVertexList(raw);
+              const t = parseSleeveMeasureVertexInput(raw);
+              if (list != null && list.length >= 2 && list[0] !== list[list.length - 1]) {
+                const a = list[0]!;
+                const b = list[list.length - 1]!;
+                return (
+                  <p className="font-mono text-[9px] text-slate-700">
+                    → 順: #{list.join(" → #")}（始点 #{a} · 終点 #{b}）
+                  </p>
+                );
+              }
               return t ? (
                 <p className="font-mono text-[9px] text-slate-700">
-                  → #{t[0]}〜#{t[1]}（{t[0] === t[1] ? "1 頂点" : `${t[1] - t[0] + 1} 頂点`}）
+                  → #{t[0]}〜#{t[1]}（{t[0] === t[1] ? "1 頂点" : `${Math.abs(t[1] - t[0]) + 1} 頂点`}）
                 </p>
-              ) : genericDraft.sleeveMeasureRange.trim() !== "" ? (
-                <p className="text-[9px] text-amber-800">形式を確認してください（数字と - のみ）</p>
+              ) : raw !== "" ? (
+                <p className="text-[9px] text-amber-800">
+                  形式を確認（8-15、単一数字、またはカンマ 2 点以上）
+                </p>
               ) : null;
             })()}
             <button

@@ -43,6 +43,10 @@ export interface FittingCanvasProps {
   genericVertexPlotHighlight?: GenericVertexPlotHighlight | null;
   /** 汎用トップの role 指定用: 服の path クリック */
   onCustomPathClick?: (pathIdx: number) => void;
+  /** 服プロットの連結頂点 # をホバー（袖丈 r 入力用） */
+  onGarmentVertexHover?: (globalVertexIndex: number | null) => void;
+  /** true のとき服の輪郭 # にポインタを当ててホバーインデックスを送る */
+  garmentVertexPickEnabled?: boolean;
 }
 
 export function FittingCanvas({
@@ -67,6 +71,8 @@ export function FittingCanvas({
   onShoulderDebugChange,
   genericVertexPlotHighlight = null,
   onCustomPathClick,
+  onGarmentVertexHover,
+  garmentVertexPickEnabled = false,
 }: FittingCanvasProps) {
   const modelCenterX = 752.5;
   const {
@@ -272,7 +278,9 @@ export function FittingCanvas({
           shirtSize={shirtSize}
           customGarmentData={customGarmentData}
           genericVertexPlotHighlight={genericVertexPlotHighlight}
-          allowPointerEvents={false}
+          allowPointerEvents={garmentVertexPickEnabled}
+          onGarmentVertexHover={onGarmentVertexHover}
+          garmentVertexPickEnabled={garmentVertexPickEnabled}
         />
         {showRigAngleDiagram ? (
           <FittingCanvasRigAngleDiagram

@@ -129,6 +129,10 @@
 
 **禁止:** `getInterpolatedArmOutline` を **`h` 起点**に勝手に変更して compute 本体の肩・袖基準とズラす。
 
+### 9.1 リグロック時のテンプレート水平位置（服の左右中央）
+
+アップロード SVG で服とモデルリグ本数が一致する場合、`compute/fittingCanvasComputeGarmentCustom.ts` が **ワープ前**にテンプレ X をシフトして体軸に寄せる（`templateShiftXLocked`）。**頂点平均ではなく bbox 中心 X** を使う理由・失敗しやすいパターン・処理順は **`CUSTOM_GARMENT_CENTERING.md`** に集約する。
+
 ---
 
 ## 10. 汎用トップ `genericSymmetricTop`（旧 GARMENT_LOGIC）
@@ -264,6 +268,7 @@
 | リグスキン | `lib/rigSkin2D.ts` |
 | プレース | `lib/garmentBase.ts` |
 | カスタム変換 | `customGarment/buildCustomTransformedPaths.ts` |
+| カスタム服・リグロック水平合わせ | `compute/fittingCanvasComputeGarmentCustom.ts`、`CUSTOM_GARMENT_CENTERING.md` |
 | 袖 | `lib/sleeveOnlyTransform.ts`, `lib/coatArmLogic.ts` |
 | 汎用 fit | `generic/runGenericTopFit.ts`, `applyGenericMeasureOnlyGrading.ts` |
 | 肩角度図（表示） | `canvas/FittingCanvasRigAngleDiagram.tsx` |

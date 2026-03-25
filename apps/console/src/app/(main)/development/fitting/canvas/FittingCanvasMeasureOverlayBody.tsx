@@ -2,13 +2,7 @@
 
 import React from "react";
 import type { MeasureOverlayData } from "../lib/types";
-import { BZ } from "../lib/constants";
-import {
-  CM_INPUT_VS_MEASURED_EPS,
-  OFFSET_HEIGHT_X,
-  drawArrowDown,
-  drawArrowUp,
-} from "./fittingCanvasMeasureOverlaySvg";
+import { OFFSET_HEIGHT_X, drawArrowDown, drawArrowUp } from "./fittingCanvasMeasureOverlaySvg";
 
 export function FittingCanvasMeasureOverlayBody({
   bodyHeight,
@@ -22,10 +16,6 @@ export function FittingCanvasMeasureOverlayBody({
   const bodyX = top[0];
   const lineX = bodyX + OFFSET_HEIGHT_X;
   const midY = (top[1] + bottom[1]) / 2;
-  const baseBodySpanPx = BZ.foot - BZ.head_top;
-  const measuredHeightCm =
-    baseBodySpanPx > 0 ? ((bottom[1] - top[1]) / baseBodySpanPx) * 170 : height;
-  const heightMeasuredDiffers = Math.abs(measuredHeightCm - height) > CM_INPUT_VS_MEASURED_EPS;
 
   return (
     <>
@@ -35,13 +25,11 @@ export function FittingCanvasMeasureOverlayBody({
       <path d={drawArrowUp(lineX, top[1])} fill="#059669" stroke="#047857" strokeWidth={2} />
       <path d={drawArrowDown(lineX, bottom[1])} fill="#059669" stroke="#047857" strokeWidth={2} />
       <text x={lineX + 24} y={midY} fontSize={18} fontWeight="bold" fill="#047857" fontFamily="sans-serif" dominantBaseline="middle">
-        身長 {height}cm（入力）
+        <title>
+          頭〜足はモデル身長（スライダー）の定義。入力/実寸の二重表記は不要のため身長のみ表示。
+        </title>
+        身長 {height}cm
       </text>
-      {heightMeasuredDiffers ? (
-        <text x={lineX + 24} y={midY + 18} fontSize={10} fill="#64748b" fontFamily="sans-serif" dominantBaseline="middle">
-          画面上（基準体170の頭〜足スパン換算）{measuredHeightCm.toFixed(1)}cm
-        </text>
-      ) : null}
     </>
   );
 }

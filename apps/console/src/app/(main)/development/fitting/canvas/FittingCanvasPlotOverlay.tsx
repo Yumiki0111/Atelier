@@ -38,6 +38,9 @@ interface FittingCanvasPlotOverlayProps {
   customGarmentData?: CustomGarmentData | null;
   genericVertexPlotHighlight?: GenericVertexPlotHighlight | null;
   allowPointerEvents?: boolean;
+  /** 服の輪郭 # のホバーで連結インデックスを親へ（袖丈 r 入力） */
+  onGarmentVertexHover?: (globalVertexIndex: number | null) => void;
+  garmentVertexPickEnabled?: boolean;
   /** true のとき袖丈の赤線＋px/cm 箱を出さない（採寸オーバーレイと二重になるのを防ぐ） */
   hideSleeveMeasureLine?: boolean;
 }
@@ -56,6 +59,8 @@ export function FittingCanvasPlotOverlay({
   customGarmentData,
   genericVertexPlotHighlight = null,
   allowPointerEvents = false,
+  onGarmentVertexHover,
+  garmentVertexPickEnabled = false,
   hideSleeveMeasureLine = false,
 }: FittingCanvasPlotOverlayProps) {
   const debugKey = `shoulder-debug-${height}-${weight}-${garment}-${
@@ -202,6 +207,11 @@ export function FittingCanvasPlotOverlay({
                 </text>
               </g>
             )}
+            <g
+              onPointerLeave={() => {
+                if (garmentVertexPickEnabled) onGarmentVertexHover?.(null);
+              }}
+            >
             {sd.garmentShoulderPoints.map(([x, y], i) => {
               const shoulderIdx = sd.shoulderPointIndex;
               const isShoulder = shoulderIdx != null ? i === shoulderIdx : false;
@@ -228,9 +238,15 @@ export function FittingCanvasPlotOverlay({
                     fillOpacity={isShoulder ? 0.95 : isHl ? 0.92 : 0.88}
                     stroke={stroke}
                     strokeWidth={isShoulder ? 2.2 : isHl ? 2 : 1.8}
+                    style={garmentVertexPickEnabled ? { cursor: "crosshair" } : undefined}
+                    onPointerEnter={() => {
+                      if (garmentVertexPickEnabled) onGarmentVertexHover?.(i);
+                    }}
                   >
                     <title>
-                      {isShoulder ? `肩基準点 #${i}${hlNote}` : `服の輪郭 #${i}${hlNote}`}
+                      {isShoulder
+                        ? `肩基準点 #${i}${hlNote}`
+                        : `服の輪郭 #${i}${hlNote}${garmentVertexPickEnabled ? " · r で袖丈連結に追加" : ""}`}
                     </title>
                   </circle>
                   <text
@@ -244,17 +260,19 @@ export function FittingCanvasPlotOverlay({
                     stroke="white"
                     strokeWidth={indexStrokeW}
                     paintOrder="stroke fill"
+                    pointerEvents="none"
                   >
                     {`#${i}`}
                   </text>
                 </g>
               );
             })}
+            </g>
             {(() => {
               if (garment !== "custom" || !customGarmentData || hideSleeveMeasureLine) return null;
               return (
                 <>
-                  {sleeveMeasureOverlayNode(sd, customGarmentData)}
+                  {sleeveMeasureOverlayNode(sd, customGarmentData, genericVertexPlotHighlight)}
                   {lengthMeasureOverlayNode(sd, customGarmentData)}
                 </>
               );

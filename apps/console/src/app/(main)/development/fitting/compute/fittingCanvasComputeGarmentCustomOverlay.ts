@@ -1,7 +1,5 @@
 "use client";
 
-import { bodyHeight, getBodyParams } from "../lib/bodyUtils";
-import { REF_HEIGHT_CM, REF_WEIGHT_KG } from "../lib/constants";
 import { getScalableSpec } from "../lib/customGarmentUtils";
 import { applyCustomRigAlignInPlace, type CustomRigAlign } from "./fittingCanvasRigAlign";
 import {
@@ -12,6 +10,8 @@ import {
   shoulderPointOnLine,
 } from "../lib/fittingContourUtils";
 import { resolveGenericScalableSpec } from "../generic";
+import { applyYScaleToCanvasPoints } from "./fittingCanvasCustomGarmentGradeLength";
+import { polylineArcLengthPx } from "./fittingCanvasPolylineMeasure";
 import type {
   CustomGarmentData,
   CustomLandmarks,
@@ -45,6 +45,15 @@ export type CustomGarmentOverlayAssemblyInput = {
   designToGarmentCanvas: (gx: number, gy: number) => [number, number];
   customGarmentFabricRigViewWarp: (x: number, y: number) => [number, number];
   genericVertexPlotHighlight: GenericVertexPlotHighlight | null;
+  /**
+   * 服リグの fabric ワープ直前の頂点（place＋rigAlign＋テンプレ X シフト済み）。
+   * 幾何の px はここから取る（ファブリックワープ後は非線形でズレる）。服リグなしでは customPoints と同じ。
+   */
+  customPointsBeforeFabricWarp?: [number, number][] | null;
+  /** `buildTopPlacement` と同一の縦 px/cm（採寸オーバーレイの cm 換算を二重定義しない） */
+  bodyPxPerCm: number;
+  /** 服リグ: ファブリックワープ後に縦スケールをかけたときのパラメータ（肩コンターと同じ Y 変換を適用） */
+  canvasYGradeScale?: { lengthTopY: number; scale: number } | null;
 };
 
 /**
@@ -70,7 +79,13 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
     designToGarmentCanvas,
     customGarmentFabricRigViewWarp,
     genericVertexPlotHighlight,
+    customPointsBeforeFabricWarp,
+    bodyPxPerCm,
+    canvasYGradeScale,
   } = input;
+
+  /** 幾何数値用。ワープ前＝グレードと同じ線形ボディ座標。ワープなしは customPoints と同一。 */
+  const ptsForGeometry = customPointsBeforeFabricWarp ?? customPoints;
 
   const refShoulderLx = useRigLandmarksForPlacement && rigLm ? rigLm.shoulderLx : c.shoulderLx;
   const refShoulderRx = useRigLandmarksForPlacement && rigLm ? rigLm.shoulderRx : c.shoulderRx;
@@ -80,7 +95,7 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
     placeDesignToTemplate(refShoulderLx, shoulderSeamY),
     placeDesignToTemplate(refShoulderRx, shoulderSeamY),
   ];
-  const customContour = hasGarmentRig
+  let customContour: [number, number][] = hasGarmentRig
     ? (customContourBase.map(([x, y]) => {
         const [qx, qy] = applyCustomRigAlignInPlace(x, y, rigAlign);
         return customGarmentFabricRigViewWarp(qx, qy);
@@ -91,6 +106,10 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
           number,
         ][])
       : customContourBase;
+  if (canvasYGradeScale) {
+    const { lengthTopY, scale } = canvasYGradeScale;
+    customContour = applyYScaleToCanvasPoints(customContour, lengthTopY, scale);
+  }
   const customShoulderIdx = usePresetShoulder
     ? presetShoulderIdx!
     : (() => {
@@ -130,14 +149,8 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
   );
   const leftSleeve = leftSleeveStrict.length > 0 ? leftSleeveStrict : customAllOutline.filter((p) => p[0] < centerXGarment && p[1] > shoulderSeamY);
   const sleeveEndPt = leftSleeve.length > 0 ? leftSleeve.reduce((a, b) => (a[1] > b[1] ? a : b)) : null;
-  /**
-   * 着丈・袖の cm 換算は `buildTopPlacement(..., lengthCalibrationHeightCm: REF_HEIGHT_CM)` の
-   * `bodyPxPerCm = bodyHeight(yScaleCal)/REF_HEIGHT_CM` と一致させる。
-   * 身長スライダーは体型ワープ用で、服の縦グレード分母に載せない（195cm 入力で袖・着丈デバッグが歪むのを防ぐ）。
-   */
-  const { yScale: yScaleGarmentMeasure } = getBodyParams(REF_HEIGHT_CM, REF_WEIGHT_KG);
-  const bodyPxPerCm = bodyHeight(yScaleGarmentMeasure) / REF_HEIGHT_CM;
-  // 袖丈: `scaleSleevePathToSpec` と同じく端点の |ΔY|（design で定義）に相当するよう、ボディ上の端点 |ΔY| を bodyPxPerCm で cm 化。赤線は経路の見た目。
+  /** キャンバス側 `buildTopPlacement` と同一の縦 px/cm */
+  // 袖丈: 計測チェーンの弧長（px）を bodyPxPerCm で cm 化。
   let sleeveStart: [number, number] | undefined;
   let sleeveEnd: [number, number] | undefined;
   let sleeveMeasuredCm: number | undefined;
@@ -164,14 +177,43 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
     effSleeveFromGtOrHighlight = [Math.min(Math.trunc(sm0), Math.trunc(sm1)), Math.max(Math.trunc(sm0), Math.trunc(sm1))];
   }
   const sleeveIndicesForOverlay = effSleeveFromGtOrHighlight ?? scalableSpec?.sleeveMeasureIndices ?? null;
-  if (sleeveIndicesForOverlay) {
+  /** 入力欄のハイライトは即時更新、gt の chain はデバウンス遅れあり。先に hl を採ると非連続列が連続 # 扱いにならない */
+  const sleeveVertexChainHl = genericVertexPlotHighlight?.sleeveMeasureVertexChain;
+  const sleeveVertexChainGt = gtSym?.sleeveMeasureVertexChain;
+  const sleeveVertexChain =
+    sleeveVertexChainHl != null && sleeveVertexChainHl.length >= 2
+      ? sleeveVertexChainHl
+      : sleeveVertexChainGt != null && sleeveVertexChainGt.length >= 2
+        ? sleeveVertexChainGt
+        : null;
+  if (sleeveVertexChain != null && sleeveVertexChain.length >= 2) {
+    const pathPts = sleeveVertexChain
+      .map((i) => customPoints[i])
+      .filter((p): p is [number, number] => p != null);
+    const pathPtsGeom = sleeveVertexChain
+      .map((i) => ptsForGeometry[i])
+      .filter((p): p is [number, number] => p != null);
+    if (pathPts.length >= 2 && pathPtsGeom.length >= 2) {
+      const startPt = pathPts[0]!;
+      const endPt = pathPts[pathPts.length - 1]!;
+      sleeveStart = startPt;
+      sleeveEnd = endPt;
+      sleevePathPoints = pathPts;
+      const deltaBodyPx = polylineArcLengthPx(pathPtsGeom);
+      const measured = deltaBodyPx / bodyPxPerCm;
+      sleevePathLengthDebug = { px: Math.round(deltaBodyPx), cm: measured };
+    }
+  } else if (sleeveIndicesForOverlay) {
     const [startIdx, endIdx] = sleeveIndicesForOverlay;
     const startPt = customPoints[startIdx];
     const endPt = customPoints[endIdx];
     const pathPts: [number, number][] = [];
+    const pathPtsGeom: [number, number][] = [];
     for (let i = startIdx; i <= endIdx; i++) {
-      const pt = customPoints[i];
-      if (pt) pathPts.push(pt);
+      const w = customPoints[i];
+      const g = ptsForGeometry[i];
+      if (w) pathPts.push(w);
+      if (g) pathPtsGeom.push(g);
     }
     if (startPt && endPt) {
       sleeveStart = startPt;
@@ -179,17 +221,22 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
       if (pathPts.length >= 2) {
         sleevePathPoints = pathPts;
       }
-      const deltaBodyPx = Math.abs(endPt[1] - startPt[1]);
+      const deltaBodyPx =
+        pathPtsGeom.length >= 2
+          ? polylineArcLengthPx(pathPtsGeom)
+          : Math.hypot(
+              ptsForGeometry[endIdx]![0] - ptsForGeometry[startIdx]![0],
+              ptsForGeometry[endIdx]![1] - ptsForGeometry[startIdx]![1]
+            );
       const measured = deltaBodyPx / bodyPxPerCm;
       sleevePathLengthDebug = { px: Math.round(deltaBodyPx), cm: measured };
-      sleeveMeasuredCm = measured;
     }
   } else {
     sleeveStart = designToGarmentCanvas(sleeveSeamL[0], sleeveSeamL[1]);
     sleeveEnd = sleeveEndPt ? designToGarmentCanvas(sleeveEndPt[0], sleeveEndPt[1]) : undefined;
   }
 
-  // 着丈: 既定は肩ライン〜ランドマーク裾。連結 # ありのときは `lengthMeasureDesignSpanAfterBodyScale` と同じ考え方で端点の |ΔY|（弧長ではない）。
+  // 着丈: 既定は肩ライン〜ランドマーク裾の縦差。連結 # ありのときは採寸頂点間の縦差（グレード紫区間と同じ縦スパン定義）。
   const shoulderYForLength = designToGarmentCanvas(visualShoulderLx, shoulderSeamY)[1];
   let hemCenter: [number, number] = designToGarmentCanvas(refHemCx, refHemY);
   let lengthMeasuredCm = (hemCenter[1] - shoulderYForLength) / bodyPxPerCm;
@@ -206,12 +253,16 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
     const hi = Math.max(Math.trunc(a), Math.trunc(b));
     const pa = customPoints[lo];
     const pb = customPoints[hi];
-    if (!pa || !pb) return false;
-    const topPt = pa[1] <= pb[1] ? pa : pb;
-    const hemPt = pa[1] >= pb[1] ? pa : pb;
-    hemCenter = [hemPt[0], hemPt[1]];
-    lengthMeasureTop = [topPt[0], topPt[1]];
-    const deltaPx = Math.abs(hemPt[1] - topPt[1]);
+    const paG = ptsForGeometry[lo];
+    const pbG = ptsForGeometry[hi];
+    if (!pa || !pb || !paG || !pbG) return false;
+    const topW = pa[1] <= pb[1] ? pa : pb;
+    const hemW = pa[1] >= pb[1] ? pa : pb;
+    hemCenter = [hemW[0], hemW[1]];
+    lengthMeasureTop = [topW[0], topW[1]];
+    const topG = paG[1] <= pbG[1] ? paG : pbG;
+    const hemG = paG[1] >= pbG[1] ? paG : pbG;
+    const deltaPx = Math.abs(hemG[1] - topG[1]);
     lengthMeasuredCm = deltaPx / bodyPxPerCm;
     lengthMeasurePlotRange = [lo, hi];
     lengthPathLengthDebug = {
@@ -237,48 +288,32 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
     tryLengthFromGlobalRange(hlLen[0], hlLen[1]);
   }
 
-  // 汎用トップで服リグ＋脊髄合わせ後の canvas は非線形。端点 |ΔY|÷bodyPxPerCm は入力着丈と一致しない。
-  // 紫・袖ガイド付きのとき、表示の実寸はグレード正の size に揃える。
-  let lengthCmFromSizeInput = false;
-  let sleeveCmFromSizeInput = false;
-  if (customGarmentData.presetId === "genericSymmetricTop") {
-    const lenSpec = customGarmentData.size.length;
-    if (lengthMeasureTop != null && Number.isFinite(lenSpec)) {
-      lengthMeasuredCm = lenSpec;
-      lengthCmFromSizeInput = true;
-    }
-    const slSpec = customGarmentData.size.sleeve;
-    if (sleeveMeasuredCm != null && slSpec != null && Number.isFinite(slSpec)) {
-      sleeveMeasuredCm = slSpec;
-      sleeveCmFromSizeInput = true;
-    }
+  /** 着丈: メッシュ（縦グレード後）の縦スパン。袖: 赤線は選択チェーンの頂点をそのまま通す（プロットと一致）。数値はグレード袖丈のみ表示 */
+  const shoulderLeft = designToGarmentCanvas(visualShoulderLx, shoulderSeamY);
+  const shoulderRight = designToGarmentCanvas(visualShoulderRx, shoulderSeamY);
+  const midShoulderY = (shoulderLeft[1] + shoulderRight[1]) / 2;
+  const lengthTopY = lengthMeasureTop ? lengthMeasureTop[1] : midShoulderY;
+  const lengthPxVert = Math.abs(hemCenter[1] - lengthTopY);
+  const lengthGuideHem: [number, number] = [hemCenter[0], hemCenter[1]];
+  const lengthGeomDebug = { px: Math.round(lengthPxVert), cm: lengthPxVert / bodyPxPerCm };
+  lengthMeasuredCm = lengthGeomDebug.cm;
+
+  const sleevePx = customGarmentData.size.sleeve * bodyPxPerCm;
+  let sleeveGeomDebug: { px: number; cm: number } | undefined;
+  if (sleeveStart && sleeveEnd) {
+    sleeveMeasuredCm = customGarmentData.size.sleeve;
+    sleeveGeomDebug = { px: Math.round(sleevePx), cm: customGarmentData.size.sleeve };
   }
 
-  const lengthGeomDebug: { px: number; cm: number } = lengthPathLengthDebug
-    ? { px: lengthPathLengthDebug.px, cm: lengthPathLengthDebug.cm }
-    : {
-        px: Math.round(Math.abs(hemCenter[1] - shoulderYForLength)),
-        cm: Math.abs(hemCenter[1] - shoulderYForLength) / bodyPxPerCm,
-      };
-  const sleeveGeomDebug: { px: number; cm: number } | undefined =
-    sleevePathLengthDebug != null
-      ? { px: sleevePathLengthDebug.px, cm: sleevePathLengthDebug.cm }
-      : sleeveStart != null && sleeveEnd != null
-        ? {
-            px: Math.round(Math.abs(sleeveEnd[1] - sleeveStart[1])),
-            cm: Math.abs(sleeveEnd[1] - sleeveStart[1]) / bodyPxPerCm,
-          }
-        : undefined;
-
   let garmentOverlay: MeasureOverlayData["garment"] = {
-    shoulderLeft: designToGarmentCanvas(visualShoulderLx, shoulderSeamY),
-    shoulderRight: designToGarmentCanvas(visualShoulderRx, shoulderSeamY),
+    shoulderLeft,
+    shoulderRight,
     hemCenter,
     size: customGarmentData.size,
     lengthMeasuredCm,
+    lengthGuideHem,
+    lengthGeomDebug,
     ...(lengthMeasureTop ? { lengthMeasureTop } : {}),
-    ...(lengthCmFromSizeInput ? { lengthCmFromSizeInput: true } : {}),
-    ...(sleeveCmFromSizeInput ? { sleeveCmFromSizeInput: true } : {}),
     sizeLabel: customGarmentData.presetId === "genericSymmetricTop" ? "汎用トップ" : "カスタム服",
     chestLeft: designToGarmentCanvas(chestMinX, chestMidY),
     chestRight: designToGarmentCanvas(chestMaxX, chestMidY),
@@ -286,7 +321,6 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
     sleeveEnd,
     sleeveMeasuredCm,
     sleevePathPoints,
-    lengthGeomDebug,
     ...(sleeveGeomDebug ? { sleeveGeomDebug } : {}),
   };
 
@@ -298,9 +332,9 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
     const lenDiff = lengthMeasuredCm != null ? Math.abs(lengthMeasuredCm - lenIn) : 0;
     const slDiff = sleeveMeasuredCm != null ? Math.abs(sleeveMeasuredCm - slIn) : 0;
     if (lenDiff > 0.2 || slDiff > 0.2) {
-      console.info("[FITTING_MEASURE] 入力と画面上換算がずれています（採寸オーバーレイの定義差の確認用）", {
-        着丈cm: { 入力: lenIn, 画面上: lengthMeasuredCm ?? "—" },
-        袖丈cm: { 入力: slIn, 画面上: sleeveMeasuredCm ?? "—" },
+      console.info("[FITTING_MEASURE] 入力値と幾何数値がずれています（採寸オーバーレイの定義差の確認用）", {
+        着丈cm: { 入力値: lenIn, 幾何数値: lengthMeasuredCm ?? "—" },
+        袖丈cm: { 入力値: slIn, 幾何数値: sleeveMeasuredCm ?? "—" },
         bodyPxPerCm,
       });
     }
@@ -322,11 +356,22 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
       sleeveStart: shiftPt(garmentOverlay.sleeveStart),
       sleeveEnd: shiftPt(garmentOverlay.sleeveEnd),
       sleevePathPoints: shiftPts(garmentOverlay.sleevePathPoints),
+      ...(garmentOverlay.lengthGuideHem
+        ? { lengthGuideHem: shiftPt(garmentOverlay.lengthGuideHem) as [number, number] }
+        : {}),
       ...(garmentOverlay.lengthMeasureTop
         ? { lengthMeasureTop: shiftPt(garmentOverlay.lengthMeasureTop) as [number, number] }
         : {}),
     };
   }
+
+  const sleevePlotRangeForDebug: [number, number] | null =
+    sleeveVertexChain != null && sleeveVertexChain.length >= 2
+      ? [
+          Math.min(sleeveVertexChain[0]!, sleeveVertexChain[sleeveVertexChain.length - 1]!),
+          Math.max(sleeveVertexChain[0]!, sleeveVertexChain[sleeveVertexChain.length - 1]!),
+        ]
+      : sleeveIndicesForOverlay;
 
   const shoulderDebug: ShoulderDebug = {
     bodyShoulderContour,
@@ -334,7 +379,7 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
     garmentShoulderPoints: customPoints,
     shoulderPointIndex: customShoulderIdx,
     garmentType: "custom",
-    ...(sleeveIndicesForOverlay ? { sleeveMeasurePlotRange: sleeveIndicesForOverlay } : {}),
+    ...(sleevePlotRangeForDebug ? { sleeveMeasurePlotRange: sleevePlotRangeForDebug } : {}),
     ...(sleevePathLengthDebug && { sleevePathLengthDebug }),
     ...(lengthMeasurePlotRange && { lengthMeasurePlotRange }),
     ...(lengthPathLengthDebug && { lengthPathLengthDebug }),

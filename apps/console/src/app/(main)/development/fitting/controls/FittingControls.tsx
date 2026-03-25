@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 import type {
   GarmentType,
@@ -11,7 +12,7 @@ import type {
 } from "../lib/types";
 import { calcFitFromSize, jacketFitLabel } from "../lib/fitCalc";
 import { measureSleeveLengthFromPath, vertexRangeToCoveringPathRange } from "../lib/pathUtils";
-import { parseLineRangeInput } from "../generic";
+import { appendSleeveMeasureVertexWithR, parseLineRangeInput, parseSleeveMeasureVertexInput } from "../generic";
 import { FittingControlsCustomPanels } from "./FittingControlsCustomPanels";
 import { FittingControlsPathCatalogPanel } from "./FittingControlsPathCatalogPanel";
 import { FittingControlsSvgUploadSection } from "./FittingControlsSvgUploadSection";
@@ -49,6 +50,8 @@ interface FittingControlsProps {
   onToggleRigGarment: () => void;
   /** 汎用フィットの入力範囲を服プロットで緑表示するため（着丈区間は除く） */
   onGenericVertexPlotHighlightChange?: (highlight: GenericVertexPlotHighlight | null) => void;
+  /** 服プロット上でホバー中の連結頂点 #（袖丈 r 入力用） */
+  hoveredGarmentVertexIndex?: number | null;
   /** 開発ページレイアウト用（下バー時は w-full など） */
   className?: string;
 }
@@ -82,6 +85,7 @@ export function FittingControls({
   onToggleRigBody,
   onToggleRigGarment,
   onGenericVertexPlotHighlightChange,
+  hoveredGarmentVertexIndex = null,
   className,
 }: FittingControlsProps) {
   const isGenericTopActive = customGarmentData?.presetId === "genericSymmetricTop";
@@ -96,6 +100,31 @@ export function FittingControls({
       onCustomGarmentApply,
       onGenericVertexPlotHighlightChange,
     });
+
+  useEffect(() => {
+    if (!showPlotCoords || hoveredGarmentVertexIndex == null || !isGenericTopActive) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "r" && e.key !== "R") return;
+      if (e.repeat) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+      const hi = hoveredGarmentVertexIndex;
+      if (hi == null || !Number.isFinite(hi)) return;
+      e.preventDefault();
+      setGenericDraft((p) => {
+        const next = appendSleeveMeasureVertexWithR(p.sleeveMeasureRange, hi);
+        const parsed = parseSleeveMeasureVertexInput(next);
+        return {
+          ...p,
+          sleeveMeasureRange: next,
+          sleeveMeasureVertexStart: parsed ? parsed[0] : undefined,
+          sleeveMeasureVertexEnd: parsed ? parsed[1] : undefined,
+        };
+      });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showPlotCoords, hoveredGarmentVertexIndex, isGenericTopActive, setGenericDraft]);
 
   const fit = calcFitFromSize(height, weight, customGarmentData?.size ?? null);
   const fitLabel = jacketFitLabel(fit.chestDiff);
@@ -272,6 +301,7 @@ export function FittingControls({
           genericDraft={genericDraft}
           setGenericDraft={setGenericDraft}
           measureVertexRangeSectionFocusedRef={measureVertexRangeSectionFocusedRef}
+          hoveredGarmentVertexIndex={hoveredGarmentVertexIndex}
         />
       ) : null}
 

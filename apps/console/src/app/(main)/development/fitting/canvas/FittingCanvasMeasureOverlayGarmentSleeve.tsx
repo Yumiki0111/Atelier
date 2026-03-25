@@ -3,7 +3,6 @@
 import React, { type ReactNode } from "react";
 import type { MeasureOverlayData } from "../lib/types";
 import {
-  CM_INPUT_VS_MEASURED_EPS,
   OFFSET_SLEEVE_NORMAL,
   drawArrowDown,
 } from "./fittingCanvasMeasureOverlaySvg";
@@ -18,10 +17,16 @@ export function FittingCanvasMeasureOverlayGarmentSleeve({ g }: { g: GarmentG })
   const inputSleeve = g.size.sleeve;
   const measuredSleeve = g.sleeveMeasuredCm;
   const sleeveGeom = g.sleeveGeomDebug;
-  const sleeveMeasuredDiffers =
-    measuredSleeve != null &&
-    Number.isFinite(measuredSleeve) &&
-    Math.abs(measuredSleeve - inputSleeve) > CM_INPUT_VS_MEASURED_EPS;
+  /** 幾何表示＝グレード袖丈（弧長 px＝入力×bodyPxPerCm）。赤線は選択チェーンの頂点をそのまま通す */
+  const screenSleeveCm =
+    sleeveGeom != null
+      ? sleeveGeom.cm
+      : measuredSleeve != null && Number.isFinite(measuredSleeve)
+        ? measuredSleeve
+        : inputSleeve;
+  const screenSleeveLabel = Number.isFinite(screenSleeveCm) ? screenSleeveCm.toFixed(1) : "—";
+  const hasPath = g.sleevePathPoints && g.sleevePathPoints.length >= 2;
+  const showSleeveGeomLabel = sleeveGeom != null;
   const dx = ex - sx;
   const dy = ey - sy;
   const L = Math.hypot(dx, dy) || 1;
@@ -33,21 +38,9 @@ export function FittingCanvasMeasureOverlayGarmentSleeve({ g }: { g: GarmentG })
   const slMidX = (slStart[0] + slEnd[0]) / 2;
   const slMidY = (slStart[1] + slEnd[1]) / 2;
   const labelOffset = nx >= 0 ? -22 : 22;
-  const hasPath = g.sleevePathPoints && g.sleevePathPoints.length >= 2;
   const strokeColor = hasPath ? "#dc2626" : "#c026d3";
   const fillColor = hasPath ? "#b91c1c" : "#a21caf";
-  const pathHint = hasPath ? " · 赤線＝計測区間" : " · 肩〜袖口";
-  let sleeveDebugLine: string;
-  if (sleeveGeom) {
-    const base = g.sleeveCmFromSizeInput
-      ? `実寸デバッグ 縦差 ${sleeveGeom.px}px · サイズ表袖 ${inputSleeve}cm（ラベル同期） · ボディ換算 ${sleeveGeom.cm.toFixed(1)}cm`
-      : `実寸デバッグ 縦差 ${sleeveGeom.px}px → ${sleeveGeom.cm.toFixed(1)}cm`;
-    sleeveDebugLine = base + pathHint;
-  } else if (sleeveMeasuredDiffers && measuredSleeve != null) {
-    sleeveDebugLine = `画面上（両端の縦差）${measuredSleeve.toFixed(1)}cm · ${hasPath ? "赤線＝計測区間" : "肩〜袖口"}`;
-  } else {
-    sleeveDebugLine = hasPath ? "赤線＝計測区間" : "肩〜袖口";
-  }
+  const pathHint = hasPath ? " · 赤線＝選択チェーンの頂点列" : " · 肩〜袖口";
 
   return (
     <>
@@ -61,16 +54,21 @@ export function FittingCanvasMeasureOverlayGarmentSleeve({ g }: { g: GarmentG })
           strokeLinejoin="round"
         >
           <title>
-            袖丈 入力 {inputSleeve}cm
-            {sleeveGeom != null
-              ? ` · 実寸デバッグ 縦差 ${sleeveGeom.px}px → ${sleeveGeom.cm.toFixed(1)}cm`
-              : measuredSleeve != null
-                ? ` · 画面上 ${measuredSleeve.toFixed(1)}cm`
-                : ""}
+            {showSleeveGeomLabel
+              ? `入力値 ${inputSleeve}cm / 幾何数値 ${screenSleeveLabel}cm · 弧長 ${sleeveGeom?.px ?? "—"}px（チェーン全体）`
+              : `入力値 ${inputSleeve}cm`}
+            {pathHint}
           </title>
         </path>
       ) : (
-        <line x1={sx} y1={sy} x2={ex} y2={ey} stroke={strokeColor} strokeWidth={2} strokeDasharray="4 3" opacity={0.8} />
+        <line x1={sx} y1={sy} x2={ex} y2={ey} stroke={strokeColor} strokeWidth={2} strokeDasharray="4 3" opacity={0.8}>
+          <title>
+            {showSleeveGeomLabel
+              ? `入力値 ${inputSleeve}cm / 幾何数値 ${screenSleeveLabel}cm · 弧長 ${sleeveGeom?.px ?? "—"}px（チェーン全体）`
+              : `入力値 ${inputSleeve}cm`}
+            {pathHint}
+          </title>
+        </line>
       )}
       <circle cx={sx} cy={sy} r={6} fill={strokeColor} fillOpacity={0.9} stroke={fillColor} strokeWidth={2}>
         <title>袖丈 起点（肩）</title>
@@ -88,11 +86,13 @@ export function FittingCanvasMeasureOverlayGarmentSleeve({ g }: { g: GarmentG })
       <line x1={ex} y1={ey} x2={slEnd[0]} y2={slEnd[1]} stroke={strokeColor} strokeWidth={2} opacity={0.7} />
       <line x1={slStart[0]} y1={slStart[1]} x2={slEnd[0]} y2={slEnd[1]} stroke={strokeColor} strokeWidth={2} strokeDasharray="6 4" />
       <path d={drawArrowDown(slEnd[0], slEnd[1])} fill={strokeColor} stroke={fillColor} strokeWidth={2} />
-      <text x={slMidX + labelOffset} y={slMidY} fontSize={16} fontWeight="bold" fill={fillColor} fontFamily="sans-serif" dominantBaseline="middle">
-        袖丈 {inputSleeve}cm（入力）
-      </text>
-      <text x={slMidX + labelOffset} y={slMidY + 18} fontSize={10} fill="#64748b" fontFamily="sans-serif" dominantBaseline="middle">
-        {sleeveDebugLine}
+      <text x={slMidX + labelOffset} y={slMidY} fontSize={14} fontWeight="bold" fill={fillColor} fontFamily="sans-serif" dominantBaseline="middle">
+        <title>
+          入力値＝グレード袖丈。幾何数値＝同じ bodyPxPerCm で換算した cm。赤線は選択した袖丈チェーンの頂点を結んだもの（メッシュ上の実パス）。
+        </title>
+        {showSleeveGeomLabel
+          ? `袖丈 入力値 ${inputSleeve}cm / 幾何数値 ${screenSleeveLabel}cm`
+          : `袖丈 入力値 ${inputSleeve}cm`}
       </text>
     </>
   );

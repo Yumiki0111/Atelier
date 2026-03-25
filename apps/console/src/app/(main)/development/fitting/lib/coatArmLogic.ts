@@ -121,7 +121,27 @@ export function scaleBodyToSpec(
   });
 }
 
-/** 袖パスを採寸スケールに合わせて変換（基準袖丈は lengthStart〜lengthEnd の |ΔY|） */
+/** `pts` 上で i0〜i1（包含端点の間の辺）に沿った弧長（隣接点間距離の合算） */
+function polylineArcLengthPxBetween(
+  pts: [number, number][],
+  i0: number,
+  i1: number
+): number {
+  const lo = Math.min(i0, i1);
+  const hi = Math.max(i0, i1);
+  if (lo < 0 || hi >= pts.length || lo >= hi) return 0;
+  let s = 0;
+  for (let i = lo; i < hi; i++) {
+    const ax = pts[i]![0];
+    const ay = pts[i]![1];
+    const bx = pts[i + 1]![0];
+    const by = pts[i + 1]![1];
+    s += Math.hypot(bx - ax, by - ay);
+  }
+  return s;
+}
+
+/** 袖パスを採寸スケールに合わせて変換（基準袖丈は lengthStart〜lengthEnd 間のポリライン弧長） */
 export function scaleSleevePathToSpec(
   pathD: string,
   spec: ScalableGarmentSpec,
@@ -135,9 +155,7 @@ export function scaleSleevePathToSpec(
 
   const anchor = pts[sleeve.anchorIdx];
   const pxPerCm = garmentLengthPx / spec.bodyLengthCm;
-  const startPt = pts[sleeve.lengthStartIdx];
-  const endPt = pts[sleeve.lengthEndIdx];
-  const lenPx = Math.abs(endPt[1] - startPt[1]);
+  const lenPx = polylineArcLengthPxBetween(pts, sleeve.lengthStartIdx, sleeve.lengthEndIdx);
   const measuredCm = lenPx / pxPerCm;
   if (measuredCm <= 0) return pathD;
   const s = specSleeveCm / measuredCm;

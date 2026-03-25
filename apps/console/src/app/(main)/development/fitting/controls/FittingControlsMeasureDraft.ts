@@ -1,5 +1,7 @@
 import { formatLineRangeInput, parseLineRangeInput } from "../generic";
 
+type ParsePair = (raw: string) => [number, number] | undefined;
+
 export function measureVertexRangeStr(a: number | undefined, b: number | undefined): string {
   if (a == null || b == null || !Number.isFinite(a) || !Number.isFinite(b)) return "";
   const lo = Math.min(Math.trunc(a), Math.trunc(b));
@@ -19,18 +21,19 @@ export function coalesceMeasureDraftFromGt(
   draftRaw: string,
   draftVs: number | undefined,
   draftVe: number | undefined,
-  forceFromGt: boolean
+  forceFromGt: boolean,
+  parsePair: ParsePair = parseLineRangeInput
 ): MeasureDraftSlice {
   if (forceFromGt) {
-    const sp = parseLineRangeInput(gtStr);
+    const sp = parsePair(gtStr);
     return { range: gtStr, vs: sp ? sp[0] : undefined, ve: sp ? sp[1] : undefined };
   }
   const trimmed = draftRaw.trim();
-  const parsedDraft = trimmed === "" ? undefined : parseLineRangeInput(trimmed);
+  const parsedDraft = trimmed === "" ? undefined : parsePair(trimmed);
   if (trimmed !== "" && parsedDraft == null) {
     return { range: draftRaw, vs: draftVs, ve: draftVe };
   }
-  const parsedGt = gtStr.trim() === "" ? undefined : parseLineRangeInput(gtStr);
+  const parsedGt = gtStr.trim() === "" ? undefined : parsePair(gtStr);
   const norm = (p: [number, number]) => {
     const lo = Math.min(p[0], p[1]);
     const hi = Math.max(p[0], p[1]);
@@ -45,6 +48,10 @@ export function coalesceMeasureDraftFromGt(
   if (parsedDraft != null && !pairsEqual) {
     return { range: draftRaw, vs: draftVs, ve: draftVe };
   }
-  const sp = parseLineRangeInput(gtStr);
+  if (parsedDraft != null && pairsEqual && trimmed !== "") {
+    const n = norm(parsedDraft);
+    return { range: draftRaw, vs: n[0], ve: n[1] };
+  }
+  const sp = parsePair(gtStr);
   return { range: gtStr, vs: sp ? sp[0] : undefined, ve: sp ? sp[1] : undefined };
 }

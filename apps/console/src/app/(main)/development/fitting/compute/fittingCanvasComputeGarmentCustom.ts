@@ -1,14 +1,20 @@
 "use client";
 
-import { REF_HEIGHT_CM } from "../lib/constants";
+import { BODY_CX, REF_HEIGHT_CM } from "../lib/constants";
 import { inferLandmarksFromRigPaths } from "../lib/customLandmarkResolve";
 import { buildCustomTransformedPathsWithVertexPlots } from "../lib/customGarmentUtils";
 import type { FittingCanvasRigLandmarksDebug } from "./fittingCanvasComputeTypes";
 import { assembleCustomGarmentOverlayAndShoulderDebug } from "./fittingCanvasComputeGarmentCustomOverlay";
+import {
+  applyGradeLengthVerticalScaleToMeshPaths,
+  computeGradeLengthVerticalScaleParams,
+  wrapDesignToGarmentCanvasWithYScale,
+} from "./fittingCanvasCustomGarmentGradeLength";
 import { smoothStep } from "./fittingCanvasRigArmDebug";
 import {
   applyCustomRigAlignInPlace,
   rigidMapFromShoulderSegmentPair,
+  RIG_LINE_SPINE,
   type CustomRigAlign,
 } from "./fittingCanvasRigAlign";
 import {
@@ -21,6 +27,30 @@ import { scaleModelViewToBodyTemplate } from "../lib/modelRigData";
 import type { CustomGarmentData, GenericVertexPlotHighlight, MeasureOverlayData, ShoulderDebug } from "../lib/types";
 import { getAllPathPoints } from "../lib/fittingContourUtils";
 import { getPathPoints, interpolatePath, tPath } from "../lib/pathUtils";
+
+/** path 群のバウンディングボックスの水平中心（頂点平均より左右対称に近い） */
+function bboxCenterXFromPathDs(pathDs: string[]): number | null {
+  const pts = pathDs.flatMap((d) => getPathPoints(d));
+  if (pts.length === 0) return null;
+  let minX = Infinity;
+  let maxX = -Infinity;
+  for (const [x] of pts) {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+  }
+  return (minX + maxX) / 2;
+}
+
+function bboxCenterXFromPoints(pts: [number, number][]): number | null {
+  if (pts.length === 0) return null;
+  let minX = Infinity;
+  let maxX = -Infinity;
+  for (const [x] of pts) {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+  }
+  return (minX + maxX) / 2;
+}
 
 export type CustomGarmentBranchContext = {
   height: number;
@@ -244,41 +274,8 @@ export function computeCustomGarmentBranch(
     return { enabled: true, dx, dy };
   })();
 
-  /** 服 path 用: ロック時は肩線の向き・中点を脊髄合わせ後に合わせる剛体のみ（体重由来の横スケールは `*Garment` パイプライン） */
   const fabricShoulderLx = useRigLandmarksForPlacement && rigLm ? rigLm.shoulderLx : c.shoulderLx;
   const fabricShoulderRx = useRigLandmarksForPlacement && rigLm ? rigLm.shoulderRx : c.shoulderRx;
-  const customGarmentFabricRigViewWarp: (x: number, y: number) => [number, number] = (() => {
-    if (!rigGeometryLockedToModel) return rigAlignTemplateToRigViewGarment;
-    const translateOnly = (x: number, y: number): [number, number] => {
-      const refW = warpRigLineRefBodyGarment(x, y);
-      if (rigNeckAnchorTranslateOnlyFnGarment)
-        return rigNeckAnchorTranslateOnlyFnGarment(refW[0], refW[1]);
-      if (rigSpineTranslateOnlyFnGarment) return rigSpineTranslateOnlyFnGarment(refW[0], refW[1]);
-      return refW;
-    };
-    if (!rigSpineAlignFnGarment) return translateOnly;
-    const [rslx, rsly] = placeDesignToTemplate(fabricShoulderLx, shoulderSeamY);
-    const [rsrx, rsry] = placeDesignToTemplate(fabricShoulderRx, shoulderSeamY);
-    const [alx, aly] = applyCustomRigAlignInPlace(rslx, rsly, rigAlign);
-    const [arx, ary] = applyCustomRigAlignInPlace(rsrx, rsry, rigAlign);
-    const p0 = warpRigLineRefBodyGarment(alx, aly) as [number, number];
-    const p1 = warpRigLineRefBodyGarment(arx, ary) as [number, number];
-    const q0 = rigSpineAlignFnGarment(p0[0], p0[1]);
-    const q1 = rigSpineAlignFnGarment(p1[0], p1[1]);
-    const rigidMap = rigidMapFromShoulderSegmentPair(p0, p1, q0, q1);
-    if (rigidMap == null) return translateOnly;
-    return (x: number, y: number) => rigidMap(warpRigLineRefBodyGarment(x, y) as [number, number]);
-  })();
-
-  /** デザイン座標 → canvas。服リグあり: place → rigAlign → fabric ワープ。なし: テンプレ配置のみ（服は `warp` で歪ませない） */
-  const designToGarmentCanvas = (gx: number, gy: number): [number, number] => {
-    const [px, py] = placeDesignToTemplate(gx, gy);
-    if (hasGarmentRig) {
-      const [qx, qy] = applyCustomRigAlignInPlace(px, py, rigAlign);
-      return customGarmentFabricRigViewWarp(qx, qy);
-    }
-    return [px, py];
-  };
 
   let customPathDs: string[];
   let customPoints: [number, number][];
@@ -366,10 +363,109 @@ export function computeCustomGarmentBranch(
     customRigPathDs = customRigPathDs.map((d) => tPath(d, alignPlace));
     customPoints = customPoints.map(([x, y]) => alignPlace(x, y));
   }
+
+  /**
+   * リグロック時: ワープ前にテンプレ X をシフトして体の中心に寄せる。
+   * 頂点「平均」X は片側に点が密だと寄り、右（左）に寄せ過ぎるため、服は bbox 中心、脊髄は path0 の bbox 中心。
+   * 脊髄が取れないときは BODY_CX をターゲットにする。
+   */
+  let templateShiftXLocked = 0;
+  if (rigGeometryLockedToModel && hasGarmentRig && rigLinePaths != null && rigLinePaths.length > RIG_LINE_SPINE) {
+    const spineD = rigLinePaths[RIG_LINE_SPINE];
+    const garmentCx = bboxCenterXFromPathDs(customPathDs);
+    const spinePts = spineD ? getPathPoints(spineD) : [];
+    const rigSpineCx = spinePts.length
+      ? bboxCenterXFromPoints(spinePts)
+      : null;
+    const targetCx = rigSpineCx ?? BODY_CX;
+    if (garmentCx != null) {
+      templateShiftXLocked = targetCx - garmentCx;
+    }
+  }
+  if (Math.abs(templateShiftXLocked) > 0.01) {
+    const sh = templateShiftXLocked;
+    customPathDs = customPathDs.map((d) => tPath(d, (x, y) => [x + sh, y]));
+    customPoints = customPoints.map(([x, y]) => [x + sh, y] as [number, number]);
+  }
+
+  const customGarmentFabricRigViewWarp: (x: number, y: number) => [number, number] = (() => {
+    if (!rigGeometryLockedToModel) return rigAlignTemplateToRigViewGarment;
+    const translateOnly = (x: number, y: number): [number, number] => {
+      const refW = warpRigLineRefBodyGarment(x, y);
+      if (rigNeckAnchorTranslateOnlyFnGarment)
+        return rigNeckAnchorTranslateOnlyFnGarment(refW[0], refW[1]);
+      if (rigSpineTranslateOnlyFnGarment) return rigSpineTranslateOnlyFnGarment(refW[0], refW[1]);
+      return refW;
+    };
+    if (!rigSpineAlignFnGarment) return translateOnly;
+    const [rslx, rsly] = placeDesignToTemplate(fabricShoulderLx, shoulderSeamY);
+    const [rsrx, rsry] = placeDesignToTemplate(fabricShoulderRx, shoulderSeamY);
+    const [alx, aly] = applyCustomRigAlignInPlace(rslx, rsly, rigAlign);
+    const [arx, ary] = applyCustomRigAlignInPlace(rsrx, rsry, rigAlign);
+    const sx = templateShiftXLocked;
+    const p0 = warpRigLineRefBodyGarment(alx + sx, aly) as [number, number];
+    const p1 = warpRigLineRefBodyGarment(arx + sx, ary) as [number, number];
+    const q0 = rigSpineAlignFnGarment(p0[0], p0[1]);
+    const q1 = rigSpineAlignFnGarment(p1[0], p1[1]);
+    const rigidMap = rigidMapFromShoulderSegmentPair(p0, p1, q0, q1);
+    if (rigidMap == null) return translateOnly;
+    return (x: number, y: number) =>
+      rigidMap(warpRigLineRefBodyGarment(x, y) as [number, number]);
+  })();
+
+  /** デザイン座標 → canvas。服リグあり: place → rigAlign →（ロック時）テンプレ X シフト → fabric ワープ */
+  const designToGarmentCanvas = (gx: number, gy: number): [number, number] => {
+    const [px, py] = placeDesignToTemplate(gx, gy);
+    if (hasGarmentRig) {
+      const [qx, qy] = applyCustomRigAlignInPlace(px, py, rigAlign);
+      return customGarmentFabricRigViewWarp(qx + templateShiftXLocked, qy);
+    }
+    return [px, py];
+  };
+
+  let customPointsBeforeFabricWarp: [number, number][] | null = hasGarmentRig
+    ? customPoints.map(([x, y]) => [x, y] as [number, number])
+    : null;
+
   if (hasGarmentRig) {
     customPathDs = customPathDs.map((d) => tPath(d, customGarmentFabricRigViewWarp));
     customRigPathDs = customRigPathDs.map((d, idx) => tPath(d, rigTemplateToRigViewForGarmentPath(idx)));
     customPoints = customPoints.map(([x, y]) => customGarmentFabricRigViewWarp(x, y));
+  }
+
+  let designToGarmentCanvasForOverlay = designToGarmentCanvas;
+  let canvasYGradeScale: { lengthTopY: number; scale: number } | null = null;
+  if (hasGarmentRig) {
+    const gradeParams = computeGradeLengthVerticalScaleParams({
+      customGarmentData,
+      customPoints,
+      customAllOutline,
+      c,
+      rigLm,
+      useRigLandmarksForPlacement,
+      shoulderSeamY,
+      designToGarmentCanvas,
+      bodyPxPerCm: placement.bodyPxPerCm,
+      size: customGarmentData.size,
+      genericVertexPlotHighlight,
+    });
+    if (gradeParams != null) {
+      const applied = applyGradeLengthVerticalScaleToMeshPaths(
+        customPathDs,
+        customPoints,
+        gradeParams.lengthTopY,
+        gradeParams.scale
+      );
+      customPathDs = applied.customPathDs;
+      customPoints = applied.customPoints;
+      canvasYGradeScale = gradeParams;
+      designToGarmentCanvasForOverlay = wrapDesignToGarmentCanvasWithYScale(
+        designToGarmentCanvas,
+        gradeParams.lengthTopY,
+        gradeParams.scale
+      );
+      customPointsBeforeFabricWarp = null;
+    }
   }
 
   const { garmentOverlay, shoulderDebug } = assembleCustomGarmentOverlayAndShoulderDebug({
@@ -386,9 +482,12 @@ export function computeCustomGarmentBranch(
     usePresetShoulder,
     presetShoulderIdx,
     placeDesignToTemplate,
-    designToGarmentCanvas,
+    designToGarmentCanvas: designToGarmentCanvasForOverlay,
     customGarmentFabricRigViewWarp,
     genericVertexPlotHighlight,
+    customPointsBeforeFabricWarp,
+    bodyPxPerCm: placement.bodyPxPerCm,
+    canvasYGradeScale,
   });
 
   return {

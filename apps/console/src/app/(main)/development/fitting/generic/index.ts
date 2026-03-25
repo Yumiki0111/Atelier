@@ -20,7 +20,15 @@ export {
 } from "./inferSymmetricTop";
 export type { SymmetricTopTopologyIndices, SymmetricTopGlobalVertexRanges } from "./inferSymmetricTop";
 
-export { lineRangeFromTuple, formatLineRangeInput, parseLineRangeInput, lineIndexInRange } from "./lineRangeUtils";
+export {
+  lineRangeFromTuple,
+  formatLineRangeInput,
+  parseLineRangeInput,
+  parseSleeveMeasureVertexInput,
+  parseSleeveMeasureVertexList,
+  appendSleeveMeasureVertexWithR,
+  lineIndexInRange,
+} from "./lineRangeUtils";
 
 export {
   resolveGenericScalableSpec,

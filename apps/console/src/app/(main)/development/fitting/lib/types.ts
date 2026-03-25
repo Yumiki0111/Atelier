@@ -48,6 +48,11 @@ export interface CustomGarmentData {
     sleeveMeasureVertexStart?: number;
     sleeveMeasureVertexEnd?: number;
     /**
+     * 袖丈の折れ線（連結 #）。カンマ入力で順序付き。指定時は赤線はこの順で結ぶ。
+     * `sleeveMeasureVertexStart/End` は min/max（スケール区間）と揃える。
+     */
+    sleeveMeasureVertexChain?: number[];
+    /**
      * 着丈計測ライン（紫）用の連結頂点。両方指定時のみ `FittingCanvasPlotOverlay` で辿る。
      */
     lengthMeasureVertexStart?: number;
@@ -92,6 +97,8 @@ export type GenericVertexPlotHighlight = {
   sleeveInnerLeft?: [number, number];
   sleeveInnerRight?: [number, number];
   sleeveMeasure?: [number, number];
+  /** 袖丈計測: カンマ列があるときはこの順の # だけ強調（非連続対応） */
+  sleeveMeasureVertexChain?: number[];
   lengthMeasure?: [number, number];
 };
 
@@ -119,7 +126,7 @@ export interface ScalableGarmentSpec {
     /**
      * 袖丈の anchor 基準スケールを **この index 未満** の頂点にだけ適用する（省略時は lengthEndIdx まで従来どおり）。
      * 内袖が胴と共有する裾ラインを、着丈スケール後に袖スケールで再変形しないために使う（ブローゾン path2/8）。
-     * 袖丈比 s の計算用 |ΔY| は引き続き lengthStartIdx〜lengthEndIdx。
+     * 袖丈比 s の計算用は lengthStartIdx〜lengthEndIdx 間のポリライン弧長。
      */
     lengthApplyEndExclusive?: number;
     /** 袖口の点index（腕角度計算用） */
@@ -133,7 +140,7 @@ export interface ScalableGarmentSpec {
   };
   /** デフォルト袖丈(cm) */
   defaultSleeveCm: number;
-  /** 袖丈計測: 全path結合順での [開始, 終了] インデックス。実測 cm は両端の |ΔY|（採寸オーバーレイ） */
+  /** 袖丈計測: 全path結合順での [開始, 終了] インデックス。実測は弧長（採寸オーバーレイ） */
   sleeveMeasureIndices: [number, number];
   /** 脇ラインブレンド距離(px)。省略時は500。服の長さに応じて調整 */
   seamBlendMaxDist?: number;
@@ -239,7 +246,7 @@ export interface ShoulderDebug {
   garmentShoulderPoints: [number, number][];
   shoulderPointIndex: number | null;
   garmentType: GarmentType;
-  /** 袖丈: 計測両端の |ΔY|（px）と換算 cm（経路長ではない） */
+  /** 袖丈: チェーンの弧長（px）と換算 cm */
   sleevePathLengthDebug?: { px: number; cm: number };
   /** プロット上の袖丈計測区間（連結頂点） */
   sleeveMeasurePlotRange?: [number, number];
@@ -264,24 +271,19 @@ export interface MeasureOverlayData {
     chestRight?: [number, number];
     sleeveStart?: [number, number];
     sleeveEnd?: [number, number];
-    /** 袖実寸(cm)。汎用トップ＋袖計測ありは `size.sleeve`。それ以外は端点 |ΔY|÷bodyPxPerCm */
+    /** 袖実寸(cm)。チェーン弧長 px の換算（sleevePathLengthDebug と整合） */
     sleeveMeasuredCm?: number;
-    /** 袖丈の赤線描画用の折れ線。数値は端点の縦差 */
+    /** 袖丈の赤線描画用の折れ線。実寸は弧長。矢印は端点間の直線 */
     sleevePathPoints?: [number, number][];
-    /** 実測着丈(cm)。汎用トップ＋着丈連結#ありは `size.length`（入力）。それ以外は端点 |ΔY| 等 */
+    /** 実測着丈(cm)。着丈 # 区間の頂点縦差換算（lengthPathLengthDebug と整合） */
     lengthMeasuredCm?: number;
     /** 着丈連結区間ありのときの上端（canvas）。縦寸ガイドの起点。無いときは肩平均 Y を使う */
     lengthMeasureTop?: [number, number];
-    /** 汎用トップ：`lengthMeasuredCm` は幾何換算ではなく `size.length`（着丈 A） */
-    lengthCmFromSizeInput?: boolean;
-    /** 汎用トップ：`sleeveMeasuredCm` は `size.sleeve`（袖丈 D） */
-    sleeveCmFromSizeInput?: boolean;
-    /**
-     * 着丈ガイドと同じ定義の |ΔY|（px）と bodyPxPerCm 換算 cm。
-     * 汎用トップで `lengthMeasuredCm` を入力 A に揃えてもこちらは画面上の幾何のまま。
-     */
+    /** 着丈ガイド下端（カスタム服はメッシュ裾と一致） */
+    lengthGuideHem?: [number, number];
+    /** 着丈: メッシュ上の縦スパン px / bodyPxPerCm で換算した cm */
     lengthGeomDebug?: { px: number; cm: number };
-    /** 袖丈：端点の |ΔY|（px/cm）。袖計測インデックスなし時は推定肩〜袖口の |ΔY| */
+    /** 袖: グレード袖丈の px/cm（表示用。赤線は選択チェーンの実座標） */
     sleeveGeomDebug?: { px: number; cm: number };
   } | null;
 }

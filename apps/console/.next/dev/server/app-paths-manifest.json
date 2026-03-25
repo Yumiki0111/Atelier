@@ -1,15 +1,7 @@
 {
-  "/(main)/analytics/page": "app/(main)/analytics/page.js",
   "/(main)/development/page": "app/(main)/development/page.js",
-  "/(main)/install/page": "app/(main)/install/page.js",
   "/(main)/page": "app/(main)/page.js",
-  "/api/assets/by-shop/route": "app/api/assets/by-shop/route.js",
-  "/api/assets/route": "app/api/assets/route.js",
   "/api/auth/post-login/route": "app/api/auth/post-login/route.js",
   "/api/auth/shop-id/route": "app/api/auth/shop-id/route.js",
-  "/api/products/route": "app/api/products/route.js",
-  "/api/upload/route": "app/api/upload/route.js",
-  "/api/widget-keys/route": "app/api/widget-keys/route.js",
-  "/database/products/page": "app/database/products/page.js",
   "/login/page": "app/login/page.js"
 }

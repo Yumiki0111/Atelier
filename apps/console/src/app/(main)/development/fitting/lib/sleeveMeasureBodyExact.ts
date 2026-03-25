@@ -80,3 +80,20 @@ export function mirrorSleeveMeasureRangeToOppositeInner(
   const rB = rMin + Math.round(uHi * denomR);
   return [Math.min(rA, rB), Math.max(rA, rB)];
 }
+
+/** 左内袖の連結 # 1 点を右内袖上の対応点に写す（左右 path の頂点順が逆のときは反転）。 */
+export function mirrorLeftGlobalVertexToRightInner(
+  pathDs: string[],
+  sleeveInnerLeft: LineIndexRange,
+  sleeveInnerRight: LineIndexRange,
+  leftGlobalG: number
+): number | null {
+  const lr = mirrorSleeveMeasureRangeToOppositeInner(
+    pathDs,
+    sleeveInnerLeft,
+    sleeveInnerRight,
+    [leftGlobalG, leftGlobalG]
+  );
+  if (!lr) return null;
+  return lr[0]!;
+}

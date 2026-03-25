@@ -66,6 +66,8 @@ export interface TopPlacement {
   bodyShoulderY: number;
   /** ボディ中心X */
   bodyCx: number;
+  /** 着丈キャリブの縦 px/cm（`bodyHeight(yScaleCal)/safeHCal`）。採寸オーバーレイと共有する */
+  bodyPxPerCm: number;
 }
 
 /**
@@ -169,5 +171,5 @@ export function buildTopPlacement(
     return [bx, by];
   }
 
-  return { place, bodyShoulderY, bodyCx };
+  return { place, bodyShoulderY, bodyCx, bodyPxPerCm };
 }

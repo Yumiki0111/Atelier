@@ -4,7 +4,6 @@ import React, { type ReactNode } from "react";
 import type { MeasureOverlayData } from "../lib/types";
 import {
   ARROW_INSET,
-  CM_INPUT_VS_MEASURED_EPS,
   OFFSET_CHEST_Y,
   OFFSET_LENGTH_X,
   OFFSET_SHOULDER_Y,
@@ -19,7 +18,9 @@ type GarmentG = NonNullable<MeasureOverlayData["garment"]>;
 export function FittingCanvasMeasureOverlayGarment({ g }: { g: GarmentG }): ReactNode {
   const midX = (g.shoulderLeft[0] + g.shoulderRight[0]) / 2;
   const shoulderY = (g.shoulderLeft[1] + g.shoulderRight[1]) / 2;
-  const hemY = g.hemCenter[1];
+  /** 裾 Y: lengthGuideHem があればそれ、なければ hemCenter */
+  const hemY = g.lengthGuideHem ? g.lengthGuideHem[1] : g.hemCenter[1];
+  const hemConnectorX = g.lengthGuideHem ? g.lengthGuideHem[0] : g.hemCenter[0];
   const lengthTopY = g.lengthMeasureTop ? g.lengthMeasureTop[1] : shoulderY;
   const lengthTopHorizX = g.lengthMeasureTop ? g.lengthMeasureTop[0] : midX;
   const lineShoulderY = shoulderY + OFFSET_SHOULDER_Y;
@@ -30,45 +31,15 @@ export function FittingCanvasMeasureOverlayGarment({ g }: { g: GarmentG }): Reac
   const inputLen = g.size.length;
   const measuredLen = g.lengthMeasuredCm;
   const geom = g.lengthGeomDebug;
-  const lengthMeasuredDiffers =
-    measuredLen != null &&
-    Number.isFinite(measuredLen) &&
-    Math.abs(measuredLen - inputLen) > CM_INPUT_VS_MEASURED_EPS;
+  /** 幾何＝グレード縦 px÷bodyPxPerCm（入力着丈と一致） */
+  const screenLengthCm =
+    geom != null
+      ? geom.cm
+      : measuredLen != null && Number.isFinite(measuredLen)
+        ? measuredLen
+        : inputLen;
+  const screenLengthLabel = Number.isFinite(screenLengthCm) ? screenLengthCm.toFixed(1) : "—";
   const midLengthY = (lengthTopY + hemY) / 2;
-  const lengthDebugLine = geom
-    ? g.lengthCmFromSizeInput
-      ? `実寸デバッグ 縦差 ${geom.px}px · サイズ表着丈 ${inputLen}cm（ラベル同期） · ボディ換算 ${geom.cm.toFixed(1)}cm`
-      : `実寸デバッグ 縦差 ${geom.px}px → ${geom.cm.toFixed(1)}cm`
-    : null;
-  let lengthSubLine: ReactNode = null;
-  if (lengthDebugLine != null) {
-    lengthSubLine = (
-      <text
-        x={lineLengthX + 24}
-        y={midLengthY + 18}
-        fontSize={10}
-        fill="#64748b"
-        fontFamily="sans-serif"
-        dominantBaseline="middle"
-      >
-        {lengthDebugLine}
-      </text>
-    );
-  } else if (lengthMeasuredDiffers && measuredLen != null) {
-    lengthSubLine = (
-      <text
-        x={lineLengthX + 24}
-        y={midLengthY + 18}
-        fontSize={10}
-        fill="#64748b"
-        fontFamily="sans-serif"
-        dominantBaseline="middle"
-      >
-        画面上（実測）{measuredLen.toFixed(1)}cm
-      </text>
-    );
-  }
-
   return (
     <>
       {g.sizeLabel && (
@@ -92,19 +63,22 @@ export function FittingCanvasMeasureOverlayGarment({ g }: { g: GarmentG }): Reac
         服の肩縫い左端〜右端
       </text>
       <line x1={lengthTopHorizX} y1={lengthTopY} x2={lineLengthX} y2={lengthTopY} stroke="#7c3aed" strokeWidth={2} opacity={0.9} />
-      <line x1={g.hemCenter[0]} y1={hemY} x2={lineLengthX} y2={hemY} stroke="#7c3aed" strokeWidth={2} opacity={0.9} />
+      <line x1={hemConnectorX} y1={hemY} x2={lineLengthX} y2={hemY} stroke="#7c3aed" strokeWidth={2} opacity={0.9} />
       <line x1={lineLengthX} y1={lengthTopY} x2={lineLengthX} y2={hemY} stroke="#7c3aed" strokeWidth={4} strokeDasharray="6 4" />
       <path d={drawArrowDown(lineLengthX, hemY)} fill="#7c3aed" stroke="#6d28d9" strokeWidth={2} />
       <text
         x={lineLengthX + 24}
         y={midLengthY}
-        fontSize={16}
+        fontSize={14}
         fontWeight="bold"
         fill="#6d28d9"
         fontFamily="sans-serif"
         dominantBaseline="middle"
       >
-        着丈 {inputLen}cm（入力）
+        <title>
+          幾何数値＝メッシュ上の縦スパン（bodyPxPerCm で cm 換算）。服リグ時は輪郭をグレード着丈に合わせて変形済み。
+        </title>
+        {`着丈 入力値 ${inputLen}cm / 幾何数値 ${screenLengthLabel}cm`}
         {(inputLen < 40 || inputLen > 95) && measuredLen == null && !geom && (
           <tspan fontSize={10} fill="#b91c1c">
             {" "}
@@ -112,7 +86,6 @@ export function FittingCanvasMeasureOverlayGarment({ g }: { g: GarmentG }): Reac
           </tspan>
         )}
       </text>
-      {lengthSubLine}
       {(() => {
         const cl = g.chestLeft;
         const cr = g.chestRight;
