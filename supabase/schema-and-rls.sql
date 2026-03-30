@@ -74,4 +74,25 @@ ALTER TABLE public.widget_keys ENABLE ROW LEVEL SECURITY;
 -- pending_invites: id, shop_id, email, role, accepted_at, created_at, UNIQUE(shop_id, email)
 -- shops: id, name, enabled, created_at, updated_at
 -- widget_keys: id, shop_id, public_key, secret_key_hash, allowed_domains, enabled, created_at, updated_at
+-- -----------------------------------------------------------------------------
+-- 5. widget_designs（ウィジェットの見た目・CTA。shop_id で 1 行）
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.widget_designs (
+  shop_id uuid NOT NULL PRIMARY KEY REFERENCES public.shops (id) ON DELETE CASCADE,
+  background_image text,
+  background_color text,
+  theme text DEFAULT 'light',
+  button_color text DEFAULT '#ffffff',
+  button_text text DEFAULT '',
+  button_shape text DEFAULT 'pill',
+  button_image_url text,
+  interface_background_color text DEFAULT '#fafafa',
+  canvas_background_color text DEFAULT '#fafafa',
+  cta_cart_label text DEFAULT 'カートに追加',
+  cta_try_on_label text DEFAULT 'この体型で試着する',
+  cta_accent_color text DEFAULT '#3d3835',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
 -- =============================================================================

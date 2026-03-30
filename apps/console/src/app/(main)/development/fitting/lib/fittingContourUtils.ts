@@ -112,13 +112,8 @@ export function getAllPathPoints(pathDs: string[]): [number, number][] {
   return out;
 }
 
-/** CustomGarmentData から肩線Yを算出（アニメーション時の from/to 用）。プリセット指定時はそのインデックスのY、それ以外は幾何から。 */
+/** CustomGarmentData から肩線Yを算出（アニメーション時の from/to 用）。幾何推定。 */
 export function getShoulderSeamYForData(data: CustomGarmentData): number {
-  const idx = data.shoulderPointIndex;
-  if (idx != null) {
-    const outline = getAllPathPoints(data.pathDs);
-    if (outline.length > idx) return outline[idx][1];
-  }
   const band = 15;
   const c = data.landmarks;
   const raw = shoulderContourFromPath(

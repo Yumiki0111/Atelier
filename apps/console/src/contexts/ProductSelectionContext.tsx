@@ -13,6 +13,8 @@ interface ProductSelectionContextType {
   selectedProduct: Product | undefined;
   selectedSize: ProductSize | undefined;
   selectProduct: (product: Product, size: ProductSize) => void;
+  /** プレビュー用の選択をクリア（商品削除後など） */
+  clearProductSelection: () => void;
   isPreviewOpen: boolean;
   togglePreview: () => void;
   viewStats: ViewStats;
@@ -62,6 +64,12 @@ export function ProductSelectionProvider({
     setSelectedSize(size);
   }, [selectedProduct?.id, selectedSize]);
 
+  const clearProductSelection = useCallback(() => {
+    setSelectedProduct(undefined);
+    setSelectedSize(undefined);
+    setIsPreviewOpen(false);
+  }, []);
+
   const togglePreview = useCallback(() => {
     setIsPreviewOpen((prev) => {
       const newState = !prev;
@@ -91,10 +99,11 @@ export function ProductSelectionProvider({
     selectedProduct,
     selectedSize,
     selectProduct,
+    clearProductSelection,
     isPreviewOpen,
     togglePreview,
     viewStats,
-  }), [selectedProduct, selectedSize, selectProduct, isPreviewOpen, togglePreview, viewStats]);
+  }), [selectedProduct, selectedSize, selectProduct, clearProductSelection, isPreviewOpen, togglePreview, viewStats]);
 
   return (
     <ProductSelectionContext.Provider value={contextValue}>

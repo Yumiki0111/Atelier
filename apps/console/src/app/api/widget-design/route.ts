@@ -16,6 +16,11 @@ function toApiFormat(row: Record<string, unknown>) {
     buttonText: row.button_text ?? "", // デフォルト値は空文字列（設定されていない場合は表示しない）
     buttonShape: row.button_shape === "circle" ? "circle" : "pill",
     buttonImageUrl: row.button_image_url ?? "",
+    interfaceBackgroundColor: (row.interface_background_color as string) ?? "#fafafa",
+    canvasBackgroundColor: (row.canvas_background_color as string) ?? "#fafafa",
+    ctaCartLabel: (row.cta_cart_label as string) ?? "カートに追加",
+    ctaTryOnLabel: (row.cta_try_on_label as string) ?? "この体型で試着する",
+    ctaAccentColor: (row.cta_accent_color as string) ?? "#3d3835",
   };
 }
 
@@ -26,6 +31,15 @@ function toDbFormat(body: Record<string, unknown>) {
   if (body.buttonText !== undefined) fields.button_text = body.buttonText;
   if (body.buttonShape !== undefined) fields.button_shape = body.buttonShape;
   if (body.buttonImageUrl !== undefined) fields.button_image_url = body.buttonImageUrl;
+  if (body.interfaceBackgroundColor !== undefined) {
+    fields.interface_background_color = body.interfaceBackgroundColor;
+  }
+  if (body.canvasBackgroundColor !== undefined) {
+    fields.canvas_background_color = body.canvasBackgroundColor;
+  }
+  if (body.ctaCartLabel !== undefined) fields.cta_cart_label = body.ctaCartLabel;
+  if (body.ctaTryOnLabel !== undefined) fields.cta_try_on_label = body.ctaTryOnLabel;
+  if (body.ctaAccentColor !== undefined) fields.cta_accent_color = body.ctaAccentColor;
   return fields;
 }
 
@@ -49,7 +63,15 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error("Error fetching widget design:", error);
-      return NextResponse.json({ error: "Failed to fetch widget design" }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: "Failed to fetch widget design",
+          /** ローカルでテーブル未作成のときは `relation "widget_designs" does not exist` など */
+          details: error.message,
+          code: error.code,
+        },
+        { status: 500 }
+      );
     }
 
     // まだ設定がない場合はデフォルト値を返す

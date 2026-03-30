@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState, forwardRef } from "react";
+import { PREVIEW_SURFACE_BG } from "./WidgetPreviewChrome";
 
 interface PhoneFrameProps {
   previewContainerRef: React.RefObject<HTMLDivElement | null>;
@@ -11,10 +12,22 @@ interface PhoneFrameProps {
   onFrameBoundsChange?: (bounds: { left: number; top: number; width: number; height: number }) => void;
   borderRef?: React.RefObject<HTMLDivElement | null>;
   children?: React.ReactNode;
+  /** スクリーン内側の下地（フォン枠内のみ）。未指定時は `PREVIEW_SURFACE_BG` */
+  screenContentBackgroundColor?: string;
 }
 
 export const PhoneFrame = forwardRef<HTMLDivElement, PhoneFrameProps>(
-  ({ previewContainerRef, selectedAsset, onFrameBoundsChange, borderRef: externalBorderRef, children }, ref) => {
+  (
+    {
+      previewContainerRef,
+      selectedAsset,
+      onFrameBoundsChange,
+      borderRef: externalBorderRef,
+      children,
+      screenContentBackgroundColor,
+    },
+    ref
+  ) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const internalBorderRef = useRef<HTMLDivElement>(null);
   const borderRef = externalBorderRef || internalBorderRef;
@@ -156,7 +169,7 @@ export const PhoneFrame = forwardRef<HTMLDivElement, PhoneFrameProps>(
                 left: '1px',
                 right: '1px',
                 bottom: '1px',
-                background: '#ffffff',
+                background: screenContentBackgroundColor ?? PREVIEW_SURFACE_BG,
                 borderRadius: 'inherit',
                 overflow: 'hidden',
           pointerEvents: 'auto',

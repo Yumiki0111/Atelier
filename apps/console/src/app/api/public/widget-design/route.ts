@@ -54,6 +54,11 @@ export async function GET(request: NextRequest) {
         shape: data.button_shape === "circle" ? "circle" : "pill", // circle or pill
         imageUrl: data.button_image_url || undefined,
       },
+      interfaceBackgroundColor: data.interface_background_color ?? "#fafafa",
+      canvasBackgroundColor: data.canvas_background_color ?? "#fafafa",
+      ctaCartLabel: data.cta_cart_label ?? "カートに追加",
+      ctaTryOnLabel: data.cta_try_on_label ?? "この体型で試着する",
+      ctaAccentColor: data.cta_accent_color ?? "#3d3835",
     };
 
     const response = NextResponse.json(design);

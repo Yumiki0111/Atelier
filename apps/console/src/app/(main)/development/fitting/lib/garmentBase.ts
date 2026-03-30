@@ -17,8 +17,8 @@
  * 新規トップス追加: 1. viewBox とランドマークを測る 2. landmarks 定義 3. サイズ表 4. buildTopPlacement
  */
 
-import type { SizeMeasure } from "./types";
-import { BODY_CX, BODY_SHOULDER_WIDTH, REF_HEIGHT_CM, REF_WEIGHT_KG } from "./constants";
+import type { CustomLandmarks, SizeMeasure } from "./types";
+import { BODY_CX, BODY_SHOULDER_WIDTH, REF_HEIGHT_CM } from "./constants";
 import { getBodyParams, getZonesAnchored, bodyHeight } from "./bodyUtils";
 
 /** 服SVG内のランドマーク（その服の viewBox 座標系） */
@@ -108,8 +108,35 @@ export function inferLengthCmFromLandmarks(lm: Pick<TopLandmarks, "shoulderY" | 
 }
 
 /**
+ * 着丈(cm)とランドマークの肩幅・着丈(px)比から肩幅(cm)を推定（汎用 SVG 用。固定サイズ表は使わない）。
+ */
+export function inferShoulderCmFromLandmarkSpan(
+  lm: Pick<CustomLandmarks, "shoulderY" | "hemY" | "shoulderLx" | "shoulderRx" | "garmentLengthOverride">,
+  lengthCm: number
+): number {
+  const lengthPx = lm.garmentLengthOverride ?? lm.hemY - lm.shoulderY;
+  if (!Number.isFinite(lengthCm) || lengthCm <= 0 || !Number.isFinite(lengthPx) || lengthPx <= 0) {
+    return 0;
+  }
+  const shoulderPx = lm.shoulderRx - lm.shoulderLx;
+  if (!Number.isFinite(shoulderPx) || shoulderPx <= 0) return 0;
+  const cm = (shoulderPx / lengthPx) * lengthCm;
+  const rounded = Math.round(cm * 10) / 10;
+  return Math.max(34, Math.min(72, rounded));
+}
+
+/**
+ * 固定サイズ表は使わない。推定着丈から袖丈の初期値のみ（グレーディング基準のシード用）。
+ */
+export function inferSleeveCmSeedFromLengthCm(lengthCm: number): number {
+  if (!Number.isFinite(lengthCm) || lengthCm <= 0) return 0;
+  const cm = Math.round(lengthCm * 0.56 * 10) / 10;
+  return Math.max(38, Math.min(95, cm));
+}
+
+/**
  * トップス用の配置。着丈で scaleY を決め、横は totalWidth 指定時は体の肩幅を超えないように scaleX をキャップする。
- * 体重 w により `getBodyParams` の横スケール比を place の X に掛け、胴・脇が体の太りに追従する。
+ * 胴・脇・腰の体重連動はボディ `warp` のみ（服の place の X には体重を掛けない。ヒップ周りと同様、サイズ表・着丈スケール側の見た目を保つ）。
  * @param shoulderOriginY - 指定時はこのYだけボディ肩ラインに合わせる（スケールは landmarks.shoulderY で計算）
  * @param lengthCalibrationHeightCm - 指定時は着丈→scaleY の bodyPxPerCm だけこの身長で計算（肩・ゾーンは h に追従）。未指定時は従来どおり h。カスタム服で身長スライダーに着丈スケールを載せないときは `REF_HEIGHT_CM`。
  */
@@ -123,9 +150,7 @@ export function buildTopPlacement(
   lengthCalibrationHeightCm?: number
 ): TopPlacement {
   const rig = rigLinePaths ?? null;
-  const { yScale, xScale: lateralAtW } = getBodyParams(h, w, rig);
-  const { xScale: lateralRef } = getBodyParams(h, REF_WEIGHT_KG, rig);
-  const lateralWeightFactor = lateralRef > 1e-9 ? lateralAtW / lateralRef : 1;
+  const { yScale } = getBodyParams(h, w, rig);
   const zones = getZonesAnchored(yScale);
   const bodyShoulderY = zones.shoulder + (landmarks.bodyShoulderOffsetY ?? 0);
   const bodyCx = BODY_CX;
@@ -137,10 +162,12 @@ export function buildTopPlacement(
 
   const garmentLength =
     landmarks.garmentLengthOverride ?? landmarks.hemY - landmarks.shoulderY;
-  const bodyLength = size.length * bodyPxPerCm;
   // 着丈が 0 や極端に小さいと scaleY が爆発して服が巨大表示になるためガード
   const MIN_GARMENT_LENGTH = 50;
   const effectiveGarmentLength = Math.max(garmentLength, MIN_GARMENT_LENGTH);
+  /** 着丈(cm)未入力（汎用トップの GENERIC_EMPTY_SIZE 等）では目標着丈が無いので縦スケール 1。0 のままだと bodyLength=0 で scaleY=0 になり服が潰れる */
+  const hasLengthTarget = Number.isFinite(size.length) && size.length > 0;
+  const bodyLength = hasLengthTarget ? size.length * bodyPxPerCm : effectiveGarmentLength;
   const scaleYRaw = bodyLength / effectiveGarmentLength;
   if (garmentLength < MIN_GARMENT_LENGTH && garmentLength > 0) {
     console.warn("[buildTopPlacement] garmentLength too small, clamping", {
@@ -166,7 +193,7 @@ export function buildTopPlacement(
   const originY = shoulderOriginY ?? landmarks.shoulderY;
 
   function place(gx: number, gy: number): [number, number] {
-    const bx = bodyCx + (gx - originX) * scaleX * lateralWeightFactor;
+    const bx = bodyCx + (gx - originX) * scaleX;
     const by = bodyShoulderY + (gy - originY) * scaleY;
     return [bx, by];
   }

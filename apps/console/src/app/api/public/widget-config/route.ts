@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { setCorsHeaders, handleCorsOptions, validatePublicKeyAndDomain } from "@/lib/api/cors";
+import { isGarmentSpecRenderable } from "@/lib/widget-fit/applyWidgetSizeToGarment";
+import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
 
 /**
  * Widget Config 公開API
@@ -46,10 +48,10 @@ export async function GET(request: NextRequest) {
       return setCorsHeaders(response, request);
     }
 
-    // products を (shop_id, external_product_id) で検索
+    // products を (shop_id, external_product_id) で検索（garment_spec は 2D 試着用）
     const { data: product, error: productError } = await supabaseAdmin
       .from("products")
-      .select("id, name, category, thumbnail_url")
+      .select("id, name, category, thumbnail_url, garment_spec")
       .eq("shop_id", shopId)
       .eq("external_product_id", externalProductId)
       .single();
@@ -84,12 +86,20 @@ export async function GET(request: NextRequest) {
       return setCorsHeaders(response, request);
     }
 
-    if (!assetsWithCategory || assetsWithCategory.length === 0) {
-      const response = NextResponse.json({ enabled: false, error: "No assets found for this product" });
+    const garmentFitAvailable = isGarmentSpecRenderable(product.garment_spec);
+
+    if (
+      (!assetsWithCategory || assetsWithCategory.length === 0) &&
+      !garmentFitAvailable
+    ) {
+      const response = NextResponse.json({
+        enabled: false,
+        error: "No assets or garment data for this product",
+      });
       return setCorsHeaders(response, request);
     }
 
-    // サイズごと、カテゴリーごとに最新バージョンのアセットを取得
+    // サイズごと、カテゴリーごとに最新バージョンのアセットを取得（GLB がある場合）
     const assetsBySizeAndCategory = new Map<string, Map<string, { glbUrl?: string; modelUrl?: string; version: number; isActive: boolean; category?: string }>>();
     
     for (const asset of assetsWithCategory) {
@@ -124,40 +134,47 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (assetsBySizeAndCategory.size === 0) {
-      const response = NextResponse.json({ enabled: false });
-      return setCorsHeaders(response, request);
-    }
-
-    // サイズごとのアセットリストを構築
+    // サイズごとのアセットリストを構築（GLB がある場合）。無い場合は garment_spec のプリセットから
     const sizes: Record<string, { glbUrl?: string; modelUrl?: string; category?: string }[]> = {};
     let defaultSize: string | undefined;
-    
-    for (const [size, categoryMap] of assetsBySizeAndCategory.entries()) {
-      const assets: { glbUrl?: string; modelUrl?: string; category?: string }[] = [];
-      for (const [, asset] of categoryMap.entries()) {
-        // modelUrlまたはglbUrlが存在するアセットのみを追加
-        const modelUrl = asset.modelUrl || asset.glbUrl;
-        if (modelUrl) {
-          assets.push({
-            glbUrl: asset.glbUrl || undefined,
-            modelUrl: asset.modelUrl || undefined,
-            category: asset.category,
-          });
+
+    if (assetsBySizeAndCategory.size > 0) {
+      for (const [size, categoryMap] of assetsBySizeAndCategory.entries()) {
+        const assets: { glbUrl?: string; modelUrl?: string; category?: string }[] = [];
+        for (const [, asset] of categoryMap.entries()) {
+          const modelUrl = asset.modelUrl || asset.glbUrl;
+          if (modelUrl) {
+            assets.push({
+              glbUrl: asset.glbUrl || undefined,
+              modelUrl: asset.modelUrl || undefined,
+              category: asset.category,
+            });
+          }
+        }
+        if (assets.length > 0) {
+          sizes[size] = assets;
+        }
+
+        if (!defaultSize || size === "M") {
+          defaultSize = size;
         }
       }
-      // URLが存在するアセットがある場合のみサイズを追加
-      if (assets.length > 0) {
-        sizes[size] = assets;
-      }
-      
-      if (!defaultSize || size === "M") {
-        defaultSize = size;
-      }
-    }
 
-    if (!defaultSize) {
-      defaultSize = Array.from(assetsBySizeAndCategory.keys())[0] || undefined;
+      if (!defaultSize) {
+        defaultSize = Array.from(assetsBySizeAndCategory.keys())[0] || undefined;
+      }
+    } else if (garmentFitAvailable) {
+      const gs = product.garment_spec as CustomGarmentData;
+      const presets = gs.genericSymmetricTop?.sizePresets ?? [];
+      if (presets.length > 0) {
+        for (const p of presets) {
+          sizes[p.label] = [{ category }];
+        }
+        defaultSize = presets[0].label;
+      } else {
+        sizes.default = [{ category }];
+        defaultSize = "default";
+      }
     }
 
     // ウィジェットデザイン設定を取得
@@ -167,17 +184,24 @@ export async function GET(request: NextRequest) {
       .eq("shop_id", shopId)
       .maybeSingle();
 
-    const design = designData ? {
-      backgroundImage: designData.background_image || undefined,
-      backgroundColor: designData.background_color || undefined,
-      theme: designData.theme || "light",
-      button: {
-        color: designData.button_color || "#ffffff",
-        text: designData.button_text || "", // デフォルト値は空文字列（設定されていない場合は表示しない）
-        shape: designData.button_shape === "circle" ? "circle" : "pill",
-        imageUrl: designData.button_image_url || undefined,
-      },
-    } : undefined;
+    const design = designData
+      ? {
+          backgroundImage: designData.background_image || undefined,
+          backgroundColor: designData.background_color || undefined,
+          theme: designData.theme || "light",
+          button: {
+            color: designData.button_color || "#ffffff",
+            text: designData.button_text || "", // デフォルト値は空文字列（設定されていない場合は表示しない）
+            shape: designData.button_shape === "circle" ? "circle" : "pill",
+            imageUrl: designData.button_image_url || undefined,
+          },
+          interfaceBackgroundColor: designData.interface_background_color ?? "#fafafa",
+          canvasBackgroundColor: designData.canvas_background_color ?? "#fafafa",
+          ctaCartLabel: designData.cta_cart_label ?? "カートに追加",
+          ctaTryOnLabel: designData.cta_try_on_label ?? "この体型で試着する",
+          ctaAccentColor: designData.cta_accent_color ?? "#3d3835",
+        }
+      : undefined;
 
     const responseData = {
       enabled: true,
@@ -186,6 +210,8 @@ export async function GET(request: NextRequest) {
         sizes,
         productName: product.name,
         thumbnailUrl: product.thumbnail_url || undefined,
+        /** 開発で登録した SVG 試着を API `/api/public/widget-fit-svg` で再現可能 */
+        garmentFitAvailable,
       },
       design,
     };

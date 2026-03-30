@@ -12,10 +12,14 @@ export type GenericDraft = {
   sleeveInnerRight: string;
   /** 袖丈計測区間（連結 #）。`parseLineRangeInput` と同じ記法 */
   sleeveMeasureRange: string;
+  /** 反対側袖（ミラー袖）計測区間。指定すると胴グレードから袖パスを除外し変形を防ぐ */
+  sleeveMirrorMeasureRange: string;
   /** 着丈計測区間（連結 #） */
   lengthMeasureRange: string;
   sleeveMeasureVertexStart?: number;
   sleeveMeasureVertexEnd?: number;
+  sleeveMirrorMeasureVertexStart?: number;
+  sleeveMirrorMeasureVertexEnd?: number;
   lengthMeasureVertexStart?: number;
   lengthMeasureVertexEnd?: number;
 };
@@ -27,6 +31,7 @@ export function emptyGenericDraft(): GenericDraft {
     sleeveInnerLeft: "",
     sleeveInnerRight: "",
     sleeveMeasureRange: "",
+    sleeveMirrorMeasureRange: "",
     lengthMeasureRange: "",
   };
 }

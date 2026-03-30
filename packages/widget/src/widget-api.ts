@@ -11,17 +11,20 @@ export interface WidgetParams {
   url?: string | null;
 }
 
-/** 開発環境用のモックウィジェット設定を生成 */
+/** 開発環境用のモックウィジェット設定を生成（2Dウィジェット用・サイズキーのみ利用） */
 function createDevMockConfig(): WidgetConfig {
-  const glbUrl = "http://localhost:3000/3d/Model.fbx";
+  const placeholder = { category: "default" as const };
   return {
     enabled: true,
     asset: {
-      defaultSize: "M",
+      defaultSize: "4",
+      productName: "SAMPLE PRODUCT",
+      priceDisplay: "¥ 110,000 tax in",
+      garmentFitAvailable: false,
       sizes: {
-        S: [{ glbUrl }],
-        M: [{ glbUrl }],
-        L: [{ glbUrl }],
+        "3": [placeholder],
+        "4": [placeholder],
+        "5": [placeholder],
       },
     },
   };
@@ -144,8 +147,7 @@ export async function fetchWidgetDesign(publicKey: string): Promise<WidgetDesign
     clearTimeout(timeoutId);
     if (!res.ok) return null;
     const data = await res.json();
-    // 空オブジェクトチェック
-    if (!data || (!data.button && !data.theme)) return null;
+    if (!data || typeof data !== "object") return null;
     return data as WidgetDesignConfig;
   } catch {
     return null;

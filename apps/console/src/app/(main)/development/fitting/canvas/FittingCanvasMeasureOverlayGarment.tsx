@@ -18,11 +18,11 @@ type GarmentG = NonNullable<MeasureOverlayData["garment"]>;
 export function FittingCanvasMeasureOverlayGarment({ g }: { g: GarmentG }): ReactNode {
   const midX = (g.shoulderLeft[0] + g.shoulderRight[0]) / 2;
   const shoulderY = (g.shoulderLeft[1] + g.shoulderRight[1]) / 2;
-  /** 裾 Y: lengthGuideHem があればそれ、なければ hemCenter */
-  const hemY = g.lengthGuideHem ? g.lengthGuideHem[1] : g.hemCenter[1];
   const hemConnectorX = g.lengthGuideHem ? g.lengthGuideHem[0] : g.hemCenter[0];
   const lengthTopY = g.lengthMeasureTop ? g.lengthMeasureTop[1] : shoulderY;
   const lengthTopHorizX = g.lengthMeasureTop ? g.lengthMeasureTop[0] : midX;
+  /** Y 再スケール後の hemY（メッシュ頂点の post-scale 座標） */
+  const postScaleHemY = g.lengthGuideHem ? g.lengthGuideHem[1] : g.hemCenter[1];
   const lineShoulderY = shoulderY + OFFSET_SHOULDER_Y;
   const lineLengthX = midX + OFFSET_LENGTH_X;
   const slL = g.shoulderLeft[0];
@@ -31,15 +31,43 @@ export function FittingCanvasMeasureOverlayGarment({ g }: { g: GarmentG }): Reac
   const inputLen = g.size.length;
   const measuredLen = g.lengthMeasuredCm;
   const geom = g.lengthGeomDebug;
-  /** 幾何＝グレード縦 px÷bodyPxPerCm（入力着丈と一致） */
+  const rawBefore = g.lengthGeomBeforeLengthMeshDebug;
+
+  /**
+   * 幾何の正＝補正前（Y 再スケール適用前のワープ後メッシュ縦÷bodyPxPerCm）。
+   * Y スケールは lengthTopY を原点に適用されるため、pre-scale の hemY は逆算できる:
+   *   preHemY = lengthTopY + rawBefore.px * sign(postScaleHemY - lengthTopY)
+   * 矢印もこの pre-scale 座標を使うことで「数値 = 矢印の長さ」を保証する。
+   */
+  const hemY =
+    rawBefore != null && Number.isFinite(rawBefore.px) && g.lengthMeasureTop != null
+      ? lengthTopY + rawBefore.px * Math.sign(postScaleHemY - lengthTopY)
+      : postScaleHemY;
+
   const screenLengthCm =
-    geom != null
-      ? geom.cm
-      : measuredLen != null && Number.isFinite(measuredLen)
-        ? measuredLen
-        : inputLen;
+    rawBefore != null && Number.isFinite(rawBefore.cm)
+      ? rawBefore.cm
+      : geom != null && Number.isFinite(geom.cm)
+        ? geom.cm
+        : measuredLen != null && Number.isFinite(measuredLen)
+          ? measuredLen
+          : inputLen;
   const screenLengthLabel = Number.isFinite(screenLengthCm) ? screenLengthCm.toFixed(1) : "—";
+
+  /**
+   * 入力値と幾何（補正前）が 0.05cm 以上ずれているとき 2 行目に入力値を表示。
+   * 一致していれば 1 行で十分。
+   */
+  const lengthMeasureIsEditPreview = g.lengthMeasureIsEditPreview === true;
+  const inputDiffLabel =
+    Number.isFinite(screenLengthCm) && Math.abs(screenLengthCm - inputLen) > 0.05
+      ? inputLen.toString()
+      : null;
   const midLengthY = (lengthTopY + hemY) / 2;
+  const lengthLabelX = lineLengthX + 24;
+  /** tspan+dy は環境によって1行に潰れるため、2行目は別 <text> */
+  const lengthLine1Y = inputDiffLabel != null ? midLengthY - 10 : midLengthY;
+  const lengthLine2Y = inputDiffLabel != null ? midLengthY + 12 : null;
   return (
     <>
       {g.sizeLabel && (
@@ -47,16 +75,16 @@ export function FittingCanvasMeasureOverlayGarment({ g }: { g: GarmentG }): Reac
           {g.sizeLabel}
         </text>
       )}
-      <line x1={slL + ARROW_INSET} y1={lineShoulderY} x2={slR - ARROW_INSET} y2={lineShoulderY} stroke="#2563eb" strokeWidth={3} strokeDasharray="6 4" />
-      <path d={drawArrowLeftSm(slL, lineShoulderY)} fill="#2563eb" stroke="#1d4ed8" strokeWidth={1.5} />
-      <path d={drawArrowRightSm(slR, lineShoulderY)} fill="#2563eb" stroke="#1d4ed8" strokeWidth={1.5} />
-      <text x={slL} y={lineShoulderY - 6} fontSize={11} fill="#1d4ed8" fontFamily="sans-serif" textAnchor="middle">
+      <line x1={slL + ARROW_INSET} y1={lineShoulderY} x2={slR - ARROW_INSET} y2={lineShoulderY} stroke="#525252" strokeWidth={3} strokeDasharray="6 4" />
+      <path d={drawArrowLeftSm(slL, lineShoulderY)} fill="#525252" stroke="#404040" strokeWidth={1.5} />
+      <path d={drawArrowRightSm(slR, lineShoulderY)} fill="#525252" stroke="#404040" strokeWidth={1.5} />
+      <text x={slL} y={lineShoulderY - 6} fontSize={11} fill="#404040" fontFamily="sans-serif" textAnchor="middle">
         ここから
       </text>
-      <text x={slR} y={lineShoulderY - 6} fontSize={11} fill="#1d4ed8" fontFamily="sans-serif" textAnchor="middle">
+      <text x={slR} y={lineShoulderY - 6} fontSize={11} fill="#404040" fontFamily="sans-serif" textAnchor="middle">
         ここまで
       </text>
-      <text x={midX} y={lineShoulderY + 26} fontSize={16} fontWeight="bold" fill="#1d4ed8" fontFamily="sans-serif" textAnchor="middle">
+      <text x={midX} y={lineShoulderY + 26} fontSize={16} fontWeight="bold" fill="#404040" fontFamily="sans-serif" textAnchor="middle">
         肩幅 {g.size.shoulder}cm
       </text>
       <text x={midX} y={lineShoulderY + 44} fontSize={10} fill="#64748b" fontFamily="sans-serif" textAnchor="middle">
@@ -66,26 +94,61 @@ export function FittingCanvasMeasureOverlayGarment({ g }: { g: GarmentG }): Reac
       <line x1={hemConnectorX} y1={hemY} x2={lineLengthX} y2={hemY} stroke="#7c3aed" strokeWidth={2} opacity={0.9} />
       <line x1={lineLengthX} y1={lengthTopY} x2={lineLengthX} y2={hemY} stroke="#7c3aed" strokeWidth={4} strokeDasharray="6 4" />
       <path d={drawArrowDown(lineLengthX, hemY)} fill="#7c3aed" stroke="#6d28d9" strokeWidth={2} />
-      <text
-        x={lineLengthX + 24}
-        y={midLengthY}
-        fontSize={14}
-        fontWeight="bold"
-        fill="#6d28d9"
-        fontFamily="sans-serif"
-        dominantBaseline="middle"
-      >
-        <title>
-          幾何数値＝メッシュ上の縦スパン（bodyPxPerCm で cm 換算）。服リグ時は輪郭をグレード着丈に合わせて変形済み。
-        </title>
-        {`着丈 入力値 ${inputLen}cm / 幾何数値 ${screenLengthLabel}cm`}
-        {(inputLen < 40 || inputLen > 95) && measuredLen == null && !geom && (
-          <tspan fontSize={10} fill="#b91c1c">
-            {" "}
-            （要確認）
-          </tspan>
-        )}
-      </text>
+      {inputDiffLabel != null && lengthLine2Y != null ? (
+        <>
+          <text
+            x={lengthLabelX}
+            y={lengthLine1Y}
+            fontSize={14}
+            fontWeight="bold"
+            fill="#6d28d9"
+            fontFamily="sans-serif"
+            dominantBaseline="middle"
+          >
+            <title>
+              幾何＝Y 再スケール前（ワープ直後）のメッシュ紫区間縦÷bodyPxPerCm。矢印も同じ補正前座標。
+            </title>
+            {`着丈 幾何 ${screenLengthLabel}cm`}
+          </text>
+          <text
+            x={lengthLabelX}
+            y={lengthLine2Y}
+            fontSize={12}
+            fontWeight={600}
+            fill="#b91c1c"
+            fontFamily="sans-serif"
+            dominantBaseline="middle"
+          >
+            <title>
+              入力着丈。幾何と一致していない場合はワープ（着丈メッシュ前）の段階で歪みが生じています。
+            </title>
+            {`入力 ${inputDiffLabel}cm`}
+          </text>
+        </>
+      ) : (
+        <text
+          x={lengthLabelX}
+          y={midLengthY}
+          fontSize={14}
+          fontWeight="bold"
+          fill="#6d28d9"
+          fontFamily="sans-serif"
+          dominantBaseline="middle"
+        >
+          <title>
+            {lengthMeasureIsEditPreview
+              ? "編集中プレビュー: 幾何数値は確定した着丈頂点区間（gt）基準。プロットのハイライトと異なる場合があります。"
+              : "幾何＝Y 再スケール前（ワープ直後）のメッシュ紫区間縦÷bodyPxPerCm。矢印も同じ座標で一致。"}
+          </title>
+          {`着丈 幾何 ${screenLengthLabel}cm${lengthMeasureIsEditPreview ? " · 編集プレビュー" : ""}`}
+          {(inputLen < 40 || inputLen > 95) && measuredLen == null && !geom && (
+            <tspan fontSize={10} fill="#b91c1c">
+              {" "}
+              （要確認）
+            </tspan>
+          )}
+        </text>
+      )}
       {(() => {
         const cl = g.chestLeft;
         const cr = g.chestRight;

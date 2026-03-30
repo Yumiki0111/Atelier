@@ -6,7 +6,7 @@ import {
   computeFittingCanvasSnapshot,
   type UseFittingCanvasDataParams,
   type FittingCanvasSnapshot,
-} from "../compute/fittingCanvasCompute";
+} from "@/lib/fitting-compute/fittingCanvasCompute";
 
 export type { UseFittingCanvasDataParams, FittingCanvasSnapshot };
 

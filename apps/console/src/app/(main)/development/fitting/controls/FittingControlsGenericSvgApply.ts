@@ -1,18 +1,19 @@
 import { inferLandmarksFromRigPaths } from "../lib/customLandmarkResolve";
 import {
-  splitGarmentPathsFromSvg,
+  splitGarmentPathsFromSvgParsed,
   getLandmarksFromPaths,
-  parseSvgPaths,
+  parseSvgPathsDetailed,
+  expandSvgParsedPathsBySubpaths,
 } from "../lib/customGarmentUtils";
-import { REF_HEIGHT_CM } from "../lib/constants";
 import { getGenericSymmetricTopPreset } from "../generic/getGenericSymmetricTopPreset";
-import { inferLengthCmFromLandmarks } from "../lib/garmentBase";
+import { GENERIC_EMPTY_SIZE } from "../generic/genericDevDefaults";
 import type { CustomGarmentData, GarmentType } from "../lib/types";
 
 export type GenericSvgUploadPresetKey = "3" | "4" | "5";
 
 /**
  * 汎用トップ用: SVG テキストを解析し `genericSymmetricTop` プリセットとして親へ渡す。
+ * 採寸は自動推定しない（`GENERIC_EMPTY_SIZE`）。パネルで手入力する。
  */
 export function applyGenericSymmetricTopFromSvgText(
   text: string,
@@ -24,58 +25,55 @@ export function applyGenericSymmetricTopFromSvgText(
   }
 ): void {
   const { onGarmentChange, onCustomGarmentApply, setUploadError } = ctx;
-  const rawPathDs = parseSvgPaths(text);
-  const { garmentPathDs, rigPathDs } = splitGarmentPathsFromSvg(rawPathDs);
+  const rawPaths = parseSvgPathsDetailed(text);
+  const parsed = expandSvgParsedPathsBySubpaths(rawPaths);
+  const { garmentPaths, rigPaths } = splitGarmentPathsFromSvgParsed(parsed);
+  if (process.env.NODE_ENV === "development") {
+    console.log("[fitting][svg-upload] subpath expand", {
+      pathTags: rawPaths.length,
+      afterExpand: parsed.length,
+      extraSubpaths: parsed.length - rawPaths.length,
+      garmentPaths: garmentPaths.length,
+      rigPaths: rigPaths.length,
+    });
+  }
+  const garmentPathDs = garmentPaths.map((p) => p.d);
+  const pathStrokeDasharrays = garmentPaths.map((p) => p.strokeDasharray);
+  const pathStrokeWidths = garmentPaths.map((p) => p.strokeWidth);
+  const pathStrokes = garmentPaths.map((p) => p.stroke);
+  const rigPathDs = rigPaths.map((p) => p.d);
   if (garmentPathDs.length === 0) {
-    setUploadError(`SVG 解析失敗: path がありません（raw: ${rawPathDs.length}）`);
+    setUploadError(`SVG 解析失敗: path がありません（raw: ${parsed.length}）`);
     return;
   }
   setUploadError(null);
   const autoLm = getLandmarksFromPaths(garmentPathDs);
   const rigLm = rigPathDs.length >= 6 ? inferLandmarksFromRigPaths(rigPathDs) : null;
   const base = getGenericSymmetricTopPreset(presetSizeKey);
-  const MODEL_RIG_H = 6431;
   const rigShoulderY = rigLm?.shoulderY ?? null;
   const effectiveHemY =
     autoLm?.hemY != null && rigShoulderY != null && autoLm.hemY > (rigLm?.hemY ?? 0)
       ? autoLm.hemY
       : (rigLm?.hemY ?? null);
-  const effectiveLenPx =
-    effectiveHemY != null && rigShoulderY != null ? effectiveHemY - rigShoulderY : null;
-  const rigLenCm =
-    effectiveLenPx != null && Number.isFinite(effectiveLenPx)
-      ? (effectiveLenPx * REF_HEIGHT_CM) / MODEL_RIG_H
-      : null;
 
   const mergedLandmarks =
     rigLm != null ? { ...rigLm, hemY: effectiveHemY ?? rigLm.hemY } : (autoLm ?? base.landmarks);
-  const lengthFromLandmarks = inferLengthCmFromLandmarks(mergedLandmarks);
-  const lengthCm =
-    lengthFromLandmarks != null
-      ? lengthFromLandmarks
-      : rigLenCm != null && Number.isFinite(rigLenCm)
-        ? rigLenCm
-        : base.size.length;
 
   onGarmentChange("custom");
   onCustomGarmentApply({
     ...base,
     pathDs: garmentPathDs,
+    pathStrokeDasharrays,
+    pathStrokeWidths,
+    pathStrokes,
     debugRigPathDs: rigPathDs,
     landmarks: mergedLandmarks,
-    size: {
-      shoulder: base.size.shoulder,
-      chest: base.size.chest,
-      length: lengthCm,
-      sleeve: base.size.sleeve,
-    },
+    size: { ...GENERIC_EMPTY_SIZE },
     presetId: "genericSymmetricTop",
     genericSymmetricTop: {
+      ...base.genericSymmetricTop,
       applied: false,
-      sizePresets: getGenericSymmetricTopPreset(presetSizeKey).genericSymmetricTop?.sizePresets,
-      // アップロードでは 4 シームが無いが measure-only 胴グレードに baseline が要る（シード effect が four で弾かれていた）
-      gradingBaselineLengthCm: lengthCm,
-      gradingBaselineSleeveCm: base.size.sleeve,
+      sizePresets: [],
     },
   });
 }

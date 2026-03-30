@@ -212,7 +212,7 @@
 
 ---
 
-## 12. 袖・腕の追従（`coatArmLogic` / `sleeveOnlyTransform`）
+## 12. 袖・腕の追従（`scalableGarmentArmLogic` / `sleeveOnlyTransform`）
 
 - **`computeSleeveRotations`:** プレース後シーム方向 vs **渡された腕ポリライン** → 肩周り回転。
 - **`sleeveOnlyTransform`:** 外腕へブレンド（袖付け weight 0 等は実装準拠）。
@@ -269,7 +269,7 @@
 | プレース | `lib/garmentBase.ts` |
 | カスタム変換 | `customGarment/buildCustomTransformedPaths.ts` |
 | カスタム服・リグロック水平合わせ | `compute/fittingCanvasComputeGarmentCustom.ts`、`CUSTOM_GARMENT_CENTERING.md` |
-| 袖 | `lib/sleeveOnlyTransform.ts`, `lib/coatArmLogic.ts` |
+| 袖 | `lib/sleeveOnlyTransform.ts`, `lib/scalableGarmentArmLogic.ts` |
 | 汎用 fit | `generic/runGenericTopFit.ts`, `applyGenericMeasureOnlyGrading.ts` |
 | 肩角度図（表示） | `canvas/FittingCanvasRigAngleDiagram.tsx` |
 | 開発ページ状態 | `../page.tsx` |

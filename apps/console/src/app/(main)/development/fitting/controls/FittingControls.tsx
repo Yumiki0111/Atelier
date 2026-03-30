@@ -92,8 +92,13 @@ export function FittingControls({
   const hasUploadedGenericSvg =
     isGenericTopActive && customGarmentData != null && customGarmentData.pathDs.length > 0;
 
-  const { genericDraft, setGenericDraft, measureVertexRangeSectionFocusedRef, presetSizeKey } =
-    useFittingControlsGenericDraftSync({
+  const {
+    genericDraft,
+    setGenericDraft,
+    measureVertexRangeSectionFocusedRef,
+    flushMeasureVertexDraftToParent,
+    presetSizeKey,
+  } = useFittingControlsGenericDraftSync({
       isGenericTopActive,
       customGarmentData,
       jacketSize,
@@ -114,11 +119,12 @@ export function FittingControls({
       setGenericDraft((p) => {
         const next = appendSleeveMeasureVertexWithR(p.sleeveMeasureRange, hi);
         const parsed = parseSleeveMeasureVertexInput(next);
+        const degeneratePair = parsed != null && parsed[0] === parsed[1];
         return {
           ...p,
           sleeveMeasureRange: next,
-          sleeveMeasureVertexStart: parsed ? parsed[0] : undefined,
-          sleeveMeasureVertexEnd: parsed ? parsed[1] : undefined,
+          sleeveMeasureVertexStart: parsed && !degeneratePair ? parsed[0] : undefined,
+          sleeveMeasureVertexEnd: parsed && !degeneratePair ? parsed[1] : undefined,
         };
       });
     };
@@ -290,7 +296,6 @@ export function FittingControls({
       {garment === "custom" && customGarmentData ? (
         <FittingControlsCustomPanels
           customGarmentData={customGarmentData}
-          shoulderDebug={shoulderDebug}
           onCustomGarmentApply={onCustomGarmentApply}
         />
       ) : null}
@@ -301,6 +306,7 @@ export function FittingControls({
           genericDraft={genericDraft}
           setGenericDraft={setGenericDraft}
           measureVertexRangeSectionFocusedRef={measureVertexRangeSectionFocusedRef}
+          flushMeasureVertexDraftToParent={flushMeasureVertexDraftToParent}
           hoveredGarmentVertexIndex={hoveredGarmentVertexIndex}
         />
       ) : null}
@@ -357,7 +363,8 @@ export function FittingControls({
           </div>
           <p className="mt-2 text-[10px] leading-snug text-slate-400">
             コンソール:{" "}
-            <code className="rounded bg-slate-100 px-0.5 font-mono text-[9px]">DEBUG_FITTING_MEASURE</code> /{" "}
+            <code className="rounded bg-slate-100 px-0.5 font-mono text-[9px]">DEBUG_FITTING_MEASURE</code>
+            （開発ビルドのみ。本番ではログ出力なし）/{" "}
             <code className="rounded bg-slate-100 px-0.5 font-mono text-[9px]">DEBUG_FITTING_CANVAS</code> /{" "}
             <code className="rounded bg-slate-100 px-0.5 font-mono text-[9px]">DEBUG_RIG_ARM</code>
           </p>

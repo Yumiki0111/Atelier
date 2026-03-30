@@ -43,7 +43,11 @@ const navigationItems = [
         label: "ダッシュボード",
         icon: "/icon/home.png"
     },
-    // { href: "/widget-design", label: "インターフェース", icon: "/icon/palet.png" }, // 無効化
+    {
+        href: "/widget-design",
+        label: "インターフェース",
+        icon: "/icon/palet.png"
+    },
     {
         href: "/database/products",
         label: "商品データベース",
@@ -269,6 +273,11 @@ function ProductSelectionProvider({ children }) {
         selectedProduct?.id,
         selectedSize
     ]);
+    const clearProductSelection = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"])(()=>{
+        setSelectedProduct(undefined);
+        setSelectedSize(undefined);
+        setIsPreviewOpen(false);
+    }, []);
     const togglePreview = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"])(()=>{
         setIsPreviewOpen((prev)=>{
             const newState = !prev;
@@ -298,6 +307,7 @@ function ProductSelectionProvider({ children }) {
             selectedProduct,
             selectedSize,
             selectProduct,
+            clearProductSelection,
             isPreviewOpen,
             togglePreview,
             viewStats
@@ -305,6 +315,7 @@ function ProductSelectionProvider({ children }) {
         selectedProduct,
         selectedSize,
         selectProduct,
+        clearProductSelection,
         isPreviewOpen,
         togglePreview,
         viewStats
@@ -314,7 +325,7 @@ function ProductSelectionProvider({ children }) {
         children: children
     }, void 0, false, {
         fileName: "[project]/atelier/apps/console/src/contexts/ProductSelectionContext.tsx",
-        lineNumber: 100,
+        lineNumber: 109,
         columnNumber: 5
     }, this);
 }

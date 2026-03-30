@@ -21,6 +21,14 @@ export const GENERIC_DEV_PLACEHOLDER_LANDMARKS: CustomLandmarks = {
   garmentLengthOverride: 2748,
 };
 
+/** 互換用: SVGアップロード直後に採寸未入力状態へ戻す空サイズ */
+export const GENERIC_EMPTY_SIZE: SizeMeasure = {
+  length: 0,
+  shoulder: 0,
+  chest: 0,
+  sleeve: 0,
+};
+
 export function genericTopSizeForKey(sizeKey: "3" | "4" | "5"): SizeMeasure {
   return GENERIC_TOP_SIZE_BY_KEY[sizeKey] ?? GENERIC_TOP_SIZE_BY_KEY["4"];
 }

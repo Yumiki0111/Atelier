@@ -4,6 +4,7 @@ import { getAuthenticatedUser } from "@/lib/auth/middleware";
 import { updateProductSchema } from "@atelier/shared";
 import { ZodError } from "zod";
 import { stripGarmentSpecForStorage } from "@/lib/products/stripGarmentSpecForStorage";
+import { validateGarmentSpecForProduction } from "@/lib/products/validateGarmentSpecForProduction";
 
 // GET /api/products/:id - Get product by ID
 export async function GET(
@@ -113,7 +114,17 @@ export async function PATCH(
       updateData.thumbnail_url = validated.thumbnailUrl === "" ? null : validated.thumbnailUrl;
     }
     if (validated.garmentSpec !== undefined) {
-      updateData.garment_spec = stripGarmentSpecForStorage(validated.garmentSpec);
+      const garmentSpecStored = stripGarmentSpecForStorage(validated.garmentSpec);
+      if (garmentSpecStored != null) {
+        const v = validateGarmentSpecForProduction(garmentSpecStored);
+        if (!v.ok) {
+          return NextResponse.json(
+            { error: "Invalid garment_spec", message: v.message },
+            { status: 400 }
+          );
+        }
+      }
+      updateData.garment_spec = garmentSpecStored;
     }
 
     updateData.updated_at = new Date().toISOString();

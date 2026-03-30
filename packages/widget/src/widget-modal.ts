@@ -1,21 +1,16 @@
-import type { WidgetConfig } from "./types";
-import { init3DViewer, buildHeightSlider, renderCatTabs, renderThumbs, renderLeftPanel, buildAxisOverlay, renderAxis, createAxisControls, WIDGET_SIZES, OUTFIT_CATEGORIES } from "@atelier/preview";
-import type { ViewerInstance, OutfitAssetItem, OutfitAssetsData } from "@atelier/preview";
+import type { WidgetConfig, WidgetColorSwatch } from "./types";
 import { isDevelopmentMode, getApiBaseUrl } from "./widget-utils";
 import { sendEvent, type WidgetParams } from "./widget-api";
-import { buildDragBar, makeArrowBtn, dismissSheet, openSheet, setupDragToDismiss } from "./widget-sheet";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+const ACCENT_DEFAULT = "#3d3835";
 
-interface ActiveAsset {
-  id: string;
-  url: string;
-  thumbnailUrl: string | null;
-  productName: string;
-  category: string;
-}
-
-// ─── CSS injection ─────────────────────────────────────────────────────────────
+/** 開発ページのデフォルト体重 60kg と揃える（`weightKgFromBodyVal`: 50 + (v/100)*40） */
+const DEFAULT_FIT_BODY_VAL = 25;
+const DEFAULT_SWATCHES: WidgetColorSwatch[] = [
+  { id: "default-1", hex: "#e8c547", label: "Yellow" },
+  { id: "default-2", hex: "#d4d4d4", label: "Grey" },
+  { id: "default-3", hex: "#1a1a1a", label: "Black" },
+];
 
 function injectStyles() {
   if (document.getElementById("atelier-bs-styles")) return;
@@ -23,21 +18,100 @@ function injectStyles() {
   s.id = "atelier-bs-styles";
   s.textContent = `
     @keyframes atelier-fade-in  { from{opacity:0} to{opacity:1} }
-    @keyframes atelier-slide-up { from{transform:translateY(100%)} to{transform:translateY(0)} }
     @keyframes atelier-spin     { to{transform:rotate(360deg)} }
     [data-atelier-modal] * {
       box-sizing: border-box;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
-    [data-atelier-outfit-scroll]::-webkit-scrollbar,
-    [data-atelier-left-panel]::-webkit-scrollbar  { display: none }
-    [data-atelier-outfit-scroll],
-    [data-atelier-left-panel]  { scrollbar-width: none; -ms-overflow-style: none }
   `;
   document.head.appendChild(s);
 }
 
-// ─── Public API ────────────────────────────────────────────────────────────────
+function sortSizeKeys(keys: string[]): string[] {
+  return [...keys].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+
+function closeOverlay(overlay: HTMLElement) {
+  const cleanup = (overlay as unknown as { __atelierCleanup?: { fn: () => void } }).__atelierCleanup;
+  if (cleanup) cleanup.fn();
+  overlay.style.transition = "opacity 0.2s ease-out";
+  overlay.style.opacity = "0";
+  setTimeout(() => {
+    if (overlay.parentNode) overlay.remove();
+  }, 200);
+}
+
+function el<K extends keyof HTMLElementTagNameMap>(
+  tag: K,
+  style?: string,
+  text?: string
+): HTMLElementTagNameMap[K] {
+  const node = document.createElement(tag);
+  if (style) node.style.cssText = style;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+/** 正面シルエット（線画） */
+function createBodySilhouetteSvg(): SVGSVGElement {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 120 260");
+  svg.setAttribute("fill", "none");
+  svg.style.cssText = "width:100%;height:100%;max-height:min(85%, 320px);opacity:0.85;";
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute(
+    "d",
+    "M60 22c9 0 16-7 16-16S69 0 60 0s-16 7-16 16 7 16 16 16zm0 18c-12 0-22 8-24 19l-4 22 8 2 6-14 2 48-8 52 10 2 10-38 10 38 10-2-8-52 2-48 6 14 8-2-4-22c-2-11-12-19-24-19z"
+  );
+  path.setAttribute("stroke", "#c8c8c8");
+  path.setAttribute("stroke-width", "1.4");
+  svg.appendChild(path);
+  return svg;
+}
+
+function iconPerson(): SVGSVGElement {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  svg.setAttribute("fill", "none");
+  svg.style.cssText = "width:12px;height:12px;display:block;flex-shrink:0;";
+  const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+  c.setAttribute("cx", "12");
+  c.setAttribute("cy", "6");
+  c.setAttribute("r", "3");
+  c.setAttribute("stroke", "currentColor");
+  c.setAttribute("stroke-width", "1.5");
+  const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  p.setAttribute(
+    "d",
+    "M6 21v-2a4 4 0 014-4h4a4 4 0 014 4v2M9 10h6"
+  );
+  p.setAttribute("stroke", "currentColor");
+  p.setAttribute("stroke-width", "1.5");
+  p.setAttribute("stroke-linecap", "round");
+  svg.appendChild(c);
+  svg.appendChild(p);
+  return svg;
+}
+
+function iconCart(): SVGSVGElement {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("width", "15");
+  svg.setAttribute("height", "15");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  p.setAttribute(
+    "d",
+    "M6 6h15l-1.5 9h-12L4.5 3H2M6 6L4.5 3M8 21a1 1 0 100-2 1 1 0 000 2zm10 0a1 1 0 100-2 1 1 0 000 2z"
+  );
+  p.setAttribute("stroke", "#fff");
+  p.setAttribute("stroke-width", "1.6");
+  p.setAttribute("stroke-linecap", "round");
+  p.setAttribute("stroke-linejoin", "round");
+  svg.appendChild(p);
+  return svg;
+}
 
 export function renderModalWithLoading(
   _shadowRoot: ShadowRoot,
@@ -45,7 +119,6 @@ export function renderModalWithLoading(
 ): { overlay: HTMLElement; contentArea: HTMLElement } {
   injectStyles();
 
-  // 既存の閉じたモーダルを削除（蓄積防止）
   const existingOverlays = document.querySelectorAll<HTMLElement>("[data-atelier-modal-overlay='true']");
   existingOverlays.forEach((el) => {
     if (el.style.opacity === "0" || parseFloat(el.style.opacity) < 0.1) {
@@ -53,13 +126,12 @@ export function renderModalWithLoading(
     }
   });
 
-  /* ── 全面ウィジェット（モーダルではなく） ── */
   const overlay = document.createElement("div");
   overlay.setAttribute("data-atelier-modal", "true");
   overlay.setAttribute("data-atelier-modal-overlay", "true");
   overlay.style.cssText = `
     position: fixed !important; inset: 0 !important;
-    background: #fff !important;
+    background: #ececec !important;
     z-index: 10000 !important;
     display: flex !important;
     flex-direction: column !important;
@@ -67,33 +139,26 @@ export function renderModalWithLoading(
     opacity: 0; animation: atelier-fade-in 0.22s ease-out forwards;
   `;
 
-  /* ── spinner ── */
   const contentArea = document.createElement("div");
   contentArea.setAttribute("data-atelier-content-area", "true");
-  contentArea.style.cssText = "flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;";
+  contentArea.style.cssText =
+    "flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;padding:max(8px, env(safe-area-inset-top)) 12px max(8px, env(safe-area-inset-bottom));box-sizing:border-box;background:#ececec;";
 
   const spinWrap = document.createElement("div");
-  spinWrap.style.cssText = "flex:1;display:flex;align-items:center;justify-content:center;";
+  spinWrap.style.cssText = "flex:1;display:flex;align-items:center;justify-content:center;width:100%;";
   const spin = document.createElement("img");
   spin.src = `${getApiBaseUrl()}/logo.png`;
   spin.alt = "";
-  spin.style.cssText = `
-    width:56px;height:56px;
-    object-fit:contain;
-    animation:atelier-spin 2s linear infinite;
-  `;
+  spin.style.cssText = "width:56px;height:56px;object-fit:contain;animation:atelier-spin 2s linear infinite;";
   spinWrap.appendChild(spin);
   contentArea.appendChild(spinWrap);
 
   overlay.appendChild(contentArea);
   document.body.appendChild(overlay);
-  
-  /* ── deferred cleanup callback (filled in by updateModalWithConfig) ── */
-  const cleanup = { fn: (): void => {} };
 
-  /* expose cleanup holder so updateModalWithConfig can register viewer.destroy */
-  (overlay as any).__atelierCleanup = cleanup;
-  
+  const cleanup = { fn: (): void => {} };
+  (overlay as unknown as { __atelierCleanup: typeof cleanup }).__atelierCleanup = cleanup;
+
   return { overlay, contentArea };
 }
 
@@ -108,817 +173,576 @@ export function updateModalWithConfig(
   injectStyles();
 
   contentArea.innerHTML = "";
-  contentArea.style.cssText = "flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;position:relative;";
+  contentArea.style.cssText =
+    "flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;position:relative;background:#ececec;padding:max(8px, env(safe-area-inset-top)) 12px max(8px, env(safe-area-inset-bottom));box-sizing:border-box;";
 
-  /* ── analytics ── */
+  const ui = config.design;
+  const interfaceBg = ui?.interfaceBackgroundColor ?? "#fafafa";
+  const canvasBg = ui?.canvasBackgroundColor ?? "#fafafa";
+  const ctaCart = ui?.ctaCartLabel ?? "カートに追加";
+  const ctaTryOn = ui?.ctaTryOnLabel ?? "この体型で試着する";
+  const accent = ui?.ctaAccentColor ?? ACCENT_DEFAULT;
+
+  /** コンソール `PreviewPanel` と同様: 端末枠内に試着 UI のみ（全画面ではなく電話サイズ） */
+  const phoneFrameOuter = el(
+    "div",
+    "width:100%;max-width:310.5px;height:100%;max-height:672px;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;"
+  );
+  const phoneShell = el(
+    "div",
+    "flex:1;min-height:0;display:flex;flex-direction:column;width:100%;height:100%;" +
+      "background:linear-gradient(145deg,#3a3a3c 0%,#1c1c1e 40%,#2c2c2e 60%,#1c1c1e 100%);" +
+      "border-radius:44px;border:1px solid rgba(130,130,135,0.5);padding:10px;box-sizing:border-box;"
+  );
+  const phoneScreen = el(
+    "div",
+    `position:relative;flex:1;min-height:0;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:${interfaceBg};border-radius:34px;`
+  );
+  phoneShell.appendChild(phoneScreen);
+  phoneFrameOuter.appendChild(phoneShell);
+  contentArea.appendChild(phoneFrameOuter);
+
   const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const eshopId = params.shopId || undefined;
   if (eshopId && eshopId !== "unknown") {
     const pid = params.productId || params.externalProductId || "";
     sendEvent({
-      shopId: eshopId as string,
+      shopId: eshopId,
       productId: uuidRe.test(pid) ? pid : undefined,
       type: "widget_open",
     }).catch(() => {});
   }
 
-  const apiBaseUrl = getApiBaseUrl() || "http://localhost:3000";
-  const SIZES = ["S", "M", "L", "XL"];
-  let currentSize: string = config.asset?.defaultSize || "M";
+  const asset = config.asset;
+  const productName = asset?.productName || "商品名";
+  const priceText = asset?.priceDisplay || "—";
+  const thumbnailUrl = asset?.thumbnailUrl || "";
+  /** 開発で登録した garment_spec をサーバーで着用計算するモード（publicKey 必須） */
+  const garmentFitAvailable = asset?.garmentFitAvailable === true && !!params.publicKey;
 
-  const activeAssets = new Map<string, ActiveAsset>();
-  let outfitData: OutfitAssetsData = { categories: {} };
-  let currentCategory: string = OUTFIT_CATEGORIES[0];
-  let selectedAssetId: string | null = null;
+  let sizeKeys = sortSizeKeys(Object.keys(asset?.sizes || {}));
+  if (sizeKeys.length === 0) {
+    sizeKeys = garmentFitAvailable ? ["default"] : ["3", "4", "5"];
+  }
+  let currentSize = asset?.defaultSize && sizeKeys.includes(asset.defaultSize) ? asset.defaultSize : sizeKeys[0];
 
-  // ─── Layout ────────────────────────────────────────────
-  //   viewerArea (flex:1, position:relative)
-  //     viewerEl           (absolute, inset:0)
-  //     leftPanel overlay  (absolute, top-left)
-  //     sliderOverlay      (absolute, bottom-right)
-  //   bottomPanel
-  //     sizeRow
-  //     outfitPanel
-  //       thumbsRow
-  //       catTabs
-  // ───────────────────────────────────────────────────────
+  const swatches = garmentFitAvailable
+    ? []
+    : asset?.colors?.length
+      ? asset.colors
+      : DEFAULT_SWATCHES;
+  let selectedColorId = swatches[0]?.id || "";
+  let garmentImg: HTMLImageElement | null = null;
 
-  /* ── viewer area (画面上3/4, 白背景) ── */
-  const viewerArea = document.createElement("div");
-  viewerArea.style.cssText = `
-    flex: 0 0 75%;
-    min-height: 0;
-    position: relative;
-    overflow: hidden;
-    background: #fff;
-  `;
+  let fitHeightCm = 170;
+  let fitBodyVal = DEFAULT_FIT_BODY_VAL;
 
-  /* ── 3D viewer container ── */
-  const viewerEl = document.createElement("div");
-  viewerEl.style.cssText = "position:absolute;inset:0;";
-
-  /* ── 性別ボタンオーバーレイ（3Dモデルの上） ── */
-  const genderOverlay = document.createElement("div");
-  genderOverlay.style.cssText = `
-    position:absolute;
-    top:16px;
-    left:50%;
-    transform:translateX(-50%);
-    display:flex;
-    gap:8px;
-    z-index:25;
-    opacity:0;
-    transition:opacity 0.3s ease-out;
-  `;
-
-  /* ── left panel (wearing asset slots – absolute overlay) ── */
-  const leftPanel = document.createElement("div");
-  leftPanel.setAttribute("data-atelier-left-panel", "true");
-  leftPanel.style.cssText = `
-    position: absolute; top: max(12px, 5vh); left: 10px;
-    display: flex; flex-direction: column;
-    align-items: center; gap: 8px;
-    z-index: 20;
-    opacity: 0;
-    transition: opacity 0.3s ease-out;
-  `;
-
-  // XYZ軸オーバーレイ（右上に固定）
-  const { overlay: axisOverlay, svg: axisSvg } = buildAxisOverlay();
-
-  // 身長バーはこの画面では不要（削除）
-
-  viewerArea.appendChild(viewerEl);
-  // 性別ボタンはウィジェットでは非表示にする（将来の拡張用にDOMは保持しない）
-  viewerArea.appendChild(leftPanel);
-  viewerArea.appendChild(axisOverlay);
-
-  /* ── bottom panel ── */
-  const bottomPanel = document.createElement("div");
-  bottomPanel.style.cssText = `
-    flex-shrink: 0;
-    background: #fff;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    padding: 0;
-    gap: 0;
-  `;
-
-  // ─── 商品情報行（商品名、サイズ選択、価格） ──
-  const productInfoRow = document.createElement("div");
-  productInfoRow.style.cssText = `
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    padding: 6px 12px 4px;
-    padding-top: max(6px, env(safe-area-inset-top));
-  `;
-
-  // 左側：商品名とサイズ選択
-  const leftInfo = document.createElement("div");
-  leftInfo.style.cssText = `
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  `;
-
-  // 商品名
-  const productNameEl = document.createElement("div");
-  productNameEl.style.cssText = `
-    font-size: 12px;
-    font-weight: bold;
-    color: #000;
-    line-height: 1.2;
-  `;
-  productNameEl.textContent = config.asset?.productName || "商品名";
-  leftInfo.appendChild(productNameEl);
-
-  // サイズ選択バー
-  const sizeRow = document.createElement("div");
-  sizeRow.style.cssText = `
-    display: flex;
-    gap: 6px;
-    align-items: center;
-  `;
-
-  // サイズボタンをバー形式で作成
-  SIZES.forEach((size) => {
-    const sizeBtn = document.createElement("button");
-    sizeBtn.textContent = size;
-    sizeBtn.style.cssText = `
-      padding: 0;
-      font-size: 12px;
-      font-weight: ${size === currentSize ? 'bold' : 'normal'};
-      color: ${size === currentSize ? '#000' : '#666'};
-      background: transparent;
-      border: none;
-      border-bottom: ${size === currentSize ? '2px solid #000' : 'none'};
-      cursor: pointer;
-      transition: all 0.2s;
-      line-height: 1.2;
-    `;
-    sizeBtn.addEventListener("click", () => {
-      currentSize = size;
-      // すべてのボタンのスタイルを更新
-      sizeRow.querySelectorAll("button").forEach((btn) => {
-        const btnSize = btn.textContent;
-        btn.style.fontWeight = btnSize === currentSize ? 'bold' : 'normal';
-        btn.style.color = btnSize === currentSize ? '#000' : '#666';
-        btn.style.borderBottom = btnSize === currentSize ? '2px solid #000' : 'none';
-      });
-      onSizeChange(currentSize);
-    });
-    sizeRow.appendChild(sizeBtn);
-  });
-  leftInfo.appendChild(sizeRow);
-
-  // 右側：価格
-  const priceEl = document.createElement("div");
-  priceEl.style.cssText = `
-    font-size: 12px;
-    font-weight: bold;
-    color: #000;
-    white-space: nowrap;
-    line-height: 1.2;
-  `;
-  priceEl.textContent = "74,000 JPY"; // TODO: priceをconfigから取得できるようにする
-
-  productInfoRow.appendChild(leftInfo);
-  productInfoRow.appendChild(priceEl);
-  bottomPanel.appendChild(productInfoRow);
-
-  // 商品情報行の下に区切り線を追加
-  const divider = document.createElement("div");
-  divider.style.cssText = `
-    height: 1px;
-    background: #e5e7eb;
-    margin: 0 12px;
-  `;
-  bottomPanel.appendChild(divider);
-
-  /* outfit thumbnails (horizontal scroll) - 5つの空のプレースホルダー */
-  const thumbsRow = document.createElement("div");
-  thumbsRow.setAttribute("data-atelier-outfit-scroll", "true");
-  thumbsRow.style.cssText = `
-    display: flex;
-    flex-direction: row;
-    gap: 6px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 4px 12px;
-    align-items: center;
-    min-height: 0;
-  `;
-
-  // 5つの空のプレースホルダーを作成（WIDGET_SIZESに合わせて62px x 76px）
-  for (let i = 0; i < 5; i++) {
-    const placeholder = document.createElement("div");
-    placeholder.style.cssText = `
-      width: 62px;
-      height: 76px;
-      flex-shrink: 0;
-      background: #f3f4f6;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-    `;
-    thumbsRow.appendChild(placeholder);
+  function weightKgFromBodyVal(v: number): number {
+    return Math.round(50 + (v / 100) * 40);
   }
 
-  /* category tabs */
-  const catTabs = document.createElement("div");
-  catTabs.style.cssText = `
-    display: flex;
-    flex-direction: row;
-    gap: 2px;
-    padding: 4px 12px 6px;
-    overflow-x: auto;
-    flex-shrink: 0;
-  `;
-
-  bottomPanel.appendChild(thumbsRow);
-  bottomPanel.appendChild(catTabs);
-
-  /* ── step1: 初期モデル作成パネル ── */
-  const setupPanel = document.createElement("div");
-  setupPanel.style.cssText = `
-    flex-shrink:0;
-    padding:20px 20px 24px;
-    display:flex;
-    flex-direction:column;
-    gap:20px;
-    opacity:0;
-    transition:opacity 0.3s ease-out;
-    background:#fff;
-  `;
-
-  // 性別トグル
-  let currentGender: "male" | "female" = "male";
-
-  function makeGenderButton(label: string, value: "male" | "female"): HTMLButtonElement {
-    const btn = document.createElement("button");
-    btn.textContent = label;
-    btn.style.cssText = `
-      padding:10px 20px;
-      font-size:15px;
-      font-weight:700;
-      border-radius:8px;
-      border:${value === currentGender ? "none" : "1px solid #111"};
-      cursor:pointer;
-      background:${value === currentGender ? "#111" : "rgba(255,255,255,0.95)"};
-      color:${value === currentGender ? "#fff" : "#111"};
-      transition:background 0.15s,color 0.15s,border 0.15s;
-      backdrop-filter:blur(4px);
-      box-shadow:0 2px 8px rgba(0,0,0,0.1);
-    `;
-    btn.addEventListener("click", () => {
-      currentGender = value;
-      maleBtn.style.background = currentGender === "male" ? "#111" : "#fff";
-      maleBtn.style.color = currentGender === "male" ? "#fff" : "#111";
-      maleBtn.style.border = currentGender === "male" ? "none" : "1px solid #111";
-      femaleBtn.style.background = currentGender === "female" ? "#111" : "#fff";
-      femaleBtn.style.color = currentGender === "female" ? "#fff" : "#111";
-      femaleBtn.style.border = currentGender === "female" ? "none" : "1px solid #111";
-      // 将来的に男女別モデルに切り替える場合はここで viewer.updateModelUrl などを呼ぶ
-    });
-    return btn;
+  const cleanup = (overlay as unknown as { __atelierCleanup?: { fn: () => void } }).__atelierCleanup;
+  if (cleanup) {
+    cleanup.fn = () => {};
   }
 
-  const maleBtn = makeGenderButton("男性", "male");
-  const femaleBtn = makeGenderButton("女性", "female");
-  genderOverlay.appendChild(maleBtn);
-  genderOverlay.appendChild(femaleBtn);
-
-  // ラベル付きスライダー
-  function buildLabeledSlider(
-    label: string,
-    min: number,
-    max: number,
-    initial: number,
-    step: number = 1
-  ): { row: HTMLElement; input: HTMLInputElement; valueLabel: HTMLElement } {
-    const row = document.createElement("div");
-    row.style.cssText = "display:flex;flex-direction:column;gap:8px;width:100%;";
-
-    const labelRow = document.createElement("div");
-    labelRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;font-size:14px;color:#111;";
-    const labelSpan = document.createElement("span");
-    labelSpan.textContent = label;
-    labelSpan.style.cssText = "font-weight:500;";
-    const valueSpan = document.createElement("span");
-    valueSpan.textContent = String(initial);
-    valueSpan.style.cssText = "font-weight:700;";
-    labelRow.appendChild(labelSpan);
-    labelRow.appendChild(valueSpan);
-
-    const input = document.createElement("input");
-    input.type = "range";
-    input.min = String(min);
-    input.max = String(max);
-    input.step = String(step);
-    input.value = String(initial);
-    input.style.cssText = `
-      width:100%;
-      height:4px;
-      border-radius:2px;
-      background:#e5e7eb;
-      outline:none;
-      -webkit-appearance:none;
-    `;
-    
-    // スライダーのスタイルをカスタマイズ（WebKit）
-    const style = document.createElement("style");
-    style.textContent = `
-      input[type="range"]::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        background: #111;
-        cursor: pointer;
-      }
-      input[type="range"]::-moz-range-thumb {
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        background: #111;
-        cursor: pointer;
-        border: none;
-      }
-    `;
-    if (!document.getElementById("atelier-slider-styles")) {
-      style.id = "atelier-slider-styles";
-      document.head.appendChild(style);
-    }
-
-    row.appendChild(labelRow);
-    row.appendChild(input);
-    return { row, input, valueLabel: valueSpan };
-  }
-
-  const MIN_H = 160, MAX_H = 190;
-  let setupHeightValue = 170;
-  const heightSlider = buildLabeledSlider("身長", MIN_H, MAX_H, setupHeightValue, 1);
-
-  let bodyValue = 0;
-  const bodySlider = buildLabeledSlider("体型", 0, 100, 0, 1);
-
-  // スライダーを縦に並べるコンテナ
-  const slidersRow = document.createElement("div");
-  slidersRow.style.cssText = "display:flex;flex-direction:column;gap:16px;width:100%;";
-  slidersRow.appendChild(heightSlider.row);
-  slidersRow.appendChild(bodySlider.row);
-
-  const startBtn = document.createElement("button");
-  startBtn.textContent = "試着を始める";
-  startBtn.style.cssText = `
-    margin-top:4px;
-    width:100%;
-    padding:14px 0;
-    font-size:16px;
-    font-weight:700;
-    border-radius:999px;
-    border:none;
-    cursor:pointer;
-    background:#000;
-    color:#fff;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:4px;
-  `;
-  
-  // 右矢印アイコンを追加
-  const arrowIcon = document.createElement("span");
-  arrowIcon.textContent = "▶";
-  arrowIcon.style.cssText = "font-size:12px;";
-  startBtn.appendChild(arrowIcon);
-
-  setupPanel.appendChild(slidersRow);
-  setupPanel.appendChild(startBtn);
-
-  // 「試着を始める」ボタンのイベントハンドラ
-  startBtn.addEventListener("click", () => {
-    enterTryOnStep();
-  });
-
-  /* ── assemble into contentArea ── */
-  contentArea.appendChild(viewerArea);
-  contentArea.appendChild(setupPanel);
-  contentArea.appendChild(bottomPanel);
-  
-  // シート全体をドラッグできるようにする（ドラッグハンドルだけでなく、シート上部もドラッグ可能）
-  // シートの上部60pxをドラッグエリアとして設定
-  const dragArea = document.createElement("div");
-  dragArea.style.cssText = `
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 60px;
-    z-index: 15;
-    cursor: grab;
-    touch-action: none;
-    pointer-events: auto;
-  `;
-  viewerArea.appendChild(dragArea);
-  
-  // シート要素を取得（overlayの子要素から）
-  const sheet = overlay.querySelector('[data-atelier-sheet]') as HTMLElement;
-  if (sheet) {
-    // ドラッグエリアでもドラッグを開始できるようにする
-    setupDragToDismiss(dragArea, sheet, overlay, () => {
-      const cleanup = (overlay as any).__atelierCleanup as { fn: () => void } | undefined;
-      if (cleanup) cleanup.fn();
-    });
-  }
-
-  // モデルと服が完全に表示されるまでローディングオーバーレイを表示
-  // contentArea に配置して viewerArea 全体を覆う（viewerArea のレイアウト変更の影響を受けない）
-  const loadingOverlay = document.createElement("div");
-  loadingOverlay.style.cssText = `
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #fff;
-    z-index: 30;
-    pointer-events: none;
-  `;
-  const loadingLogoEl = document.createElement("img");
-  loadingLogoEl.src = `${apiBaseUrl}/logo.png`;
-  loadingLogoEl.alt = "";
-  loadingLogoEl.style.cssText = `
-    width: 56px;
-    height: 56px;
-    object-fit: contain;
-    animation: atelier-spin 2s linear infinite;
-    pointer-events: auto;
-  `;
-  loadingOverlay.appendChild(loadingLogoEl);
-  // contentArea に追加（viewerArea のレイアウト変更の影響を受けない）
-  contentArea.appendChild(loadingOverlay);
-
-  // ─── Height / Body slider ───────────────────────────────
-  let heightValue = 170;
-  let viewer: ViewerInstance | null = null;
-  let canAdjustBody = true; // 試着ステップ以降は身長・体型をロック
-
-  // 身長バーはこの画面では不要（削除）
-
-  // 初期ステップ側のスライダーと連動
-  heightSlider.input.addEventListener("input", () => {
-    if (!canAdjustBody) return;
-    const v = parseInt(heightSlider.input.value, 10);
-    setupHeightValue = isNaN(v) ? setupHeightValue : v;
-    heightSlider.valueLabel.textContent = String(setupHeightValue);
-    heightValue = setupHeightValue;
-    viewer?.updateHeight?.(heightValue, 170);
-  });
-
-  bodySlider.input.addEventListener("input", () => {
-    if (!canAdjustBody) return;
-    const v = parseInt(bodySlider.input.value, 10);
-    bodyValue = isNaN(v) ? bodyValue : v;
-    bodySlider.valueLabel.textContent = String(bodyValue);
-    const normalized = Math.max(0, Math.min(1, bodyValue / 100));
-    // 体型用モーフターゲット（存在すれば適用される）
-    viewer?.updateMorphTarget?.("body", normalized);
-  });
-
-  // ─── Helpers (defined early for use in init3DViewer) ────────────────────────────────────────────
-
-  function buildAssetList(size: string) {
-    const arr = (config.asset?.sizes?.[size] || []) as Array<{ glbUrl?: string; modelUrl?: string; category?: string }>;
-    return arr
-      .map((a) => ({ url: a.modelUrl || a.glbUrl || "", category: a.category }))
-      .filter((a) => a.url);
-  }
-
-  // 初回は init3DViewer に assets を渡済みなので viewer.updateAssets を重複実行しない
-  let initialAssetsLoaded = false;
-
-  // ─── 3D viewer ─────────────────────────────────────────
-  // プレビューと同じモデルを使用
-  const baseModelUrl = `${apiBaseUrl}/3d/model_test.glb`;
-
-  viewer = init3DViewer(viewerEl as HTMLElement, {
-    modelUrl: baseModelUrl,
-    assets: [],   // 初期ステップでは素体のみ（服は後で読み込む）
-    apiBaseUrl,
-    onLoad: () => {
-      // ローディングオーバーレイをフェードアウト
-      loadingOverlay.style.transition = "opacity 0.3s ease-out";
-      loadingOverlay.style.opacity = "0";
-      setTimeout(() => { if (loadingOverlay.parentNode) loadingOverlay.remove(); }, 300);
-      
-      // まずは初期モデル作成ステップを表示
-      setupPanel.style.opacity = "1";
-    },
-    onError: (err) => {
-      if (loadingOverlay.parentNode) loadingOverlay.remove();
-      // エラー時も要素を表示
-      leftPanel.style.opacity = "1";
-      bottomPanel.style.opacity = "1";
-      if (isDevelopmentMode()) console.error("[Atelier Widget] 3D error:", err);
-    },
-  });
-
-  // ─── XYZ軸コントロール ─────────────────────────────────
-  const axisControls = createAxisControls(
-    axisSvg,
-    () => viewer?.getCameraRotation?.() ?? null
+  // ── 戻る
+  const backRow = el("div", "padding:10px 14px 4px;padding-top:max(10px, env(safe-area-inset-top));");
+  const backBtn = el(
+    "button",
+    "border:none;background:transparent;padding:6px 0;font-size:15px;color:#111;cursor:pointer;display:flex;align-items:center;gap:4px;"
   );
+  backBtn.textContent = "← 閉じる";
+  backBtn.addEventListener("click", () => closeOverlay(overlay));
+  backRow.appendChild(backBtn);
+  phoneScreen.appendChild(backRow);
 
-  /* register cleanup so drag-to-dismiss destroys viewer */
-  const cleanup = (overlay as any).__atelierCleanup as { fn: () => void } | undefined;
-  if (cleanup) cleanup.fn = () => {
-    axisControls.stop();
-    viewer?.destroy();
-  };
+  // ── 商品行（左: サムネ・名前・価格 / 右: 体型）
+  const productRow = el("div", "display:flex;flex-direction:row;align-items:flex-start;justify-content:space-between;padding:2px 12px 8px;gap:6px;");
+  const leftCol = el("div", "display:flex;flex-direction:row;align-items:flex-start;gap:6px;min-width:0;flex:1;");
 
-  // 初期描画
-  setTimeout(() => {
-    renderAxis(axisSvg, () => viewer?.getCameraRotation?.() ?? null);
-    axisControls.start();
-  }, 500);
+  const thumbWrap = el(
+    "div",
+    "width:32px;height:32px;border-radius:50%;overflow:hidden;flex-shrink:0;background:#f3f4f6;border:1px solid #e5e7eb;"
+  );
+  if (thumbnailUrl) {
+    const img = document.createElement("img");
+    img.src = thumbnailUrl;
+    img.alt = "";
+    img.style.cssText = "width:100%;height:100%;object-fit:cover;";
+    thumbWrap.appendChild(img);
+  } else {
+    const ph = el("div", "width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:7px;color:#9ca3af;");
+    ph.textContent = "IMG";
+    thumbWrap.appendChild(ph);
+  }
+  leftCol.appendChild(thumbWrap);
 
-  // ─── Step2: 着せ替えUIへの遷移 ─────────────────────────────────
-  let tryOnEntered = false;
-  function enterTryOnStep() {
-    if (tryOnEntered) return;
-    tryOnEntered = true;
+  const titleBlock = el("div", "display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;");
+  const nameEl = el(
+    "div",
+    "font-size:9px;font-weight:400;color:#111;line-height:1.2;word-break:break-word;"
+  );
+  nameEl.textContent = productName;
+  const priceEl = el("div", "font-size:8px;color:#111;font-weight:400;");
+  priceEl.textContent = priceText;
+  titleBlock.appendChild(nameEl);
+  titleBlock.appendChild(priceEl);
+  leftCol.appendChild(titleBlock);
 
-    // 初期ステップを隠し、着せ替えUIを表示
-    setupPanel.style.display = "none";
-    leftPanel.style.opacity = "1";
-    bottomPanel.style.display = "flex";
-    bottomPanel.style.opacity = "1";
+  const bodyBtn = el(
+    "button",
+    `display:flex;flex-direction:row;align-items:center;box-sizing:border-box;height:32px;padding:0 7px;gap:3px;border-radius:999px;border:1px solid #111;background:#fff;color:#111;font-size:9px;font-weight:600;cursor:pointer;flex-shrink:0;white-space:nowrap;line-height:1;`
+  );
+  const bodyIconWrap = el(
+    "span",
+    "display:flex;align-items:center;justify-content:center;flex-shrink:0;width:12px;height:12px;"
+  );
+  bodyIconWrap.appendChild(iconPerson());
+  const bodyLabel = el("span", "display:flex;align-items:center;");
+  bodyLabel.textContent = "体型を変更";
+  bodyBtn.appendChild(bodyIconWrap);
+  bodyBtn.appendChild(bodyLabel);
+  productRow.appendChild(leftCol);
+  productRow.appendChild(bodyBtn);
+  phoneScreen.appendChild(productRow);
 
-    // 選択された身長・体型を反映
-    heightValue = setupHeightValue;
-    viewer?.updateHeight?.(heightValue, 170);
-    const normalized = Math.max(0, Math.min(1, bodyValue / 100));
-    viewer?.updateMorphTarget?.("body", normalized);
-
-    // 試着ステップに入ったら身長・体型スライダーをロック
-    canAdjustBody = false;
-    heightSlider.input.disabled = true;
-    bodySlider.input.disabled = true;
-    
-    // 身長バーはこの画面では不要（削除済み）
-
-    // アセットを読み込む（初期ステップでは空配列で初期化したため、ここで初めて読み込む）
-    initialAssetsLoaded = true; // フラグを立てて、loadInitialAssets内でupdateAssetsが呼ばれるようにする
-    loadInitialAssets();
-    fetchOutfitData();
-    renderLeftPanelLocal();
-    renderCatTabsLocal();
-    renderThumbsLocal();
+  function colorFilterForHex(hex: string): string {
+    const h = hex.replace("#", "");
+    if (h.length !== 6) return "none";
+    const r = parseInt(h.slice(0, 2), 16) / 255;
+    const g = parseInt(h.slice(2, 4), 16) / 255;
+    const b = parseInt(h.slice(4, 6), 16) / 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let hue = 0;
+    if (max !== min) {
+      if (max === r) hue = ((g - b) / (max - min)) % 6;
+      else if (max === g) hue = (b - r) / (max - min) + 2;
+      else hue = (r - g) / (max - min) + 4;
+    }
+    hue *= 60;
+    if (hue < 0) hue += 360;
+    const sepia = 0.35;
+    const sat = 0.4;
+    return `sepia(${sepia}) saturate(${sat}) hue-rotate(${hue}deg)`;
   }
 
-  startBtn.addEventListener("click", () => {
-    enterTryOnStep();
+  // ── 色（登録SVG試着時はサムネイル上の疑似染色のみ使わない）
+  if (!garmentFitAvailable && swatches.length > 0) {
+    const colorRow = el("div", "display:flex;flex-direction:row;gap:10px;padding:0 14px 14px;align-items:center;");
+    swatches.forEach((sw) => {
+      const b = el("button", "width:28px;height:28px;border-radius:50%;padding:0;cursor:pointer;flex-shrink:0;");
+      b.style.background = sw.hex;
+      b.style.border = sw.id === selectedColorId ? `3px solid ${accent}` : "1px solid #ccc";
+      b.setAttribute("aria-label", sw.label || sw.id);
+      b.addEventListener("click", () => {
+        selectedColorId = sw.id;
+        colorRow.querySelectorAll("button").forEach((btn, i) => {
+          const s = swatches[i];
+          if (!s) return;
+          (btn as HTMLElement).style.border =
+            s.id === selectedColorId ? `3px solid ${accent}` : "1px solid #ccc";
+        });
+        if (garmentImg && thumbnailUrl) {
+          garmentImg.style.filter = colorFilterForHex(sw.hex);
+        }
+      });
+      colorRow.appendChild(b);
+    });
+    phoneScreen.appendChild(colorRow);
+  }
+
+  // ── 試着表示（開発と同じ計算の SVG）または従来のシルエット＋サムネ
+  const viewerArea = el(
+    "div",
+    `flex:1;min-height:120px;min-width:0;flex-basis:0;position:relative;background:${canvasBg};display:flex;align-items:center;justify-content:center;overflow:visible;padding:8px 12px 8px;box-sizing:border-box;`
+  );
+  viewerArea.setAttribute("data-atelier-viewer-container", "true");
+
+  async function loadGarmentFitSvgInto(
+    target: HTMLElement,
+    heightCm: number,
+    bodyVal: number,
+    options?: { bodyOnly?: boolean }
+  ): Promise<void> {
+    const bodyOnly = options?.bodyOnly === true;
+    if (!garmentFitAvailable || !params.publicKey) return;
+    const ext = params.externalProductId || params.productId;
+    if (!ext) return;
+    target.innerHTML = "";
+    const loading = el("div", "padding:24px;color:#6b7280;font-size:14px;text-align:center;");
+    loading.textContent = "読み込み中...";
+    target.appendChild(loading);
+    try {
+      const sp = new URLSearchParams({
+        publicKey: params.publicKey,
+        externalProductId: ext,
+        size: currentSize,
+        heightCm: String(heightCm),
+        weightKg: String(weightKgFromBodyVal(bodyVal)),
+      });
+      const base = getApiBaseUrl();
+      const res = await fetch(`${base}/api/public/widget-fit-svg?${sp.toString()}`);
+      if (!res.ok) throw new Error(String(res.status));
+      const data = (await res.json()) as {
+        viewBoxWidth: number;
+        viewBoxHeight: number;
+        bodyPaths: string[];
+        garmentPaths: string[];
+        garmentPathStrokeDasharrays?: (string | undefined)[];
+        garmentPathStrokeWidths?: (number | undefined)[];
+        garmentPathStrokes?: (string | undefined)[];
+      };
+      target.innerHTML = "";
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("viewBox", `0 0 ${data.viewBoxWidth} ${data.viewBoxHeight}`);
+      svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+      svg.style.cssText = "width:100%;height:auto;max-height:100%;display:block;";
+      const gBody = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      gBody.setAttribute("fill", "none");
+      gBody.setAttribute("stroke", "#bbb");
+      gBody.setAttribute("stroke-width", "4");
+      for (const d of data.bodyPaths) {
+        const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        p.setAttribute("d", d);
+        gBody.appendChild(p);
+      }
+      svg.appendChild(gBody);
+      if (!bodyOnly) {
+        const gGarment = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        gGarment.setAttribute("fill", "none");
+        const dashArr = data.garmentPathStrokeDasharrays;
+        const widthArr = data.garmentPathStrokeWidths;
+        const strokeArr = data.garmentPathStrokes;
+        for (let gi = 0; gi < data.garmentPaths.length; gi++) {
+          const d = data.garmentPaths[gi]!;
+          const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          p.setAttribute("d", d);
+          const sw = widthArr?.[gi];
+          const stroke = strokeArr?.[gi];
+          const dash = dashArr?.[gi];
+          p.setAttribute("stroke-width", sw != null && Number.isFinite(sw) ? String(sw) : "8");
+          p.setAttribute("stroke", stroke && stroke.length > 0 ? stroke : "rgba(70, 70, 70, 0.82)");
+          if (dash != null && String(dash).trim().length > 0) {
+            p.setAttribute("stroke-dasharray", String(dash));
+          }
+          gGarment.appendChild(p);
+        }
+        svg.appendChild(gGarment);
+      }
+      target.appendChild(svg);
+    } catch {
+      target.innerHTML = "";
+      const err = el("div", "padding:16px;color:#b91c1c;font-size:13px;text-align:center;");
+      err.textContent = "試着表示の読み込みに失敗しました";
+      target.appendChild(err);
+    }
+  }
+
+  async function loadGarmentFitSvg(): Promise<void> {
+    return loadGarmentFitSvgInto(viewerArea, fitHeightCm, fitBodyVal);
+  }
+
+  if (garmentFitAvailable) {
+    void loadGarmentFitSvg();
+  } else {
+    const silhouetteLayer = el(
+      "div",
+      "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;"
+    );
+    silhouetteLayer.appendChild(createBodySilhouetteSvg());
+    viewerArea.appendChild(silhouetteLayer);
+
+    if (thumbnailUrl) {
+      garmentImg = document.createElement("img");
+      garmentImg.src = thumbnailUrl;
+      garmentImg.alt = "";
+      const firstHex = swatches[0]?.hex || "#e8c547";
+      garmentImg.style.cssText = `position:relative;z-index:1;max-width:58%;max-height:62%;object-fit:contain;filter:${colorFilterForHex(
+        swatches.find((s) => s.id === selectedColorId)?.hex || firstHex
+      )};`;
+      viewerArea.appendChild(garmentImg);
+    }
+  }
+  phoneScreen.appendChild(viewerArea);
+
+  // ── サイズ（グレーディング）
+  const WINDOW = 3;
+  const idxSize = sizeKeys.indexOf(currentSize);
+  let windowStart =
+    idxSize >= 0
+      ? Math.min(Math.max(0, idxSize), Math.max(0, sizeKeys.length - WINDOW))
+      : 0;
+
+  const sizeSection = el("div", "padding:8px 12px 6px;display:flex;flex-direction:column;gap:6px;");
+  const sizeRow = el("div", "display:flex;flex-direction:row;align-items:center;justify-content:center;gap:6px;");
+
+  const prevBtn = el(
+    "button",
+    "width:28px;height:28px;border:none;background:transparent;font-size:17px;color:#111;cursor:pointer;line-height:1;"
+  );
+  prevBtn.textContent = "‹";
+  const nextBtn = el(
+    "button",
+    "width:28px;height:28px;border:none;background:transparent;font-size:17px;color:#111;cursor:pointer;line-height:1;"
+  );
+  nextBtn.textContent = "›";
+
+  const sizeBtnsWrap = el("div", "display:flex;flex-direction:row;gap:6px;align-items:center;justify-content:center;");
+
+  function renderSizeButtons() {
+    sizeBtnsWrap.innerHTML = "";
+    const slice = sizeKeys.slice(windowStart, windowStart + WINDOW);
+    slice.forEach((sz) => {
+      const isSel = sz === currentSize;
+      const btn = el(
+        "button",
+        `width:34px;height:34px;border-radius:50%;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0;` +
+          (isSel
+            ? `background:${accent};color:#fff;border:none;`
+            : `background:#fff;color:#111;border:1px solid #111;`)
+      );
+      btn.textContent = sz;
+      btn.addEventListener("click", () => {
+        currentSize = sz;
+        if (eshopId && eshopId !== "unknown") {
+          const pid = params.productId || params.externalProductId || "";
+          sendEvent({
+            shopId: eshopId,
+            productId: uuidRe.test(pid) ? pid : undefined,
+            type: "size_change",
+            meta: { size: sz },
+          }).catch(() => {});
+        }
+        renderSizeButtons();
+        if (garmentFitAvailable) {
+          void loadGarmentFitSvg();
+        }
+      });
+      sizeBtnsWrap.appendChild(btn);
+    });
+    prevBtn.style.opacity = windowStart <= 0 ? "0.35" : "1";
+    prevBtn.style.pointerEvents = windowStart <= 0 ? "none" : "auto";
+    nextBtn.style.opacity = windowStart + WINDOW >= sizeKeys.length ? "0.35" : "1";
+    nextBtn.style.pointerEvents = windowStart + WINDOW >= sizeKeys.length ? "none" : "auto";
+  }
+
+  prevBtn.addEventListener("click", () => {
+    windowStart = Math.max(0, windowStart - 1);
+    renderSizeButtons();
+  });
+  nextBtn.addEventListener("click", () => {
+    windowStart = Math.min(sizeKeys.length - WINDOW, windowStart + 1);
+    renderSizeButtons();
   });
 
-  // ─── Helpers ────────────────────────────────────────────
+  sizeRow.appendChild(prevBtn);
+  sizeRow.appendChild(sizeBtnsWrap);
+  sizeRow.appendChild(nextBtn);
+  sizeSection.appendChild(sizeRow);
+  phoneScreen.appendChild(sizeSection);
+  renderSizeButtons();
 
-  function loadInitialAssets() {
-    activeAssets.clear();
-    const list = buildAssetList(currentSize);
-    list.forEach((a) => {
-      if (a.category) {
-        activeAssets.set(a.category, { id: a.category, url: a.url, thumbnailUrl: null, productName: "", category: a.category });
-      }
-    });
-    if (initialAssetsLoaded) {
-      viewer?.updateAssets(list);
-    } else {
-      // 初回: init3DViewer に渡し済みなので updateAssets はスキップ
-      initialAssetsLoaded = true;
-    }
-  }
-
-  function onSizeChange(size: string) {
-    // 新しいサイズのアセットリストを取得
-    const newSizeAssets = buildAssetList(size);
-    const newSizeCategories = new Set(newSizeAssets.map(a => a.category).filter(Boolean));
-    
-    // 新しいサイズのアセットで更新するカテゴリーだけを更新
-    // ユーザーが手動で選択した他のカテゴリーの商品は保持
-    newSizeAssets.forEach((a) => {
-      if (a.category) {
-        activeAssets.set(a.category, { id: a.category, url: a.url, thumbnailUrl: null, productName: "", category: a.category });
-      }
-    });
-    
-    // 現在のactiveAssetsを全てviewerに反映（新しいサイズのアセット + ユーザーが選択した他のカテゴリー）
-    const allAssets = Array.from(activeAssets.values()).map((a) => ({ url: a.url, category: a.category }));
-    viewer?.updateAssets(allAssets);
-    
-    // 新しいサイズのアセットに含まれないカテゴリーのselectedAssetIdはクリアしない（保持）
-    // ただし、新しいサイズのアセットに含まれるカテゴリーで、以前選択していたアセットが存在しない場合はクリア
-    if (selectedAssetId) {
-      const selectedItem = Object.values(outfitData.categories).flat().find(item => item.id === selectedAssetId);
-      if (selectedItem && newSizeCategories.has(selectedItem.category)) {
-        // 選択中のアセットが新しいサイズのカテゴリーに含まれる場合は、そのカテゴリーのアセットを確認
-        const categoryItems = outfitData.categories[selectedItem.category] || [];
-        const itemExists = categoryItems.some(item => item.id === selectedAssetId);
-        if (!itemExists) {
-          selectedAssetId = null;
-        }
-      }
-    }
-    
-    renderLeftPanelLocal();
-    renderThumbsLocal();
-    fetchOutfitData();
-
+  // ── カート
+  const cartWrap = el(
+    "div",
+    "padding:8px 12px 12px;padding-bottom:max(12px, env(safe-area-inset-bottom));flex-shrink:0;"
+  );
+  const cartBtn = el(
+    "button",
+    `width:100%;display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:10px 14px;border:none;border-radius:10px;background:${accent};color:#fff;font-size:13px;font-weight:700;cursor:pointer;`
+  );
+  const cartLeft = el("div", "display:flex;align-items:center;gap:8px;");
+  cartLeft.appendChild(iconCart());
+  const cartMid = el("span", "flex:1;text-align:center;");
+  cartMid.textContent = ctaCart;
+  const cartRight = el(
+    "div",
+    "width:22px;height:22px;border-radius:50%;border:1px solid rgba(255,255,255,0.9);display:flex;align-items:center;justify-content:center;font-size:11px;"
+  );
+  cartRight.textContent = "→";
+  cartBtn.appendChild(cartLeft);
+  cartBtn.appendChild(cartMid);
+  cartBtn.appendChild(cartRight);
+  cartBtn.addEventListener("click", () => {
     if (eshopId && eshopId !== "unknown") {
       const pid = params.productId || params.externalProductId || "";
-      sendEvent({ shopId: eshopId as string, productId: uuidRe.test(pid) ? pid : undefined, type: "size_change", meta: { size } }).catch(() => {});
+      sendEvent({
+        shopId: eshopId,
+        productId: uuidRe.test(pid) ? pid : undefined,
+        type: "add_to_cart",
+        meta: { size: currentSize, colorId: selectedColorId },
+      }).catch(() => {});
     }
-  }
-
-  function handleAssetSelect(item: OutfitAssetItem | null, category?: string) {
-    if (!item && category) {
-      activeAssets.delete(category);
-      selectedAssetId = null;
-    } else if (item) {
-      activeAssets.set(item.category, {
-        id: item.id, url: item.modelUrl,
-        thumbnailUrl: item.thumbnailUrl, productName: item.productName, category: item.category,
-      });
-      selectedAssetId = item.id;
-      currentCategory = item.category;
-
-      // ジャケット、コート、トップスは同じレイヤーなので、一方を選択したら他方を削除
-      if (item.category === "コート") {
-        activeAssets.delete("ジャケット");
-        activeAssets.delete("トップス");
-      } else if (item.category === "ジャケット") {
-        activeAssets.delete("コート");
-        activeAssets.delete("トップス");
-      } else if (item.category === "トップス") {
-        activeAssets.delete("コート");
-        activeAssets.delete("ジャケット");
-      }
-
-      if (eshopId && eshopId !== "unknown") {
-        const pid = params.productId || params.externalProductId || "";
-        sendEvent({
-          shopId: eshopId as string, productId: uuidRe.test(pid) ? pid : undefined,
-          type: "outfit_asset_select", meta: { assetId: item.id, category: item.category },
-        }).catch(() => {});
-      }
-    }
-    viewer?.updateAssets(Array.from(activeAssets.values()).map((a) => ({ url: a.url, category: a.category })));
-    renderLeftPanelLocal();
-    renderCatTabsLocal();
-    renderThumbsLocal();
-  }
-
-  /* ── Left panel (wearing slots – absolute overlay) ── */
-  function renderLeftPanelLocal() {
-    // activeAssetsを共通関数用の形式に変換（アクティブな商品のみ表示）
-    const assetsForRender = new Map<string, { url: string; category: string; thumbnailUrl?: string | null }>();
-    activeAssets.forEach((asset, cat) => {
-      assetsForRender.set(cat, {
-        url: asset.url,
-        category: cat,
-        thumbnailUrl: asset.thumbnailUrl,
-      });
-    });
-    
-    // アクティブな商品のみを表示（空のボタンは表示しない）
-    renderLeftPanel(
-      leftPanel,
-      assetsForRender,
-      outfitData,
-      currentCategory,
-      (cat: string) => {
-        currentCategory = cat;
-        renderLeftPanelLocal();
-        renderCatTabsLocal();
-        renderThumbsLocal();
-      },
-      WIDGET_SIZES
-    );
-  }
-
-  /* ── Category tabs ── */
-  function renderCatTabsLocal() {
-    currentCategory = renderCatTabs(
-      catTabs,
-      outfitData,
-      currentCategory,
-      (cat: string) => {
-        currentCategory = cat;
-        renderCatTabsLocal();
-        renderThumbsLocal();
-        renderLeftPanelLocal();
-      },
-      WIDGET_SIZES
-    );
-  }
-
-  /* ── Outfit thumbnails ── */
-  function renderThumbsLocal() {
-    thumbsRow.innerHTML = "";
-    
-    // 実際のアイテムを表示
-    const items: OutfitAssetItem[] = outfitData.categories[currentCategory] || [];
-    
-    if (items.length > 0) {
-      // 実際のアイテムがある場合は、それらを表示
-      renderThumbs(
-        thumbsRow,
-        items,
-        currentCategory,
-        selectedAssetId,
-        activeAssets,
-        (item: OutfitAssetItem | null, category: string) => {
-          if (item === null) {
-            handleAssetSelect(null, category);
-          } else {
-            handleAssetSelect(item);
-          }
-        },
-        WIDGET_SIZES
-      );
-    } else {
-      // アイテムがない場合は、5つの空のプレースホルダーを表示（WIDGET_SIZESに合わせて62px x 76px）
-      for (let i = 0; i < 5; i++) {
-        const placeholder = document.createElement("div");
-        placeholder.style.cssText = `
-          width: ${WIDGET_SIZES.thumbs.cardWidth}px;
-          height: ${WIDGET_SIZES.thumbs.cardHeight}px;
-          flex-shrink: 0;
-          background: #f3f4f6;
-          border: 1px solid #e5e7eb;
-          border-radius: ${WIDGET_SIZES.thumbs.borderRadius}px;
-        `;
-        thumbsRow.appendChild(placeholder);
-      }
-    }
-  }
-
-  /* ── Fetch outfit data from API ── */
-  async function fetchOutfitData() {
     try {
-      const u = new URL(`${apiBaseUrl}/api/public/assets/by-shop`);
-      if (params.publicKey) u.searchParams.set("publicKey", params.publicKey);
-      if (currentSize) u.searchParams.set("size", currentSize);
-      const excl = params.externalProductId || params.productId;
-      if (excl) u.searchParams.set("excludeProductId", excl);
-      const res = await fetch(u.toString());
-      if (res.ok) {
-        outfitData = (await res.json()) as OutfitAssetsData;
-        
-        // 初期表示されている商品（activeAssets）を着せ替えパネルにも追加
-        // excludeProductIdで除外されているため、手動で追加する必要がある
-        const currentProductId = params.productId || params.externalProductId;
-        if (currentProductId && config.asset) {
-          const initialAssets = buildAssetList(currentSize);
-          initialAssets.forEach((asset) => {
-            if (asset.category && asset.url) {
-              // 既にそのカテゴリーに存在するかチェック
-              const categoryItems = outfitData.categories[asset.category] || [];
-              const exists = categoryItems.some(item => item.modelUrl === asset.url);
-              
-              if (!exists && config.asset) {
-                // OutfitAssetItem形式で追加
-                const outfitItem: OutfitAssetItem = {
-                  id: currentProductId, // 商品IDをIDとして使用
-                  productId: currentProductId,
-                  productName: config.asset.productName || "商品名",
-                  modelUrl: asset.url,
-                  thumbnailUrl: config.asset.thumbnailUrl || null,
-                  category: asset.category,
-                  size: currentSize,
-                };
-                
-                if (!outfitData.categories[asset.category]) {
-                  outfitData.categories[asset.category] = [];
-                }
-                // 先頭に追加（初期表示商品を最初に表示）
-                outfitData.categories[asset.category].unshift(outfitItem);
-              }
-            }
-          });
-        }
-        
-        renderThumbsLocal();
-      }
-    } catch (_) {
-      // silent fail
+      window.dispatchEvent(
+        new CustomEvent("atelier:add-to-cart", {
+          detail: { size: currentSize, colorId: selectedColorId, productId: params.externalProductId || params.productId },
+        })
+      );
+    } catch {
+      /* ignore */
     }
+  });
+  cartWrap.appendChild(cartBtn);
+  phoneScreen.appendChild(cartWrap);
+
+  // ── 体型調整（端末枠 phoneScreen 内の全画面。試着ビューと同じ SVG／シルエット＋サムネを表示）
+  let bodyAdjustOverlay: HTMLElement | null = null;
+  let bodyDraftPreviewTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function closeBodyAdjustOverlay() {
+    if (bodyDraftPreviewTimer) {
+      clearTimeout(bodyDraftPreviewTimer);
+      bodyDraftPreviewTimer = null;
+    }
+    if (bodyAdjustOverlay) {
+      bodyAdjustOverlay.remove();
+      bodyAdjustOverlay = null;
+    }
+  }
+
+  function openBodySheet() {
+    if (bodyAdjustOverlay) return;
+
+    let setupHeight = fitHeightCm;
+    let bodyVal = fitBodyVal;
+
+    bodyAdjustOverlay = el(
+      "div",
+      "position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;background:" +
+        interfaceBg +
+        ";border-radius:34px;overflow:hidden;animation:atelier-fade-in 0.2s ease-out;"
+    );
+    bodyAdjustOverlay.setAttribute("data-atelier-body-adjust", "true");
+
+    const backPadTop = "padding:10px 14px 6px;padding-top:max(10px, env(safe-area-inset-top));";
+    const backRowInner = el("div", backPadTop + "flex-shrink:0;");
+    const backToProduct = el(
+      "button",
+      "border:none;background:transparent;padding:6px 0;font-size:15px;color:#111;cursor:pointer;display:flex;align-items:center;gap:4px;"
+    );
+    backToProduct.type = "button";
+    backToProduct.textContent = "← 商品に戻る";
+    backToProduct.addEventListener("click", () => closeBodyAdjustOverlay());
+    backRowInner.appendChild(backToProduct);
+    bodyAdjustOverlay.appendChild(backRowInner);
+
+    const figureArea = el(
+      "div",
+      `flex:1;min-height:120px;min-width:0;flex-basis:0;position:relative;display:flex;align-items:center;justify-content:center;overflow:visible;padding:8px 12px 8px;box-sizing:border-box;background:${canvasBg};`
+    );
+
+    function scheduleBodyDraftPreview() {
+      if (!garmentFitAvailable) return;
+      if (bodyDraftPreviewTimer) clearTimeout(bodyDraftPreviewTimer);
+      bodyDraftPreviewTimer = setTimeout(() => {
+        bodyDraftPreviewTimer = null;
+        void loadGarmentFitSvgInto(figureArea, setupHeight, bodyVal, { bodyOnly: true });
+      }, 140);
+    }
+
+    if (garmentFitAvailable) {
+      void loadGarmentFitSvgInto(figureArea, setupHeight, bodyVal, { bodyOnly: true });
+    } else {
+      const silhouetteLayer = el(
+        "div",
+        "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;"
+      );
+      silhouetteLayer.appendChild(createBodySilhouetteSvg());
+      figureArea.appendChild(silhouetteLayer);
+    }
+    bodyAdjustOverlay.appendChild(figureArea);
+
+    const controls = el(
+      "div",
+      "flex-shrink:0;padding:0 18px 10px;display:flex;flex-direction:column;gap:14px;background:" +
+        interfaceBg +
+        ";"
+    );
+
+    const hRow = el("div", "width:100%;");
+    const hLabel = el("div", "display:flex;justify-content:space-between;align-items:center;font-size:15px;margin-bottom:8px;color:#111;");
+    const hTitle = el("span", "", "身長");
+    const hVal = el("span", "", `${setupHeight} cm`);
+    hLabel.appendChild(hTitle);
+    hLabel.appendChild(hVal);
+    const hInput = document.createElement("input");
+    hInput.type = "range";
+    hInput.min = "150";
+    hInput.max = "195";
+    hInput.value = String(fitHeightCm);
+    hInput.style.cssText = "width:100%;height:28px;accent-color:" + accent + ";";
+    hInput.addEventListener("input", () => {
+      setupHeight = parseInt(hInput.value, 10) || 170;
+      hVal.textContent = `${setupHeight} cm`;
+      scheduleBodyDraftPreview();
+    });
+    hRow.appendChild(hLabel);
+    hRow.appendChild(hInput);
+    controls.appendChild(hRow);
+
+    const bRow = el("div", "width:100%;");
+    const bLabel = el("div", "display:flex;justify-content:space-between;align-items:center;font-size:15px;margin-bottom:8px;color:#111;");
+    const bTitle = el("span", "", "体型");
+    const bVal = el("span", "", String(fitBodyVal));
+    bLabel.appendChild(bTitle);
+    bLabel.appendChild(bVal);
+    const bInput = document.createElement("input");
+    bInput.type = "range";
+    bInput.min = "0";
+    bInput.max = "100";
+    bInput.value = String(fitBodyVal);
+    bInput.style.cssText = "width:100%;height:28px;accent-color:" + accent + ";";
+    bInput.addEventListener("input", () => {
+      bodyVal = parseInt(bInput.value, 10) || 0;
+      bVal.textContent = String(bodyVal);
+      scheduleBodyDraftPreview();
+    });
+    bRow.appendChild(bLabel);
+    bRow.appendChild(bInput);
+    controls.appendChild(bRow);
+
+    bodyAdjustOverlay.appendChild(controls);
+
+    const ctaPad =
+      "padding:12px 18px;padding-bottom:max(14px, env(safe-area-inset-bottom));flex-shrink:0;background:" +
+      interfaceBg +
+      ";";
+    const ctaWrap = el("div", ctaPad);
+    const applyBtn = el(
+      "button",
+      `width:100%;display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:14px 16px;border:none;border-radius:12px;background:${accent};color:#fff;font-size:15px;font-weight:700;cursor:pointer;`
+    );
+    applyBtn.type = "button";
+    const applyMid = el("span", "flex:1;text-align:center;");
+    applyMid.textContent = ctaTryOn;
+    const applyRight = el(
+      "div",
+      "width:24px;height:24px;border-radius:50%;border:1px solid rgba(255,255,255,0.9);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;"
+    );
+    applyRight.textContent = "→";
+    applyBtn.appendChild(applyMid);
+    applyBtn.appendChild(applyRight);
+    applyBtn.addEventListener("click", () => {
+      fitHeightCm = setupHeight;
+      fitBodyVal = bodyVal;
+      if (garmentFitAvailable) {
+        void loadGarmentFitSvg();
+      }
+      closeBodyAdjustOverlay();
+    });
+    ctaWrap.appendChild(applyBtn);
+    bodyAdjustOverlay.appendChild(ctaWrap);
+
+    phoneScreen.appendChild(bodyAdjustOverlay);
+  }
+
+  bodyBtn.addEventListener("click", openBodySheet);
+
+  if (isDevelopmentMode()) {
+    console.log("[Atelier Widget] 2D view ready", { productName, sizes: sizeKeys });
   }
 }
 
@@ -933,12 +757,12 @@ export function showErrorInModal(
   contentArea.style.cssText = `
     flex: 1; display: flex; flex-direction: column;
     overflow: hidden; align-items: center; justify-content: center;
-    padding: 24px; text-align: center;
+    padding: 24px; text-align: center; background: #ececec;
+    padding-top: max(24px, env(safe-area-inset-top));
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
   `;
   const div = document.createElement("div");
   div.style.cssText = "color:#dc2626;font-size:15px;line-height:1.5;white-space:pre-line;";
   div.textContent = errorMessage;
   contentArea.appendChild(div);
 }
-
-// buildDragBar, makeArrowBtn, dismissSheet, openSheet, setupDragToDismiss は ./widget-sheet からインポート

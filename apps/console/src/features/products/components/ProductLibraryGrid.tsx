@@ -2,12 +2,13 @@
 
 import { useCallback } from "react";
 import type { Product } from "@atelier/shared";
-import { Loader2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { useProductSelection } from "@/contexts/ProductSelectionContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useProducts } from "../useProducts";
+import { useDeleteProduct, useProducts } from "../useProducts";
 import { getErrorMessage, translateErrorMessage } from "@/lib/errors/error-handler";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const CARD_BACKGROUNDS = [
   "bg-stone-100",
@@ -20,7 +21,28 @@ const CARD_BACKGROUNDS = [
 export function ProductLibraryGrid() {
   const { shopId } = useAuth();
   const { data: products, isLoading, isError, error } = useProducts();
-  const { selectProduct, togglePreview, isPreviewOpen } = useProductSelection();
+  const { selectProduct, togglePreview, isPreviewOpen, selectedProduct, clearProductSelection } =
+    useProductSelection();
+  const deleteProduct = useDeleteProduct();
+
+  const handleDelete = useCallback(
+    async (productId: string) => {
+      if (!confirm("この商品を削除してもよろしいですか？")) {
+        return;
+      }
+      try {
+        await deleteProduct.mutateAsync(productId);
+        if (selectedProduct?.id === productId) {
+          clearProductSelection();
+        }
+        toast.success("商品を削除しました");
+      } catch (err) {
+        console.error("Failed to delete product:", err);
+        toast.error(translateErrorMessage(getErrorMessage(err)));
+      }
+    },
+    [deleteProduct, selectedProduct?.id, clearProductSelection]
+  );
 
   const handleCardClick = useCallback(
     (product: Product) => {
@@ -71,35 +93,55 @@ export function ProductLibraryGrid() {
             const label = product.externalProductId?.trim() || product.name;
             const bg = CARD_BACKGROUNDS[index % CARD_BACKGROUNDS.length];
             return (
-              <li key={product.id}>
-                <button
-                  type="button"
-                  onClick={() => handleCardClick(product)}
-                  className="group w-full text-left"
-                >
-                  <div
+              <li key={product.id} className="group">
+                <div className="relative w-full">
+                  <button
+                    type="button"
+                    onClick={() => handleCardClick(product)}
+                    className="w-full text-left"
+                  >
+                    <div
+                      className={cn(
+                        "flex aspect-[4/5] w-full items-center justify-center overflow-hidden rounded-2xl p-4 transition-transform group-hover:scale-[1.02]",
+                        bg
+                      )}
+                    >
+                      {product.thumbnailUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={product.thumbnailUrl}
+                          alt={product.name}
+                          className="max-h-full max-w-full object-contain drop-shadow-sm"
+                        />
+                      ) : (
+                        <span className="text-center text-sm text-gray-400">
+                          画像なし
+                          <br />
+                          <span className="text-xs">（SVG のみ登録）</span>
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-3 line-clamp-1 text-sm text-gray-800">{label}</p>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`${label}を削除`}
+                    disabled={deleteProduct.isPending}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      void handleDelete(product.id);
+                    }}
                     className={cn(
-                      "flex aspect-[4/5] w-full items-center justify-center overflow-hidden rounded-2xl p-4 transition-transform group-hover:scale-[1.02]",
-                      bg
+                      "absolute right-2 top-2 z-10 rounded-full border border-gray-200 bg-white/95 p-2 text-gray-600 shadow-md",
+                      "opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600",
+                      "focus-visible:opacity-100 group-hover:opacity-100",
+                      deleteProduct.isPending && "pointer-events-none opacity-50"
                     )}
                   >
-                    {product.thumbnailUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={product.thumbnailUrl}
-                        alt={product.name}
-                        className="max-h-full max-w-full object-contain drop-shadow-sm"
-                      />
-                    ) : (
-                      <span className="text-center text-sm text-gray-400">
-                        画像なし
-                        <br />
-                        <span className="text-xs">（SVG のみ登録）</span>
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-3 line-clamp-1 text-sm text-gray-800">{label}</p>
-                </button>
+                    <Trash2 className="h-4 w-4" aria-hidden />
+                  </button>
+                </div>
               </li>
             );
           })}

@@ -39,6 +39,8 @@ export {
 export {
   applyGenericMeasureOnlyGrading,
   genericMeasureOnlyGradingActive,
+  genericSymmetricTopCanvasSleeveSnapEligible,
+  measureOriginalSleeveCmFromDesignPaths,
 } from "./applyGenericMeasureOnlyGrading";
 
 export {

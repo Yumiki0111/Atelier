@@ -5,15 +5,14 @@ import type {
   CustomGarmentData,
   GenericVertexPlotHighlight,
 } from "../lib/types";
-import {
-  lengthMeasureOverlayNode,
-  sleeveMeasureOverlayNode,
-} from "./fittingCanvasPlotMeasureOverlays";
+import { sleeveMeasureOverlayNode } from "./fittingCanvasPlotMeasureOverlays";
 import {
   FONT_INDEX_GARMENT,
   FONT_INDEX_GARMENT_HIGHLIGHT,
   FONT_INDEX_GARMENT_SHOULDER,
   FONT_INDEX_SHOULDER_BADGE,
+  indexLabelOrbitRadius,
+  indexLabelRadialOffset,
   indexLabelStrokeWidth,
   rigIntersectionPlotStyle,
   vertexHighlightRoles,
@@ -75,8 +74,9 @@ export function FittingCanvasPlotOverlay({
         <g data-overlay="body-plot">
           {bodyOutlinePoints.map(([x, y], i) => {
             const labelSize = FONT_INDEX_GARMENT;
-            const r = 7;
-            const dx = Math.round(labelSize * 0.82);
+            const r = 3;
+            const orbit = indexLabelOrbitRadius(r, labelSize);
+            const { ox, oy } = indexLabelRadialOffset(i, orbit);
             const indexStrokeW = indexLabelStrokeWidth(labelSize);
             return (
               <g key={`body-${i}-${x}-${y}`}>
@@ -87,13 +87,14 @@ export function FittingCanvasPlotOverlay({
                   fill="#22c55e"
                   fillOpacity={0.88}
                   stroke="#166534"
-                  strokeWidth={1.8}
+                  strokeWidth={1.1}
                 >
                   <title>ボディ輪郭 #{i} ({Math.round(x)}, {Math.round(y)})</title>
                 </circle>
                 <text
-                  x={x + dx}
-                  y={y}
+                  x={x + ox}
+                  y={y + oy}
+                  textAnchor="middle"
                   dominantBaseline="middle"
                   fontSize={labelSize}
                   fill="#22c55e"
@@ -108,27 +109,30 @@ export function FittingCanvasPlotOverlay({
               </g>
             );
           })}
-          {bodyPlotPoints.map(({ label, point }: { label: string; point: [number, number] }) => {
+          {bodyPlotPoints.map(({ label, point }: { label: string; point: [number, number] }, bi) => {
             const [x, y] = point;
             const labelSize = FONT_INDEX_GARMENT_HIGHLIGHT;
-            const dx = Math.round(labelSize * 0.82);
+            const cr = 3.5;
+            const orbit = indexLabelOrbitRadius(cr, labelSize);
+            const { ox, oy } = indexLabelRadialOffset(bi + 17, orbit);
             const indexStrokeW = indexLabelStrokeWidth(labelSize);
             return (
               <g key={label}>
                 <circle
                   cx={x}
                   cy={y}
-                  r={9}
+                  r={cr}
                   fill="#16a34a"
                   fillOpacity={0.92}
                   stroke="#14532d"
-                  strokeWidth={2}
+                  strokeWidth={1.2}
                 >
                   <title>ボディ: {label}</title>
                 </circle>
                 <text
-                  x={x + dx}
-                  y={y}
+                  x={x + ox}
+                  y={y + oy}
+                  textAnchor="middle"
                   dominantBaseline="middle"
                   fontSize={labelSize}
                   fill="#15803d"
@@ -143,22 +147,33 @@ export function FittingCanvasPlotOverlay({
               </g>
             );
           })}
-          {rigIntersectionPlotPoints.map(({ label, point, plotKind }) => {
+          {rigIntersectionPlotPoints.map(({ label, point, plotKind }, ri) => {
             const [x, y] = point;
             const { fill, stroke, textFill } = rigIntersectionPlotStyle(plotKind);
             const labelSize = FONT_INDEX_GARMENT_HIGHLIGHT;
-            const dx = Math.round(labelSize * 0.82);
+            const cr = 4;
+            const orbit = indexLabelOrbitRadius(cr, labelSize);
+            const { ox, oy } = indexLabelRadialOffset(ri + 31, orbit);
             const indexStrokeW = indexLabelStrokeWidth(labelSize);
             return (
               <g key={`rig-axis-${label}`}>
-                <circle cx={x} cy={y} r={10} fill={fill} fillOpacity={0.9} stroke={stroke} strokeWidth={2.2}>
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={cr}
+                  fill={fill}
+                  fillOpacity={fill === "none" ? undefined : 0.9}
+                  stroke={stroke}
+                  strokeWidth={fill === "none" ? 1.5 : 1.2}
+                >
                   <title>
                     リグ交点: {label} ({Math.round(x)}, {Math.round(y)})
                   </title>
                 </circle>
                 <text
-                  x={x + dx}
-                  y={y}
+                  x={x + ox}
+                  y={y + oy}
+                  textAnchor="middle"
                   dominantBaseline="middle"
                   fontSize={labelSize}
                   fill={textFill}
@@ -194,15 +209,15 @@ export function FittingCanvasPlotOverlay({
                 <rect
                   x={8}
                   y={4}
-                  width={280}
-                  height={48}
-                  rx={8}
+                  width={168}
+                  height={28}
+                  rx={5}
                   fill="white"
                   fillOpacity={0.95}
                   stroke="red"
-                  strokeWidth={2}
+                  strokeWidth={1.2}
                 />
-                <text x={20} y={36} fontSize={FONT_INDEX_SHOULDER_BADGE} fill="red" fontFamily="monospace" fontWeight="bold">
+                <text x={14} y={22} fontSize={FONT_INDEX_SHOULDER_BADGE} fill="red" fontFamily="monospace" fontWeight="bold">
                   肩 #{sd.shoulderPointIndex}
                 </text>
               </g>
@@ -213,6 +228,7 @@ export function FittingCanvasPlotOverlay({
               }}
             >
             {sd.garmentShoulderPoints.map(([x, y], i) => {
+              if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
               const shoulderIdx = sd.shoulderPointIndex;
               const isShoulder = shoulderIdx != null ? i === shoulderIdx : false;
               const hlRoles = vertexHighlightRoles(i, genericVertexPlotHighlight);
@@ -222,11 +238,14 @@ export function FittingCanvasPlotOverlay({
                 : isHl
                   ? FONT_INDEX_GARMENT_HIGHLIGHT
                   : FONT_INDEX_GARMENT;
-              const r = isShoulder ? 10 : isHl ? 8 : 7;
-              const dx = Math.round(labelSize * 0.82);
+              const r = isShoulder ? 4 : isHl ? 3.5 : 3;
+              const orbit = indexLabelOrbitRadius(r, labelSize);
+              const { ox, oy } = indexLabelRadialOffset(i, orbit);
               const indexStrokeW = indexLabelStrokeWidth(labelSize);
-              const fill = isShoulder ? "red" : isHl ? "#4ade80" : "blue";
-              const stroke = isShoulder ? "darkred" : isHl ? "#166534" : "navy";
+              const outlineOnly = !isShoulder && !isHl;
+              const circleFill = isShoulder ? "red" : isHl ? "#4ade80" : "none";
+              const labelFill = isShoulder ? "red" : isHl ? "#4ade80" : "#334155";
+              const stroke = isShoulder ? "darkred" : isHl ? "#166534" : "#334155";
               const hlNote = isHl ? ` [${hlRoles.join(" · ")}]` : "";
               return (
                 <g key={`pt-${i}-${x}-${y}`}>
@@ -234,10 +253,10 @@ export function FittingCanvasPlotOverlay({
                     cx={x}
                     cy={y}
                     r={r}
-                    fill={fill}
-                    fillOpacity={isShoulder ? 0.95 : isHl ? 0.92 : 0.88}
+                    fill={circleFill}
+                    fillOpacity={outlineOnly ? undefined : isShoulder ? 0.95 : 0.92}
                     stroke={stroke}
-                    strokeWidth={isShoulder ? 2.2 : isHl ? 2 : 1.8}
+                    strokeWidth={isShoulder ? 1.2 : isHl ? 1.1 : 1.5}
                     style={garmentVertexPickEnabled ? { cursor: "crosshair" } : undefined}
                     onPointerEnter={() => {
                       if (garmentVertexPickEnabled) onGarmentVertexHover?.(i);
@@ -250,11 +269,12 @@ export function FittingCanvasPlotOverlay({
                     </title>
                   </circle>
                   <text
-                    x={x + dx}
-                    y={y}
+                    x={x + ox}
+                    y={y + oy}
+                    textAnchor="middle"
                     dominantBaseline="middle"
                     fontSize={labelSize}
-                    fill={fill}
+                    fill={labelFill}
                     fontFamily="monospace"
                     fontWeight="bold"
                     stroke="white"
@@ -271,10 +291,7 @@ export function FittingCanvasPlotOverlay({
             {(() => {
               if (garment !== "custom" || !customGarmentData || hideSleeveMeasureLine) return null;
               return (
-                <>
-                  {sleeveMeasureOverlayNode(sd, customGarmentData, genericVertexPlotHighlight)}
-                  {lengthMeasureOverlayNode(sd, customGarmentData)}
-                </>
+                <>{sleeveMeasureOverlayNode(sd, customGarmentData, genericVertexPlotHighlight)}</>
               );
             })()}
           </g>

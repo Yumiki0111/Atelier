@@ -10,14 +10,17 @@ export function FittingControlsPathCatalogPanel({
   genericDraft,
   setGenericDraft,
   measureVertexRangeSectionFocusedRef,
+  flushMeasureVertexDraftToParent,
   hoveredGarmentVertexIndex,
 }: {
   showMeasureVertexControls: boolean;
   genericDraft: GenericDraft;
   setGenericDraft: (next: GenericDraft | ((p: GenericDraft) => GenericDraft)) => void;
   measureVertexRangeSectionFocusedRef: MutableRefObject<boolean>;
+  flushMeasureVertexDraftToParent: () => void;
   hoveredGarmentVertexIndex?: number | null;
-}) {
+})
+ {
   return (
     <DevPanelSection title="連結頂点 #（採寸）">
       <p className="text-[9px] leading-snug text-slate-600">
@@ -35,6 +38,7 @@ export function FittingControlsPathCatalogPanel({
             const next = e.relatedTarget as Node | null;
             if (next && e.currentTarget.contains(next)) return;
             measureVertexRangeSectionFocusedRef.current = false;
+            flushMeasureVertexDraftToParent();
           }}
         >
           <div className="space-y-1.5 rounded-md border border-red-200/80 bg-red-50/50 px-2 py-1.5">
@@ -48,11 +52,12 @@ export function FittingControlsPathCatalogPanel({
                 onChange={(e) => {
                   const raw = e.target.value;
                   const t = parseSleeveMeasureVertexInput(raw);
+                  const degeneratePair = t != null && t[0] === t[1];
                   setGenericDraft((p) => ({
                     ...p,
                     sleeveMeasureRange: raw,
-                    sleeveMeasureVertexStart: t ? t[0] : undefined,
-                    sleeveMeasureVertexEnd: t ? t[1] : undefined,
+                    sleeveMeasureVertexStart: t && !degeneratePair ? t[0] : undefined,
+                    sleeveMeasureVertexEnd: t && !degeneratePair ? t[1] : undefined,
                   }));
                 }}
               />
@@ -98,6 +103,67 @@ export function FittingControlsPathCatalogPanel({
               className="rounded bg-slate-200 px-2 py-0.5 text-[9px] font-semibold text-slate-700 hover:bg-slate-300"
             >
               袖丈区間をクリア
+            </button>
+          </div>
+
+          <div className="space-y-1.5 rounded-md border border-orange-200/80 bg-orange-50/50 px-2 py-1.5">
+            <p className="text-[9px] font-semibold text-orange-900">反対側の袖（ミラー袖）</p>
+            <p className="text-[9px] leading-snug text-slate-600">
+              指定すると両袖パスが胴グレードから除外され変形を防ぎます。区間（30-37）またはカンマ連結（30,31,50,51）に対応。
+            </p>
+            <label className="flex flex-col gap-0.5 text-[9px] text-slate-600">
+              <span>連結 # の区間</span>
+              <input
+                className="rounded-md border border-slate-200 bg-white px-2 py-1 font-mono text-[10px] outline-none focus:ring-2 focus:ring-orange-300/50"
+                placeholder="例: 30-37 / 30,31,32,33 / 空欄"
+                value={genericDraft.sleeveMirrorMeasureRange}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  const t = parseSleeveMeasureVertexInput(raw);
+                  const degeneratePair = t != null && t[0] === t[1];
+                  setGenericDraft((p) => ({
+                    ...p,
+                    sleeveMirrorMeasureRange: raw,
+                    sleeveMirrorMeasureVertexStart: t && !degeneratePair ? t[0] : undefined,
+                    sleeveMirrorMeasureVertexEnd: t && !degeneratePair ? t[1] : undefined,
+                  }));
+                }}
+              />
+            </label>
+            {(() => {
+              const raw = genericDraft.sleeveMirrorMeasureRange.trim();
+              const list = parseSleeveMeasureVertexList(raw);
+              const t = parseSleeveMeasureVertexInput(raw);
+              if (list != null && list.length >= 2 && list[0] !== list[list.length - 1]) {
+                const a = list[0]!;
+                const b = list[list.length - 1]!;
+                return (
+                  <p className="font-mono text-[9px] text-slate-700">
+                    → 順: #{list.join(" → #")}（始点 #{a} · 終点 #{b}）
+                  </p>
+                );
+              }
+              return t && t[0] !== t[1] ? (
+                <p className="font-mono text-[9px] text-slate-700">
+                  → #{t[0]}〜#{t[1]}（{Math.abs(t[1] - t[0]) + 1} 頂点）
+                </p>
+              ) : raw !== "" && t == null ? (
+                <p className="text-[9px] text-amber-800">形式を確認</p>
+              ) : null;
+            })()}
+            <button
+              type="button"
+              onClick={() =>
+                setGenericDraft((p) => ({
+                  ...p,
+                  sleeveMirrorMeasureRange: "",
+                  sleeveMirrorMeasureVertexStart: undefined,
+                  sleeveMirrorMeasureVertexEnd: undefined,
+                }))
+              }
+              className="rounded bg-slate-200 px-2 py-0.5 text-[9px] font-semibold text-slate-700 hover:bg-slate-300"
+            >
+              ミラー袖区間をクリア
             </button>
           </div>
 

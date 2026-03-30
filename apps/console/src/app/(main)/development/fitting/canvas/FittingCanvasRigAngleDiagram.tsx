@@ -3,7 +3,7 @@
 import type {
   FittingCanvasRigArmAngleDebug,
   RigRedLineArmDiagram,
-} from "../compute/fittingCanvasCompute";
+} from "@/lib/fitting-compute/fittingCanvasCompute";
 import {
   neckAxisShoulderGeom,
   rigDiagramShoulderWrist,

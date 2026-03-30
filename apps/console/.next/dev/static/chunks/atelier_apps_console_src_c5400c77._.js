@@ -47,7 +47,11 @@ const navigationItems = [
         label: "ダッシュボード",
         icon: "/icon/home.png"
     },
-    // { href: "/widget-design", label: "インターフェース", icon: "/icon/palet.png" }, // 無効化
+    {
+        href: "/widget-design",
+        label: "インターフェース",
+        icon: "/icon/palet.png"
+    },
     {
         href: "/database/products",
         label: "商品データベース",
@@ -307,6 +311,13 @@ function ProductSelectionProvider({ children }) {
         selectedProduct?.id,
         selectedSize
     ]);
+    const clearProductSelection = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
+        "ProductSelectionProvider.useCallback[clearProductSelection]": ()=>{
+            setSelectedProduct(undefined);
+            setSelectedSize(undefined);
+            setIsPreviewOpen(false);
+        }
+    }["ProductSelectionProvider.useCallback[clearProductSelection]"], []);
     const togglePreview = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
         "ProductSelectionProvider.useCallback[togglePreview]": ()=>{
             setIsPreviewOpen({
@@ -344,6 +355,7 @@ function ProductSelectionProvider({ children }) {
                 selectedProduct,
                 selectedSize,
                 selectProduct,
+                clearProductSelection,
                 isPreviewOpen,
                 togglePreview,
                 viewStats
@@ -352,6 +364,7 @@ function ProductSelectionProvider({ children }) {
         selectedProduct,
         selectedSize,
         selectProduct,
+        clearProductSelection,
         isPreviewOpen,
         togglePreview,
         viewStats
@@ -361,11 +374,11 @@ function ProductSelectionProvider({ children }) {
         children: children
     }, void 0, false, {
         fileName: "[project]/atelier/apps/console/src/contexts/ProductSelectionContext.tsx",
-        lineNumber: 100,
+        lineNumber: 109,
         columnNumber: 5
     }, this);
 }
-_s(ProductSelectionProvider, "SpXGTPA8Ilm+52y61YXMRptC2Lc=");
+_s(ProductSelectionProvider, "px9CGs+7XdcgoYoaMylMuJqwmks=");
 _c = ProductSelectionProvider;
 function useProductSelection() {
     _s1();

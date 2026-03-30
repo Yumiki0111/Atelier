@@ -9,11 +9,7 @@
     "copy-to-console": "cp dist/widget.iife.js ../../apps/console/public/widget.js",
     "preview": "vite preview"
   },
-  "dependencies": {
-    "@atelier/preview": "*",
-    "@atelier/shared": "*",
-    "three": "^0.169.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "typescript": "^5",
     "vite": "^5.4.11"

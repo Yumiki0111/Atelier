@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { FittingControls } from "./fitting/controls/FittingControls";
 import { FittingCanvas } from "./fitting/canvas/FittingCanvas";
-import { sizeEqual, landmarksEqual } from "./fitting/lib/fittingStateUtils";
+import { sizeEqual, landmarksEqual, pathDsContentEqual } from "./fitting/lib/fittingStateUtils";
 import { getGenericSymmetricTopPreset } from "./fitting/generic/getGenericSymmetricTopPreset";
 import type {
   GarmentType,
@@ -72,7 +72,7 @@ export default function DevelopmentPage() {
     null
   );
   const [hoveredGarmentVertexIndex, setHoveredGarmentVertexIndex] = useState<number | null>(null);
-  const rafRef = useRef<number | null>(null);
+  const animRunIdRef = useRef(0);
   const startRef = useRef<number | null>(null);
 
   const handleShirtSizeChange = useCallback((next: ShirtSize) => {
@@ -89,15 +89,19 @@ export default function DevelopmentPage() {
     setCustomGarmentData(newData);
     if (
       prev &&
-      prev.pathDs === newData.pathDs &&
+      pathDsContentEqual(prev.pathDs, newData.pathDs) &&
       (!sizeEqual(prev.size, newData.size) ||
         !landmarksEqual(prev.landmarks, newData.landmarks))
     ) {
-      setAnimFromCustom(prev);
-      setAnimToCustom(newData);
-      setAnimProgress(0);
-      startRef.current = null;
-    } else if (prev && prev.pathDs !== newData.pathDs) {
+      /**
+       * path は同じでサイズ／ランドマークだけ変える場合、補間中は `animatingCustomSizeBlend` により
+       * 着丈 Y メッシュ・袖スナップが意図的にオフになり、300ms 見た目が変わらない／幾何だけずれたログが出る。
+       * 同じ SVG のグレード確認では補間しない。
+       */
+      setAnimFromCustom(null);
+      setAnimToCustom(null);
+      setAnimProgress(1);
+    } else if (prev && !pathDsContentEqual(prev.pathDs, newData.pathDs)) {
       setAnimFromCustom(null);
       setAnimToCustom(null);
       setAnimProgress(1);
@@ -127,26 +131,41 @@ export default function DevelopmentPage() {
     saveState(garment, shirtSize, jacketSize);
   }, [hydrated, garment, shirtSize, jacketSize]);
 
+  /**
+   * `animProgress` を依存に入れると毎フレーム effect が再実行され、cleanup の cancelAnimationFrame が
+   * 継続フレームを潰してグレーディング補間がカクつく。from/to が揃ったときだけ 1 本の RAF チェーンを回す。
+   */
   useEffect(() => {
-    if (animProgress >= 1) {
-      setAnimFromSize(null);
-      setAnimToSize(null);
-      setAnimFromCustom(null);
-      setAnimToCustom(null);
-      return;
-    }
+    const animating =
+      (animFromSize != null && animToSize != null) ||
+      (animFromCustom != null && animToCustom != null);
+    if (!animating) return;
+
+    const runId = ++animRunIdRef.current;
+    startRef.current = null;
+
     const step = (ts: number) => {
+      if (runId !== animRunIdRef.current) return;
       if (startRef.current == null) startRef.current = ts;
       const elapsed = ts - startRef.current;
       const next = Math.min(elapsed / ANIM_DURATION_MS, 1);
       setAnimProgress(next);
-      if (next < 1) rafRef.current = requestAnimationFrame(step);
+      if (next < 1) {
+        requestAnimationFrame(step);
+      } else {
+        setAnimFromSize(null);
+        setAnimToSize(null);
+        setAnimFromCustom(null);
+        setAnimToCustom(null);
+      }
     };
-    rafRef.current = requestAnimationFrame(step);
+
+    const id = requestAnimationFrame(step);
     return () => {
-      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+      cancelAnimationFrame(id);
+      animRunIdRef.current += 1;
     };
-  }, [animProgress]);
+  }, [animFromSize, animToSize, animFromCustom, animToCustom]);
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden overscroll-none">
@@ -155,7 +174,7 @@ export default function DevelopmentPage() {
         <DevelopmentProductRegisterPanel garment={garment} customGarmentData={customGarmentData} />
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden rounded-lg bg-[#f0ede8] p-3 lg:flex-row lg:items-stretch lg:gap-4">
-        <div className="relative min-h-0 min-h-[min(55dvh,520px)] flex-1 overflow-hidden lg:order-2 lg:min-h-0">
+        <div className="relative flex h-full min-h-0 min-h-[min(55dvh,520px)] flex-1 flex-col overflow-hidden lg:order-2 lg:min-h-0">
           <FittingCanvas
             height={height}
             weight={weight}

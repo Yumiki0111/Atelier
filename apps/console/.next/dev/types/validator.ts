@@ -362,6 +362,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../../src/app/api/products/[id]/fit-svg/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/products/[id]/fit-svg">> = Specific
+  const handler = {} as typeof import("../../../src/app/api/products/[id]/fit-svg/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../../src/app/api/products/[id]/route.ts
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/products/[id]">> = Specific
@@ -429,6 +438,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/public/widget-design">> = Specific
   const handler = {} as typeof import("../../../src/app/api/public/widget-design/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../src/app/api/public/widget-fit-svg/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/public/widget-fit-svg">> = Specific
+  const handler = {} as typeof import("../../../src/app/api/public/widget-fit-svg/route.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check

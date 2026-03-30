@@ -43,11 +43,11 @@ async function authenticatedFetch(url, options = {}) {
 async function extractErrorMessage(response) {
     try {
         const data = await response.json();
-        if (data.error) {
-            return data.error;
-        }
-        if (data.message) {
+        if (typeof data.message === "string" && data.message.trim() !== "") {
             return data.message;
+        }
+        if (data.error) {
+            return typeof data.error === "string" ? data.error : String(data.error);
         }
     } catch  {
     // JSON解析に失敗した場合は、ステータスコードからメッセージを生成

@@ -6,14 +6,40 @@ import { getScalableSpec } from "../lib/customGarmentUtils";
 import { resolveGenericScalableSpec } from "../generic";
 import type { CustomGarmentData, GenericVertexPlotHighlight } from "../lib/types";
 
-/** 連結頂点 # の文字（頂点が密なところで重なりやすいので控えめ） */
-export const FONT_INDEX_GARMENT = 30;
-export const FONT_INDEX_GARMENT_HIGHLIGHT = 34;
-export const FONT_INDEX_GARMENT_SHOULDER = 40;
-export const FONT_INDEX_SHOULDER_BADGE = 34;
+/** 連結頂点 # の文字（密な頂点でも重なりにくいよう小さめ） */
+export const FONT_INDEX_GARMENT = 14;
+export const FONT_INDEX_GARMENT_HIGHLIGHT = 16;
+export const FONT_INDEX_GARMENT_SHOULDER = 18;
+export const FONT_INDEX_SHOULDER_BADGE = 16;
 
 export function indexLabelStrokeWidth(fontSize: number): number {
-  return Math.max(2.5, Math.round(fontSize * 0.12));
+  return Math.max(1, Math.round(fontSize * 0.09));
+}
+
+/** 連続インデックスでもラベル方向がそろわないよう黄金角（ラジアン） */
+const GOLDEN_ANGLE_RAD = Math.PI * (3 - Math.sqrt(5));
+
+/**
+ * 頂点からラベル中心までのオフセット。密な輪郭でも # が同じ方向に積み上がらない。
+ */
+export function indexLabelRadialOffset(index: number, radiusPx: number): { ox: number; oy: number } {
+  const angle = (index * GOLDEN_ANGLE_RAD) % (Math.PI * 2);
+  return {
+    ox: Math.cos(angle) * radiusPx,
+    oy: Math.sin(angle) * radiusPx,
+  };
+}
+
+/** 頂点マーカー（円）と `#` テキストの間の余白（px） */
+export const INDEX_LABEL_VERTEX_MARGIN_PX = 6;
+
+function indexLabelTextHalfExtentPx(fontSize: number): number {
+  return fontSize * 0.52;
+}
+
+/** 頂点からラベル中心までの距離 */
+export function indexLabelOrbitRadius(circleR: number, fontSize: number): number {
+  return circleR + INDEX_LABEL_VERTEX_MARGIN_PX + indexLabelTextHalfExtentPx(fontSize);
 }
 
 export type RigIntersectionPlotPoint = {
@@ -31,7 +57,7 @@ export function rigIntersectionPlotStyle(kind: RigIntersectionPlotPoint["plotKin
     case "bodyFollow":
       return { fill: "#14b8a6", stroke: "#0f766e", textFill: "#0d9488" };
     case "warp":
-      return { fill: "#3b82f6", stroke: "#1e3a8a", textFill: "#1d4ed8" };
+      return { fill: "none", stroke: "#57534e", textFill: "#44403c" };
     case "rigView":
       return { fill: "#e879f9", stroke: "#86198f", textFill: "#a21caf" };
     default:

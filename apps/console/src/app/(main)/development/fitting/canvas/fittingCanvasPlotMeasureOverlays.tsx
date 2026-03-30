@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import type { CustomGarmentData, GenericVertexPlotHighlight, ShoulderDebug } from "../lib/types";
 import {
-  getCustomLengthMeasureIndexRange,
   getCustomSleeveMeasureIndexRange,
   MAX_MEASURE_POLYLINE_VERTICES,
   mirrorSleeveVertexChainForPlot,
@@ -61,7 +60,13 @@ export function sleeveMeasureOverlayNode(
   let rHi = 0;
   let hasRight = false;
   let ptsR: [number, number][] = [];
-  if (sd.sleeveMeasurePlotRangeRight) {
+  const mirrorChainGt = customGarmentData.genericSymmetricTop?.sleeveMirrorMeasureVertexChain;
+  if (mirrorChainGt != null && mirrorChainGt.length >= 2) {
+    ptsR = collectPtsByIndices(mirrorChainGt);
+    rLo = Math.min(...mirrorChainGt);
+    rHi = Math.max(...mirrorChainGt);
+    hasRight = ptsR.length >= 2;
+  } else if (sd.sleeveMeasurePlotRangeRight) {
     rLo = Math.min(sd.sleeveMeasurePlotRangeRight[0], sd.sleeveMeasurePlotRangeRight[1]);
     rHi = Math.max(sd.sleeveMeasurePlotRangeRight[0], sd.sleeveMeasurePlotRangeRight[1]);
     hasRight = true;
@@ -101,7 +106,7 @@ export function sleeveMeasureOverlayNode(
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        <title>{`袖丈計測 左 ${titleLeft}${titleSuffix} · 入力 ${specSleeveCm}cm（左右同 cm）`}</title>
+        <title>{`袖丈計測（プライマリ） ${titleLeft}${titleSuffix} · 入力 ${specSleeveCm}cm`}</title>
       </path>
       {hasRightDraw ? (
         <path
@@ -112,61 +117,9 @@ export function sleeveMeasureOverlayNode(
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          <title>{`袖丈計測 右 #${rLo}〜#${rHi} · 入力 ${specSleeveCm}cm（左右同 cm）`}</title>
+          <title>{`袖丈計測（ミラー） #${rLo}〜#${rHi} または連結順 · 入力 ${specSleeveCm}cm`}</title>
         </path>
       ) : null}
-    </g>
-  );
-}
-
-export function lengthMeasureOverlayNode(sd: ShoulderDebug, customGarmentData: CustomGarmentData): ReactNode {
-  const fromDebug = sd.lengthMeasurePlotRange;
-  let startIdx: number;
-  let endIdx: number;
-  if (fromDebug) {
-    startIdx = Math.min(fromDebug[0], fromDebug[1]);
-    endIdx = Math.max(fromDebug[0], fromDebug[1]);
-  } else {
-    const lr = getCustomLengthMeasureIndexRange(customGarmentData);
-    if (!lr) return null;
-    [startIdx, endIdx] = lr;
-  }
-  if (startIdx >= endIdx) return null;
-  const pLo = sd.garmentShoulderPoints[startIdx];
-  const pHi = sd.garmentShoulderPoints[endIdx];
-  if (!pLo || !pHi) return null;
-  const iTop = pLo[1] <= pHi[1] ? startIdx : endIdx;
-  const iBot = pLo[1] <= pHi[1] ? endIdx : startIdx;
-  const ptsOrdered: [number, number][] = [];
-  if (iTop <= iBot) {
-    for (let i = iTop; i <= iBot; i++) {
-      const p = sd.garmentShoulderPoints[i];
-      if (p) ptsOrdered.push(p);
-    }
-  } else {
-    for (let i = iTop; i >= iBot; i--) {
-      const p = sd.garmentShoulderPoints[i];
-      if (p) ptsOrdered.push(p);
-    }
-  }
-  if (ptsOrdered.length < 2) return null;
-  const ptsDraw = subsamplePolylineForDisplay(ptsOrdered, MAX_MEASURE_POLYLINE_VERTICES);
-  const specLengthCm = customGarmentData.size.length;
-  const dbg = sd.lengthPathLengthDebug;
-  const titleExtra =
-    dbg != null ? ` · 幾何数値 ${dbg.cm.toFixed(1)}cm（|ΔY| ${dbg.px.toFixed(0)}px）` : "";
-  return (
-    <g>
-      <path
-        d={`M ${ptsDraw.map(([x, y]) => `${x} ${y}`).join(" L ")}`}
-        fill="none"
-        stroke="#7c3aed"
-        strokeWidth={5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <title>{`着丈計測 #${startIdx}〜#${endIdx} · 入力値 ${specLengthCm}cm${titleExtra}`}</title>
-      </path>
     </g>
   );
 }

@@ -3,7 +3,7 @@ import {
   scaleBodyToSpec,
   scaleSleevePathToSpec,
   rotateAround,
-} from "./coatArmLogic";
+} from "./scalableGarmentArmLogic";
 import { tPath, getPathPoints, flattenSvgPathToPolyline } from "./pathUtils";
 import {
   buildSleeveOnlyCtx,
@@ -58,11 +58,24 @@ function makeVertexFn(pathIdx: number, ctx: SleeveOnlyCtx): (gx: number, gy: num
     attachRx,
     leftArmRange,
     rightArmRange,
+    innerLeftY0,
+    innerLeftY1,
+    innerRightY0,
+    innerRightY1,
     originX,
     centerSnapThresh,
     config,
   } = ctx;
-  const { seamPathLeft, seamPathLeftEnd, seamPathRight, seamPathRightEnd } = config;
+  const {
+    seamPathLeft,
+    seamPathLeftEnd,
+    seamPathRight,
+    seamPathRightEnd,
+    sleevePathLeft,
+    sleevePathLeftEnd,
+    sleevePathRight,
+    sleevePathRightEnd,
+  } = config;
   const isOuterArmPath =
     pathIdxInConfigRange(pathIdx, seamPathLeft, seamPathLeftEnd) ||
     pathIdxInConfigRange(pathIdx, seamPathRight, seamPathRightEnd);
@@ -81,6 +94,31 @@ function makeVertexFn(pathIdx: number, ctx: SleeveOnlyCtx): (gx: number, gy: num
         ];
       }
       const rightWeight = Math.max(0, Math.min(1, (gx - attachRx) / rightArmRange)) * yFactor;
+      if (rightWeight > 0) {
+        const rotated = rotateAround(pt, rightShoulder, ctx.sleeveRotationR);
+        return [
+          pt[0] * (1 - rightWeight) + rotated[0] * rightWeight,
+          pt[1] * (1 - rightWeight) + rotated[1] * rightWeight,
+        ];
+      }
+    } else if (pathIdxInConfigRange(pathIdx, sleevePathLeft, sleevePathLeftEnd)) {
+      /** 内袖は gx が attach より体側で (attachLx−gx) が効かないため、肩〜袖口の Y で外腕と同じ回転をブレンド */
+      const yFactor = Math.max(0, Math.min(1, (lm.hemY - gy) / hemFadeBuffer));
+      const ySpan = Math.max(1e-6, innerLeftY1 - innerLeftY0);
+      const yAlong = Math.max(0, Math.min(1, (gy - innerLeftY0) / ySpan));
+      const leftWeight = yAlong * yFactor;
+      if (leftWeight > 0) {
+        const rotated = rotateAround(pt, leftShoulder, ctx.sleeveRotationL);
+        return [
+          pt[0] * (1 - leftWeight) + rotated[0] * leftWeight,
+          pt[1] * (1 - leftWeight) + rotated[1] * leftWeight,
+        ];
+      }
+    } else if (pathIdxInConfigRange(pathIdx, sleevePathRight, sleevePathRightEnd)) {
+      const yFactor = Math.max(0, Math.min(1, (lm.hemY - gy) / hemFadeBuffer));
+      const ySpan = Math.max(1e-6, innerRightY1 - innerRightY0);
+      const yAlong = Math.max(0, Math.min(1, (gy - innerRightY0) / ySpan));
+      const rightWeight = yAlong * yFactor;
       if (rightWeight > 0) {
         const rotated = rotateAround(pt, rightShoulder, ctx.sleeveRotationR);
         return [

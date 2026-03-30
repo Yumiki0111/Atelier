@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  transpilePackages: ["@atelier/shared", "@atelier/preview"],
+  transpilePackages: ["@atelier/shared"],
   async headers() {
     return [
       {

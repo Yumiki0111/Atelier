@@ -31,7 +31,7 @@ export function ProductsTable({
   products,
   onProductSelect,
 }: ProductsTableProps) {
-  const { togglePreview } = useProductSelection();
+  const { togglePreview, clearProductSelection, selectedProduct } = useProductSelection();
   const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const deleteProduct = useDeleteProduct();
@@ -43,6 +43,9 @@ export function ProductsTable({
     }
     try {
       await deleteProduct.mutateAsync(productId);
+      if (selectedProduct?.id === productId) {
+        clearProductSelection();
+      }
       toast.success("商品を削除しました");
     } catch (error) {
       console.error("Failed to delete product:", error);
@@ -65,6 +68,9 @@ export function ProductsTable({
     try {
       const productIds = Array.from(selectedRowIds);
       const result = await bulkDeleteProducts.mutateAsync(productIds);
+      if (selectedProduct && productIds.includes(selectedProduct.id)) {
+        clearProductSelection();
+      }
       toast.success(`${result.deletedCount}件の商品を削除しました`);
       setSelectedRowIds(new Set()); // 選択をクリア
     } catch (error) {
@@ -229,48 +235,43 @@ export function ProductsTable({
                       className={`py-2 ${isSelected ? "bg-blue-50" : ""}`}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {isSelected ? (
-                        <div className="flex gap-2 flex-wrap">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setEditingProductId(product.id)}
-                            className="gap-2 whitespace-nowrap"
-                          >
-                            <Edit className="h-4 w-4" />
-                            編集
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDelete(product.id)}
-                            className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 whitespace-nowrap"
-                            disabled={deleteProduct.isPending}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            削除
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="flex gap-2 flex-wrap">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              onProductSelect(product, "M");
-                              togglePreview();
-                            }}
-                            className="gap-2 h-9 min-w-[120px] justify-start px-3"
-                          >
-                            <Eye className="h-4 w-4" />
-                            プレビュー
-                          </Button>
-                          <AssetManagementDialog
-                            productId={product.id}
-                            productName={product.name}
-                          />
-                        </div>
-                      )}
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            onProductSelect(product, "M");
+                            togglePreview();
+                          }}
+                          className="h-9 min-w-[120px] justify-start gap-2 px-3"
+                        >
+                          <Eye className="h-4 w-4" />
+                          プレビュー
+                        </Button>
+                        <AssetManagementDialog
+                          productId={product.id}
+                          productName={product.name}
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setEditingProductId(product.id)}
+                          className="gap-2 whitespace-nowrap"
+                        >
+                          <Edit className="h-4 w-4" />
+                          編集
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDelete(product.id)}
+                          className="gap-2 whitespace-nowrap text-red-600 hover:bg-red-50 hover:text-red-700"
+                          disabled={deleteProduct.isPending}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          削除
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );

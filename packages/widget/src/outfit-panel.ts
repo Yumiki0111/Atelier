@@ -36,7 +36,7 @@ async function loadCachedImage(url: string): Promise<HTMLImageElement> {
   });
 }
 
-// 着せ替えパネルを表示（3Dビューアーの下に表示）
+// 着せ替えパネルを表示（試着ビュー領域の下に表示）
 export async function showOutfitChangePanel(
   container: HTMLElement,
   params: WidgetParams,
@@ -58,7 +58,7 @@ export async function showOutfitChangePanel(
     return;
   }
   
-  // 3Dビューアーコンテナを取得（パネルと同期して縮小するため）
+  // 試着ビュー領域を取得（パネルと同期して縮小するため）
   const viewerContainer = container.querySelector('[data-atelier-viewer-container]') as HTMLElement || 
                           container.querySelector('div[style*="flex: 1"]') as HTMLElement ||
                           container.firstElementChild as HTMLElement;
@@ -201,8 +201,8 @@ export async function showOutfitChangePanel(
     floatingButtons.style.display = "none";
   }
   
-  // 3Dビューアーとパネルを連結させる関数
-  // パネルの位置（translateY）に基づいて3Dビューアーのmax-heightを調整
+  // 試着ビューとパネルを連結させる関数
+  // パネルの位置（translateY）に基づいてビュー領域のmax-heightを調整
   const updateViewerHeight = () => {
     if (!viewerContainer) return;
     
@@ -222,17 +222,15 @@ export async function showOutfitChangePanel(
     const totalDistance = panelTopWhenHidden - panelTopWhenVisible;
     const progress = Math.max(0, Math.min(1, distance / totalDistance));
     
-    // パネルが上に上がってくる分だけ、3Dビューアーのmax-heightを減らす
-    // パネルが完全に下（progress = 0）の時: 3Dビューアーは全高さ
-    // パネルが完全に表示（progress = 1）の時: 3Dビューアーは高さからパネル分を引いた高さ
+    // パネルが上に上がってくる分だけ、ビュー領域のmax-heightを減らす
     const panelVisibleHeight = panelHeight * progress;
     const viewerMaxHeight = containerHeight - panelVisibleHeight;
     
-    // 3Dビューアーのmax-heightを設定（flex: 1は維持）
+    // ビュー領域のmax-heightを設定（flex: 1は維持）
     viewerContainer.style.maxHeight = `${viewerMaxHeight}px`;
   };
   
-  // 3Dビューアーの初期設定
+  // ビュー領域の初期設定
   if (viewerContainer) {
     viewerContainer.style.transition = "max-height 0.5s cubic-bezier(0.4, 0.0, 0.2, 1)";
     // 初期max-heightを設定（パネルが完全に下にある状態）
@@ -241,7 +239,7 @@ export async function showOutfitChangePanel(
     // flex: 1は維持（flexboxレイアウトを保持）
   }
   
-  // パネルの位置変化を監視して3Dビューアーを連動させる
+  // パネルの位置変化を監視してビュー領域を連動させる
   const animationFrameIdRef = { current: null as number | null };
   let lastPanelTop = -1;
   const observePanelPosition = () => {
@@ -424,7 +422,7 @@ export async function showOutfitChangePanel(
                   closePanel(panel, animationFrameIdRef, resizeObserver);
                   observePanelPosition();
                 } else {
-                  alert("この商品の3Dモデルが登録されていません。");
+                  alert("この商品の試着データが登録されていません。");
                   productItem.style.opacity = "1";
                   productItem.style.pointerEvents = "auto";
                 }
@@ -587,7 +585,7 @@ export async function showOutfitChangePanel(
       // パネルを下に移動
       panel.style.transform = `translateY(${deltaY}px)`;
       
-      // 3Dビューアーも連動してmax-heightを調整（パネルの位置に基づいて動的に計算）
+      // ビュー領域も連動してmax-heightを調整（パネルの位置に基づいて動的に計算）
       if (viewerContainer) {
         viewerContainer.style.transition = "none"; // ドラッグ中はトランジション無効
         updateViewerHeight(); // パネルの位置に基づいてmax-heightを更新

@@ -39,7 +39,7 @@ export interface FittingCanvasProps {
   rigGarmentEnabled?: boolean;
   /** 左パネルで肩インデックスを表示・編集するため */
   onShoulderDebugChange?: (debug: ShoulderDebug | null) => void;
-  /** 汎用フィット入力中の連結頂点範囲（服プロットを緑で強調。着丈区間は紫線のみ） */
+  /** 汎用フィット入力中の連結頂点範囲（服プロットを緑で強調） */
   genericVertexPlotHighlight?: GenericVertexPlotHighlight | null;
   /** 汎用トップの role 指定用: 服の path クリック */
   onCustomPathClick?: (pathIdx: number) => void;
@@ -84,6 +84,9 @@ export function FittingCanvas({
     jacketFill,
     jacketDetail,
     customPathDs,
+    customPathStrokeDasharrays,
+    customPathStrokeWidths,
+    customPathStrokes,
     customRigPathDs,
     rigLandmarksDebug,
     shoulderDebug,
@@ -126,6 +129,9 @@ export function FittingCanvas({
   const centerDeltaPx =
     garmentCenterX != null ? garmentCenterX - modelCenterX : null;
 
+  /** 服パス（シャツ／ジャケット／カスタム）— 塗りなし・線のみ */
+  const garmentStroke = "rgba(45,45,45,0.82)";
+
   const debugLines: string[] = [];
   if (rigGarmentEnabled && garment === "custom") {
     debugLines.push(
@@ -147,6 +153,11 @@ export function FittingCanvas({
         rigLandmarksDebug.useRigLandmarksForPlacement ? "rigLm" : "lm"
       }`
     );
+    if (rigLandmarksDebug.rigRequirementWarnings?.length) {
+      for (const line of rigLandmarksDebug.rigRequirementWarnings) {
+        debugLines.push(line);
+      }
+    }
   }
   if (rigBodyEnabled) {
     debugLines.push(
@@ -161,7 +172,7 @@ export function FittingCanvas({
   }
 
   return (
-    <div className="relative flex min-h-0 flex-1 items-start justify-center overflow-auto rounded-lg border border-gray-200 bg-white p-4">
+    <div className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white">
       {debugLines.length > 0 && showCanvasDebugHud ? (
         <div
           aria-hidden
@@ -182,30 +193,28 @@ export function FittingCanvas({
           {debugLines.join("\n")}
         </div>
       ) : null}
-      <div className="relative w-full max-w-[300px]">
-        <svg
-          viewBox={`0 0 1505 ${viewBoxHeight}`}
-          className="h-auto w-full max-w-[300px] overflow-visible"
-          xmlns="http://www.w3.org/2000/svg"
-        >
+      <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4">
+        <div className="flex h-full w-full max-h-full max-w-[300px] items-center justify-center">
+          <svg
+            viewBox={`0 0 1505 ${viewBoxHeight}`}
+            preserveAspectRatio="xMidYMid meet"
+            className="h-auto max-h-full w-full max-w-[300px] overflow-visible"
+            xmlns="http://www.w3.org/2000/svg"
+          >
         <g fill="none" stroke="#bbb" strokeWidth={4} aria-hidden>
           {bodyPaths.map((d, i) => (
             <path key={i} d={d} />
           ))}
         </g>
         {showGarment && garment === "shirt" && shirtPathD != null && (
-          <g
-            fill="rgba(100,140,220,0.12)"
-            stroke="rgba(60,100,200,0.8)"
-            strokeWidth={8}
-          >
+          <g fill="none" stroke={garmentStroke} strokeWidth={8}>
             <path d={shirtPathD} />
           </g>
         )}
         {showGarment && garment === "jacket" && jacketFill != null && jacketDetail != null && (
-          <g fill="rgba(100,140,220,0.12)" stroke="rgba(60,100,200,0.8)" strokeWidth={8}>
+          <g fill="none" stroke={garmentStroke} strokeWidth={8}>
             <path d={jacketFill} />
-            <path d={jacketDetail} fill="none" />
+            <path d={jacketDetail} />
           </g>
         )}
         {showGarment &&
@@ -215,18 +224,16 @@ export function FittingCanvas({
             shouldSuppressGarmentPathRender(d) ? (
               <g key={`custom-${i}-${height}-${weight}`} />
             ) : (
-              <g
+              <path
                 key={`custom-${i}-${height}-${weight}`}
-                fill="rgba(100,140,220,0.12)"
-                stroke="rgba(60,100,200,0.8)"
-                strokeWidth={8}
-              >
-                <path
-                  d={d}
-                  onClick={onCustomPathClick ? () => onCustomPathClick(i) : undefined}
-                  style={onCustomPathClick ? { cursor: "pointer" } : undefined}
-                />
-              </g>
+                fill="none"
+                stroke={customPathStrokes[i] ?? garmentStroke}
+                strokeWidth={customPathStrokeWidths[i] ?? 8}
+                strokeDasharray={customPathStrokeDasharrays[i] ?? undefined}
+                d={d}
+                onClick={onCustomPathClick ? () => onCustomPathClick(i) : undefined}
+                style={onCustomPathClick ? { cursor: "pointer" } : undefined}
+              />
             )
           )}
 
@@ -301,6 +308,7 @@ export function FittingCanvas({
           height={height}
         />
         </svg>
+        </div>
       </div>
     </div>
   );

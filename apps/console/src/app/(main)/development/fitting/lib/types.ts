@@ -7,16 +7,18 @@ export type JacketSize = "3" | "4" | "5";
 export interface CustomGarmentData {
   /** 元SVGの path の d 属性の配列 */
   pathDs: string[];
+  /** `pathDs` と同じ長さ。破線でない path は undefined（アップロード時の stroke-dasharray） */
+  pathStrokeDasharrays?: (string | undefined)[];
+  /** `pathDs` と同じ長さ。SVG の stroke-width（数値化したユーザー単位）。未指定は undefined */
+  pathStrokeWidths?: (number | undefined)[];
+  /** `pathDs` と同じ長さ。stroke の色（#rgb / currentColor 等）。未指定は undefined */
+  pathStrokes?: (string | undefined)[];
   /** 元SVG座標系での肩・裾などの参照点（path 推定またはリグ推定） */
   landmarks: CustomLandmarks;
   /** この1サイズの採寸（cm） */
   size: SizeMeasure;
   /** 写真由来の輪郭のとき true。袖はモデル腕に沿わせ、襟後ろのヒントを足す */
   photoDerived?: boolean;
-  /** 指定時は肩ラインにこの頂点インデックス（全path結合順）を使う。実験ジャケット92、Group11は15 */
-  shoulderPointIndex?: number;
-  /** 指定時はこれらの頂点（全path結合順）をボディの首の線分に固定して変形する。テスト1: [84,158], テスト2: [37,86] */
-  neckPinIndices?: number[];
   /** 開発フィット: 汎用トップ（アップロード SVG 想定） */
   presetId?: "genericSymmetricTop";
   /**
@@ -35,11 +37,11 @@ export interface CustomGarmentData {
      */
     referenceBodyLengthCm?: number;
     /**
-     * Apply 確定時の着丈(cm)。SVG実寸・採寸と一致させ、この値で `bodyLengthCm` を揃えると
-     * Apply 直後の着丈スケール比が 1 になり、形のジャンプを防げる。サイズプリセット変更時は `size.length / 基準` でグレーディング。
+     * 軽量グレード用の着丈基準(cm)。未設定の間は連結頂点だけでは胴グレードを走らせない。
+     * サイズプリセットを初めて選んだときに、変更前の `size.length` を入れる。
      */
     gradingBaselineLengthCm?: number;
-    /** Apply 確定時の袖丈(cm)。将来の袖グレーディング基準用（現在は主に記録）。 */
+    /** 軽量グレード用の袖丈基準(cm)。プリセット初回選択時に変更前の `size.sleeve` を入れる。 */
     gradingBaselineSleeveCm?: number;
     /**
      * 袖丈の計測表示に使う区間（連結頂点）。両方指定時のみ有効。
@@ -53,7 +55,16 @@ export interface CustomGarmentData {
      */
     sleeveMeasureVertexChain?: number[];
     /**
-     * 着丈計測ライン（紫）用の連結頂点。両方指定時のみ `FittingCanvasPlotOverlay` で辿る。
+     * 反対側の袖（ミラー袖）の計測区間。両方指定すると：
+     * 1. 両袖パスが `scaleBodyToSpec`（胴グレード）の対象から除外される（変形防止）。
+     * 2. 両袖パスにそれぞれ独立して sleeve grading が適用される。
+     * ミラー袖連結を指定しない場合は従来の動作（後方互換）。
+     */
+    sleeveMirrorMeasureVertexStart?: number;
+    sleeveMirrorMeasureVertexEnd?: number;
+    sleeveMirrorMeasureVertexChain?: number[];
+    /**
+     * 着丈計測用の連結頂点（グレード分母・採寸オーバーレイ）。服プロットの太い紫ポリラインは描画しない。
      */
     lengthMeasureVertexStart?: number;
     lengthMeasureVertexEnd?: number;
@@ -89,7 +100,7 @@ export interface CustomGarmentData {
 
 /**
  * 汎用フィット入力中、服プロットで連結頂点範囲を緑表示するため（開発 UI）。
- * 着丈計測 `lengthMeasure` は紫線のみで、頂点の緑強調には使わない。
+ * 着丈計測 `lengthMeasure` は頂点の緑強調には使わない。
  */
 export type GenericVertexPlotHighlight = {
   seamOuterLeft?: [number, number];
@@ -126,9 +137,14 @@ export interface ScalableGarmentSpec {
     /**
      * 袖丈の anchor 基準スケールを **この index 未満** の頂点にだけ適用する（省略時は lengthEndIdx まで従来どおり）。
      * 内袖が胴と共有する裾ラインを、着丈スケール後に袖スケールで再変形しないために使う（ブローゾン path2/8）。
-     * 袖丈比 s の計算用は lengthStartIdx〜lengthEndIdx 間のポリライン弧長。
+     * 袖丈比 s の計算用は lengthStartIdx〜lengthEndIdx 間の縦 |Δy| 合算（`measureLocalChain` 指定時はその順の頂点列）。
      */
     lengthApplyEndExclusive?: number;
+    /**
+     * 汎用トップの `sleeveMeasureVertexChain` を袖 path のローカル index に写した列（順序付き）。
+     * 指定時は `lengthStartIdx`〜`lengthEndIdx` の連続区間ではなく、この順の頂点列で縦 |Δy| 合算し、`scaleSleevePathToSpec` と採寸オーバーレイを一致させる。
+     */
+    measureLocalChain?: number[];
     /** 袖口の点index（腕角度計算用） */
     cuffIdx: number;
     /** 内腕の [start, end] index。指定時は innerAnchorIdx 方向にスケール */
@@ -275,15 +291,38 @@ export interface MeasureOverlayData {
     sleeveMeasuredCm?: number;
     /** 袖丈の赤線描画用の折れ線。実寸は弧長。矢印は端点間の直線 */
     sleevePathPoints?: [number, number][];
+    /**
+     * 汎用トップ: 赤線がプロット編集ハイライトの連結で、確定した袖チェーン（gt）と異なる。
+     * 表示の幾何 cm はパイプライン確定値のため、線と数値が一致しないことがある。
+     */
+    sleeveMeasureRedLineIsEditPreview?: boolean;
+    /** ミラー袖（反対側）の赤線用。指定時は右側にも同様の採寸ガイドを描く */
+    sleevePathPointsRight?: [number, number][];
+    sleeveStartRight?: [number, number];
+    sleeveEndRight?: [number, number];
     /** 実測着丈(cm)。着丈 # 区間の頂点縦差換算（lengthPathLengthDebug と整合） */
     lengthMeasuredCm?: number;
     /** 着丈連結区間ありのときの上端（canvas）。縦寸ガイドの起点。無いときは肩平均 Y を使う */
     lengthMeasureTop?: [number, number];
     /** 着丈ガイド下端（カスタム服はメッシュ裾と一致） */
     lengthGuideHem?: [number, number];
-    /** 着丈: メッシュ上の縦スパン px / bodyPxPerCm で換算した cm */
+    /** 着丈: 紫区間の縦スパン px÷bodyPxPerCm（Y 再スケール後のメッシュ座標） */
     lengthGeomDebug?: { px: number; cm: number };
+    /** 着丈 Y 再スケール前（ワープ直後）の同紫区間縦スパン。オーバーレイの幾何の正として優先表示 */
+    lengthGeomBeforeLengthMeshDebug?: { px: number; cm: number };
+    /**
+     * 汎用トップ: プロットの着丈ハイライト区間が確定 `lengthMeasureVertexStart/End` と異なる。
+     * 表示の幾何 cm は確定 gt 基準のため、ハイライトと紫ガイドが一致しないことがある。
+     */
+    lengthMeasureIsEditPreview?: boolean;
+    /** 汎用トップ: `buildTopPlacement` と同じ縦 px/cm（着丈を px にしたときの換算） */
+    bodyPxPerCm?: number;
     /** 袖: グレード袖丈の px/cm（表示用。赤線は選択チェーンの実座標） */
     sleeveGeomDebug?: { px: number; cm: number };
+    /** 袖丈 canvas スケール補正前（applyGenericSleeveScaleAfterLengthMesh 適用前）の同チェーン縦スパン。補正量が大きいと着丈同様に歪みを示す */
+    sleeveGeomBeforeSleeveFixDebug?: { px: number; cm: number };
+    /** ミラー袖: 上記と同定義（プライマリ袖と同じパイプラインを通したときの幾何） */
+    sleeveGeomDebugRight?: { px: number; cm: number };
+    sleeveGeomBeforeSleeveFixDebugRight?: { px: number; cm: number };
   } | null;
 }

@@ -118,7 +118,7 @@ function runRembg(inputPath: string, outputPath: string): Promise<string> {
         const err = new Error(
           `rembg exited ${code}${stderr ? `: ${stderr.slice(0, 300)}` : ""}`
         );
-        (err as Error & { code?: number }).code = code;
+        (err as Error & { code?: number }).code = code ?? undefined;
         reject(err);
       }
     });

@@ -1,5 +1,3 @@
-"use client";
-
 function norm2(dx: number, dy: number): [number, number] {
   const l = Math.hypot(dx, dy);
   if (l < 1e-9) return [0, 1];

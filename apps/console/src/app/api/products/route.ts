@@ -4,6 +4,7 @@ import { getAuthenticatedUser } from "@/lib/auth/middleware";
 import { createProductSchema } from "@atelier/shared";
 import { ZodError } from "zod";
 import { stripGarmentSpecForStorage } from "@/lib/products/stripGarmentSpecForStorage";
+import { validateGarmentSpecForProduction } from "@/lib/products/validateGarmentSpecForProduction";
 
 // GET /api/products - List products
 export async function GET(request: NextRequest) {
@@ -108,6 +109,15 @@ export async function POST(request: NextRequest) {
     validated.shopId = auth.shopId;
 
     const garmentSpecStored = stripGarmentSpecForStorage(validated.garmentSpec);
+    if (garmentSpecStored != null) {
+      const v = validateGarmentSpecForProduction(garmentSpecStored);
+      if (!v.ok) {
+        return NextResponse.json(
+          { error: "Invalid garment_spec", message: v.message },
+          { status: 400 }
+        );
+      }
+    }
 
     const { data, error } = await supabaseAdmin
       .from("products")

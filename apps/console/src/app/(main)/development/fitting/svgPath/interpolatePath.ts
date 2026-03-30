@@ -1,4 +1,9 @@
-import { NUM_RE, round10 } from "./tokenize";
+import { NUM_RE } from "./tokenize";
+
+/** 補間中のみ。0.1 刻みだとベジェが段差に見えるため path 出力より細かく丸める */
+function roundInterpolateCoord(v: number): number {
+  return Math.round(v * 1000) / 1000;
+}
 
 export function interpolatePath(pathA: string, pathB: string, t: number): string {
   if (t <= 0) return pathA;
@@ -20,6 +25,6 @@ export function interpolatePath(pathA: string, pathB: string, t: number): string
     const b = numsB[i]!;
     const v = a + (b - a) * t;
     i++;
-    return String(round10(v));
+    return String(roundInterpolateCoord(v));
   });
 }

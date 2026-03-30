@@ -1,11 +1,44 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { CustomGarmentData, ShoulderDebug } from "../lib/types";
+import type { CustomGarmentData, SizeMeasure } from "../lib/types";
 import { cn } from "@/lib/utils";
 import { DevPanelSection } from "./FittingControlsUI";
-import { genericMeasureOnlyGradingActive } from "../generic";
-import { parseIndex } from "./FittingControlsGenericUtils";
+import {
+  genericMeasureOnlyGradingActive,
+  genericSymmetricTopCanvasSleeveSnapEligible,
+  measureOriginalSleeveCmFromDesignPaths,
+  resolveGenericGradingBodyLengthCmReference,
+} from "../generic";
+
+/**
+ * 初回プリセットで「入力着丈＝ベースライン」になりスケール 1 固定になるのを避ける。
+ * 紫・legacy 換算・ランドマーク推定の順で分母を決め（`resolveGenericGradingBodyLengthCmReference` と同じ鎖）。
+ */
+function seedGradingBaselineLengthCm(
+  pathDs: string[],
+  lm: CustomGarmentData["landmarks"],
+  gt: NonNullable<CustomGarmentData["genericSymmetricTop"]>,
+  nextSize: SizeMeasure
+): number {
+  return resolveGenericGradingBodyLengthCmReference(pathDs, lm, { ...gt, gradingBaselineLengthCm: undefined }, nextSize);
+}
+
+/**
+ * 初回シード時はデザイン上の袖丈（幾何）をベースラインにする。
+ * `prevSleeve > 0` をそのまま返さない — プリセット選択前に入力済みの袖丈と一致させると
+ * ベースライン＝現在サイズになり build 時グレードがスケール 1 になってしまう。
+ */
+function seedGradingBaselineSleeveCm(
+  pathDs: string[],
+  gt: NonNullable<CustomGarmentData["genericSymmetricTop"]>,
+  _prevSleeve: number,
+  nextSleeve: number
+): number {
+  const m = measureOriginalSleeveCmFromDesignPaths(pathDs, gt);
+  if (m != null && Number.isFinite(m.cm) && m.cm > 0.5) return m.cm;
+  return nextSleeve;
+}
 
 function parseCmLocal(raw: string): number | undefined {
   const t = raw.trim();
@@ -16,11 +49,9 @@ function parseCmLocal(raw: string): number | undefined {
 
 export function FittingControlsCustomPanels({
   customGarmentData,
-  shoulderDebug,
   onCustomGarmentApply,
 }: {
   customGarmentData: CustomGarmentData;
-  shoulderDebug: ShoulderDebug | null;
   onCustomGarmentApply: (data: CustomGarmentData) => void;
 }) {
   // サイズプリセット管理
@@ -33,6 +64,7 @@ export function FittingControlsCustomPanels({
   const isGenericTop = customGarmentData.presetId === "genericSymmetricTop";
   const gt = customGarmentData.genericSymmetricTop;
   const measureGradingReady = isGenericTop && genericMeasureOnlyGradingActive(gt);
+  const canvasSleeveSnapEligible = isGenericTop && genericSymmetricTopCanvasSleeveSnapEligible(gt);
 
   const normalizedSizePresets = sizePresets.map((p) => ({
     label: p.label,
@@ -41,12 +73,41 @@ export function FittingControlsCustomPanels({
   }));
 
   const activatePreset = (preset: { label: string; length: number; sleeve: number }) => {
+    const prev = customGarmentData.size;
+    const gt = customGarmentData.genericSymmetricTop;
+    const needLenBaseline =
+      gt != null &&
+      (gt.gradingBaselineLengthCm == null ||
+        !Number.isFinite(gt.gradingBaselineLengthCm) ||
+        gt.gradingBaselineLengthCm <= 0);
+    const needSlvBaseline =
+      gt != null &&
+      (gt.gradingBaselineSleeveCm == null ||
+        !Number.isFinite(gt.gradingBaselineSleeveCm) ||
+        gt.gradingBaselineSleeveCm <= 0);
+    const nextSize: SizeMeasure = {
+      ...customGarmentData.size,
+      length: preset.length,
+      sleeve: preset.sleeve,
+    };
     onCustomGarmentApply({
       ...customGarmentData,
-      size: {
-        ...customGarmentData.size,
-        length: preset.length,
-        sleeve: preset.sleeve,
+      size: nextSize,
+      genericSymmetricTop: {
+        ...(gt ?? {}),
+        ...(needLenBaseline && gt != null
+          ? { gradingBaselineLengthCm: seedGradingBaselineLengthCm(customGarmentData.pathDs, customGarmentData.landmarks, gt, nextSize) }
+          : {}),
+        ...(needSlvBaseline && gt != null
+          ? {
+              gradingBaselineSleeveCm: seedGradingBaselineSleeveCm(
+                customGarmentData.pathDs,
+                gt,
+                prev.sleeve,
+                preset.sleeve
+              ),
+            }
+          : {}),
       },
     });
   };
@@ -57,10 +118,32 @@ export function FittingControlsCustomPanels({
     if (len == null || slv == null) return;
     const label = presetLabel.trim() || String.fromCharCode(65 + sizePresets.length);
     const next = [...sizePresets, { label, length: len, sleeve: slv }];
+    const prev = customGarmentData.size;
+    const gt = customGarmentData.genericSymmetricTop;
+    const needLenBaseline =
+      gt != null &&
+      (gt.gradingBaselineLengthCm == null ||
+        !Number.isFinite(gt.gradingBaselineLengthCm) ||
+        gt.gradingBaselineLengthCm <= 0);
+    const needSlvBaseline =
+      gt != null &&
+      (gt.gradingBaselineSleeveCm == null ||
+        !Number.isFinite(gt.gradingBaselineSleeveCm) ||
+        gt.gradingBaselineSleeveCm <= 0);
+    const nextSize: SizeMeasure = { ...customGarmentData.size, length: len, sleeve: slv };
     onCustomGarmentApply({
       ...customGarmentData,
-      size: { ...customGarmentData.size, length: len, sleeve: slv },
-      genericSymmetricTop: { ...customGarmentData.genericSymmetricTop, sizePresets: next },
+      size: nextSize,
+      genericSymmetricTop: {
+        ...(gt ?? {}),
+        sizePresets: next,
+        ...(needLenBaseline && gt != null
+          ? { gradingBaselineLengthCm: seedGradingBaselineLengthCm(customGarmentData.pathDs, customGarmentData.landmarks, gt, nextSize) }
+          : {}),
+        ...(needSlvBaseline && gt != null
+          ? { gradingBaselineSleeveCm: seedGradingBaselineSleeveCm(customGarmentData.pathDs, gt, prev.sleeve, slv) }
+          : {}),
+      },
     });
     setPresetLabel("");
     setPresetLength("");
@@ -83,13 +166,30 @@ export function FittingControlsCustomPanels({
     <>
       {isGenericTop && (
         <DevPanelSection title="サイズプリセット">
-          {!measureGradingReady && (
-            <p className="mt-2 text-[10px] leading-snug text-amber-700">
-              「連結頂点 #（採寸・参考）」で袖丈・着丈の区間を入れると、プレースを保ったままサイズ表の着丈・袖丈に合わせて伸縮します。
+          {measureGradingReady && (
+            <p className="mt-2 text-[10px] leading-snug text-slate-600">
+              軽量グレーディング有効（build 時の胴／袖スケール。ベースライン＋採寸区間が揃った軸のみ）。
+              初回プリセット追加時は、着丈ベースラインを紫・ランドマーク推定から取り、入力との差で胴が伸縮します。
+              {canvasSleeveSnapEligible ? (
+                <span className="mt-2 block text-slate-500">
+                  キャンバス袖スナップ（着丈メッシュ後）も採寸頂点により有効。
+                </span>
+              ) : (
+                <span className="mt-2 block text-amber-800/90">
+                  袖のキャンバス補正はプライマリ／ミラー袖の採寸頂点が必要です。
+                </span>
+              )}
             </p>
           )}
-          {measureGradingReady && (
-            <p className="mt-2 text-[10px] leading-snug text-slate-600">軽量グレーディング有効。</p>
+          {!measureGradingReady && canvasSleeveSnapEligible && (
+            <p className="mt-2 text-[10px] leading-snug text-sky-900">
+              ベースライン未設定のため build 時グレードは限定的ですが、採寸頂点がありキャンバス上で袖丈を入力値へ寄せることがあります。
+            </p>
+          )}
+          {!measureGradingReady && !canvasSleeveSnapEligible && (
+            <p className="mt-2 text-[10px] leading-snug text-amber-700">
+              連結頂点だけでは形は変えません。下のプリセットで着丈・袖丈を選ぶと、区間に合わせて軽量グレーディングが有効になります。
+            </p>
           )}
           {normalizedSizePresets.length > 0 && (
             <div className="mt-2 flex flex-col gap-1.5">
@@ -172,75 +272,6 @@ export function FittingControlsCustomPanels({
           </div>
         </DevPanelSection>
       )}
-
-      <DevPanelSection title="肩の頂点インデックス（連結）">
-        <p className="text-[9px] leading-snug text-slate-500">肩Yをこの連結頂点で固定します。</p>
-        <div className="mt-2 flex flex-wrap items-baseline gap-2 rounded-md bg-slate-100/80 px-2 py-1.5 font-mono text-[11px]">
-          <span className="font-sans text-[10px] font-medium text-slate-500">いま効いている基準</span>
-          <span className="font-bold text-red-700">
-            {customGarmentData && shoulderDebug?.garmentType === "custom" && shoulderDebug.shoulderPointIndex != null ? `索引 ${shoulderDebug.shoulderPointIndex}` : "—"}
-          </span>
-        </div>
-        <>
-          <label className="mt-2 flex flex-col gap-1 text-[10px]">
-            <span className="font-medium text-slate-600">手入力で固定（任意）</span>
-            <input
-              className="rounded-md bg-slate-100/90 px-2 py-1.5 font-mono text-[11px] outline-none ring-0 focus:bg-white focus:ring-2 focus:ring-sky-400/30"
-              inputMode="numeric"
-              placeholder="空欄＝自動推定"
-              value={customGarmentData.shoulderPointIndex !== undefined ? String(customGarmentData.shoulderPointIndex) : ""}
-              onChange={(e) => {
-                const v = parseIndex(e.target.value);
-                const next: CustomGarmentData = { ...customGarmentData };
-                if (v === undefined) {
-                  delete next.shoulderPointIndex;
-                } else {
-                  next.shoulderPointIndex = v;
-                }
-                onCustomGarmentApply(next);
-              }}
-            />
-          </label>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={shoulderDebug?.garmentType !== "custom" || shoulderDebug.shoulderPointIndex == null}
-              onClick={() => {
-                if (shoulderDebug?.garmentType !== "custom" || shoulderDebug.shoulderPointIndex == null) return;
-                onCustomGarmentApply({
-                  ...customGarmentData,
-                  shoulderPointIndex: shoulderDebug.shoulderPointIndex,
-                });
-              }}
-              className={cn(
-                "rounded-lg px-2.5 py-1.5 text-[10px] font-semibold transition-colors",
-                shoulderDebug?.garmentType === "custom" && shoulderDebug.shoulderPointIndex != null
-                  ? "bg-sky-600 text-white hover:bg-sky-500"
-                  : "cursor-not-allowed bg-slate-200 text-slate-500"
-              )}
-            >
-              表示中の値を固定
-            </button>
-            <button
-              type="button"
-              disabled={customGarmentData.shoulderPointIndex === undefined}
-              onClick={() => {
-                const next = { ...customGarmentData };
-                delete next.shoulderPointIndex;
-                onCustomGarmentApply(next);
-              }}
-              className={cn(
-                "rounded-lg px-2.5 py-1.5 text-[10px] font-semibold transition-colors",
-                customGarmentData.shoulderPointIndex !== undefined
-                  ? "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-                  : "cursor-not-allowed border border-transparent bg-slate-100 text-slate-400"
-              )}
-            >
-              クリア（自動推定）
-            </button>
-          </div>
-        </>
-      </DevPanelSection>
     </>
   );
 }

@@ -1,14 +1,5 @@
 import type { BodyZones } from "../lib/types";
-import {
-  BODY_CX,
-  BZ,
-  BODY_H,
-  BASE_SHOULDER_HALF,
-  BODY_ARM_OUTLINE_L,
-  BODY_ARM_PEAK_INDEX,
-  ARM_OUTLINE_BY_HEIGHT_CM,
-  ARM_OUTLINE_HEIGHT_KEYS,
-} from "../lib/constants";
+import { BODY_CX, BZ, BODY_H, BASE_SHOULDER_HALF } from "../lib/constants";
 import { getAnchorYOffset } from "./bodyZones";
 import { armOutlineX } from "./bodyOutlineSample";
 
@@ -21,105 +12,52 @@ function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
-/** xScale=1 時の胴パッド。`sin(πt)` は腰で 0 になるので `sin(πt/2)` にする */
-const REST_BELLY_BREADTH = 0.13;
-
-function restBellyBoost(y: number, z: BodyZones): number {
-  if (y < z.chest || y > z.waist) return 0;
-  const span = z.waist - z.chest;
-  if (span < 1e-6) return 0;
-  const t = (y - z.chest) / span;
-  return REST_BELLY_BREADTH * Math.sin((Math.PI / 2) * t);
-}
-
-export function torsoXFactor(y: number, z: BodyZones, xs: number): number {
-  /**
-   * 体重（xScale）の横幅係数。胴の中央列（|dx| 小）に掛かる。
-   * 脇より上は 0（肩幅は体重で変えない）。脇〜胸で立ち上げ。外輪郭の脇は `warpArmBandX` が担当。
-   */
+/**
+ * 脇下〜腹〜腰の **胴横幅**（体重のみ）。Y で係数を変える。
+ * さらに `flankOutwardKickPx` で Y 別の外向きオフセットを足す（放射スケールだけとの差別化）。
+ */
+export function torsoLateralSpreadFactor(y: number, z: BodyZones, xs: number): number {
   const kf: [number, number][] = [
     [z.head_top, 0],
     [z.head_bot, 0],
     [z.neck_bot, 0],
     [z.shoulder, 0],
-    [z.armpit, 0],
-    [z.chest, 1.18],
-    [z.belly, 1.28],
-    [z.waist, 1.26],
-    [z.hip, 1.12],
+    [z.armpit, 0.48],
+    [z.chest, 1.04],
+    [z.belly, 1.22],
+    [z.waist, 1.1],
+    [z.hip, 1.02],
     [z.crotch, 0.96],
     [z.knee, 0.78],
     [z.ankle, 0.22],
     [z.foot, 0.1],
   ];
   const d = xs - 1;
-  const pad = restBellyBoost(y, z);
-  if (y < kf[0][0]) return 1 + pad;
-  if (y >= kf[kf.length - 1][0]) return 1 + d * kf[kf.length - 1][1] + pad;
+  if (y < kf[0][0]) return 1;
+  if (y >= kf[kf.length - 1][0]) return 1 + d * kf[kf.length - 1][1];
   for (let i = 0; i < kf.length - 1; i++) {
     if (y >= kf[i][0] && y <= kf[i + 1][0]) {
       const t = (y - kf[i][0]) / (kf[i + 1][0] - kf[i][0]);
-      return 1 + d * lerp(kf[i][1], kf[i + 1][1], ss(t)) + pad;
+      return 1 + d * lerp(kf[i][1], kf[i + 1][1], ss(t));
     }
   }
-  return 1 + pad;
+  return 1;
 }
+
+/** @deprecated {@link torsoLateralSpreadFactor} を参照 */
+export const torsoXFactor = torsoLateralSpreadFactor;
 
 const ARM_START = BASE_SHOULDER_HALF * 0.7;
 const ARM_END = BASE_SHOULDER_HALF * 1.05;
 
 /**
- * テンプレ Y がこれより下（袖〜手先）では、`armOutlineX` より外の頂点をテンプレ固定する。
- * 上〜脇では常にスケール式を使い、脇 path と交点の連動を取る。
+ * この Y より下で `armOutlineX` より外をテンプレ固定（袖下用）。
+ * 915 だと腹〜 waist まで固定され体重が効かないため、腰より下に下げる。
  */
-const ARM_BAND_PIN_TEMPLATE_OUTER_BELOW_Y = 915;
-
-const SORTED_ARM_HEIGHT_KEYS = [...ARM_OUTLINE_HEIGHT_KEYS].sort((a, b) => a - b);
-
-const ARM_SPREAD_UPPER_INDEX = 1;
-/** 上腕点→脇山の間でスプレッド開始 Y を取る（頂点だけだと脇〜脇下が横に伸びにくい） */
-const ARM_SPREAD_BLEND_T = 0.38;
-
-/** 身長補間した「胴横スケールをかけ始める」設計 Y（腕アウトライン上腕〜脇山の補間） */
-function armSpreadBoundaryDesignY(heightCm: number): number {
-  const keys = SORTED_ARM_HEIGHT_KEYS;
-  const n = keys.length;
-  const iu = ARM_SPREAD_UPPER_INDEX;
-  const ip = BODY_ARM_PEAK_INDEX;
-  if (n === 0) {
-    const l = BODY_ARM_OUTLINE_L;
-    return l[iu]![1] + (l[ip]![1] - l[iu]![1]) * ARM_SPREAD_BLEND_T;
-  }
-  const sample = (h: number): number => {
-    const k = ARM_OUTLINE_BY_HEIGHT_CM[h];
-    if (!k) {
-      const l = BODY_ARM_OUTLINE_L;
-      return l[iu]![1] + (l[ip]![1] - l[iu]![1]) * ARM_SPREAD_BLEND_T;
-    }
-    const yU = k.left[iu]![1];
-    const yP = k.left[ip]![1];
-    return yU + (yP - yU) * ARM_SPREAD_BLEND_T;
-  };
-
-  if (heightCm <= keys[0]!) return sample(keys[0]!);
-  if (heightCm >= keys[n - 1]!) return sample(keys[n - 1]!);
-  let i = 0;
-  while (i < n - 1 && keys[i + 1]! <= heightCm) i++;
-  const h0 = keys[i]!;
-  const h1 = keys[i + 1]!;
-  const t = (heightCm - h0) / (h1 - h0);
-  return sample(h0) + (sample(h1) - sample(h0)) * t;
-}
-
-/** ボディ `warp` と同じ縦変換（アンカー後の newY） */
-function designYToWarpedNewY(designY: number, yScale: number, yOff: number): number {
-  const newYRaw =
-    designY <= BZ.head_bot ? designY : BZ.head_bot + (designY - BZ.head_bot) * yScale;
-  return newYRaw <= BZ.head_bot ? newYRaw : newYRaw + yOff;
-}
+const ARM_BAND_PIN_TEMPLATE_OUTER_BELOW_Y = 1180;
 
 export type WarpOptions = {
-  /** 指定時、脇山境界は `getInterpolatedArmOutline` と同じ補間の頂点 Y を使う */
+  /** 互換のため残す（現在 `warp` 内では未使用） */
   heightCm?: number;
 };
 
@@ -134,7 +72,23 @@ function rightArmOuterX(y: number): number {
 }
 
 /**
- * 腕帯：テンプレ上で `armOutlineX(y)` を外側基準とし、そこから中心方向の距離を `/(armThickness*spreadLx)` でスケール。
+ * 中心からの放射スケール `dx * spreadLx` だけだと、縦に近い外輪郭は「横に並行移動」に見えやすい。
+ * 脇〜腰の帯で、Y に沿って変化する**追加の外向きオフセット**（体重に連動）を足し、接線が変わるようにする。
+ * テンプレ Y・連続関数のため path 上で不連続にならない。
+ */
+function flankOutwardKickPx(templateY: number, xScale: number): number {
+  const d = xScale - 1;
+  if (d <= 0) return 0;
+  if (templateY < BZ.armpit || templateY > BZ.waist) return 0;
+  const span = BZ.waist - BZ.armpit;
+  const u = (templateY - BZ.armpit) / span;
+  const bell = Math.sin(Math.PI * u);
+  return 34 * d * bell * bell;
+}
+
+/**
+ * 腕帯：`spreadLx` は `torsoLateralSpreadFactor`（脇下〜腹と胴中央と同一）。
+ * テンプレ上で `armOutlineX(y)` を外側基準とし、そこから中心方向の距離を `/(armThickness*spreadLx)` でスケール。
  * 脇〜上腕（Y < PIN 閾値）は**外側頂点も同式**（`return x` による固定なし）で体重連動。
  * 袖下以降はアウトライン外をテンプレ固定し袖口形状を保つ。
  */
@@ -161,32 +115,13 @@ function warpArmBandX(
   return rawOuter + (x - rawOuter) / denom;
 }
 
-/**
- * 首より上は torsoLx。首下〜スプレッド境界までは 1→torsoLx を滑らかに（脇〜腹を太らせる）。
- * 境界 Y は脇山よりやや上（上腕〜脇山の補間）で、中央列にも早めに torsoLx を効かせる。
- */
-function spreadLxForTorso(
-  newY: number,
-  neckBotAnchored: number,
-  spreadBoundaryWarpedY: number,
-  torsoLx: number
-): number {
-  if (newY < neckBotAnchored) return torsoLx;
-  if (newY >= spreadBoundaryWarpedY) return torsoLx;
-  const span = Math.min(140, Math.max(48, spreadBoundaryWarpedY - neckBotAnchored - 24));
-  const y0 = spreadBoundaryWarpedY - span;
-  if (newY <= y0) return 1;
-  const u = (newY - y0) / (spreadBoundaryWarpedY - y0);
-  return lerp(1, torsoLx, ss(u));
-}
-
 export function warp(
   x: number,
   y: number,
   yScale: number,
   xScale: number,
   zones: BodyZones,
-  opts?: WarpOptions
+  _opts?: WarpOptions
 ): [number, number] {
   const dx = x - BODY_CX;
   const absDx = Math.abs(dx);
@@ -212,25 +147,13 @@ export function warp(
     ankle: z.ankle + yOff,
     foot: z.foot + yOff,
   } as unknown as BodyZones;
-  const torsoLx = torsoXFactor(newY, zonesAnchored, xScale);
-  const spreadDesignY =
-    opts?.heightCm != null && Number.isFinite(opts.heightCm)
-      ? armSpreadBoundaryDesignY(opts.heightCm)
-      : BODY_ARM_OUTLINE_L[ARM_SPREAD_UPPER_INDEX]![1] +
-        (BODY_ARM_OUTLINE_L[BODY_ARM_PEAK_INDEX]![1] -
-          BODY_ARM_OUTLINE_L[ARM_SPREAD_UPPER_INDEX]![1]) *
-          ARM_SPREAD_BLEND_T;
-  const spreadBoundaryWarpedY = designYToWarpedNewY(spreadDesignY, yScale, yOff);
-  const spreadLx = spreadLxForTorso(
-    newY,
-    zonesAnchored.neck_bot,
-    spreadBoundaryWarpedY,
-    torsoLx
-  );
+  const torsoLx = torsoLateralSpreadFactor(newY, zonesAnchored, xScale);
+  /** 胴中央と `warpArmBandX` の分母で共有（脇下〜腹と同一 `torsoLateralSpreadFactor`） */
+  const spreadLx = torsoLx;
   const armThickness = 1.04 * (1 + (xScale - 1) * 0.48);
   /**
    * テンプレ Y で肩→脇へ 1→armThickness（`warpArmBandX` もテンプレ Y を使うため揃える）。
-   * `newY` 判定だと身長スケール後に帯がズレ、かつ肩〜脇で spreadLx≈1 のとき横が効かなくなる。
+   * `newY` 判定だと身長スケール後に帯がズレる。
    */
   let armThicknessY = armThickness;
   if (y <= BZ.shoulder) {
@@ -241,16 +164,27 @@ export function warp(
     armThicknessY = 1 + (armThickness - 1) * ss(u);
   }
 
+  let xOut: number;
   if (absDx <= ARM_START) {
-    return [BODY_CX + dx * spreadLx, newY];
+    xOut = BODY_CX + dx * spreadLx;
+  } else if (absDx >= ARM_END) {
+    xOut = warpArmBandX(x, dx, y, spreadLx, armThicknessY);
+  } else {
+    const t = ss((absDx - ARM_START) / (ARM_END - ARM_START));
+    const torsoX = BODY_CX + dx * spreadLx;
+    const armX = warpArmBandX(x, dx, y, spreadLx, armThicknessY);
+    xOut = lerp(torsoX, armX, t);
   }
-  if (absDx >= ARM_END) {
-    return [warpArmBandX(x, dx, y, spreadLx, armThicknessY), newY];
+
+  const kick = flankOutwardKickPx(y, xScale);
+  if (kick !== 0 && absDx > ARM_START) {
+    const kickW =
+      absDx >= ARM_END ? 1 : ss((absDx - ARM_START) / Math.max(1e-6, ARM_END - ARM_START));
+    const k = kick * kickW;
+    xOut += dx < 0 ? -k : k;
   }
-  const t = ss((absDx - ARM_START) / (ARM_END - ARM_START));
-  const torsoX = BODY_CX + dx * spreadLx;
-  const armX = warpArmBandX(x, dx, y, spreadLx, armThicknessY);
-  return [lerp(torsoX, armX, t), newY];
+
+  return [xOut, newY];
 }
 
 export function bodyHeight(yScale: number): number {

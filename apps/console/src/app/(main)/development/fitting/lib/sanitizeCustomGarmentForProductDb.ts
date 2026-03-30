@@ -1,11 +1,12 @@
 import type { CustomGarmentData } from "./types";
 
 /**
- * 商品DBに載せる用: SVG path・ランドマーク・採寸・汎用トップのグレーディング／計測頂点などは残し、
- * リグ path（debugRigPathDs）は送らない。
+ * 商品DBに載せる用: `CustomGarmentData` をそのまま保存可能な形に深くコピーする。
+ *
+ * `debugRigPathDs`（アップロード SVG 内の服リグ線）は **削除しない**。
+ * 削除すると DB から読み出した試着が `rigGeometryLockedToModel` にならず、開発タブと同じ
+ * 脊髄合わせ・テンプレ整列が効かず、服が体に対して大きくずれる（例: 縦方向のズレ）。
  */
 export function sanitizeCustomGarmentForProductDb(data: CustomGarmentData): Record<string, unknown> {
-  const raw = JSON.parse(JSON.stringify(data)) as Record<string, unknown>;
-  delete raw.debugRigPathDs;
-  return raw;
+  return JSON.parse(JSON.stringify(data)) as Record<string, unknown>;
 }

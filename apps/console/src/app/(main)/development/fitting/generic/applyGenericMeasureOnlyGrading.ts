@@ -7,7 +7,7 @@
  */
 
 import type { CustomGarmentData, CustomLandmarks, ScalableGarmentSpec, SizeMeasure } from "../lib/types";
-import { scaleBodyToSpec, scaleSleevePathToSpec } from "../lib/coatArmLogic";
+import { scaleBodyToSpec, scaleSleevePathToSpec } from "../lib/scalableGarmentArmLogic";
 import {
   cumulativePathPointOffsets,
   getPathPoints,
@@ -15,6 +15,7 @@ import {
   vertexRangeToCoveringPathRange,
 } from "../lib/pathUtils";
 import { resolveGenericGradingBodyLengthCmReference } from "./resolveGenericScalableSpec";
+import { polylineVerticalAbsDySumPx } from "@/lib/fitting-compute/fittingCanvasPolylineMeasure";
 
 function hasDistinctVertexPair(a: unknown, b: unknown): boolean {
   return (
@@ -42,6 +43,17 @@ export function genericMeasureOnlyGradingActive(
   const len = hasDistinctVertexPair(gt.lengthMeasureVertexStart, gt.lengthMeasureVertexEnd);
   const slv = hasDistinctVertexPair(gt.sleeveMeasureVertexStart, gt.sleeveMeasureVertexEnd);
   return len || slv;
+}
+
+/** 互換用: キャンバス後段で袖スナップ実行候補になりうるか（プライマリ/ミラーどちらかの採寸頂点が有効） */
+export function genericSymmetricTopCanvasSleeveSnapEligible(
+  gt: CustomGarmentData["genericSymmetricTop"] | undefined
+): boolean {
+  if (!gt) return false;
+  return (
+    hasDistinctVertexPair(gt.sleeveMeasureVertexStart, gt.sleeveMeasureVertexEnd) ||
+    hasDistinctVertexPair(gt.sleeveMirrorMeasureVertexStart, gt.sleeveMirrorMeasureVertexEnd)
+  );
 }
 
 /**
@@ -175,4 +187,113 @@ export function applyGenericMeasureOnlyGrading(
   }
 
   return pathDs;
+}
+
+export type GenericSleeveMeasureVertexOverride = {
+  start: number;
+  end: number;
+  chain?: number[];
+};
+
+function sleeveVerticalPxFromGlobalVertices(
+  pathDs: string[],
+  start: number,
+  end: number,
+  chain?: number[],
+  customPoints?: [number, number][]
+): number {
+  const getPt = (gi: number): [number, number] | null => {
+    const g = Math.trunc(gi);
+    if (customPoints && g >= 0 && g < customPoints.length) {
+      const p = customPoints[g];
+      if (p && Number.isFinite(p[0]) && Number.isFinite(p[1])) return [p[0], p[1]];
+    }
+    return pointAtGlobalVertexIndex(pathDs, g);
+  };
+  if (chain && chain.length >= 2) {
+    const pts = chain.map((g) => getPt(g)).filter((p): p is [number, number] => p != null);
+    if (pts.length >= 2) return polylineVerticalAbsDySumPx(pts);
+  }
+  const a = getPt(start);
+  const b = getPt(end);
+  if (!a || !b) return 0;
+  return Math.abs(b[1] - a[1]);
+}
+
+export function resolveGenericSleevePxPerCmForMeasure(
+  pathDs: string[],
+  lm: CustomLandmarks,
+  size: SizeMeasure,
+  gt: NonNullable<CustomGarmentData["genericSymmetricTop"]>
+): number {
+  const hasLengthPurple = hasDistinctVertexPair(gt.lengthMeasureVertexStart, gt.lengthMeasureVertexEnd);
+  const bodyLengthCmForSleeveCal = hasLengthPurple
+    ? size.length
+    : resolveGenericGradingBodyLengthCmReference(pathDs, lm, gt, size);
+  let garmentLengthPxForSleeve = Math.max(lm.garmentLengthOverride ?? lm.hemY - lm.shoulderY, 1);
+  if (hasLengthPurple) {
+    const pa = pointAtGlobalVertexIndex(pathDs, Math.trunc(gt.lengthMeasureVertexStart!));
+    const pb = pointAtGlobalVertexIndex(pathDs, Math.trunc(gt.lengthMeasureVertexEnd!));
+    if (pa && pb) {
+      const dy = Math.abs(pb[1] - pa[1]);
+      if (dy > 1) garmentLengthPxForSleeve = dy;
+    }
+  }
+  const pxPerCm = garmentLengthPxForSleeve / Math.max(bodyLengthCmForSleeveCal, 1e-6);
+  return Number.isFinite(pxPerCm) && pxPerCm > 0 ? pxPerCm : 1;
+}
+
+export function measureGenericTopSleeveCmFromPath(
+  pathDs: string[],
+  lm: CustomLandmarks,
+  size: SizeMeasure,
+  gt: NonNullable<CustomGarmentData["genericSymmetricTop"]>,
+  vertexOverride?: GenericSleeveMeasureVertexOverride,
+  customPoints?: [number, number][]
+): { px: number; cm: number } | null {
+  const s = vertexOverride?.start ?? gt.sleeveMeasureVertexStart;
+  const e = vertexOverride?.end ?? gt.sleeveMeasureVertexEnd;
+  const chain = vertexOverride?.chain ?? gt.sleeveMeasureVertexChain;
+  if (!hasDistinctVertexPair(s, e)) return null;
+  const gLo = Math.min(Math.trunc(s!), Math.trunc(e!));
+  const gHi = Math.max(Math.trunc(s!), Math.trunc(e!));
+  const px = sleeveVerticalPxFromGlobalVertices(pathDs, gLo, gHi, chain, customPoints);
+  if (!(px > 0)) return null;
+  const pxPerCm = resolveGenericSleevePxPerCmForMeasure(pathDs, lm, size, gt);
+  return { px, cm: px / pxPerCm };
+}
+
+export function measureOriginalSleeveCmFromDesignPaths(
+  pathDs: string[],
+  gt: NonNullable<CustomGarmentData["genericSymmetricTop"]>,
+  vertexOverride?: GenericSleeveMeasureVertexOverride
+): { px: number; cm: number } | null {
+  const s = vertexOverride?.start ?? gt.sleeveMeasureVertexStart;
+  const e = vertexOverride?.end ?? gt.sleeveMeasureVertexEnd;
+  const chain = vertexOverride?.chain ?? gt.sleeveMeasureVertexChain;
+  if (!hasDistinctVertexPair(s, e)) return null;
+  const gLo = Math.min(Math.trunc(s!), Math.trunc(e!));
+  const gHi = Math.max(Math.trunc(s!), Math.trunc(e!));
+  const px = sleeveVerticalPxFromGlobalVertices(pathDs, gLo, gHi, chain);
+  if (!(px > 0)) return null;
+  const baselineSleeve = gt.gradingBaselineSleeveCm;
+  const cm =
+    baselineSleeve != null && Number.isFinite(baselineSleeve) && baselineSleeve > 0
+      ? baselineSleeve
+      : px;
+  return { px, cm };
+}
+
+/** 旧ロジック互換: 後段の袖頂点スナップは行わず、そのまま返す。 */
+export function applyGenericSleeveScaleAfterLengthMesh(
+  pathDsIn: string[],
+  customPointsIn: [number, number][],
+  _lm: CustomLandmarks,
+  _size: SizeMeasure,
+  _gt: NonNullable<CustomGarmentData["genericSymmetricTop"]>
+): { pathDs: string[]; customPoints: [number, number][] } {
+  return {
+    pathDs: [...pathDsIn],
+    customPoints: customPointsIn.map((p) => [p[0], p[1]] as [number, number]),
+  };
 }

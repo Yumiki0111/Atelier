@@ -2,6 +2,7 @@ import type { CustomLandmarks } from "../lib/types";
 import { getPathPoints, getPathsBBox } from "../lib/pathUtils";
 import { MODEL_RIG_LINE_PATH_DS } from "../lib/modelRigData";
 import { MODEL_RIG_ENDPOINTS } from "./rigMatching";
+import type { SvgParsedPath } from "./parseSvgPaths";
 
 function getBBoxOfPathPoints(points: [number, number][]) {
   let minX = Infinity;
@@ -21,18 +22,20 @@ function getBBoxOfPathPoints(points: [number, number][]) {
 /**
  * 共通リグ入り SVG（model+rig を服SVGに合成した状態）を想定し、
  * 「ボディ輪郭・中心軸・補助線」っぽい path を除外して“服パーツだけ”に寄せます。
- *
- * 注: ここでフィルタしても座標系は維持されるので、ランドマーク推定と変形が安定します。
+ * `SvgParsedPath` 単位で分割し、線スタイル（stroke 等）を服側に残します。
  */
-export function splitGarmentPathsFromSvg(pathDs: string[]): { garmentPathDs: string[]; rigPathDs: string[] } {
+export function splitGarmentPathsFromSvgParsed(paths: SvgParsedPath[]): {
+  garmentPaths: SvgParsedPath[];
+  rigPaths: SvgParsedPath[];
+} {
+  const pathDs = paths.map((p) => p.d);
   // まずは「モデル+リグから抽出した 9 本の rig d」と完全一致するものだけを rig として抜く。
-  // これにより、推定（直線っぽい + 頂点2点など）の揺れが一切入らない。
   const rigExactSet = new Set(MODEL_RIG_LINE_PATH_DS);
-  const rigExact: string[] = [];
-  const keepExact: string[] = [];
-  for (const d of pathDs) {
-    if (rigExactSet.has(d)) rigExact.push(d);
-    else keepExact.push(d);
+  const rigExact: SvgParsedPath[] = [];
+  const keepExact: SvgParsedPath[] = [];
+  for (const p of paths) {
+    if (rigExactSet.has(p.d)) rigExact.push(p);
+    else keepExact.push(p);
   }
   // 完全一致が 1 本でも取れたなら、追加の heuristics を混ぜずに「完全一致のみ」を rig とする。
   // これで zip 線など“それっぽい直線”が誤ってリグに入るのを防ぐ。
@@ -40,32 +43,38 @@ export function splitGarmentPathsFromSvg(pathDs: string[]): { garmentPathDs: str
     // ただし、アップロードSVGに含まれる “ジップ線っぽい中心縦線” は、
     // rig9 本の中に混ざって見えることがあるため、幅が極端に狭い1本だけ rig から除外する。
     // （除外した線は garment 側に戻す）
-    let zipCandidate: string | null = null;
+    let zipCandidate: SvgParsedPath | null = null;
     let minW = Infinity;
-    for (const d of rigExact) {
-      const pts = getPathPoints(d);
+    for (const p of rigExact) {
+      const pts = getPathPoints(p.d);
       if (pts.length < 2) continue;
       const bb = getBBoxOfPathPoints(pts);
       if (!bb) continue;
       const w = bb.maxX - bb.minX;
       if (w < minW) {
         minW = w;
-        zipCandidate = d;
+        zipCandidate = p;
       }
     }
 
-    const shouldExcludeZip = zipCandidate != null && minW <= 2.0;
-    const rigPathDs = shouldExcludeZip ? rigExact.filter((d) => d !== zipCandidate) : rigExact;
-    const garmentPathDs = shouldExcludeZip ? [...keepExact, ...(zipCandidate ? [zipCandidate] : [])] : keepExact;
-    return { garmentPathDs, rigPathDs };
+    // モデル rig は 9 本固定。ここで 1 本落とすと `debugRigPathDs.length !== rigLinePaths.length` となり
+    // `rigGeometryLockedToModel` が常に false になり、ウィジェット試着で体に対して縦ズレする。
+    // ジップ除外は「同一 d が重複して rig に数え上げ過ぎているとき」だけ行う（9 本ちょうどのときは除外しない）。
+    const modelRigCount = MODEL_RIG_LINE_PATH_DS.length;
+    const shouldExcludeZip =
+      zipCandidate != null && minW <= 2.0 && rigExact.length > modelRigCount;
+    const rigPaths = shouldExcludeZip ? rigExact.filter((p) => p !== zipCandidate) : rigExact;
+    const garmentPaths = shouldExcludeZip ? [...keepExact, ...(zipCandidate ? [zipCandidate] : [])] : keepExact;
+    return { garmentPaths, rigPaths };
   }
 
   // 完全一致が取れない場合（小数丸めやエクスポート差で d が変わるケース）:
   // モデル rig の 9 本が持つ「端点の幾何配置」に合うものだけを rig として推定する。
   // これで zip のような別の直線は、モデル rig の配置整合性を満たさず除外できる。
   const modelRigRigCountTarget = MODEL_RIG_LINE_PATH_DS.length;
-  const straightCandidates = pathDs
-    .map((d, idx) => {
+  const straightCandidates = paths
+    .map((pathEnt, idx) => {
+      const d = pathEnt.d;
       const isStraightLike = !/[CcQqSsTtAa]/.test(d);
       if (!isStraightLike) return null;
       const pts = getPathPoints(d);
@@ -144,7 +153,7 @@ export function splitGarmentPathsFromSvg(pathDs: string[]): { garmentPathDs: str
       // best transform で一致する候補だけを抽出（一致は min/max の近さで判定）
       const tol = Math.max(6, Math.abs(straightCandidates[0]?.lenY ?? 0) * 0.02);
       const used = new Set<number>();
-      const rigPathDs: string[] = [];
+      const rigParsed: SvgParsedPath[] = [];
 
       // まずモデル 9 本ごとに最も近い候補を選ぶ（重複は不可）
       for (let mj = 0; mj < modelEndpoints.length; mj++) {
@@ -164,41 +173,42 @@ export function splitGarmentPathsFromSvg(pathDs: string[]): { garmentPathDs: str
           }
         }
         if (bestCand) {
-          rigPathDs.push(bestCand.d);
+          rigParsed.push(paths[bestCand.idx]!);
           used.add(bestCand.idx);
         }
       }
 
       // 9本揃わないならヒューリスティック混入で zip が再発するので、厳しめに担保する。
-      if (rigPathDs.length >= modelRigRigCountTarget - 1) {
-        const rigSet = new Set(rigPathDs);
-        const garmentPathDs = pathDs.filter((d) => !rigSet.has(d));
-        return { garmentPathDs, rigPathDs };
+      if (rigParsed.length >= modelRigRigCountTarget - 1) {
+        const rigSet = new Set(rigParsed.map((p) => p.d));
+        const garmentPaths = paths.filter((p) => !rigSet.has(p.d));
+        return { garmentPaths, rigPaths: rigParsed };
       }
     }
   }
 
   // path が少なくても（ユーザーSVGの都合で）リグ直線だけは抜け落ちさせない。
-  if (pathDs.length < 6) return { garmentPathDs: pathDs, rigPathDs: [] };
+  if (pathDs.length < 6) return { garmentPaths: paths, rigPaths: [] };
   const bb = getPathsBBox(pathDs);
-  if (!bb) return { garmentPathDs: pathDs, rigPathDs: [] };
+  if (!bb) return { garmentPaths: paths, rigPaths: [] };
   const { minX, minY, maxX, maxY } = bb;
   const oW = maxX - minX;
   const oH = maxY - minY;
-  if (!Number.isFinite(oW) || !Number.isFinite(oH) || oW < 1 || oH < 1) return { garmentPathDs: pathDs, rigPathDs: [] };
+  if (!Number.isFinite(oW) || !Number.isFinite(oH) || oW < 1 || oH < 1) return { garmentPaths: paths, rigPaths: [] };
 
   // 全身にまたがる（上端〜下端までほぼ覆う）ものは、リグ/ボディ混入の可能性が高い
   const topBand = minY + oH * 0.05;
   const botBand = maxY - oH * 0.05;
-  const keep: string[] = [];
-  const rig: string[] = [];
+  const keep: SvgParsedPath[] = [];
+  const rig: SvgParsedPath[] = [];
   let removedCount = 0;
 
-  for (const d of pathDs) {
+  for (const p of paths) {
+    const d = p.d;
     const pts = getPathPoints(d);
     if (pts.length < 2) {
       removedCount++;
-      rig.push(d);
+      rig.push(p);
       continue;
     }
     const pbb = getBBoxOfPathPoints(pts);
@@ -226,20 +236,23 @@ export function splitGarmentPathsFromSvg(pathDs: string[]): { garmentPathDs: str
       sparse;
     if (remove) {
       removedCount++;
-      rig.push(d);
+      rig.push(p);
     } else {
-      keep.push(d);
+      keep.push(p);
     }
   }
 
-  // 削りすぎると“服”が消えるので最低限だけ担保
-  // (デバッグ確認では「リグを色付けして見る」ことが目的なので、60%フェイルセーフは厳しすぎる)
   const minKeep = 1;
   if (keep.length < minKeep) {
-    // フィット計算用に keep を捨てる必要があっても、debug 用の rig は極力捨てない。
-    return { garmentPathDs: keep.length > 0 ? keep : pathDs, rigPathDs: rig.length > 0 ? rig : [] };
+    return { garmentPaths: keep.length > 0 ? keep : paths, rigPaths: rig.length > 0 ? rig : [] };
   }
-  return { garmentPathDs: removedCount > 0 ? keep : pathDs, rigPathDs: removedCount > 0 ? rig : [] };
+  return { garmentPaths: removedCount > 0 ? keep : paths, rigPaths: removedCount > 0 ? rig : [] };
+}
+
+/** d のみの配列向け。線スタイルは保持しない。 */
+export function splitGarmentPathsFromSvg(pathDs: string[]): { garmentPathDs: string[]; rigPathDs: string[] } {
+  const r = splitGarmentPathsFromSvgParsed(pathDs.map((d) => ({ d })));
+  return { garmentPathDs: r.garmentPaths.map((p) => p.d), rigPathDs: r.rigPaths.map((p) => p.d) };
 }
 
 export function filterGarmentPathsFromSvg(pathDs: string[]): string[] {
@@ -260,7 +273,7 @@ const LANDMARK_HEM_EXT_CAP_FRAC = 0.26;
 /**
  * 全 path の頂点から着用用ランドマークを粗推定。
  * - 裾: **狭帯の maxY だけではなく**、裾用の広い中央縦帯の maxY を採用。bbox 下端と差がまだ大きいときだけ追加で伸ばす（ベタ足袖先の救済）。
- * - 肩: 狭い縦帯の上端〜裾の深さに対する比率で肩 Y 代理（精密は shoulderPointIndex 等で手修正想定）。
+ * - 肩: 狭い縦帯の上端〜裾の深さに対する比率で肩 Y 代理。
  */
 export function getLandmarksFromPaths(pathDs: string[]): CustomLandmarks | null {
   const bb = getPathsBBox(pathDs);

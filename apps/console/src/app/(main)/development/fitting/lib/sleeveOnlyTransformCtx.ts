@@ -9,7 +9,7 @@ import {
   computeSleeveRotations,
   computeGradingHemAlignTargetY,
   type ArmLogicConfig,
-} from "./coatArmLogic";
+} from "./scalableGarmentArmLogic";
 
 export function pathIdxInConfigRange(pathIdx: number, start: number, end?: number): boolean {
   const e = end ?? start;
@@ -86,6 +86,11 @@ export type SleeveOnlyCtx = {
   attachRx: number;
   leftArmRange: number;
   rightArmRange: number;
+  /** 内袖 path の design Y 範囲（肩〜袖口）。腕回転ブレンドの重みに使用（外袖の gx 重みは内袖で効かないため） */
+  innerLeftY0: number;
+  innerLeftY1: number;
+  innerRightY0: number;
+  innerRightY1: number;
   originX: number;
   centerSnapThresh: number;
   debugFitting: boolean;
@@ -144,6 +149,10 @@ export function buildSleeveOnlyCtx(p: SleeveOnlyTransformParams): SleeveOnlyCtx 
     seamPathLeftEnd,
     seamPathRight,
     seamPathRightEnd,
+    sleevePathLeft,
+    sleevePathLeftEnd,
+    sleevePathRight,
+    sleevePathRightEnd,
   } = config;
 
   const centerSnapThresh = 3;
@@ -192,6 +201,15 @@ export function buildSleeveOnlyCtx(p: SleeveOnlyTransformParams): SleeveOnlyCtx 
 
   const leftArmRange = Math.max(1, attachLx - leftWristGx);
   const rightArmRange = Math.max(1, rightWristGx - attachRx);
+
+  const innerLeftPts = collectPtsLineRange(pathDs, sleevePathLeft, sleevePathLeftEnd);
+  const innerRightPts = collectPtsLineRange(pathDs, sleevePathRight, sleevePathRightEnd);
+  const innerYsL = innerLeftPts.map((p) => p[1]);
+  const innerYsR = innerRightPts.map((p) => p[1]);
+  const innerLeftY0 = innerYsL.length ? Math.min(...innerYsL) : lm.shoulderY;
+  const innerLeftY1 = innerYsL.length ? Math.max(...innerYsL) : lm.shoulderY;
+  const innerRightY0 = innerYsR.length ? Math.min(...innerYsR) : lm.shoulderY;
+  const innerRightY1 = innerYsR.length ? Math.max(...innerYsR) : lm.shoulderY;
 
   /** `sessionStorage.setItem("DEBUG_SLEEVE_JUNCTION","1")` で有効。 */
   if (typeof sessionStorage !== "undefined" && sessionStorage.getItem("DEBUG_SLEEVE_JUNCTION") === "1") {
@@ -254,6 +272,10 @@ export function buildSleeveOnlyCtx(p: SleeveOnlyTransformParams): SleeveOnlyCtx 
     attachRx,
     leftArmRange,
     rightArmRange,
+    innerLeftY0,
+    innerLeftY1,
+    innerRightY0,
+    innerRightY1,
     originX,
     centerSnapThresh,
     debugFitting,

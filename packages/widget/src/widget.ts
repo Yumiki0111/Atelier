@@ -154,11 +154,11 @@ async function handleCubeClick(
       updateModalWithConfig(shadowRoot, config, params, overlay, contentArea);
     } else {
       const errorDetails = config.error || "不明なエラー";
-      showErrorInModal(shadowRoot, `この商品の3D試着は現在利用できません。\n\nエラー: ${errorDetails}`, overlay, contentArea);
+      showErrorInModal(shadowRoot, `この商品の試着は現在利用できません。\n\nエラー: ${errorDetails}`, overlay, contentArea);
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error("[Atelier Widget] Error in handleCubeClick:", errorMessage);
-    showErrorInModal(shadowRoot, `3D試着の読み込みに失敗しました。\n\nエラー: ${errorMessage}`, overlay, contentArea);
+    showErrorInModal(shadowRoot, `試着画面の読み込みに失敗しました。\n\nエラー: ${errorMessage}`, overlay, contentArea);
   }
 }

@@ -6,8 +6,20 @@ export { getScalableSpec } from "./scalableSpec";
 export {
   buildCustomTransformedPaths,
   buildCustomTransformedPathsWithVertexPlots,
+  genericLengthMeasureVerticalSpanPx,
   type BuildCustomTransformedPathsOptions,
   type CustomGarmentTransformResult,
 } from "./buildCustomTransformedPaths";
-export { parseSvgPaths } from "./parseSvgPaths";
-export { splitGarmentPathsFromSvg, filterGarmentPathsFromSvg, getLandmarksFromPaths } from "./svgGarmentSplit";
+export {
+  parseSvgPaths,
+  parseSvgPathsDetailed,
+  type SvgParsedPath,
+  type SvgPathPresentation,
+} from "./parseSvgPaths";
+export { expandSvgParsedPathsBySubpaths, splitPathDataIntoSubpaths } from "./splitSvgSubpaths";
+export {
+  splitGarmentPathsFromSvg,
+  splitGarmentPathsFromSvgParsed,
+  filterGarmentPathsFromSvg,
+  getLandmarksFromPaths,
+} from "./svgGarmentSplit";

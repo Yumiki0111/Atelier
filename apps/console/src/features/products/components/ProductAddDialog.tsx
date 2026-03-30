@@ -30,6 +30,7 @@ import { z } from "zod";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { authenticatedFetch } from "@/lib/auth/api-client";
+import { CircularImageCropDialog } from "./CircularImageCropDialog";
 
 const productFormSchema = createProductSchema.extend({
   // Form-specific fields can be added here if needed
@@ -46,6 +47,8 @@ export function ProductAddDialog({ onProductAdded }: ProductAddDialogProps) {
   const addProduct = useAddProduct();
   const { shopId } = useAuth();
   const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
+  const [cropOpen, setCropOpen] = useState(false);
+  const [cropFile, setCropFile] = useState<File | null>(null);
 
   const {
     register,
@@ -139,6 +142,7 @@ export function ProductAddDialog({ onProductAdded }: ProductAddDialogProps) {
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button>
@@ -219,40 +223,39 @@ export function ProductAddDialog({ onProductAdded }: ProductAddDialogProps) {
           </div>
 
           <div className="space-y-2 min-w-0">
-            <Label htmlFor="thumbnailUrl">サムネイル画像（任意）</Label>
-            <div className="flex gap-2">
-              <Input
-                id="thumbnailUrl"
-                {...register("thumbnailUrl")}
-                placeholder="https://... またはファイルをアップロード"
-                className="w-full"
+            <Label>サムネイル画像（任意）</Label>
+            <input type="hidden" {...register("thumbnailUrl")} />
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                id="product-add-thumbnail-file"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (file) {
+                    setCropFile(file);
+                    setCropOpen(true);
+                  }
+                }}
               />
-              <div className="flex-shrink-0">
-                <input
-                  id="thumbnailFile"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      handleFileUpload(file);
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={uploadingThumbnail}
-                  size="icon"
-                  title={uploadingThumbnail ? "アップロード中..." : "ファイルをアップロード"}
-                  onClick={() => {
-                    document.getElementById("thumbnailFile")?.click();
-                  }}
-                >
-                  <Upload className="h-4 w-4" />
-                </Button>
-              </div>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={uploadingThumbnail}
+                className="gap-2"
+                title={uploadingThumbnail ? "アップロード中..." : "画像をアップロード"}
+                onClick={() => {
+                  document.getElementById("product-add-thumbnail-file")?.click();
+                }}
+              >
+                <Upload className="h-4 w-4" />
+                画像をアップロード
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                ファイルを選ぶと円形に切り取ってから保存されます。
+              </p>
             </div>
             {thumbnailUrl && (
               <div className="relative inline-block mt-2">
@@ -287,5 +290,18 @@ export function ProductAddDialog({ onProductAdded }: ProductAddDialogProps) {
         </form>
       </DialogContent>
     </Dialog>
+    <CircularImageCropDialog
+      open={cropOpen}
+      onOpenChange={(next) => {
+        setCropOpen(next);
+        if (!next) setCropFile(null);
+      }}
+      file={cropFile}
+      onConfirm={(blob, fileName) => {
+        void handleFileUpload(new File([blob], fileName, { type: "image/png" }));
+        setCropFile(null);
+      }}
+    />
+    </>
   );
 }

@@ -15,6 +15,7 @@ export function tokenize(d: string): string[] {
   return toks;
 }
 
+/** path 変換後の座標。0.1 刻みだと曲線が段差に見えるため 3 桁に丸める（名称は旧互換） */
 export function round10(v: number): number {
-  return Math.round(v * 10) / 10;
+  return Math.round(v * 1000) / 1000;
 }

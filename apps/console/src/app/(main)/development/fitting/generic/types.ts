@@ -3,7 +3,7 @@
  */
 
 import type { ScalableGarmentSpec } from "../lib/types";
-import type { ArmLogicConfig } from "../lib/coatArmLogic";
+import type { ArmLogicConfig } from "../lib/scalableGarmentArmLogic";
 
 /** 輪郭線インデックス（0 起算）の包含範囲。単一線は from === to */
 export interface LineIndexRange {
