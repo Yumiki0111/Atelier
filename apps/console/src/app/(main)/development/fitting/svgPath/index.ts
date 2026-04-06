@@ -17,6 +17,7 @@ export { interpolatePath } from "./interpolatePath";
 export {
   cumulativePathPointOffsets,
   totalPathVertices,
+  pathIndexForGlobalVertex,
   pointAtGlobalVertexIndex,
   globalVertexBoundsForPath,
   collectPtsGlobalVertexRange,

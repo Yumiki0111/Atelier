@@ -38,7 +38,7 @@ export default function ShopsListPage() {
     try {
       const response = await fetch("/api/internal/shops", {
         headers: {
-          "x-atelier-admin-token": adminToken,
+          "x-Atelier-admin-token": adminToken,
         },
       });
 
@@ -88,7 +88,7 @@ export default function ShopsListPage() {
           <div className="flex gap-2">
             <Input
               type="password"
-              placeholder="ATELIER_ADMIN_TOKEN"
+              placeholder="Atelier_ADMIN_TOKEN"
               value={adminToken}
               onChange={(e) => setAdminToken(e.target.value)}
             />

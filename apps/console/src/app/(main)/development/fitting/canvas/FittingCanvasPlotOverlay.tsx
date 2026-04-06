@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import type {
   GarmentType,
   ShirtSize,
@@ -5,6 +6,11 @@ import type {
   CustomGarmentData,
   GenericVertexPlotHighlight,
 } from "../lib/types";
+import {
+  BODY_INDENT_WAIST_LEFT_GLOBAL_RANGE,
+  BODY_INDENT_WAIST_RIGHT_GLOBAL_RANGE,
+  BODY_INDENT_WAIST_REFERENCE_CHORD_GLOBAL_INDICES,
+} from "@/lib/fitting-compute/fittingCanvasDebugFlags";
 import { sleeveMeasureOverlayNode } from "./fittingCanvasPlotMeasureOverlays";
 import {
   FONT_INDEX_GARMENT,
@@ -14,21 +20,17 @@ import {
   indexLabelOrbitRadius,
   indexLabelRadialOffset,
   indexLabelStrokeWidth,
-  rigIntersectionPlotStyle,
   vertexHighlightRoles,
-  type RigIntersectionPlotPoint,
 } from "./fittingCanvasPlotOverlayUtils";
-
-export type { RigIntersectionPlotPoint };
 
 interface FittingCanvasPlotOverlayProps {
   showGarmentPlot: boolean;
   showBodyPlot: boolean;
   bodyPlotPoints: { label: string; point: [number, number] }[];
-  /** リグの中心軸×鎖骨交点・首平均（モデルプロット ON 時。基準170 / 現ワープ / 赤表示で色分け） */
-  rigIntersectionPlotPoints?: RigIntersectionPlotPoint[];
   /** ボディ輪郭の全頂点（頭〜足まで全体を点で表示） */
   bodyOutlinePoints: [number, number][];
+  /** `DEBUG_FITTING_BODY_VERTICES=1` 時: 指定連結 # をマゼンタで強調（テンプレ座標は title / console） */
+  bodyVertexDebugEntries?: { globalIndex: number; template: [number, number] }[] | null;
   shoulderDebug: ShoulderDebug | null;
   height: number;
   weight: number;
@@ -40,6 +42,9 @@ interface FittingCanvasPlotOverlayProps {
   /** 服の輪郭 # のホバーで連結インデックスを親へ（袖丈 r 入力） */
   onGarmentVertexHover?: (globalVertexIndex: number | null) => void;
   garmentVertexPickEnabled?: boolean;
+  /** true のとき # をクリックで `onGarmentVertexLinkToggle`（下袖溶接 # のトグル） */
+  garmentVertexLinkPickActive?: boolean;
+  onGarmentVertexLinkToggle?: (globalVertexIndex: number) => void;
   /** true のとき袖丈の赤線＋px/cm 箱を出さない（採寸オーバーレイと二重になるのを防ぐ） */
   hideSleeveMeasureLine?: boolean;
 }
@@ -48,8 +53,8 @@ export function FittingCanvasPlotOverlay({
   showGarmentPlot,
   showBodyPlot,
   bodyPlotPoints,
-  rigIntersectionPlotPoints = [],
   bodyOutlinePoints,
+  bodyVertexDebugEntries = null,
   shoulderDebug: sd,
   height,
   weight,
@@ -60,11 +65,47 @@ export function FittingCanvasPlotOverlay({
   allowPointerEvents = false,
   onGarmentVertexHover,
   garmentVertexPickEnabled = false,
+  garmentVertexLinkPickActive = false,
+  onGarmentVertexLinkToggle,
   hideSleeveMeasureLine = false,
 }: FittingCanvasPlotOverlayProps) {
   const debugKey = `shoulder-debug-${height}-${weight}-${garment}-${
     garment === "shirt" ? shirtSize : ""
   }`;
+
+  const bodyVertexDbgTpl = useMemo(() => {
+    const m = new Map<number, [number, number]>();
+    for (const e of bodyVertexDebugEntries ?? []) m.set(e.globalIndex, e.template);
+    return m;
+  }, [bodyVertexDebugEntries]);
+
+  const indentWaistGuidePathDs = useMemo(() => {
+    const build = (lo: number, hi: number): string | null => {
+      const parts: string[] = [];
+      for (let g = lo; g <= hi; g++) {
+        const p = bodyOutlinePoints[g];
+        if (!p || !Number.isFinite(p[0]) || !Number.isFinite(p[1])) return null;
+        parts.push(`${p[0]} ${p[1]}`);
+      }
+      if (parts.length < 2) return null;
+      return `M ${parts.join(" L ")}`;
+    };
+    const leftD = build(BODY_INDENT_WAIST_LEFT_GLOBAL_RANGE[0], BODY_INDENT_WAIST_LEFT_GLOBAL_RANGE[1]);
+    const rightD = build(BODY_INDENT_WAIST_RIGHT_GLOBAL_RANGE[0], BODY_INDENT_WAIST_RIGHT_GLOBAL_RANGE[1]);
+    if (leftD == null && rightD == null) return null;
+    return { leftD, rightD };
+  }, [bodyOutlinePoints]);
+
+  const indentWaistReferenceChord = useMemo(() => {
+    const [a, b] = BODY_INDENT_WAIST_REFERENCE_CHORD_GLOBAL_INDICES;
+    const pa = bodyOutlinePoints[a];
+    const pb = bodyOutlinePoints[b];
+    if (!pa || !pb) return null;
+    const [ax, ay] = pa;
+    const [bx, by] = pb;
+    if (![ax, ay, bx, by].every(Number.isFinite)) return null;
+    return { ax, ay, bx, by, a, b };
+  }, [bodyOutlinePoints]);
 
   if (!showGarmentPlot && !showBodyPlot) return null;
 
@@ -72,24 +113,81 @@ export function FittingCanvasPlotOverlay({
     <g key={debugKey} aria-hidden={true} pointerEvents={allowPointerEvents ? "auto" : "none"}>
       {showBodyPlot && (
         <g data-overlay="body-plot">
+          {indentWaistGuidePathDs != null && (
+            <g pointerEvents="none">
+              {indentWaistGuidePathDs.leftD != null && (
+                <path
+                  d={indentWaistGuidePathDs.leftD}
+                  fill="none"
+                  stroke="#c026d3"
+                  strokeWidth={2.5}
+                  strokeDasharray="6 4"
+                  strokeOpacity={0.92}
+                >
+                  <title>{`胴くびれ帯 左 #${BODY_INDENT_WAIST_LEFT_GLOBAL_RANGE[0]}–#${BODY_INDENT_WAIST_LEFT_GLOBAL_RANGE[1]}（bodyWarp と同じ連結 #）`}</title>
+                </path>
+              )}
+              {indentWaistGuidePathDs.rightD != null && (
+                <path
+                  d={indentWaistGuidePathDs.rightD}
+                  fill="none"
+                  stroke="#c026d3"
+                  strokeWidth={2.5}
+                  strokeDasharray="6 4"
+                  strokeOpacity={0.92}
+                >
+                  <title>{`胴くびれ帯 右 #${BODY_INDENT_WAIST_RIGHT_GLOBAL_RANGE[0]}–#${BODY_INDENT_WAIST_RIGHT_GLOBAL_RANGE[1]}（bodyWarp と同じ連結 #）`}</title>
+                </path>
+              )}
+            </g>
+          )}
+          {indentWaistReferenceChord != null && (
+            <line
+              x1={indentWaistReferenceChord.ax}
+              y1={indentWaistReferenceChord.ay}
+              x2={indentWaistReferenceChord.bx}
+              y2={indentWaistReferenceChord.by}
+              fill="none"
+              stroke="#7c3aed"
+              strokeWidth={2.2}
+              strokeDasharray="4 5"
+              strokeOpacity={0.95}
+              pointerEvents="none"
+            >
+              <title>{`胴くびれ参照弦 #${indentWaistReferenceChord.a}–#${indentWaistReferenceChord.b}（補正帯は左 #${BODY_INDENT_WAIST_LEFT_GLOBAL_RANGE[0]}–#${BODY_INDENT_WAIST_LEFT_GLOBAL_RANGE[1]}／右 #${BODY_INDENT_WAIST_RIGHT_GLOBAL_RANGE[0]}–#${BODY_INDENT_WAIST_RIGHT_GLOBAL_RANGE[1]}）`}</title>
+            </line>
+          )}
           {bodyOutlinePoints.map(([x, y], i) => {
+            const dbgTpl = bodyVertexDbgTpl.get(i);
+            const isVtxDbg = dbgTpl != null;
             const labelSize = FONT_INDEX_GARMENT;
-            const r = 3;
+            const r = isVtxDbg ? 4 : 3;
             const orbit = indexLabelOrbitRadius(r, labelSize);
             const { ox, oy } = indexLabelRadialOffset(i, orbit);
             const indexStrokeW = indexLabelStrokeWidth(labelSize);
+            const fill = isVtxDbg ? "#c026d3" : "#22c55e";
+            const stroke = isVtxDbg ? "#86198f" : "#166534";
+            const textFill = isVtxDbg ? "#a21caf" : "#22c55e";
             return (
               <g key={`body-${i}-${x}-${y}`}>
                 <circle
                   cx={x}
                   cy={y}
                   r={r}
-                  fill="#22c55e"
+                  fill={fill}
                   fillOpacity={0.88}
-                  stroke="#166534"
-                  strokeWidth={1.1}
+                  stroke={stroke}
+                  strokeWidth={isVtxDbg ? 1.4 : 1.1}
                 >
-                  <title>ボディ輪郭 #{i} ({Math.round(x)}, {Math.round(y)})</title>
+                  <title>
+                    {isVtxDbg
+                      ? `DEBUG 指定頂点 #${i} — テンプレ (${Math.round(dbgTpl[0])},${Math.round(
+                          dbgTpl[1]
+                        )}) · 表示はワープ＋リグ後 (${Math.round(x)},${Math.round(
+                          y
+                        )}) · sessionStorage DEBUG_FITTING_BODY_VERTICES=1`
+                      : `ボディ輪郭 #${i} (${Math.round(x)}, ${Math.round(y)}) — 連結順: BPATHS_MODEL の各 path を順に結合した 0 始まり`}
+                  </title>
                 </circle>
                 <text
                   x={x + ox}
@@ -97,7 +195,7 @@ export function FittingCanvasPlotOverlay({
                   textAnchor="middle"
                   dominantBaseline="middle"
                   fontSize={labelSize}
-                  fill="#22c55e"
+                  fill={textFill}
                   fontFamily="monospace"
                   fontWeight="bold"
                   stroke="white"
@@ -147,58 +245,6 @@ export function FittingCanvasPlotOverlay({
               </g>
             );
           })}
-          {rigIntersectionPlotPoints.map(({ label, point, plotKind }, ri) => {
-            const [x, y] = point;
-            const { fill, stroke, textFill } = rigIntersectionPlotStyle(plotKind);
-            const labelSize = FONT_INDEX_GARMENT_HIGHLIGHT;
-            const cr = 4;
-            const orbit = indexLabelOrbitRadius(cr, labelSize);
-            const { ox, oy } = indexLabelRadialOffset(ri + 31, orbit);
-            const indexStrokeW = indexLabelStrokeWidth(labelSize);
-            return (
-              <g key={`rig-axis-${label}`}>
-                <circle
-                  cx={x}
-                  cy={y}
-                  r={cr}
-                  fill={fill}
-                  fillOpacity={fill === "none" ? undefined : 0.9}
-                  stroke={stroke}
-                  strokeWidth={fill === "none" ? 1.5 : 1.2}
-                >
-                  <title>
-                    リグ交点: {label} ({Math.round(x)}, {Math.round(y)})
-                  </title>
-                </circle>
-                <text
-                  x={x + ox}
-                  y={y + oy}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fontSize={labelSize}
-                  fill={textFill}
-                  fontFamily="monospace"
-                  fontWeight="bold"
-                  stroke="white"
-                  strokeWidth={indexStrokeW}
-                  paintOrder="stroke fill"
-                >
-                  {label}
-                </text>
-              </g>
-            );
-          })}
-          {sd !== null && sd.bodyShoulderContour.length >= 2 && (
-            <path
-              d={`M ${sd.bodyShoulderContour.map(([x, y]) => `${x} ${y}`).join(" L ")}`}
-              fill="none"
-              stroke="red"
-              strokeWidth={4}
-              strokeDasharray="8 5"
-            >
-              <title>ボディの肩ライン（腕が胴に付く高さ）</title>
-            </path>
-          )}
         </g>
       )}
       {showGarmentPlot && sd !== null && (
@@ -232,20 +278,22 @@ export function FittingCanvasPlotOverlay({
               const shoulderIdx = sd.shoulderPointIndex;
               const isShoulder = shoulderIdx != null ? i === shoulderIdx : false;
               const hlRoles = vertexHighlightRoles(i, genericVertexPlotHighlight);
+              const isSnapBody =
+                genericVertexPlotHighlight?.lowerSleeveFollowLinkedGlobals?.includes(i) === true;
               const isHl = hlRoles.length > 0;
               const labelSize = isShoulder
                 ? FONT_INDEX_GARMENT_SHOULDER
                 : isHl
                   ? FONT_INDEX_GARMENT_HIGHLIGHT
                   : FONT_INDEX_GARMENT;
-              const r = isShoulder ? 4 : isHl ? 3.5 : 3;
+              const r = isShoulder ? 4 : isSnapBody ? 4 : isHl ? 3.5 : 3;
               const orbit = indexLabelOrbitRadius(r, labelSize);
               const { ox, oy } = indexLabelRadialOffset(i, orbit);
               const indexStrokeW = indexLabelStrokeWidth(labelSize);
-              const outlineOnly = !isShoulder && !isHl;
-              const circleFill = isShoulder ? "red" : isHl ? "#4ade80" : "none";
-              const labelFill = isShoulder ? "red" : isHl ? "#4ade80" : "#334155";
-              const stroke = isShoulder ? "darkred" : isHl ? "#166534" : "#334155";
+              const outlineOnly = !isShoulder && !isHl && !isSnapBody;
+              const circleFill = isShoulder ? "red" : isSnapBody ? "#67e8f9" : isHl ? "#4ade80" : "none";
+              const labelFill = isShoulder ? "red" : isSnapBody ? "#0e7490" : isHl ? "#4ade80" : "#334155";
+              const stroke = isShoulder ? "darkred" : isSnapBody ? "#155e75" : isHl ? "#166534" : "#334155";
               const hlNote = isHl ? ` [${hlRoles.join(" · ")}]` : "";
               return (
                 <g key={`pt-${i}-${x}-${y}`}>
@@ -254,18 +302,34 @@ export function FittingCanvasPlotOverlay({
                     cy={y}
                     r={r}
                     fill={circleFill}
-                    fillOpacity={outlineOnly ? undefined : isShoulder ? 0.95 : 0.92}
+                    fillOpacity={outlineOnly ? undefined : isShoulder ? 0.95 : isSnapBody ? 0.9 : 0.92}
                     stroke={stroke}
-                    strokeWidth={isShoulder ? 1.2 : isHl ? 1.1 : 1.5}
-                    style={garmentVertexPickEnabled ? { cursor: "crosshair" } : undefined}
+                    strokeWidth={isShoulder ? 1.2 : isSnapBody ? 1.3 : isHl ? 1.1 : 1.5}
+                    style={
+                      garmentVertexPickEnabled
+                        ? {
+                            cursor: garmentVertexLinkPickActive ? "pointer" : "crosshair",
+                          }
+                        : undefined
+                    }
                     onPointerEnter={() => {
                       if (garmentVertexPickEnabled) onGarmentVertexHover?.(i);
+                    }}
+                    onPointerDown={(e) => {
+                      if (!garmentVertexLinkPickActive || !onGarmentVertexLinkToggle) return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onGarmentVertexLinkToggle(i);
                     }}
                   >
                     <title>
                       {isShoulder
                         ? `肩基準点 #${i}${hlNote}`
-                        : `服の輪郭 #${i}${hlNote}${garmentVertexPickEnabled ? " · r で袖丈連結に追加" : ""}`}
+                        : `服の輪郭 #${i}${hlNote}${
+                            garmentVertexPickEnabled
+                                ? " · r で袖丈連結に追加"
+                                : ""
+                          }`}
                     </title>
                   </circle>
                   <text

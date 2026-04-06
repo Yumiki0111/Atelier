@@ -1,8 +1,8 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Product } from "@atelier/shared";
-import { createProductSchema, updateProductSchema } from "@atelier/shared";
+import type { Product } from "@Atelier/shared";
+import { createProductSchema, updateProductSchema } from "@Atelier/shared";
 import { useAuth } from "@/contexts/AuthContext";
 import { authenticatedFetch } from "@/lib/auth/api-client";
 import { extractErrorMessage, translateErrorMessage } from "@/lib/errors/error-handler";

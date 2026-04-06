@@ -44,7 +44,7 @@ function SleeveMeasureBlock({
   const measuredSleeve = g.sleeveMeasuredCm;
   const sleeveGeom = sleeveGeomDebugOverride ?? g.sleeveGeomDebug;
   const rawBefore = sleeveGeomBeforeSleeveFixDebugOverride ?? g.sleeveGeomBeforeSleeveFixDebug;
-  /** メインの「幾何」は canvas 上の path と一致するパイプライン後。設計時（rawBefore）は補正前のため優先しない */
+  /** メインの「幾何」は canvas 上の path と一致するパイプライン後。rawBefore は袖スケール直前（canvas・同じ px/cm 定義） */
   const screenSleeveCm =
     sleeveGeom != null && Number.isFinite(sleeveGeom.cm)
       ? sleeveGeom.cm
@@ -146,7 +146,7 @@ function SleeveMeasureBlock({
           </text>
           <text x={slMidX + labelOffset} y={line2Y} fontSize={12} fontWeight={600} fill="#64748b" fontFamily="sans-serif" dominantBaseline="middle">
             <title>
-              アップロードした design path のみ（胴グレード・プレース・袖スケール・袖口補正の前）の袖チェーンを model 換算した cm。現在の見た目の「幾何」とは別物。
+              袖スケール（applyGenericSleeveScaleAfterLengthMesh）適用直前の canvas 上の袖チェーン（縦|Δy|・px/cm はパイプラインと同じ）。着丈メッシュ等の後は含む。
             </title>
             {`設計時（補正前） ${rawVsPipelineDiffLabel}cm`}
           </text>

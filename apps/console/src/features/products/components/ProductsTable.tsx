@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import type { Product, ProductSize } from "@atelier/shared";
+import type { Product, ProductSize } from "@Atelier/shared";
 import {
   Table,
   TableBody,

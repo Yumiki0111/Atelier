@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { authenticatedFetch } from "@/lib/auth/api-client";
-import type { Asset } from "@atelier/shared";
+import type { Asset } from "@Atelier/shared";
 
 interface UseAssetsManagementOptions {
   productId: string;

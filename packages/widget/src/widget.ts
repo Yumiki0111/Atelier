@@ -1,34 +1,41 @@
 import { fetchWidgetConfig, fetchWidgetDesign, sendEvent, type WidgetParams } from "./widget-api";
 import { renderCube, applyDesignToButton, showDefaultButton, renderModalWithLoading, updateModalWithConfig, showErrorInModal, updateButtonPositions } from "./widget-render";
+import {
+  readEmbedAttr,
+  WIDGET_HOST_SELECTOR,
+  WIDGET_CONTAINER_ID_PREFIX,
+  WIDGET_ALL_CONTAINER_SELECTOR,
+  WIDGET_LOG_PREFIX,
+} from "./embed-data";
 
 export function initWidget() {
   // 既存のボタンをクリーンアップ（ページ遷移時などに対応）
   // 現在のページに存在するウィジェット要素に対応するボタンのみを保持
-  const elements = document.querySelectorAll<HTMLElement>(
-    "[data-atelier-public-key], [data-atelier-shop-id]"
-  );
-  
+  const elements = document.querySelectorAll<HTMLElement>(WIDGET_HOST_SELECTOR);
+
   // 現在のページに存在する商品IDを収集
   const currentProductIds = new Set<string>();
   elements.forEach((element) => {
-    const productId = element.getAttribute("data-atelier-product-id") || 
-                      element.getAttribute("data-atelier-external-product-id");
+    const productId =
+      readEmbedAttr(element, "product-id") || readEmbedAttr(element, "external-product-id");
     if (productId) {
       currentProductIds.add(productId);
     }
   });
-  
+
   // 現在のページに存在しない商品のコンテナ（ボタンと画像を含む）を削除
-  const allWidgetContainers = document.querySelectorAll<HTMLElement>('[id^="atelier-widget-container-"]');
+  const allWidgetContainers = document.querySelectorAll<HTMLElement>(WIDGET_ALL_CONTAINER_SELECTOR);
   allWidgetContainers.forEach((container) => {
-    const containerProductId = container.getAttribute("data-atelier-product-id");
+    const containerProductId = readEmbedAttr(container, "product-id");
     if (containerProductId && !currentProductIds.has(containerProductId)) {
       container.remove();
     }
   });
 
   if (elements.length === 0) {
-    console.warn("[Atelier Widget] No widget elements found. Make sure you have elements with data-atelier-public-key or data-atelier-shop-id attribute.");
+    console.warn(
+      `${WIDGET_LOG_PREFIX} No widget elements found. Use data-fitlook-public-key / data-fitlook-shop-id (or legacy data-atelier-*).`
+    );
     return;
   }
 
@@ -37,21 +44,21 @@ export function initWidget() {
     if (element.shadowRoot) {
       return;
     }
-    
+
     // 新しい形式: public-key を優先
-    const publicKey = element.getAttribute("data-atelier-public-key");
-    const externalProductId = element.getAttribute("data-atelier-external-product-id");
-    
+    const publicKey = readEmbedAttr(element, "public-key");
+    const externalProductId = readEmbedAttr(element, "external-product-id");
+
     // 後方互換性: 古い形式もサポート
-    const shopId = element.getAttribute("data-atelier-shop-id");
-    const productId = element.getAttribute("data-atelier-product-id");
-    
-    const sku = element.getAttribute("data-atelier-sku");
-    const handle = element.getAttribute("data-atelier-handle");
-    const url = element.getAttribute("data-atelier-url");
+    const shopId = readEmbedAttr(element, "shop-id");
+    const productId = readEmbedAttr(element, "product-id");
+
+    const sku = readEmbedAttr(element, "sku");
+    const handle = readEmbedAttr(element, "handle");
+    const url = readEmbedAttr(element, "url");
 
     if (!publicKey && !shopId) {
-      console.warn("[Atelier Widget] public-key or shop-id is required");
+      console.warn(`${WIDGET_LOG_PREFIX} public-key or shop-id is required`);
       return;
     }
 
@@ -64,7 +71,7 @@ export function initWidget() {
       element.style.padding = "0";
       element.style.border = "none";
       element.style.background = "transparent";
-      
+
       // Create shadow DOM
       const shadowRoot = element.attachShadow({ mode: "open" });
 
@@ -79,17 +86,15 @@ export function initWidget() {
       };
 
       const pid = productId || externalProductId || `widget-${Date.now()}-${Math.random()}`;
-      const containerId = `atelier-widget-container-${pid}`;
-      
+      const containerId = `${WIDGET_CONTAINER_ID_PREFIX}${pid}`;
+
       // ボタンを即座に作成（デザイン取得前に非表示で）
       renderCube(shadowRoot, params, handleCubeClick, null);
 
       if (publicKey) {
         // 最大1500msでデザインを取得。タイムアウトした場合はデフォルトを表示
         const designFetch = fetchWidgetDesign(publicKey);
-        const designTimeout = new Promise<null>((resolve) =>
-          setTimeout(() => resolve(null), 1500)
-        );
+        const designTimeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500));
         Promise.race([designFetch, designTimeout])
           .then((design) => {
             if (design) {
@@ -102,28 +107,27 @@ export function initWidget() {
             showDefaultButton(containerId);
           });
         // タイムアウト後に実際のデザインが届いた場合も適用
-        designFetch.then((design) => {
-          if (design) {
-            applyDesignToButton(containerId, design);
-          }
-        }).catch(() => {});
+        designFetch
+          .then((design) => {
+            if (design) {
+              applyDesignToButton(containerId, design);
+            }
+          })
+          .catch(() => {});
       } else {
         // publicKeyがない場合はデフォルトを即時適用
         showDefaultButton(containerId);
       }
     } catch (error) {
-      console.error(`[Atelier Widget] Failed to initialize widget ${index + 1}:`, error);
+      console.error(`${WIDGET_LOG_PREFIX} Failed to initialize widget ${index + 1}:`, error);
     }
   });
-  
+
   // すべてのボタンの位置を再計算（初期化後）
   updateButtonPositions();
 }
 
-async function handleCubeClick(
-  shadowRoot: ShadowRoot,
-  params: WidgetParams
-) {
+async function handleCubeClick(shadowRoot: ShadowRoot, params: WidgetParams) {
   // パラメータの検証
   if (!params.publicKey && !params.shopId) {
     alert("ウィジェットの設定エラー: Public Keyが設定されていません");
@@ -131,7 +135,9 @@ async function handleCubeClick(
   }
 
   if (!params.externalProductId && !params.productId) {
-    alert("ウィジェットの設定エラー: 商品IDが設定されていません。data-atelier-external-product-id属性を追加してください。");
+    alert(
+      "ウィジェットの設定エラー: 商品IDが設定されていません。data-fitlook-external-product-id（推奨）または data-atelier-external-product-id を追加してください。"
+    );
     return;
   }
 
@@ -158,7 +164,7 @@ async function handleCubeClick(
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    console.error("[Atelier Widget] Error in handleCubeClick:", errorMessage);
+    console.error(`${WIDGET_LOG_PREFIX} Error in handleCubeClick:`, errorMessage);
     showErrorInModal(shadowRoot, `試着画面の読み込みに失敗しました。\n\nエラー: ${errorMessage}`, overlay, contentArea);
   }
 }

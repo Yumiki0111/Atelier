@@ -232,7 +232,7 @@
 
 | 項目 | 内容 |
 |------|------|
-| **`apps/console/.../development/page.tsx`** | `localStorage` キー `atelier-dev-fitting` で服種・サイズを復元。**身長・体重は保存されない**。リロードで入力が戻ると「コードは同じなのに見え方が違う」になり得る。 |
+| **`apps/console/.../development/page.tsx`** | `localStorage` キー `fitlook-dev-fitting` で服種・サイズを復元。**身長・体重は保存されない**。リロードで入力が戻ると「コードは同じなのに見え方が違う」になり得る。 |
 | **サイズアニメ** | `animProgress` / `fromSize` `toSize` / カスタム from-to で **`interpolatePath`** 等。スナップショット計算の分岐が増える。 |
 | **`rigBodyEnabled` / `rigGarmentEnabled`** | UI トグルで **描画・デバッグ用パス**が変わる（計算の芯は同じでも確認対象がずれる）。 |
 | **`next` / Turbopack / `node_modules` 更新** | 同一コミットでも環境差で見え方が変わることはあり得る。不具合切り分け時は `npm ci` 等を意識。 |

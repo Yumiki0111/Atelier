@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAuthenticatedUser } from "@/lib/auth/middleware";
-import { createAssetSchema } from "@atelier/shared";
+import { createAssetSchema } from "@Atelier/shared";
 import { isValidUUID } from "@/lib/api/validation";
 
 // GET /api/assets - List assets

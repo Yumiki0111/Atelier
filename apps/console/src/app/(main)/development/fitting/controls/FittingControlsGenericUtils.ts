@@ -16,12 +16,20 @@ export type GenericDraft = {
   sleeveMirrorMeasureRange: string;
   /** 着丈計測区間（連結 #） */
   lengthMeasureRange: string;
+  /** 下袖: 上袖スケール時にエルボ移動分だけ平行移動する頂点範囲（例 16-24） */
+  lowerSleeveMeasureRange: string;
+  /** ミラー袖 path 用の下袖範囲 */
+  lowerSleeveMirrorMeasureRange: string;
   sleeveMeasureVertexStart?: number;
   sleeveMeasureVertexEnd?: number;
   sleeveMirrorMeasureVertexStart?: number;
   sleeveMirrorMeasureVertexEnd?: number;
   lengthMeasureVertexStart?: number;
   lengthMeasureVertexEnd?: number;
+  lowerSleeveVertexStart?: number;
+  lowerSleeveVertexEnd?: number;
+  lowerSleeveMirrorVertexStart?: number;
+  lowerSleeveMirrorVertexEnd?: number;
 };
 
 export function emptyGenericDraft(): GenericDraft {
@@ -33,6 +41,8 @@ export function emptyGenericDraft(): GenericDraft {
     sleeveMeasureRange: "",
     sleeveMirrorMeasureRange: "",
     lengthMeasureRange: "",
+    lowerSleeveMeasureRange: "",
+    lowerSleeveMirrorMeasureRange: "",
   };
 }
 

@@ -3,7 +3,7 @@ import {
   mirrorSleeveMeasureRangeToOppositeInner,
 } from "../lib/sleeveMeasureBodyExact";
 import { getScalableSpec } from "../lib/customGarmentUtils";
-import { resolveGenericScalableSpec } from "../generic";
+import { resolveEffectiveSleeveGradingGeometry, resolveGenericScalableSpec } from "../generic";
 import type { CustomGarmentData, GenericVertexPlotHighlight } from "../lib/types";
 
 /** 連結頂点 # の文字（密な頂点でも重なりにくいよう小さめ） */
@@ -42,29 +42,6 @@ export function indexLabelOrbitRadius(circleR: number, fontSize: number): number
   return circleR + INDEX_LABEL_VERTEX_MARGIN_PX + indexLabelTextHalfExtentPx(fontSize);
 }
 
-export type RigIntersectionPlotPoint = {
-  label: string;
-  point: [number, number];
-  plotKind: "bodyFollow" | "warp" | "rigView";
-};
-
-export function rigIntersectionPlotStyle(kind: RigIntersectionPlotPoint["plotKind"]): {
-  fill: string;
-  stroke: string;
-  textFill: string;
-} {
-  switch (kind) {
-    case "bodyFollow":
-      return { fill: "#14b8a6", stroke: "#0f766e", textFill: "#0d9488" };
-    case "warp":
-      return { fill: "none", stroke: "#57534e", textFill: "#44403c" };
-    case "rigView":
-      return { fill: "#e879f9", stroke: "#86198f", textFill: "#a21caf" };
-    default:
-      return { fill: "#64748b", stroke: "#334155", textFill: "#475569" };
-  }
-}
-
 /** 袖丈・着丈の赤/紫ポリライン表示用の上限頂点 */
 export const MAX_MEASURE_POLYLINE_VERTICES = 24;
 
@@ -100,6 +77,9 @@ export function vertexHighlightRoles(i: number, h: GenericVertexPlotHighlight | 
   } else {
     pushIf("袖丈計測", h.sleeveMeasure);
   }
+  pushIf("下袖（追従）", h.lowerSleeve);
+  pushIf("ミラー下袖（追従）", h.lowerSleeveMirror);
+  if (h.lowerSleeveFollowLinkedGlobals?.includes(i)) roles.push("袖下〜胴つなぎ（旧）");
   return roles;
 }
 
@@ -146,6 +126,8 @@ export function getCustomSleeveMeasureIndexRange(data: CustomGarmentData): [numb
     Number.isFinite(gt.sleeveMeasureVertexStart) &&
     Number.isFinite(gt.sleeveMeasureVertexEnd)
   ) {
+    const eff = resolveEffectiveSleeveGradingGeometry(data.pathDs, data.landmarks, gt);
+    if (eff) return [eff.gLo, eff.gHi];
     const a = Math.trunc(gt.sleeveMeasureVertexStart);
     const b = Math.trunc(gt.sleeveMeasureVertexEnd);
     return [Math.min(a, b), Math.max(a, b)];

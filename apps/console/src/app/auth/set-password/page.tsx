@@ -104,7 +104,7 @@ export default function SetPasswordPage() {
           </div>
           <CardTitle className="text-2xl">パスワードを設定</CardTitle>
           <CardDescription className="text-base">
-            Atelier にアクセスするためのパスワードを設定してください
+            FIT&LOOK にアクセスするためのパスワードを設定してください
           </CardDescription>
         </CardHeader>
 

@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Edit, Trash2 } from "lucide-react";
-import type { Asset, ProductSize } from "@atelier/shared";
+import type { Asset, ProductSize } from "@Atelier/shared";
 
 interface AssetListProps {
   assets: Asset[];

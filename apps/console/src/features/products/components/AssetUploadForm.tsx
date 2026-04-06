@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { createAssetSchemaBase, type ProductSize } from "@atelier/shared";
+import { createAssetSchemaBase, type ProductSize } from "@Atelier/shared";
 import { Plus, Upload, Loader2 } from "lucide-react";
 import { z } from "zod";
 import { useAssetUpload } from "../hooks/useAssetUpload";

@@ -7,7 +7,7 @@
 
 export function buildDragBar(): HTMLElement {
   const bar = document.createElement("div");
-  bar.setAttribute("data-atelier-drag-bar", "true");
+  bar.setAttribute("data-fitlook-drag-bar", "true");
   bar.style.cssText = `
     flex-shrink: 0;
     display: flex; justify-content: center;
@@ -45,7 +45,7 @@ export function dismissSheet(sheet: HTMLElement, overlay: HTMLElement) {
   overlay.style.transition = "opacity 0.3s ease-out";
   overlay.style.opacity = "0";
   setTimeout(() => { overlay.style.pointerEvents = "none"; }, 320);
-  if ((sheet as any).__atelierSetOpen) (sheet as any).__atelierSetOpen(false);
+  if ((sheet as any).__fitlookSetOpen) (sheet as any).__fitlookSetOpen(false);
 }
 
 export function openSheet(sheet: HTMLElement, overlay: HTMLElement) {
@@ -56,7 +56,7 @@ export function openSheet(sheet: HTMLElement, overlay: HTMLElement) {
   overlay.style.animation = "none";
   overlay.style.transition = "opacity 0.22s ease-out";
   overlay.style.opacity = "1";
-  if ((sheet as any).__atelierSetOpen) (sheet as any).__atelierSetOpen(true);
+  if ((sheet as any).__fitlookSetOpen) (sheet as any).__fitlookSetOpen(true);
 }
 
 // ─── Drag-to-dismiss ──────────────────────────────────────────────────────────
@@ -122,8 +122,8 @@ export function setupDragToDismiss(
     }
   };
 
-  (sheet as any).__atelierIsOpen = () => isOpen;
-  (sheet as any).__atelierSetOpen = (open: boolean) => { isOpen = open; };
+  (sheet as any).__fitlookIsOpen = () => isOpen;
+  (sheet as any).__fitlookSetOpen = (open: boolean) => { isOpen = open; };
 
   handle.addEventListener("mousedown", (e) => { e.preventDefault(); onStart(e.clientY); });
   handle.addEventListener("touchstart", (e) => { e.preventDefault(); onStart(e.touches[0].clientY); }, { passive: false });

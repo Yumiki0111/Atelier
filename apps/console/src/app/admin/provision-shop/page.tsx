@@ -45,7 +45,7 @@ export default function ProvisionShopPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-atelier-admin-token": adminToken,
+          "x-Atelier-admin-token": adminToken,
         },
         body: JSON.stringify({
           shopName,
@@ -109,7 +109,7 @@ export default function ProvisionShopPage() {
             <div className="text-sm text-yellow-800">
               <p className="font-medium mb-1">⚠️ 管理者専用機能</p>
               <p>
-                この機能はAtelier運営者のみが使用できます。
+                この機能はFIT&LOOK運営者のみが使用できます。
                 不正なアクセスは記録され、法的措置の対象となります。
               </p>
             </div>
@@ -139,13 +139,13 @@ export default function ProvisionShopPage() {
               <Input
                 id="adminToken"
                 type="password"
-                placeholder="ATELIER_ADMIN_TOKEN"
+                placeholder="Atelier_ADMIN_TOKEN"
                 value={adminToken}
                 onChange={(e) => setAdminToken(e.target.value)}
                 required
               />
               <p className="text-xs text-gray-500">
-                環境変数 ATELIER_ADMIN_TOKEN の値を入力してください
+                環境変数 Atelier_ADMIN_TOKEN の値を入力してください
               </p>
             </div>
 

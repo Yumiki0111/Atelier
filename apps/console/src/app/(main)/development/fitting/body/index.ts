@@ -1,7 +1,14 @@
 export { getBodyParams } from "./bodyParams";
 export { getZones, getAnchorYOffset, getZonesAnchored } from "./bodyZones";
 export { getBodyOutlineHalfW, armOutlineX } from "./bodyOutlineSample";
-export { warp, bodyHeight, torsoLateralSpreadFactor, torsoXFactor, type WarpOptions } from "./bodyWarp";
+export {
+  warp,
+  bodyHeight,
+  torsoLateralSpreadFactor,
+  torsoXFactor,
+  blendDeformedWithIndentWarpRelief,
+  type WarpOptions,
+} from "./bodyWarp";
 export {
   getInterpolatedArmOutline,
   getWarpedArmAngles,

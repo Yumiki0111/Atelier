@@ -47,6 +47,8 @@ export interface FittingCanvasProps {
   onGarmentVertexHover?: (globalVertexIndex: number | null) => void;
   /** true のとき服の輪郭 # にポインタを当ててホバーインデックスを送る */
   garmentVertexPickEnabled?: boolean;
+  garmentVertexLinkPickActive?: boolean;
+  onGarmentVertexLinkToggle?: (globalVertexIndex: number) => void;
 }
 
 export function FittingCanvas({
@@ -73,6 +75,8 @@ export function FittingCanvas({
   onCustomPathClick,
   onGarmentVertexHover,
   garmentVertexPickEnabled = false,
+  garmentVertexLinkPickActive = false,
+  onGarmentVertexLinkToggle,
 }: FittingCanvasProps) {
   const modelCenterX = 752.5;
   const {
@@ -95,7 +99,7 @@ export function FittingCanvas({
     measureOverlay,
     rigArmAngleDebug,
     rigRedLineArmDiagram,
-    rigIntersectionPlotPoints,
+    bodyVertexDebugEntries,
   } = useFittingCanvasData({
     height,
     weight,
@@ -276,7 +280,7 @@ export function FittingCanvas({
           showGarmentPlot={showPlotCoords}
           showBodyPlot={showBodyPlotCoords}
           bodyPlotPoints={bodyPlotPoints}
-          rigIntersectionPlotPoints={rigIntersectionPlotPoints}
+          bodyVertexDebugEntries={bodyVertexDebugEntries}
           bodyOutlinePoints={bodyOutlinePoints}
           shoulderDebug={shoulderDebug}
           height={height}
@@ -288,6 +292,8 @@ export function FittingCanvas({
           allowPointerEvents={garmentVertexPickEnabled}
           onGarmentVertexHover={onGarmentVertexHover}
           garmentVertexPickEnabled={garmentVertexPickEnabled}
+          garmentVertexLinkPickActive={garmentVertexLinkPickActive}
+          onGarmentVertexLinkToggle={onGarmentVertexLinkToggle}
         />
         {showRigAngleDiagram ? (
           <FittingCanvasRigAngleDiagram

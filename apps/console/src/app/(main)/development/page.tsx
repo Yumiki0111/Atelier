@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { FittingControls } from "./fitting/controls/FittingControls";
-import { FittingCanvas } from "./fitting/canvas/FittingCanvas";
-import { sizeEqual, landmarksEqual, pathDsContentEqual } from "./fitting/lib/fittingStateUtils";
-import { getGenericSymmetricTopPreset } from "./fitting/generic/getGenericSymmetricTopPreset";
+import { FittingControls } from "@/app/(main)/development/fitting/controls/FittingControls";
+import { FittingCanvas } from "@/fitting-dev/FittingCanvas";
+import { sizeEqual, landmarksEqual, pathDsContentEqual } from "@/app/(main)/development/fitting/lib/fittingStateUtils";
+import { getGenericSymmetricTopPreset } from "@/app/(main)/development/fitting/generic/getGenericSymmetricTopPreset";
 import type {
   GarmentType,
   ShirtSize,
@@ -12,11 +12,11 @@ import type {
   CustomGarmentData,
   ShoulderDebug,
   GenericVertexPlotHighlight,
-} from "./fitting/lib/types";
+} from "@/app/(main)/development/fitting/lib/types";
 import { DevelopmentProductRegisterPanel } from "./DevelopmentProductRegisterPanel";
 
 const ANIM_DURATION_MS = 300;
-const STORAGE_KEY = "atelier-dev-fitting";
+const STORAGE_KEY = "fitlook-dev-fitting";
 
 type SavedState = {
   garment: GarmentType;
@@ -94,8 +94,8 @@ export default function DevelopmentPage() {
         !landmarksEqual(prev.landmarks, newData.landmarks))
     ) {
       /**
-       * path は同じでサイズ／ランドマークだけ変える場合、補間中は `animatingCustomSizeBlend` により
-       * 着丈 Y メッシュ・袖スナップが意図的にオフになり、300ms 見た目が変わらない／幾何だけずれたログが出る。
+       * path は同じでサイズ／ランドマークだけ変える場合、補間中は `animatingCustomSizeBlend` が true。
+       * 着丈 Y メッシュ・袖スナップとも from/to の計測を補間して適用。
        * 同じ SVG のグレード確認では補間しない。
        */
       setAnimFromCustom(null);
@@ -111,6 +111,7 @@ export default function DevelopmentPage() {
   const handleGenericVertexPlotHighlightChange = useCallback((h: GenericVertexPlotHighlight | null) => {
     setGenericVertexPlotHighlight(h);
   }, []);
+
   useEffect(() => {
     setHydrated(true);
   }, []);
@@ -171,7 +172,11 @@ export default function DevelopmentPage() {
     <div className="flex h-full min-h-0 flex-col overflow-hidden overscroll-none">
       <div className="flex shrink-0 flex-col gap-2 py-2">
         <h1 className="text-xl font-semibold">開発</h1>
-        <DevelopmentProductRegisterPanel garment={garment} customGarmentData={customGarmentData} />
+        <DevelopmentProductRegisterPanel
+          garment={garment}
+          customGarmentData={customGarmentData}
+          fitDebugContext={{ height, weight, shirtSize, jacketSize }}
+        />
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden rounded-lg bg-[#f0ede8] p-3 lg:flex-row lg:items-stretch lg:gap-4">
         <div className="relative flex h-full min-h-0 min-h-[min(55dvh,520px)] flex-1 flex-col overflow-hidden lg:order-2 lg:min-h-0">

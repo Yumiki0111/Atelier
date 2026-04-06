@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { loadBPATHS_RIG_LINES } from "../lib/pathData";
+import { useMemo } from "react";
+import { BPATHS_RIG_LINES } from "../lib/modelRigData";
 import {
   computeFittingCanvasSnapshot,
   type UseFittingCanvasDataParams,
@@ -25,24 +25,8 @@ export function useFittingCanvasData({
   rigBodyEnabled = false,
   genericVertexPlotHighlight = null,
 }: UseFittingCanvasDataParams): FittingCanvasSnapshot {
-  const [rigLinePaths, setRigLinePaths] = useState<string[] | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    loadBPATHS_RIG_LINES()
-      .then((linePaths) => {
-        if (cancelled) return;
-        setRigLinePaths(linePaths);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setRigLinePaths(null);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  /** 非同期の `loadBPATHS_RIG_LINES()` だと初回は null → yScale とカスタム服パイプラインが1フレーム遅れ、縮み→収束のように見える。 */
+  const rigLinePaths = BPATHS_RIG_LINES;
 
   return useMemo(
     () =>

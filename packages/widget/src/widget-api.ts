@@ -1,3 +1,4 @@
+import { WIDGET_LOG_PREFIX } from "./embed-data";
 import type { WidgetConfig, WidgetDesignConfig } from "./types";
 import { isDevelopmentMode, getApiBaseUrl } from "./widget-utils";
 
@@ -72,7 +73,7 @@ export async function fetchWidgetConfig(params: WidgetParams): Promise<WidgetCon
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        console.warn(`[Atelier Widget] API returned ${response.status}, using mock config.`);
+        console.warn(`${WIDGET_LOG_PREFIX} API returned ${response.status}, using mock config.`);
         return createDevMockConfig();
       }
 
@@ -202,7 +203,7 @@ export async function sendEvent(event: {
         return; // エラーを無視して続行
       }
       // その他のエラーは警告として表示
-      console.warn("[Atelier Widget] Event send error:", error);
+      console.warn(`${WIDGET_LOG_PREFIX} Event send error:`, error);
       return;
     }
   }
@@ -223,7 +224,7 @@ export async function sendEvent(event: {
     // 本番環境でもエラーを再スローしない（widgetの動作を継続）
     // ただし、本番環境ではエラーをログに記録
     if (!isDevelopmentMode()) {
-      console.error("[Atelier Widget] Failed to send event:", error);
+      console.error(`${WIDGET_LOG_PREFIX} Failed to send event:`, error);
     }
     // エラーを再スローしない（widgetの動作を継続）
   }

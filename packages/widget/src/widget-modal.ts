@@ -1,6 +1,8 @@
 import type { WidgetConfig, WidgetColorSwatch } from "./types";
+import { WIDGET_LOG_PREFIX } from "./embed-data";
 import { isDevelopmentMode, getApiBaseUrl } from "./widget-utils";
 import { sendEvent, type WidgetParams } from "./widget-api";
+import { mountFitLookLogoLoadingAnimation } from "./widget-fitlook-logo";
 
 const ACCENT_DEFAULT = "#3d3835";
 
@@ -13,13 +15,12 @@ const DEFAULT_SWATCHES: WidgetColorSwatch[] = [
 ];
 
 function injectStyles() {
-  if (document.getElementById("atelier-bs-styles")) return;
+  if (document.getElementById("fitlook-bs-styles")) return;
   const s = document.createElement("style");
-  s.id = "atelier-bs-styles";
+  s.id = "fitlook-bs-styles";
   s.textContent = `
-    @keyframes atelier-fade-in  { from{opacity:0} to{opacity:1} }
-    @keyframes atelier-spin     { to{transform:rotate(360deg)} }
-    [data-atelier-modal] * {
+    @keyframes fitlook-fade-in  { from{opacity:0} to{opacity:1} }
+    [data-fitlook-modal] *, [data-atelier-modal] * {
       box-sizing: border-box;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
@@ -32,7 +33,7 @@ function sortSizeKeys(keys: string[]): string[] {
 }
 
 function closeOverlay(overlay: HTMLElement) {
-  const cleanup = (overlay as unknown as { __atelierCleanup?: { fn: () => void } }).__atelierCleanup;
+  const cleanup = (overlay as unknown as { __fitlookCleanup?: { fn: () => void } }).__fitlookCleanup;
   if (cleanup) cleanup.fn();
   overlay.style.transition = "opacity 0.2s ease-out";
   overlay.style.opacity = "0";
@@ -119,7 +120,9 @@ export function renderModalWithLoading(
 ): { overlay: HTMLElement; contentArea: HTMLElement } {
   injectStyles();
 
-  const existingOverlays = document.querySelectorAll<HTMLElement>("[data-atelier-modal-overlay='true']");
+  const existingOverlays = document.querySelectorAll<HTMLElement>(
+    "[data-fitlook-modal-overlay='true'], [data-atelier-modal-overlay='true']"
+  );
   existingOverlays.forEach((el) => {
     if (el.style.opacity === "0" || parseFloat(el.style.opacity) < 0.1) {
       el.remove();
@@ -127,8 +130,8 @@ export function renderModalWithLoading(
   });
 
   const overlay = document.createElement("div");
-  overlay.setAttribute("data-atelier-modal", "true");
-  overlay.setAttribute("data-atelier-modal-overlay", "true");
+  overlay.setAttribute("data-fitlook-modal", "true");
+  overlay.setAttribute("data-fitlook-modal-overlay", "true");
   overlay.style.cssText = `
     position: fixed !important; inset: 0 !important;
     background: #ececec !important;
@@ -136,28 +139,25 @@ export function renderModalWithLoading(
     display: flex !important;
     flex-direction: column !important;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-    opacity: 0; animation: atelier-fade-in 0.22s ease-out forwards;
+    opacity: 0; animation: fitlook-fade-in 0.22s ease-out forwards;
   `;
 
   const contentArea = document.createElement("div");
-  contentArea.setAttribute("data-atelier-content-area", "true");
+  contentArea.setAttribute("data-fitlook-content-area", "true");
   contentArea.style.cssText =
     "flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;padding:max(8px, env(safe-area-inset-top)) 12px max(8px, env(safe-area-inset-bottom));box-sizing:border-box;background:#ececec;";
 
-  const spinWrap = document.createElement("div");
-  spinWrap.style.cssText = "flex:1;display:flex;align-items:center;justify-content:center;width:100%;";
-  const spin = document.createElement("img");
-  spin.src = `${getApiBaseUrl()}/logo.png`;
-  spin.alt = "";
-  spin.style.cssText = "width:56px;height:56px;object-fit:contain;animation:atelier-spin 2s linear infinite;";
-  spinWrap.appendChild(spin);
-  contentArea.appendChild(spinWrap);
+  const splashWrap = document.createElement("div");
+  splashWrap.style.cssText =
+    "flex:1;display:flex;align-items:center;justify-content:center;width:100%;min-height:0;background:#f8f6f1;";
+  const cancelSplash = mountFitLookLogoLoadingAnimation(splashWrap);
+  contentArea.appendChild(splashWrap);
 
   overlay.appendChild(contentArea);
   document.body.appendChild(overlay);
 
-  const cleanup = { fn: (): void => {} };
-  (overlay as unknown as { __atelierCleanup: typeof cleanup }).__atelierCleanup = cleanup;
+  const cleanup = { fn: cancelSplash };
+  (overlay as unknown as { __fitlookCleanup: typeof cleanup }).__fitlookCleanup = cleanup;
 
   return { overlay, contentArea };
 }
@@ -171,6 +171,9 @@ export function updateModalWithConfig(
 ) {
   if (!overlay || !contentArea) return;
   injectStyles();
+
+  const prevCleanup = (overlay as unknown as { __fitlookCleanup?: { fn: () => void } }).__fitlookCleanup;
+  if (prevCleanup?.fn) prevCleanup.fn();
 
   contentArea.innerHTML = "";
   contentArea.style.cssText =
@@ -241,7 +244,7 @@ export function updateModalWithConfig(
     return Math.round(50 + (v / 100) * 40);
   }
 
-  const cleanup = (overlay as unknown as { __atelierCleanup?: { fn: () => void } }).__atelierCleanup;
+  const cleanup = (overlay as unknown as { __fitlookCleanup?: { fn: () => void } }).__fitlookCleanup;
   if (cleanup) {
     cleanup.fn = () => {};
   }
@@ -358,7 +361,7 @@ export function updateModalWithConfig(
     "div",
     `flex:1;min-height:120px;min-width:0;flex-basis:0;position:relative;background:${canvasBg};display:flex;align-items:center;justify-content:center;overflow:visible;padding:8px 12px 8px;box-sizing:border-box;`
   );
-  viewerArea.setAttribute("data-atelier-viewer-container", "true");
+  viewerArea.setAttribute("data-fitlook-viewer-container", "true");
 
   async function loadGarmentFitSvgInto(
     target: HTMLElement,
@@ -575,12 +578,14 @@ export function updateModalWithConfig(
         meta: { size: currentSize, colorId: selectedColorId },
       }).catch(() => {});
     }
+    const cartDetail = {
+      size: currentSize,
+      colorId: selectedColorId,
+      productId: params.externalProductId || params.productId,
+    };
     try {
-      window.dispatchEvent(
-        new CustomEvent("atelier:add-to-cart", {
-          detail: { size: currentSize, colorId: selectedColorId, productId: params.externalProductId || params.productId },
-        })
-      );
+      window.dispatchEvent(new CustomEvent("fitlook:add-to-cart", { detail: cartDetail }));
+      window.dispatchEvent(new CustomEvent("Atelier:add-to-cart", { detail: cartDetail }));
     } catch {
       /* ignore */
     }
@@ -613,9 +618,9 @@ export function updateModalWithConfig(
       "div",
       "position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;background:" +
         interfaceBg +
-        ";border-radius:34px;overflow:hidden;animation:atelier-fade-in 0.2s ease-out;"
+        ";border-radius:34px;overflow:hidden;animation:fitlook-fade-in 0.2s ease-out;"
     );
-    bodyAdjustOverlay.setAttribute("data-atelier-body-adjust", "true");
+    bodyAdjustOverlay.setAttribute("data-fitlook-body-adjust", "true");
 
     const backPadTop = "padding:10px 14px 6px;padding-top:max(10px, env(safe-area-inset-top));";
     const backRowInner = el("div", backPadTop + "flex-shrink:0;");
@@ -742,7 +747,7 @@ export function updateModalWithConfig(
   bodyBtn.addEventListener("click", openBodySheet);
 
   if (isDevelopmentMode()) {
-    console.log("[Atelier Widget] 2D view ready", { productName, sizes: sizeKeys });
+    console.log(`${WIDGET_LOG_PREFIX} 2D view ready`, { productName, sizes: sizeKeys });
   }
 }
 
@@ -753,6 +758,10 @@ export function showErrorInModal(
   contentArea: HTMLElement
 ) {
   if (!overlay || !contentArea) return;
+  const prevCleanup = (overlay as unknown as { __fitlookCleanup?: { fn: () => void } }).__fitlookCleanup;
+  if (prevCleanup?.fn) prevCleanup.fn();
+  if (prevCleanup) prevCleanup.fn = () => {};
+
   contentArea.innerHTML = "";
   contentArea.style.cssText = `
     flex: 1; display: flex; flex-direction: column;

@@ -36,12 +36,27 @@ export {
   designVerticalSpanPxToLengthCm,
 } from "./resolveGenericScalableSpec";
 
+export type { GenericSleeveMeasureVertexOverride } from "./applyGenericMeasureOnlyGrading";
 export {
   applyGenericMeasureOnlyGrading,
+  applyGenericSleeveScaleAfterLengthMesh,
   genericMeasureOnlyGradingActive,
   genericSymmetricTopCanvasSleeveSnapEligible,
+  measureGenericTopSleeveCmFromPath,
   measureOriginalSleeveCmFromDesignPaths,
+  resolveGenericSleevePxPerCmForMeasure,
+  sleeveVerticalPxFromGlobalVertices,
 } from "./applyGenericMeasureOnlyGrading";
+
+export {
+  resolveEffectiveSleeveGradingGeometry,
+  isLikelyVerticalSymmetryGuidePath,
+  isNearlyVerticalThinPath,
+  isVerticalCenterSpinePath,
+  isGlobalVertexOnSymmetryGuidePath,
+  snapVerticalConstructionPathsToLayoutCenterX,
+  type EffectiveSleeveGradingGeometry,
+} from "./resolveEffectiveSleeveGradingGeometry";
 
 export {
   buildGenericScalableSpec,

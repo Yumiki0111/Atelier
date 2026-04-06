@@ -1,6 +1,7 @@
 import type { WidgetParams } from "./widget-api";
 import type { WidgetDesignConfig } from "./types";
 import { sendEvent } from "./widget-api";
+import { WIDGET_BUTTON_ID_PREFIX, WIDGET_CONTAINER_ID_PREFIX } from "./embed-data";
 import { updateButtonPositions } from "./widget-position";
 import { getApiBaseUrl } from "./widget-utils";
 
@@ -11,8 +12,8 @@ export function renderCube(
   initialDesign?: WidgetDesignConfig | null
 ) {
   const productId = params.productId || params.externalProductId || `widget-${Date.now()}-${Math.random()}`;
-  const buttonId = `atelier-widget-button-${productId}`;
-  const containerId = `atelier-widget-container-${productId}`;
+  const buttonId = `${WIDGET_BUTTON_ID_PREFIX}${productId}`;
+  const containerId = `${WIDGET_CONTAINER_ID_PREFIX}${productId}`;
   
   // 既存のコンテナがあれば削除
   const existingContainer = document.getElementById(containerId);
@@ -33,7 +34,7 @@ export function renderCube(
   const button = document.createElement("button");
   button.id = buttonId;
   button.setAttribute("type", "button");
-  button.setAttribute("data-atelier-product-id", productId);
+  button.setAttribute("data-fitlook-product-id", productId);
   // 最小限のスタイルのみ設定（位置とz-indexのみ）
   // 他のスタイルは applyDesignToButton で設定されるまで適用しない
   button.style.cssText = `
@@ -59,7 +60,7 @@ export function renderCube(
   // コンテナを作成（デザイン適用まで完全に非表示）
   const container = document.createElement("div");
   container.id = containerId;
-  container.setAttribute("data-atelier-product-id", productId);
+  container.setAttribute("data-fitlook-product-id", productId);
   container.style.cssText = `
     position: fixed !important;
     bottom: ${baseBottomPx}px !important;
@@ -315,11 +316,11 @@ function createCubeIcon(size: number): SVGElement {
 }
 
 /**
- * デフォルトデザイン（円形、ATELIER-LOGO.png）を適用する
+ * デフォルトデザイン（円形、human-logo.png）を適用する
  */
 export function showDefaultButton(containerId: string) {
   const apiBaseUrl = getApiBaseUrl() || (typeof window !== "undefined" ? window.location.origin : "");
-  const defaultImageUrl = `${apiBaseUrl}/ATELIER-LOGO.png`;
+  const defaultImageUrl = `${apiBaseUrl}/human-logo.png`;
   
   const defaultDesign: WidgetDesignConfig = {
     button: {

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, ReactNode, useCallback, useMemo } from "react";
-import type { Product, ProductSize } from "@atelier/shared";
+import type { Product, ProductSize } from "@Atelier/shared";
 
 interface ViewStats {
   totalViews: number;

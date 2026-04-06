@@ -291,7 +291,7 @@ export function renderLeftPanel(
  */
 export function buildAxisOverlay(): { overlay: HTMLElement; svg: SVGSVGElement } {
   const overlay = document.createElement("div");
-  overlay.setAttribute("data-atelier-axis-overlay", "true");
+  overlay.setAttribute("data-fitlook-axis-overlay", "true");
   overlay.style.cssText = `
     position: absolute;
     top: max(12px, 5vh);

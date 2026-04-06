@@ -2,7 +2,7 @@
 
 import { useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { Product, ProductSize } from "@atelier/shared";
+import type { Product, ProductSize } from "@Atelier/shared";
 import { useAuth } from "@/contexts/AuthContext";
 import { authenticatedFetch } from "@/lib/auth/api-client";
 import { useProductSelection } from "@/contexts/ProductSelectionContext";

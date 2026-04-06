@@ -73,10 +73,10 @@ export default function InstallPage() {
       return "<!-- ウィジェットURLを読み込み中... -->";
     }
 
-    const attributes: string[] = [`data-atelier-public-key="${publicKey}"`];
-    
+    const attributes: string[] = [`data-fitlook-public-key="${publicKey}"`];
+
     if (externalProductId) {
-      attributes.push(`data-atelier-external-product-id="${externalProductId}"`);
+      attributes.push(`data-fitlook-external-product-id="${externalProductId}"`);
     }
 
     return `<div
@@ -214,10 +214,11 @@ export default function InstallPage() {
               商品IDが指定されていない場合、ウィジェットはページから自動的に商品を識別しようとします
             </li>
             <li>
-              スニペットには <code className="bg-blue-100 px-1 rounded">data-atelier-public-key</code> が含まれます（必須）
+              スニペットには <code className="bg-blue-100 px-1 rounded">data-fitlook-public-key</code> が含まれます（必須）
             </li>
             <li>
-              商品を指定する場合は <code className="bg-blue-100 px-1 rounded">data-atelier-external-product-id</code> を使用します
+              商品を指定する場合は <code className="bg-blue-100 px-1 rounded">data-fitlook-external-product-id</code> を使用します（従来の{" "}
+              <code className="bg-blue-100 px-1 rounded">data-atelier-*</code> もウィジェットは読み取り互換）
             </li>
           </ol>
         </div>

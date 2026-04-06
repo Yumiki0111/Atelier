@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useUpdateProduct, useProduct } from "../useProducts";
-import { createProductSchema, productCategorySchema, type ProductCategory } from "@atelier/shared";
+import { createProductSchema, productCategorySchema, type ProductCategory } from "@Atelier/shared";
 import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { Upload, X } from "lucide-react";

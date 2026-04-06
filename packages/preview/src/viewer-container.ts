@@ -8,7 +8,9 @@ function resolveBaseOrigin(): string {
     return "http://localhost:3000";
   }
 
-  const apiUrl = document.querySelector('[data-atelier-api-url]')?.getAttribute('data-atelier-api-url');
+  const apiUrl =
+    document.querySelector("[data-fitlook-api-url]")?.getAttribute("data-fitlook-api-url") ??
+    document.querySelector("[data-atelier-api-url]")?.getAttribute("data-atelier-api-url");
   if (apiUrl) return apiUrl;
 
   const scriptTag = document.querySelector('script[src*="widget.js"]');

@@ -1,5 +1,6 @@
 import type { TopLandmarks } from "./garmentBase";
 import { SIZES } from "./constants";
+import type { SizeMeasure } from "./types";
 import { buildTopPlacement } from "./garmentBase";
 import { shirtLandmarks } from "./shirtConfig";
 import { extractPoints } from "./pathUtils";
@@ -10,16 +11,14 @@ function round10(v: number): number {
 }
 
 /**
- * 身長・体重は `buildTopPlacement` のみ（着丈・肩幅キャップ）。`warp` も腕角合わせも掛けない。
- * 以前の `getWarpedArmAngles` ベースの袖回転は、体重 xScale で袖が大きく開き「体型で服が変わる」主因だったため廃止。
+ * サイズ名ではなく **cm 値** からシャツ輪郭を生成。サイズ変更アニメではここへ補間後の `SizeMeasure` を渡す。
  */
-export function buildShirtPath(
-  sizeName: string,
+export function buildShirtPathFromSizeMeasure(
+  size: SizeMeasure,
   h: number,
   w: number,
   landmarksOverride?: Partial<TopLandmarks>
 ): string {
-  const size = SIZES[sizeName] ?? SIZES["48"];
   const landmarks = { ...shirtLandmarks, ...landmarksOverride };
   const placeCur = buildTopPlacement(h, w, size, landmarks);
 
@@ -35,4 +34,18 @@ export function buildShirtPath(
     d += "L" + round10(rightPts[i][0]) + " " + round10(rightPts[i][1]);
   d += "Z";
   return d;
+}
+
+/**
+ * 身長・体重は `buildTopPlacement` のみ（着丈・肩幅キャップ）。`warp` も腕角合わせも掛けない。
+ * 以前の `getWarpedArmAngles` ベースの袖回転は、体重 xScale で袖が大きく開き「体型で服が変わる」主因だったため廃止。
+ */
+export function buildShirtPath(
+  sizeName: string,
+  h: number,
+  w: number,
+  landmarksOverride?: Partial<TopLandmarks>
+): string {
+  const size = SIZES[sizeName] ?? SIZES["48"];
+  return buildShirtPathFromSizeMeasure(size, h, w, landmarksOverride);
 }

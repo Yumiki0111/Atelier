@@ -3,11 +3,11 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import crypto from "crypto";
 
 /**
- * Shop Provision API（Atelier Admin 専用）
+ * Shop Provision API（FIT&LOOK 運営者向け管理者 API）
  * 
  * 新しいショップを作成し、widget_keys を発行し、owner を招待する。
  * 
- * 認可: 環境変数 ATELIER_ADMIN_TOKEN で保護
+ * 認可: 環境変数 Atelier_ADMIN_TOKEN で保護
  * 
  * 入力: { shopName, ownerEmail, allowedDomains[] }
  * 出力: { shop_id, public_key, secret_key (一度だけ) }
@@ -17,11 +17,11 @@ export async function POST(request: NextRequest) {
     console.log("[provision-shop API] POST request received");
 
     // 管理者トークンで認証
-    const adminToken = request.headers.get("x-atelier-admin-token");
-    const expectedToken = process.env.ATELIER_ADMIN_TOKEN;
+    const adminToken = request.headers.get("x-Atelier-admin-token");
+    const expectedToken = process.env.Atelier_ADMIN_TOKEN;
 
     if (!expectedToken) {
-      console.error("[provision-shop API] ATELIER_ADMIN_TOKEN not configured");
+      console.error("[provision-shop API] Atelier_ADMIN_TOKEN not configured");
       return NextResponse.json(
         { error: "Admin token not configured" },
         { status: 500 }
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     
     // secret_key をハッシュ化（bcrypt の代わりに crypto.pbkdf2 を使用）
     const secretKeyHash = crypto
-      .pbkdf2Sync(secretKey, process.env.SECRET_KEY_SALT || "atelier-salt", 10000, 64, "sha512")
+      .pbkdf2Sync(secretKey, process.env.SECRET_KEY_SALT || "Atelier-salt", 10000, 64, "sha512")
       .toString("hex");
 
     const { data: widgetKey, error: widgetKeyError } = await supabaseAdmin

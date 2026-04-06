@@ -27,7 +27,7 @@
 |------|------|-------------------|
 | `garment_spec` 保存内容 | `sanitizeCustomGarmentForProductDb` / `stripGarmentSpecForStorage` が **`debugRigPathDs`（服側リグ path）を削除** | プレビューで開発タブと同じ rig 整列を行うには、**服側リグ path を永続化**する必要がある（名称は後述） |
 | 商品画像 | `thumbnailUrl` はスキーマ上あるが、開発登録フローでは **未使用**（JSON POST のみ） | **画像アップロード**と **公開可能な URL を `thumbnail_url`（または専用カラム）に保存** |
-| 商品 DB プレビュー | `PreviewPanel` は **3D（`model_test.glb` + `@atelier/preview`）** が中心 | `garment_spec` がある商品は **2D フィットキャンバス** でプレビューする経路が必要（3D 専用のままでは要件を満たさない） |
+| 商品 DB プレビュー | `PreviewPanel` は **3D（`model_test.glb` + `@Atelier/preview`）** が中心 | `garment_spec` がある商品は **2D フィットキャンバス** でプレビューする経路が必要（3D 専用のままでは要件を満たさない） |
 | 一覧 UI | `ProductLibraryGrid` は画像＋1 行ラベルのみ | 要件どおり **下に商品名・その他情報** をどこまで載せるかを固定する（現状は `externalProductId` 優先表示など PoC 寄り） |
 
 ---

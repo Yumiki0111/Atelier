@@ -7,6 +7,12 @@ export interface BodyParams {
 }
 
 /**
+ * 横幅に使う体重の下限（kg）。`sqrt(w/60)` だけだと低体重が細すぎるため、これ未満はこの値として扱う。
+ */
+/** これ未満は横幅をこの体重相当に（低体重の細さをさらに緩和） */
+const MIN_WEIGHT_KG_FOR_X_SCALE = 56;
+
+/**
  * 身長・体重からワープ用スケールを返す。
  * - 縦 yScale: 身長 cm/170 を基準に、ロード済みリグの脊髄（path 0）Y 範囲で補正（`rigDerivedHeight`）。
  * - 横 xScale: 体重の平方根比のみ。BMI（身長に依存）を使うと身長スライダーだけで肩幅が変わるため使わない。
@@ -17,7 +23,7 @@ export function getBodyParams(
   rigLinePaths?: string[] | null
 ): BodyParams {
   const yScale = yScaleFromHeightAndRigLinePaths(heightCm, rigLinePaths ?? null);
-  const safeW = Math.max(weightKg, 0.01);
-  const xScale = Math.sqrt(safeW / REF_WEIGHT_KG);
+  const widthW = Math.max(weightKg, MIN_WEIGHT_KG_FOR_X_SCALE);
+  const xScale = Math.sqrt(widthW / REF_WEIGHT_KG);
   return { yScale, xScale };
 }

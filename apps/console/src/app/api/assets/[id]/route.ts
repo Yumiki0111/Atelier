@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAuthenticatedUser } from "@/lib/auth/middleware";
-import { updateAssetSchema } from "@atelier/shared";
+import { updateAssetSchema } from "@Atelier/shared";
 import { z } from "zod";
 import { isValidUUID } from "@/lib/api/validation";
 

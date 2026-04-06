@@ -772,10 +772,10 @@ function InstallPage() {
             return "<!-- ウィジェットURLを読み込み中... -->";
         }
         const attributes = [
-            `data-atelier-public-key="${publicKey}"`
+            `data-fitlook-public-key="${publicKey}"`
         ];
         if (externalProductId) {
-            attributes.push(`data-atelier-external-product-id="${externalProductId}"`);
+            attributes.push(`data-fitlook-external-product-id="${externalProductId}"`);
         }
         return `<div
   ${attributes.join("\n  ")}>
@@ -1124,7 +1124,7 @@ function InstallPage() {
                                             "スニペットには ",
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("code", {
                                                 className: "bg-blue-100 px-1 rounded",
-                                                children: "data-atelier-public-key"
+                                                children: "data-fitlook-public-key"
                                             }, void 0, false, {
                                                 fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
                                                 lineNumber: 217,
@@ -1142,13 +1142,23 @@ function InstallPage() {
                                             "商品を指定する場合は ",
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("code", {
                                                 className: "bg-blue-100 px-1 rounded",
-                                                children: "data-atelier-external-product-id"
+                                                children: "data-fitlook-external-product-id"
                                             }, void 0, false, {
                                                 fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
                                                 lineNumber: 220,
                                                 columnNumber: 26
                                             }, this),
-                                            " を使用します"
+                                            " を使用します（従来の",
+                                            " ",
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("code", {
+                                                className: "bg-blue-100 px-1 rounded",
+                                                children: "data-atelier-*"
+                                            }, void 0, false, {
+                                                fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
+                                                lineNumber: 221,
+                                                columnNumber: 15
+                                            }, this),
+                                            " もウィジェットは読み取り互換）"
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",

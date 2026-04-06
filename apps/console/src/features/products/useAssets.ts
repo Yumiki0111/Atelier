@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import type { Asset } from "@atelier/shared";
+import type { Asset } from "@Atelier/shared";
 import { authenticatedFetch } from "@/lib/auth/api-client";
 
 async function fetchAssets(productId: string): Promise<Asset[]> {

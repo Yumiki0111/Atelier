@@ -141,7 +141,7 @@ export default function OnboardingPage() {
           <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
             <Building2 className="h-8 w-8 text-blue-600" />
           </div>
-          <CardTitle className="text-2xl">Atelier へようこそ！</CardTitle>
+          <CardTitle className="text-2xl">FIT&LOOK へようこそ！</CardTitle>
           <CardDescription className="text-base">
             {isOwner 
               ? "まずはショップの基本情報を設定しましょう"

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { createEventSchema } from "@atelier/shared";
+import { createEventSchema } from "@Atelier/shared";
 import { z } from "zod";
 
 // CORSヘッダーを設定する関数

@@ -1,4 +1,4 @@
-import type { ProductCategory } from "@atelier/shared";
+import type { ProductCategory } from "@Atelier/shared";
 
 /**
  * カテゴリーごとの着せ替え順序（レイヤー順）

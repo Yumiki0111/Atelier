@@ -139,7 +139,7 @@ export function init3DViewerDev(
     renderer.setPixelRatio(pixelRatio);
     renderer.setSize(initialWidth, initialHeight);
   } catch (error) {
-    console.error("[Atelier Preview] Failed to create WebGL renderer:", error);
+    console.error("[FIT&LOOK Preview] Failed to create WebGL renderer:", error);
     onError?.(error instanceof Error ? error : new Error(String(error)));
     return {
       updateGlbUrl: () => {},
@@ -172,7 +172,7 @@ export function init3DViewerDev(
   // レンダリング関数
   function render() {
     if (!scene || !camera) {
-      console.warn("[Atelier Preview] Scene or camera is not initialized");
+      console.warn("[FIT&LOOK Preview] Scene or camera is not initialized");
       return;
     }
     try {
@@ -200,7 +200,7 @@ export function init3DViewerDev(
       
       renderer.render(scene, camera);
     } catch (error) {
-      console.error("[Atelier Preview] Error rendering:", error);
+      console.error("[FIT&LOOK Preview] Error rendering:", error);
     }
   }
 
@@ -229,16 +229,16 @@ export function init3DViewerDev(
             lowerUrl.includes("content-disposition") && lowerUrl.includes("fbx")) {
           actualFormat = "fbx";
           // デバッグログのみ（警告は出さない）
-          console.log("[Atelier Preview] Format was unknown, but detected FBX from URL");
+          console.log("[FIT&LOOK Preview] Format was unknown, but detected FBX from URL");
         } else if (lowerUrl.includes(".glb") || lowerUrl.includes(".gltf")) {
           actualFormat = "glb";
-          console.log("[Atelier Preview] Format was unknown, but detected GLB/GLTF from URL");
+          console.log("[FIT&LOOK Preview] Format was unknown, but detected GLB/GLTF from URL");
         }
       }
       
       const loader = actualFormat === "fbx" ? fbxLoader : gltfLoader;
 
-      console.log("[Atelier Preview] Loading base model:", { modelUrl, format: actualFormat });
+      console.log("[FIT&LOOK Preview] Loading base model:", { modelUrl, format: actualFormat });
 
       const model = await new Promise<THREE.Group>((resolve, reject) => {
         loader.load(
@@ -291,7 +291,7 @@ export function init3DViewerDev(
           }
         });
         
-        console.log("[Atelier Preview] FBX file contents:", {
+        console.log("[FIT&LOOK Preview] FBX file contents:", {
           totalObjects: objectNames.length,
           objectNames: objectNames,
           objectInfo: objectInfo,
@@ -312,7 +312,7 @@ export function init3DViewerDev(
             // これにより、体と服が同じスケルトンで連動し、ボーン単位の身長変更が可能になる
             clothingObj.traverse((child) => {
               if (child instanceof THREE.SkinnedMesh && child.skeleton && child.skeleton.bones) {
-                console.log("[Atelier Preview Dev] Found SkinnedMesh in clothing, rebinding to base skeleton:", {
+                console.log("[FIT&LOOK Preview Dev] Found SkinnedMesh in clothing, rebinding to base skeleton:", {
                   meshName: child.name,
                   hasSkeleton: !!child.skeleton,
                   skeletonBones: child.skeleton.bones.length,
@@ -337,7 +337,7 @@ export function init3DViewerDev(
                     // 注意: ボーン名が一致することを前提とする
                     // baseModelSkeletonがnullでないことを再確認
                     if (!baseModelSkeleton) {
-                      console.warn("[Atelier Preview Dev] Base skeleton not available in traverse callback");
+                      console.warn("[FIT&LOOK Preview Dev] Base skeleton not available in traverse callback");
                       return;
                     }
                     
@@ -347,17 +347,17 @@ export function init3DViewerDev(
                     child.updateMatrixWorld(true);
                     child.bind(baseModelSkeleton, bindMatrix);
                     
-                    console.log("[Atelier Preview Dev] Rebound clothing to base skeleton:", {
+                    console.log("[FIT&LOOK Preview Dev] Rebound clothing to base skeleton:", {
                       meshName: child.name,
                       baseBones: baseModelSkeletonBones.length,
                       originalBones: originalBones.length,
                       boneNames: baseModelSkeletonBones.map((b: THREE.Bone) => b.name).slice(0, 10),
                     });
                   } else {
-                    console.warn("[Atelier Preview Dev] Base skeleton not found, keeping original skeleton for clothing");
+                    console.warn("[FIT&LOOK Preview Dev] Base skeleton not found, keeping original skeleton for clothing");
                   }
                 } catch (error) {
-                  console.warn("[Atelier Preview Dev] Failed to rebind skeleton, keeping original:", {
+                  console.warn("[FIT&LOOK Preview Dev] Failed to rebind skeleton, keeping original:", {
                     meshName: child.name,
                     error: error instanceof Error ? error.message : String(error),
                   });
@@ -398,14 +398,14 @@ export function init3DViewerDev(
           // シーンに追加
           scene.add(clothingGroup);
           
-          console.log("[Atelier Preview] Separated clothing from FBX:", {
+          console.log("[FIT&LOOK Preview] Separated clothing from FBX:", {
             clothingCount: clothingObjects.length,
             clothingNames: clothingObjects.map(obj => obj.name),
           });
         }
       }
       
-      console.log("[Atelier Preview] Base model loaded successfully:", {
+      console.log("[FIT&LOOK Preview] Base model loaded successfully:", {
         format: actualFormat,
         type: loaded?.constructor?.name,
         children: resolvedModel?.children?.length,
@@ -429,12 +429,12 @@ export function init3DViewerDev(
               center: { x: (box.max.x + box.min.x) / 2, y: (box.max.y + box.min.y) / 2, z: (box.max.z + box.min.z) / 2 },
             };
           } catch (error) {
-            console.warn("[Atelier Preview] Failed to calculate bounding box:", error);
+            console.warn("[FIT&LOOK Preview] Failed to calculate bounding box:", error);
             return "error calculating bounding box";
           }
         })() : "no resolved model",
       });
-      console.log("[Atelier Preview] Resolved model:", {
+      console.log("[FIT&LOOK Preview] Resolved model:", {
         type: resolvedModel?.constructor?.name,
         children: resolvedModel?.children?.length,
         visible: resolvedModel?.visible,
@@ -469,7 +469,7 @@ export function init3DViewerDev(
         });
       }
       
-      console.log("[Atelier Preview] Skeleton information:", {
+      console.log("[FIT&LOOK Preview] Skeleton information:", {
         hasSkeleton,
         skeletonCount,
         totalBoneCount: boneCount,
@@ -483,16 +483,16 @@ export function init3DViewerDev(
               const percent = (progress.loaded / progress.total) * 100;
               // 25%ごとにログを出力（大量のログを防ぐ）
               if (percent % 25 === 0 || percent === 100) {
-                console.log(`[Atelier Preview] Loading progress: ${percent.toFixed(0)}%`);
+                console.log(`[FIT&LOOK Preview] Loading progress: ${percent.toFixed(0)}%`);
               }
             }
             // lengthComputableがfalseの場合はログを出力しない（大量のログを防ぐ）
           },
           (error) => {
-            console.error("[Atelier Preview] Failed to load base model:", error);
-            console.error("[Atelier Preview] Model URL:", modelUrl);
-            console.error("[Atelier Preview] Detected format:", actualFormat);
-            console.error("[Atelier Preview] Error details:", {
+            console.error("[FIT&LOOK Preview] Failed to load base model:", error);
+            console.error("[FIT&LOOK Preview] Model URL:", modelUrl);
+            console.error("[FIT&LOOK Preview] Detected format:", actualFormat);
+            console.error("[FIT&LOOK Preview] Error details:", {
               message: error instanceof Error ? error.message : String(error),
               stack: error instanceof Error ? error.stack : undefined,
               name: error instanceof Error ? error.name : undefined,
@@ -504,7 +504,7 @@ export function init3DViewerDev(
                 ? modelUrl 
                 : `${window.location.origin}${modelUrl}`;
               
-              console.log("[Atelier Preview] Checking file accessibility:", {
+              console.log("[FIT&LOOK Preview] Checking file accessibility:", {
                 originalUrl: modelUrl,
                 absoluteUrl: absoluteUrl,
               });
@@ -516,7 +516,7 @@ export function init3DViewerDev(
                     headers[key] = value;
                   });
                   
-                  console.error("[Atelier Preview] File check result:", {
+                  console.error("[FIT&LOOK Preview] File check result:", {
                     status: response.status,
                     statusText: response.statusText,
                     ok: response.ok,
@@ -528,7 +528,7 @@ export function init3DViewerDev(
                   });
                   
                   if (!response.ok) {
-                    console.error("[Atelier Preview] File not accessible:", {
+                    console.error("[FIT&LOOK Preview] File not accessible:", {
                       status: response.status,
                       statusText: response.statusText,
                       url: absoluteUrl,
@@ -540,20 +540,20 @@ export function init3DViewerDev(
                 })
                 .then((response) => {
                   if (response && response.ok) {
-                    console.log("[Atelier Preview] File is accessible via GET:", {
+                    console.log("[FIT&LOOK Preview] File is accessible via GET:", {
                       status: response.status,
                       contentType: response.headers.get("content-type"),
                       contentLength: response.headers.get("content-length"),
                     });
                   } else if (response) {
-                    console.error("[Atelier Preview] File GET failed:", {
+                    console.error("[FIT&LOOK Preview] File GET failed:", {
                       status: response.status,
                       statusText: response.statusText,
                     });
                   }
                 })
                 .catch((fetchError) => {
-                  console.error("[Atelier Preview] Failed to check file:", {
+                  console.error("[FIT&LOOK Preview] Failed to check file:", {
                     error: fetchError,
                     message: fetchError instanceof Error ? fetchError.message : String(fetchError),
                     stack: fetchError instanceof Error ? fetchError.stack : undefined,
@@ -569,7 +569,7 @@ export function init3DViewerDev(
 
       // モデルのトランスフォームを計算して保存（アセットを配置する際に使用）
       baseModelTransform = calculateAndSetModelTransform(model, targetSize);
-      console.log("[Atelier Preview] Base model transform:", {
+      console.log("[FIT&LOOK Preview] Base model transform:", {
         position: {
           x: baseModelTransform.position.x,
           y: baseModelTransform.position.y,
@@ -608,7 +608,7 @@ export function init3DViewerDev(
           if (isBodyMesh) {
             morphTargetMeshes.push(child);
             child.userData.isBody = true; // 識別用フラグを設定
-            console.log("[Atelier Preview Dev] Found body mesh with morph targets:", {
+            console.log("[FIT&LOOK Preview Dev] Found body mesh with morph targets:", {
               name: child.name,
               morphTargetCount: child.morphTargetInfluences.length,
               morphTargetNames: Object.keys(child.morphTargetDictionary),
@@ -628,7 +628,7 @@ export function init3DViewerDev(
       model.traverse((child) => {
         if (child instanceof THREE.SkinnedMesh && child.skeleton && child.skeleton.bones) {
           const bones = child.skeleton.bones;
-          console.log("[Atelier Preview Dev] Found skeleton with bones:", {
+          console.log("[FIT&LOOK Preview Dev] Found skeleton with bones:", {
             meshName: child.name,
             boneCount: bones.length,
             boneNames: bones.map((b: THREE.Bone) => b.name),
@@ -639,7 +639,7 @@ export function init3DViewerDev(
           if (!baseModelSkeleton && bones.length > 0) {
             baseModelSkeleton = child.skeleton;
             baseModelSkeletonBones = bones;
-            console.log("[Atelier Preview Dev] Saved base model skeleton:", {
+            console.log("[FIT&LOOK Preview Dev] Saved base model skeleton:", {
               boneCount: bones.length,
               boneNames: bones.map((b: THREE.Bone) => b.name),
             });
@@ -656,7 +656,7 @@ export function init3DViewerDev(
         }
       });
       
-      console.log("[Atelier Preview Dev] Collected all bones for height adjustment:", {
+      console.log("[FIT&LOOK Preview Dev] Collected all bones for height adjustment:", {
         totalBones: skeletonBones.size,
         boneNames: Array.from(skeletonBones.keys()),
         hasBaseSkeleton: !!baseModelSkeleton,
@@ -668,7 +668,7 @@ export function init3DViewerDev(
       baseHeight = box.max.y - box.min.y;
       const center = box.getCenter(new THREE.Vector3());
       
-      console.log("[Atelier Preview] Base height calculated:", {
+      console.log("[FIT&LOOK Preview] Base height calculated:", {
         baseHeight,
         modelScale: { x: model.scale.x, y: model.scale.y, z: model.scale.z },
         boxSize: { x: box.max.x - box.min.x, y: box.max.y - box.min.y, z: box.max.z - box.min.z },
@@ -688,7 +688,7 @@ export function init3DViewerDev(
         center: center.y, // その他用：モデルの中心
       };
       
-      console.log("[Atelier Preview] Initial reference points:", {
+      console.log("[FIT&LOOK Preview] Initial reference points:", {
         top: baseModelInitialReferencePoints.top,
         bottom: baseModelInitialReferencePoints.bottom,
         center: baseModelInitialReferencePoints.center,
@@ -712,7 +712,7 @@ export function init3DViewerDev(
         setTimeout(() => render(), 100);
       }, 50);
     } catch (error) {
-      console.error("[Atelier Preview] Error loading base model:", error);
+      console.error("[FIT&LOOK Preview] Error loading base model:", error);
       throw error;
     }
   }
@@ -741,7 +741,7 @@ export function init3DViewerDev(
       if (baseModelSkeleton && baseModelSkeletonBones.length > 0) {
         model.traverse((child) => {
           if (child instanceof THREE.SkinnedMesh && child.skeleton && child.skeleton.bones) {
-            console.log("[Atelier Preview Dev] Found SkinnedMesh in asset, rebinding to base skeleton:", {
+            console.log("[FIT&LOOK Preview Dev] Found SkinnedMesh in asset, rebinding to base skeleton:", {
               meshName: child.name,
               url,
               category,
@@ -753,7 +753,7 @@ export function init3DViewerDev(
             try {
               // baseModelSkeletonがnullでないことを再確認
               if (!baseModelSkeleton) {
-                console.warn("[Atelier Preview Dev] Base skeleton not available in traverse callback");
+                console.warn("[FIT&LOOK Preview Dev] Base skeleton not available in traverse callback");
                 return;
               }
               
@@ -765,7 +765,7 @@ export function init3DViewerDev(
               child.updateMatrixWorld(true);
               child.bind(baseModelSkeleton, bindMatrix);
               
-              console.log("[Atelier Preview Dev] Rebound asset to base skeleton:", {
+              console.log("[FIT&LOOK Preview Dev] Rebound asset to base skeleton:", {
                 meshName: child.name,
                 url,
                 category,
@@ -773,7 +773,7 @@ export function init3DViewerDev(
                 originalBones: originalBones.length,
               });
             } catch (error) {
-              console.warn("[Atelier Preview Dev] Failed to rebind asset skeleton:", {
+              console.warn("[FIT&LOOK Preview Dev] Failed to rebind asset skeleton:", {
                 meshName: child.name,
                 url,
                 category,
@@ -783,7 +783,7 @@ export function init3DViewerDev(
           }
         });
       } else {
-        console.warn("[Atelier Preview Dev] Base skeleton not available when loading asset:", { url, category });
+        console.warn("[FIT&LOOK Preview Dev] Base skeleton not available when loading asset:", { url, category });
       }
       
       // アセットの初期位置とスケールを保存（身長変更時の位置調整用）
@@ -923,7 +923,7 @@ export function init3DViewerDev(
         onLoad?.();
       })
       .catch((error) => {
-        console.error("[Atelier Preview] Error loading base model or assets:", error);
+        console.error("[FIT&LOOK Preview] Error loading base model or assets:", error);
         onError?.(error instanceof Error ? error : new Error(String(error)));
       });
   } else {
@@ -933,7 +933,7 @@ export function init3DViewerDev(
         onLoad?.();
       })
       .catch((error) => {
-        console.error("[Atelier Preview] Error loading base model:", error);
+        console.error("[FIT&LOOK Preview] Error loading base model:", error);
         onError?.(error instanceof Error ? error : new Error(String(error)));
       });
   }
@@ -957,7 +957,7 @@ export function init3DViewerDev(
   function updateBaseModelUrl(url: string | undefined) {
     if (url) {
       baseModelLoadPromise = loadBaseModel(url).catch((error) => {
-        console.error("[Atelier Preview] Error updating model URL:", error);
+        console.error("[FIT&LOOK Preview] Error updating model URL:", error);
         onError?.(error instanceof Error ? error : new Error(String(error)));
       });
     }
@@ -979,11 +979,11 @@ export function init3DViewerDev(
   /** ボーン単位で身長を変更する関数（開発版：体と服が同じスケルトンで連動） */
   function applyHeightChangeByBones(heightRatio: number) {
     if (!baseModel || !baseModelSkeleton) {
-      console.warn("[Atelier Preview Dev] Base model or skeleton not ready for bone-based height change");
+      console.warn("[FIT&LOOK Preview Dev] Base model or skeleton not ready for bone-based height change");
       return;
     }
 
-    console.log("[Atelier Preview Dev] Available bone names:", Array.from(skeletonBones.keys()));
+    console.log("[FIT&LOOK Preview Dev] Available bone names:", Array.from(skeletonBones.keys()));
 
     // 脚のボーンを伸縮（より多くの命名規則に対応）
     const legBoneNames = [
@@ -1032,12 +1032,12 @@ export function init3DViewerDev(
         if (!initialScale) {
           initialScale = bone.scale.clone();
           boneInitialScales.set(bone, initialScale);
-          console.log("[Atelier Preview Dev] Using current scale as initial for:", boneName);
+          console.log("[FIT&LOOK Preview Dev] Using current scale as initial for:", boneName);
         }
         if (!initialPos) {
           initialPos = bone.position.clone();
           boneInitialPositions.set(bone, initialPos);
-          console.log("[Atelier Preview Dev] Using current position as initial for:", boneName);
+          console.log("[FIT&LOOK Preview Dev] Using current position as initial for:", boneName);
         }
         
         if (initialScale && initialPos) {
@@ -1098,7 +1098,7 @@ export function init3DViewerDev(
       }
     });
     
-    console.log("[Atelier Preview Dev] Applied bone-based height change:", {
+    console.log("[FIT&LOOK Preview Dev] Applied bone-based height change:", {
       heightRatio,
       bonesModified,
       modifiedBoneNames,
@@ -1149,7 +1149,7 @@ export function init3DViewerDev(
               }
               clothingMeshesUpdated++;
             } else {
-              console.warn("[Atelier Preview Dev] Clothing mesh has different skeleton:", {
+              console.warn("[FIT&LOOK Preview Dev] Clothing mesh has different skeleton:", {
                 meshName: child.name,
                 category,
                 skeletonBones: child.skeleton.bones.length,
@@ -1161,21 +1161,21 @@ export function init3DViewerDev(
       });
     });
     
-    console.log("[Atelier Preview Dev] Updated clothing meshes:", {
+    console.log("[FIT&LOOK Preview Dev] Updated clothing meshes:", {
       clothingMeshesUpdated,
       totalAssets: Array.from(loadedAssets.values()).reduce((sum, arr) => sum + arr.length, 0),
     });
     
     // ボーンが見つからなかった場合の警告
     if (bonesModified === 0) {
-      console.warn("[Atelier Preview Dev] No bones were modified! Available bones:", Array.from(skeletonBones.keys()));
+      console.warn("[FIT&LOOK Preview Dev] No bones were modified! Available bones:", Array.from(skeletonBones.keys()));
     }
   }
 
   /** 身長を変更する関数（モーフターゲットまたはスケールで実装） */
   function applyHeightChange(newHeight: number, baseHeightValue?: number) {
     if (!baseModel || !baseModelInitialScale || !baseModelInitialPosition) {
-      console.warn("[Atelier Preview] Base model not ready for height change");
+      console.warn("[FIT&LOOK Preview] Base model not ready for height change");
       return;
     }
 
@@ -1192,7 +1192,7 @@ export function init3DViewerDev(
       // 仮に170cm（1.7m）を基準として使用
       targetBaseHeightCm = 170; // デフォルト値
       
-      console.warn("[Atelier Preview] baseHeightValue not provided, using default:", targetBaseHeightCm);
+      console.warn("[FIT&LOOK Preview] baseHeightValue not provided, using default:", targetBaseHeightCm);
     }
     
     // 現在の身長を保存（アセット読み込み時に使用）
@@ -1200,12 +1200,12 @@ export function init3DViewerDev(
     currentBaseHeight = targetBaseHeightCm;
     
     if (targetBaseHeightCm <= 0) {
-      console.warn("[Atelier Preview] Invalid base height:", targetBaseHeightCm);
+      console.warn("[FIT&LOOK Preview] Invalid base height:", targetBaseHeightCm);
       return;
     }
 
     const heightRatio = newHeight / targetBaseHeightCm;
-    console.log("[Atelier Preview Dev] Height change:", {
+    console.log("[FIT&LOOK Preview Dev] Height change:", {
       newHeight,
       targetBaseHeightCm,
       heightRatio,
@@ -1218,11 +1218,11 @@ export function init3DViewerDev(
     
     // 開発版：常にボーン単位の身長変更を試みる（モーフターゲットは無視）
     if (baseModelSkeleton && baseModelSkeletonBones.length > 0) {
-      console.log("[Atelier Preview Dev] Attempting bone-based height change");
+      console.log("[FIT&LOOK Preview Dev] Attempting bone-based height change");
       applyHeightChangeByBones(heightRatio);
       render(); // 明示的にレンダリング
     } else {
-      console.warn("[Atelier Preview Dev] Base skeleton not available, falling back to scale");
+      console.warn("[FIT&LOOK Preview Dev] Base skeleton not available, falling back to scale");
       // フォールバック：Y軸のスケールのみで対応（身長変更）
       const newScaleY = baseModelInitialScale.y * heightRatio;
       const newScaleX = baseModelInitialScale.x; // X軸は変更しない
@@ -1230,7 +1230,7 @@ export function init3DViewerDev(
       
       baseModel.scale.set(newScaleX, newScaleY, newScaleZ);
       
-      console.log("[Atelier Preview Dev] Applied scale change (fallback):", {
+      console.log("[FIT&LOOK Preview Dev] Applied scale change (fallback):", {
         newScale: { x: newScaleX, y: newScaleY, z: newScaleZ },
         heightRatio,
       });
@@ -1294,7 +1294,7 @@ export function init3DViewerDev(
           
           // デバッグログ（最初の数回のみ）
           if (Math.random() < 0.1) {
-            console.log("[Atelier Preview] Asset scale fixed:", {
+            console.log("[FIT&LOOK Preview] Asset scale fixed:", {
               category,
               initialScale: { x: initialScale.x, y: initialScale.y, z: initialScale.z },
               currentScale: { x: assetModel.scale.x, y: assetModel.scale.y, z: assetModel.scale.z },
@@ -1353,7 +1353,7 @@ export function init3DViewerDev(
           initialPosition.z
         );
         
-        console.log("[Atelier Preview] Asset position adjusted:", {
+        console.log("[FIT&LOOK Preview] Asset position adjusted:", {
           category,
           referencePointType,
           initialPosition: { y: initialPosition.y },
@@ -1479,7 +1479,7 @@ export function init3DViewerDev(
     toggleAsset(category: string, visible?: boolean) {
       const modelArray = loadedAssets.get(category);
       if (!modelArray) {
-        console.warn("[Atelier Preview] Asset category not found:", category);
+        console.warn("[FIT&LOOK Preview] Asset category not found:", category);
         return;
       }
       
@@ -1494,7 +1494,7 @@ export function init3DViewerDev(
       
       render();
       
-      console.log("[Atelier Preview] Asset visibility toggled:", {
+      console.log("[FIT&LOOK Preview] Asset visibility toggled:", {
         category,
         visible: modelArray[0]?.visible,
         assetCount: modelArray.length,
@@ -1554,7 +1554,7 @@ export function init3DViewerDev(
           // アセットを並列で読み込む（エラーが発生しても他のアセットは読み込む）
           const loadPromises = sortedAssets.map((asset) =>
             loadAsset(asset.url, asset.category).catch((error) => {
-              console.error("[Atelier Preview] Failed to load asset:", { url: asset.url, category: asset.category });
+              console.error("[FIT&LOOK Preview] Failed to load asset:", { url: asset.url, category: asset.category });
               return null;
             })
           );
@@ -1566,7 +1566,7 @@ export function init3DViewerDev(
           
           // 現在の身長が設定されている場合、アセットの位置を現在の身長に合わせて調整
           if (currentHeight !== null && currentBaseHeight !== null && baseModel) {
-            console.log("[Atelier Preview] Adjusting asset positions for current height:", {
+            console.log("[FIT&LOOK Preview] Adjusting asset positions for current height:", {
               currentHeight,
               currentBaseHeight
             });
@@ -1576,7 +1576,7 @@ export function init3DViewerDev(
         };
 
         loadAssets().catch((error) => {
-          console.error("[Atelier Preview] Error updating assets:", error);
+          console.error("[FIT&LOOK Preview] Error updating assets:", error);
           onError?.(error instanceof Error ? error : new Error(String(error)));
         });
       } else {
@@ -1650,7 +1650,7 @@ export function init3DViewerDev(
         try {
           (renderer.domElement as HTMLElement).style.display = "none";
         } catch {
-          console.warn("[Atelier Preview] Could not hide renderer element");
+          console.warn("[FIT&LOOK Preview] Could not hide renderer element");
         }
       }
       renderer.dispose();

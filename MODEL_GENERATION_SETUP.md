@@ -94,7 +94,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { BodyMeasurements } from "@atelier/shared";
+import type { BodyMeasurements } from "@Atelier/shared";
 
 interface MeasurementFormProps {
   onSubmit: (measurements: BodyMeasurements) => Promise<void>;
@@ -268,7 +268,7 @@ MODEL_API_URL=https://api.example.com/v1/models/generate  # 実際のAPIエン�
 ```typescript
 import { useState } from "react";
 import { authenticatedFetch } from "@/lib/auth/api-client";
-import type { BodyMeasurements } from "@atelier/shared";
+import type { BodyMeasurements } from "@Atelier/shared";
 
 export function useModelGeneration() {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -349,7 +349,7 @@ import { MeasurementForm } from "@/components/model/MeasurementForm";
 import { PreviewPanel } from "@/features/preview/PreviewPanel";
 import { useModelGeneration } from "@/hooks/useModelGeneration";
 import { toast } from "sonner";
-import type { BodyMeasurements } from "@atelier/shared";
+import type { BodyMeasurements } from "@Atelier/shared";
 
 export default function ModelGeneratePage() {
   const { generateModel, isGenerating, error, generatedModelUrl } = useModelGeneration();

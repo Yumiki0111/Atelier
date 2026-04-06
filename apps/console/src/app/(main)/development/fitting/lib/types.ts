@@ -22,9 +22,11 @@ export interface CustomGarmentData {
   /** 開発フィット: 汎用トップ（アップロード SVG 想定） */
   presetId?: "genericSymmetricTop";
   /**
-   * 汎用（genericSymmetricTop）。自動判定なし。
-   * - 既定: 袖丈・着丈の連結 # で軽量グレーディング（design 縦スケール）→ 通常プレース。
-   * - `applied` と 4 連結区間はデータ互換・API 用。開発 UI の path 割当・Apply は廃止。
+   * 汎用（genericSymmetricTop）。
+   * - 袖 Y スケール対象 path は `sleeveMeasureVertexStart`〜`End` が収まる単一 path のみ（コードは path を差し替えない）。
+   * - `sleeveMeasureVertexChain` がある場合、各 # はその path 上に無ければならない（跨ぎは無効）。
+   * - 着丈・袖丈の連結 # で軽量グレーディング（design 縦スケール）→ 通常プレース。
+   * - `applied` と 4 連結区間はデータ互換・API 用。
    */
   genericSymmetricTop?: {
     applied?: boolean;
@@ -44,16 +46,47 @@ export interface CustomGarmentData {
     /** 軽量グレード用の袖丈基準(cm)。プリセット初回選択時に変更前の `size.sleeve` を入れる。 */
     gradingBaselineSleeveCm?: number;
     /**
-     * 袖丈の計測表示に使う区間（連結頂点）。両方指定時のみ有効。
-     * 省略時は外腕シーム（seamOuterLeft の頂点範囲）を使用。
+     * 袖丈の計測・Y スケール区間（連結頂点）。両方指定時のみ有効。
+     * 所属する単一 SVG path が袖スケール対象になる。
      */
     sleeveMeasureVertexStart?: number;
     sleeveMeasureVertexEnd?: number;
     /**
-     * 袖丈の折れ線（連結 #）。カンマ入力で順序付き。指定時は赤線はこの順で結ぶ。
-     * `sleeveMeasureVertexStart/End` は min/max（スケール区間）と揃える。
+     * 袖丈の折れ線（連結 #）。カンマ入力で順序付き。
+     * 指定時は各 # が上記 min/max と同じ path 上に無ければならない（跨 path は無効）。
      */
     sleeveMeasureVertexChain?: number[];
+    /**
+     * 下袖（エルボ〜袖口など）の連結頂点範囲。両方指定し、かつ袖丈採寸と同じ単一 path 上にあるとき：
+     * 上袖の anchor スケールで接続点が動いた分だけ、この範囲の頂点（採寸区間外）を平行移動し、エルボで折れないようにする。
+     */
+    lowerSleeveVertexStart?: number;
+    lowerSleeveVertexEnd?: number;
+    /**
+     * ミラー袖 path 用の下袖範囲（袖丈採寸と同じ path 上）。未設定時は左袖の `lowerSleeveVertex*` のガイド path 寄せロジックのみ。
+     */
+    lowerSleeveMirrorVertexStart?: number;
+    lowerSleeveMirrorVertexEnd?: number;
+    /**
+     * @deprecated 手動指定は廃止。保存データ互換のため残すがパイプラインでは読まない。
+     */
+    lowerSleeveSnapToBodyGlobalVertex?: number;
+    /**
+     * @deprecated 無視される。溶接は常に袖 path 以外の頂点が対象（path 番号は指定しない）。
+     */
+    lowerSleeveFollowBodyPathIndex?: number;
+    /**
+     * @deprecated 旧「つなぎ②」。`lowerSleeveSnapToBodyGlobalVertex` に移行。互換のため、ここに**袖以外**の # があれば合わせ先として読む場合がある。
+     */
+    lowerSleeveFollowLinkedGlobalVertices?: number[];
+    /**
+     * @deprecated 明示ペア溶接は廃止。
+     */
+    lowerSleeveFollowWeldPairs?: [number, number][];
+    /**
+     * @deprecated 近接溶接は廃止（下袖平行移動に統一）。
+     */
+    lowerSleeveFollowProximityWeldPx?: number;
     /**
      * 反対側の袖（ミラー袖）の計測区間。両方指定すると：
      * 1. 両袖パスが `scaleBodyToSpec`（胴グレード）の対象から除外される（変形防止）。
@@ -110,6 +143,18 @@ export type GenericVertexPlotHighlight = {
   sleeveMeasure?: [number, number];
   /** 袖丈計測: カンマ列があるときはこの順の # だけ強調（非連続対応） */
   sleeveMeasureVertexChain?: number[];
+  /** 下袖（上袖伸びに追従する平行移動対象の頂点範囲） */
+  lowerSleeve?: [number, number];
+  /** ミラー袖側の下袖範囲（プロット強調） */
+  lowerSleeveMirror?: [number, number];
+  /** @deprecated 手動合わせ先の強調は廃止 */
+  lowerSleeveSnapToBodyGlobal?: number;
+  /** @deprecated プロット強調用 */
+  lowerSleeveFollowLinkedGlobals?: number[];
+  /**
+   * @deprecated 廃止。胴 path をプロットで強調しない。
+   */
+  lowerSleeveFollowBodyPathGlobalRange?: [number, number];
   lengthMeasure?: [number, number];
 };
 
@@ -130,9 +175,9 @@ export interface ScalableGarmentSpec {
   sleeve: {
     /** 肩の点index（anchor） */
     anchorIdx: number;
-    /** 袖丈計測・スケールの開始index */
+    /** 袖丈計測・スケール区間の一端（path 順で他端より小さくてもよい。変形は min/max で正規化） */
     lengthStartIdx: number;
-    /** 袖丈計測・スケールの終了index */
+    /** 袖丈計測・スケール区間の他端 */
     lengthEndIdx: number;
     /**
      * 袖丈の anchor 基準スケールを **この index 未満** の頂点にだけ適用する（省略時は lengthEndIdx まで従来どおり）。
@@ -273,6 +318,27 @@ export interface ShoulderDebug {
   lengthPathLengthDebug?: { px: number; cm: number };
 }
 
+/**
+ * 着丈 Y メッシュ前の紫区間（ファブリックワープ前の実測に近い）。
+ *
+ * 【二度とやらないこと】`size.length`（入力着丈 cm）を、この行の「幾何 cm」として並べて表示しないこと。
+ * それは実測 px と無関係に見える数を並べる誤魔化しになる。入力と幾何を一致させるならパイプライン
+ * （プレース・ワープ・メッシュ）を直し、実測 px が目標縦 px に収束させること。
+ *
+ * `cmFromBodySlider` は厳密に `px / bodyPxPerCm` のみ。リグ線形プレースでは入力着丈 cm とずれることがある。
+ * `targetLengthPx` / `deltaPxFromTarget` は着丈 Y メッシュと同じ目標 `size.length * bodyPxPerCm` との差分（診断用）。
+ */
+export type GarmentLengthGeomBeforeLengthMeshDebug = {
+  /** 紫区間の縦スパン（ボディキャンバス px。線形プレース後・ファブリックワープ前を優先） */
+  px: number;
+  /** 縦 px ÷ bodyPxPerCm（身長スライダー換算。幾何の一貫した定義） */
+  cmFromBodySlider: number;
+  /** `size.length * bodyPxPerCm`（着丈 Y メッシュの目標縦スパン px と同じ定義） */
+  targetLengthPx: number;
+  /** 実測 px − targetLengthPx（正なら実測の方が長い） */
+  deltaPxFromTarget: number;
+};
+
 /** 画面に描画する採寸オーバーレイ用の座標 */
 export interface MeasureOverlayData {
   bodyHeight: { top: [number, number]; bottom: [number, number] };
@@ -308,8 +374,11 @@ export interface MeasureOverlayData {
     lengthGuideHem?: [number, number];
     /** 着丈: 紫区間の縦スパン px÷bodyPxPerCm（Y 再スケール後のメッシュ座標） */
     lengthGeomDebug?: { px: number; cm: number };
-    /** 着丈 Y 再スケール前（ワープ直後）の同紫区間縦スパン。オーバーレイの幾何の正として優先表示 */
-    lengthGeomBeforeLengthMeshDebug?: { px: number; cm: number };
+    /**
+     * 着丈 Y メッシュ前の紫区間（内部デバッグ用。UI の補助行はメッシュ後の `lengthGeomDebug` を表示）。
+     * 可能なら `customPointsBeforeFabricWarp`（ファブリックワープ前）で算出。
+     */
+    lengthGeomBeforeLengthMeshDebug?: GarmentLengthGeomBeforeLengthMeshDebug;
     /**
      * 汎用トップ: プロットの着丈ハイライト区間が確定 `lengthMeasureVertexStart/End` と異なる。
      * 表示の幾何 cm は確定 gt 基準のため、ハイライトと紫ガイドが一致しないことがある。

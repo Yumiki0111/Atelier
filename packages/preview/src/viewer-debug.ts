@@ -8,16 +8,16 @@ const DEBUG = typeof process !== 'undefined' && process.env?.NODE_ENV === 'devel
 export const debugLog = {
   log: (...args: any[]) => {
     if (DEBUG) {
-      console.log("[Atelier Preview]", ...args);
+      console.log("[FIT&LOOK Preview]", ...args);
     }
   },
   warn: (...args: any[]) => {
     if (DEBUG) {
-      console.warn("[Atelier Preview]", ...args);
+      console.warn("[FIT&LOOK Preview]", ...args);
     }
   },
   error: (...args: any[]) => {
     // エラーは常に出力
-    console.error("[Atelier Preview]", ...args);
+    console.error("[FIT&LOOK Preview]", ...args);
   },
 };

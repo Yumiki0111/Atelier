@@ -2,22 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 /**
- * Shops List API（Atelier Admin 専用）
+ * Shops List API（FIT&LOOK 運営者向け管理者 API）
  * 
  * 全ショップの一覧を取得する。
  * 
- * 認可: 環境変数 ATELIER_ADMIN_TOKEN で保護
+ * 認可: 環境変数 Atelier_ADMIN_TOKEN で保護
  */
 export async function GET(request: NextRequest) {
   try {
     
 
     // 管理者トークンで認証
-    const adminToken = request.headers.get("x-atelier-admin-token");
-    const expectedToken = process.env.ATELIER_ADMIN_TOKEN;
+    const adminToken = request.headers.get("x-Atelier-admin-token");
+    const expectedToken = process.env.Atelier_ADMIN_TOKEN;
 
     if (!expectedToken) {
-      console.error("[shops list API] ATELIER_ADMIN_TOKEN not configured");
+      console.error("[shops list API] Atelier_ADMIN_TOKEN not configured");
       return NextResponse.json(
         { error: "Admin token not configured" },
         { status: 500 }

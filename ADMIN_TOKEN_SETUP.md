@@ -13,7 +13,7 @@
 
 ## 🔐 管理者トークンとは
 
-`ATELIER_ADMIN_TOKEN` は、Atelier の内部管理機能（新規ショップの作成など）へのアクセスを保護するための認証トークンです。
+`Atelier_ADMIN_TOKEN` は、Atelier の内部管理機能（新規ショップの作成など）へのアクセスを保護するための認証トークンです。
 
 **用途**:
 - `/admin/provision-shop` ページでの新規ショップ作成
@@ -74,7 +74,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 # ✅ ここに生成したトークンをペースト
-ATELIER_ADMIN_TOKEN=1311d7f4ddeef9512b71ed663aae1c40f18efb12a40140123e5ec21cc1d97f3d
+Atelier_ADMIN_TOKEN=1311d7f4ddeef9512b71ed663aae1c40f18efb12a40140123e5ec21cc1d97f3d
 
 # Secret Key Salt（widget_keys のハッシュ化用）
 # こちらも同様にランダムな文字列を生成して設定
@@ -124,7 +124,7 @@ npm run dev
 3. 以下の変数を追加：
 
 ```
-Name: ATELIER_ADMIN_TOKEN
+Name: Atelier_ADMIN_TOKEN
 Value: 1311d7f4ddeef9512b71ed663aae1c40f18efb12a40140123e5ec21cc1d97f3d
 Environment: Production, Preview, Development
 ```
@@ -140,7 +140,7 @@ Environment: Production, Preview, Development
 4. 以下を入力：
 
 ```
-Variable Name: ATELIER_ADMIN_TOKEN
+Variable Name: Atelier_ADMIN_TOKEN
 Value: 1311d7f4ddeef9512b71ed663aae1c40f18efb12a40140123e5ec21cc1d97f3d
 ```
 
@@ -149,7 +149,7 @@ Value: 1311d7f4ddeef9512b71ed663aae1c40f18efb12a40140123e5ec21cc1d97f3d
 
 ### その他のホスティングサービス
 
-各サービスの環境変数設定画面で `ATELIER_ADMIN_TOKEN` を設定してください。
+各サービスの環境変数設定画面で `Atelier_ADMIN_TOKEN` を設定してください。
 
 ---
 
@@ -180,7 +180,7 @@ Value: 1311d7f4ddeef9512b71ed663aae1c40f18efb12a40140123e5ec21cc1d97f3d
 ### ❌ してはいけないこと
 
 1. **簡単なパスワードを使用**
-   - ❌ `admin123`、`password`、`atelier-token` など
+   - ❌ `admin123`、`password`、`Atelier-token` など
 
 2. **公開リポジトリにコミット**
    - ❌ GitHub、GitLab などの公開リポジトリに含めない
@@ -209,7 +209,7 @@ openssl rand -hex 32
 #### ローカル開発環境
 ```bash
 # apps/console/.env.local を編集
-ATELIER_ADMIN_TOKEN=<新しいトークン>
+Atelier_ADMIN_TOKEN=<新しいトークン>
 ```
 
 #### 本番環境
@@ -227,7 +227,7 @@ ATELIER_ADMIN_TOKEN=<新しいトークン>
 ### `/admin/provision-shop` ページでの使用
 
 1. `/admin/provision-shop` にアクセス
-2. 「管理者トークン」フィールドに `ATELIER_ADMIN_TOKEN` の値を入力
+2. 「管理者トークン」フィールドに `Atelier_ADMIN_TOKEN` の値を入力
 3. ショップ情報を入力して「ショップを作成」
 
 ### API での使用（cURL 例）
@@ -235,7 +235,7 @@ ATELIER_ADMIN_TOKEN=<新しいトークン>
 ```bash
 curl -X POST http://localhost:3000/api/internal/provision-shop \
   -H "Content-Type: application/json" \
-  -H "x-atelier-admin-token: YOUR_ADMIN_TOKEN_HERE" \
+  -H "x-Atelier-admin-token: YOUR_ADMIN_TOKEN_HERE" \
   -d '{
     "shopName": "テストショップ",
     "ownerEmail": "owner@example.com",
@@ -252,7 +252,7 @@ curl -X POST http://localhost:3000/api/internal/provision-shop \
 **原因**: トークンが正しく設定されていない、または間違っている
 
 **解決方法**:
-1. `.env.local` の `ATELIER_ADMIN_TOKEN` を確認
+1. `.env.local` の `Atelier_ADMIN_TOKEN` を確認
 2. 開発サーバーを再起動（`npm run dev`）
 3. トークンに余分なスペースや改行がないか確認
 

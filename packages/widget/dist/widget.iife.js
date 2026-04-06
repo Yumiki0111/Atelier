@@ -1,5 +1,25 @@
 (function() {
   "use strict";
+  const WIDGET_EMBED_PREFIX = "fitlook";
+  const WIDGET_EMBED_LEGACY_PREFIX = "atelier";
+  function readEmbedAttr(el2, name) {
+    return el2.getAttribute(`data-${WIDGET_EMBED_PREFIX}-${name}`) ?? el2.getAttribute(`data-${WIDGET_EMBED_LEGACY_PREFIX}-${name}`);
+  }
+  const WIDGET_HOST_SELECTOR = [
+    "[data-fitlook-public-key]",
+    "[data-atelier-public-key]",
+    "[data-fitlook-shop-id]",
+    "[data-atelier-shop-id]"
+  ].join(", ");
+  const WIDGET_CONTAINER_ID_PREFIX = "fitlook-widget-container-";
+  const WIDGET_CONTAINER_LEGACY_ID_PREFIX = "Atelier-widget-container-";
+  const WIDGET_BUTTON_ID_PREFIX = "fitlook-widget-button-";
+  const WIDGET_ALL_CONTAINER_SELECTOR = `[id^="${WIDGET_CONTAINER_ID_PREFIX}"], [id^="${WIDGET_CONTAINER_LEGACY_ID_PREFIX}"]`;
+  const WIDGET_LOG_PREFIX = "[FIT&LOOK Widget]";
+  function readApiUrlFromDocument() {
+    var _a, _b;
+    return ((_a = document.querySelector("[data-fitlook-api-url]")) == null ? void 0 : _a.getAttribute("data-fitlook-api-url")) ?? ((_b = document.querySelector("[data-atelier-api-url]")) == null ? void 0 : _b.getAttribute("data-atelier-api-url")) ?? null;
+  }
   const DEV_PORTS = /* @__PURE__ */ new Set(["3000", "3001", "5173", "5174"]);
   function isDevelopmentMode() {
     if (typeof window === "undefined") return false;
@@ -8,9 +28,8 @@
     return isLocalHost && DEV_PORTS.has(port);
   }
   function getApiBaseUrl() {
-    var _a;
     if (typeof window === "undefined") return "";
-    const apiUrlAttr = (_a = document.querySelector("[data-atelier-api-url]")) == null ? void 0 : _a.getAttribute("data-atelier-api-url");
+    const apiUrlAttr = readApiUrlFromDocument();
     if (apiUrlAttr) {
       return apiUrlAttr;
     }
@@ -93,7 +112,7 @@
         );
         clearTimeout(timeoutId);
         if (!response2.ok) {
-          console.warn(`[Atelier Widget] API returned ${response2.status}, using mock config.`);
+          console.warn(`${WIDGET_LOG_PREFIX} API returned ${response2.status}, using mock config.`);
           return createDevMockConfig();
         }
         const config = await response2.json();
@@ -182,7 +201,7 @@
         if (error instanceof Error && (error.name === "AbortError" || error.message === "Failed to fetch" || error.message.includes("network") || error.message.includes("connection"))) {
           return;
         }
-        console.warn("[Atelier Widget] Event send error:", error);
+        console.warn(`${WIDGET_LOG_PREFIX} Event send error:`, error);
         return;
       }
     }
@@ -199,12 +218,12 @@
       }
     } catch (error) {
       if (!isDevelopmentMode()) {
-        console.error("[Atelier Widget] Failed to send event:", error);
+        console.error(`${WIDGET_LOG_PREFIX} Failed to send event:`, error);
       }
     }
   }
   function updateButtonPositions() {
-    const allWidgetContainers = Array.from(document.querySelectorAll('[id^="atelier-widget-container-"]'));
+    const allWidgetContainers = Array.from(document.querySelectorAll(WIDGET_ALL_CONTAINER_SELECTOR));
     const baseBottomPx = 24;
     const baseRightPx = 24;
     const buttonSpacingPx = 72;
@@ -216,8 +235,8 @@
   }
   function renderCube(shadowRoot, params, onCubeClick, initialDesign) {
     const productId = params.productId || params.externalProductId || `widget-${Date.now()}-${Math.random()}`;
-    const buttonId = `atelier-widget-button-${productId}`;
-    const containerId = `atelier-widget-container-${productId}`;
+    const buttonId = `${WIDGET_BUTTON_ID_PREFIX}${productId}`;
+    const containerId = `${WIDGET_CONTAINER_ID_PREFIX}${productId}`;
     const existingContainer = document.getElementById(containerId);
     if (existingContainer) {
       existingContainer.remove();
@@ -228,7 +247,7 @@
     const button = document.createElement("button");
     button.id = buttonId;
     button.setAttribute("type", "button");
-    button.setAttribute("data-atelier-product-id", productId);
+    button.setAttribute("data-fitlook-product-id", productId);
     button.style.cssText = `
     position: fixed !important;
     bottom: ${baseBottomPx}px !important;
@@ -245,7 +264,7 @@
     });
     const container = document.createElement("div");
     container.id = containerId;
-    container.setAttribute("data-atelier-product-id", productId);
+    container.setAttribute("data-fitlook-product-id", productId);
     container.style.cssText = `
     position: fixed !important;
     bottom: ${baseBottomPx}px !important;
@@ -431,7 +450,7 @@
   }
   function showDefaultButton(containerId) {
     const apiBaseUrl = getApiBaseUrl() || (typeof window !== "undefined" ? window.location.origin : "");
-    const defaultImageUrl = `${apiBaseUrl}/ATELIER-LOGO.png`;
+    const defaultImageUrl = `${apiBaseUrl}/human-logo.png`;
     const defaultDesign = {
       button: {
         shape: "circle",
@@ -441,6 +460,62 @@
     };
     applyDesignToButton(containerId, defaultDesign);
   }
+  const FITLOOK_LOGO_SVG_PATH_D = "M65.8594 -0.000150681H119.235V15.8399H87.0754V27.1678H114.723V42.3359H87.0754V66.0479H65.8594V-0.000150681ZM130.851 66.0479V-0.000150681H152.067V66.0479H130.851ZM205.219 16.8958V66.0479H184.003V16.8958H162.307V-0.000150681H226.819V16.8958H205.219ZM172.849 128.923L180.349 129.11H180.443C182.505 129.11 183.958 129.079 184.802 129.017C185.052 129.173 185.271 129.47 185.458 129.907L185.224 131.548C184.912 135.11 183.943 138.673 182.318 142.235C180.724 145.798 178.537 148.97 175.755 151.751L184.896 161.22C185.771 162.157 186.505 163.017 187.099 163.798L188.037 164.688C189.099 165.72 189.662 166.47 189.724 166.938C189.724 167.438 188.787 167.688 186.912 167.688L184.708 167.642H172.568C169.005 167.642 165.662 167.579 162.537 167.454C161.505 166.892 160.583 166.204 159.771 165.392L157.943 163.845L155.458 165.11C148.771 167.61 143.193 169.001 138.724 169.282L134.552 169.423C128.365 169.423 122.802 168.517 117.865 166.704C112.927 164.892 109.099 162.407 106.38 159.251C103.662 156.095 102.302 152.579 102.302 148.704C102.302 139.517 108.552 132.626 121.052 128.032C117.708 125.876 114.943 123.282 112.755 120.251C110.599 117.22 109.521 114.407 109.521 111.813C109.521 106.97 111.115 103.063 114.302 100.095C116.24 98.2822 119.287 96.7041 123.443 95.3604C127.599 94.0166 132.162 93.3447 137.13 93.3447C147.63 93.3447 155.474 95.1572 160.662 98.7822C164.599 101.563 166.568 105.392 166.568 110.267C166.568 113.829 165.365 117.095 162.958 120.063C160.583 123.032 157.021 126.235 152.271 129.673C153.927 131.329 155.208 132.532 156.115 133.282V133.235L161.177 138.063C162.896 135.751 163.802 133.829 163.896 132.298C164.021 130.735 164.396 129.798 165.021 129.485C165.833 129.11 168.443 128.923 172.849 128.923ZM148.943 152.876C147.599 151.813 146.552 150.845 145.802 149.97C145.052 149.095 144.583 148.563 144.396 148.376L137.318 141.626C136.912 141.626 136.599 141.438 136.38 141.063C136.193 140.657 135.568 139.954 134.505 138.954C133.474 137.923 132.552 137.392 131.74 137.36C130.052 138.173 128.505 139.595 127.099 141.626C125.724 143.657 125.037 145.642 125.037 147.579C125.037 149.485 125.662 151.173 126.912 152.642C129.255 155.298 132.333 156.626 136.146 156.626C139.958 156.626 144.224 155.376 148.943 152.876ZM137.224 120.345L137.177 120.298C137.583 120.548 138.005 120.673 138.443 120.673C138.88 120.673 139.271 120.595 139.615 120.438C143.146 117.751 145.349 115.438 146.224 113.501C146.63 112.563 146.833 111.438 146.833 110.126C146.833 108.813 146.302 107.626 145.24 106.563C143.458 104.782 141.193 103.892 138.443 103.892C135.724 103.892 133.537 104.563 131.88 105.907C130.224 107.22 129.396 109.001 129.396 111.251C129.708 114.313 132.318 117.345 137.224 120.345ZM-3.8147e-06 200H21.216V249.152H55.104V266.048H-3.8147e-06V200ZM95.2695 198.848C106.661 198.848 115.462 201.76 121.67 207.584C127.878 213.408 130.982 221.888 130.982 233.024C130.982 244.16 127.878 252.64 121.67 258.464C115.462 264.288 106.661 267.2 95.2695 267.2C83.8775 267.2 75.0775 264.32 68.8695 258.56C62.7255 252.736 59.6535 244.224 59.6535 233.024C59.6535 221.824 62.7255 213.344 68.8695 207.584C75.0775 201.76 83.8775 198.848 95.2695 198.848ZM95.2695 214.688C90.7255 214.688 87.2695 216.064 84.9015 218.816C82.5335 221.568 81.3495 225.28 81.3495 229.952V236.096C81.3495 240.768 82.5335 244.48 84.9015 247.232C87.2695 249.984 90.7255 251.36 95.2695 251.36C99.8135 251.36 103.269 249.984 105.638 247.232C108.069 244.48 109.285 240.768 109.285 236.096V229.952C109.285 225.28 108.069 221.568 105.638 218.816C103.269 216.064 99.8135 214.688 95.2695 214.688ZM175.238 198.848C186.63 198.848 195.43 201.76 201.638 207.584C207.846 213.408 210.95 221.888 210.95 233.024C210.95 244.16 207.846 252.64 201.638 258.464C195.43 264.288 186.63 267.2 175.238 267.2C163.846 267.2 155.046 264.32 148.838 258.56C142.694 252.736 139.622 244.224 139.622 233.024C139.622 221.824 142.694 213.344 148.838 207.584C155.046 201.76 163.846 198.848 175.238 198.848ZM175.238 214.688C170.694 214.688 167.238 216.064 164.87 218.816C162.502 221.568 161.318 225.28 161.318 229.952V236.096C161.318 240.768 162.502 244.48 164.87 247.232C167.238 249.984 170.694 251.36 175.238 251.36C179.782 251.36 183.238 249.984 185.606 247.232C188.038 244.48 189.254 240.768 189.254 236.096V229.952C189.254 225.28 188.038 221.568 185.606 218.816C183.238 216.064 179.782 214.688 175.238 214.688ZM267.111 200H293.415L269.703 227.168L293.895 266.048H268.839L255.111 241.856L243.591 251.264V266.048H222.375V200H243.591V228.224L267.111 200Z";
+  const TOTAL = 4e3;
+  const DRAW_MS = 1800;
+  const FILL_START = 1600;
+  const FILL_MS = 600;
+  function ease(t) {
+    return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+  }
+  function mountFitLookLogoLoadingAnimation(container) {
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "display:flex;align-items:center;justify-content:center;width:100%;padding:24px;box-sizing:border-box;";
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 294 268");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    svg.style.cssText = "width:min(72vw, 220px);height:auto;max-height:38vh;display:block;";
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", FITLOOK_LOGO_SVG_PATH_D);
+    path.setAttribute("stroke", "#111");
+    path.setAttribute("stroke-width", "1");
+    path.setAttribute("fill", "transparent");
+    svg.appendChild(path);
+    wrap.appendChild(svg);
+    container.appendChild(wrap);
+    let raf = null;
+    let startTime = null;
+    function reset() {
+      path.style.strokeDasharray = String(TOTAL);
+      path.style.strokeDashoffset = String(TOTAL);
+      path.style.fill = "transparent";
+    }
+    function tick(ts) {
+      if (startTime == null) startTime = ts;
+      const e = ts - startTime;
+      path.style.strokeDashoffset = String(TOTAL * (1 - ease(Math.min(e / DRAW_MS, 1))));
+      if (e >= FILL_START) {
+        path.style.fill = `rgba(0,0,0,${ease(Math.min((e - FILL_START) / FILL_MS, 1))})`;
+      }
+      if (e < DRAW_MS + FILL_MS) raf = requestAnimationFrame(tick);
+      else raf = null;
+    }
+    function play() {
+      if (raf != null) cancelAnimationFrame(raf);
+      raf = null;
+      reset();
+      requestAnimationFrame(() => {
+        startTime = null;
+        raf = requestAnimationFrame(tick);
+      });
+    }
+    play();
+    return () => {
+      if (raf != null) cancelAnimationFrame(raf);
+      raf = null;
+    };
+  }
   const ACCENT_DEFAULT = "#3d3835";
   const DEFAULT_FIT_BODY_VAL = 25;
   const DEFAULT_SWATCHES = [
@@ -449,13 +524,12 @@
     { id: "default-3", hex: "#1a1a1a", label: "Black" }
   ];
   function injectStyles() {
-    if (document.getElementById("atelier-bs-styles")) return;
+    if (document.getElementById("fitlook-bs-styles")) return;
     const s = document.createElement("style");
-    s.id = "atelier-bs-styles";
+    s.id = "fitlook-bs-styles";
     s.textContent = `
-    @keyframes atelier-fade-in  { from{opacity:0} to{opacity:1} }
-    @keyframes atelier-spin     { to{transform:rotate(360deg)} }
-    [data-atelier-modal] * {
+    @keyframes fitlook-fade-in  { from{opacity:0} to{opacity:1} }
+    [data-fitlook-modal] *, [data-atelier-modal] * {
       box-sizing: border-box;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
@@ -466,7 +540,7 @@
     return [...keys].sort((a, b) => a.localeCompare(b, void 0, { numeric: true }));
   }
   function closeOverlay(overlay) {
-    const cleanup = overlay.__atelierCleanup;
+    const cleanup = overlay.__fitlookCleanup;
     if (cleanup) cleanup.fn();
     overlay.style.transition = "opacity 0.2s ease-out";
     overlay.style.opacity = "0";
@@ -539,15 +613,17 @@
   }
   function renderModalWithLoading(_shadowRoot, _params) {
     injectStyles();
-    const existingOverlays = document.querySelectorAll("[data-atelier-modal-overlay='true']");
+    const existingOverlays = document.querySelectorAll(
+      "[data-fitlook-modal-overlay='true'], [data-atelier-modal-overlay='true']"
+    );
     existingOverlays.forEach((el2) => {
       if (el2.style.opacity === "0" || parseFloat(el2.style.opacity) < 0.1) {
         el2.remove();
       }
     });
     const overlay = document.createElement("div");
-    overlay.setAttribute("data-atelier-modal", "true");
-    overlay.setAttribute("data-atelier-modal-overlay", "true");
+    overlay.setAttribute("data-fitlook-modal", "true");
+    overlay.setAttribute("data-fitlook-modal-overlay", "true");
     overlay.style.cssText = `
     position: fixed !important; inset: 0 !important;
     background: #ececec !important;
@@ -555,30 +631,27 @@
     display: flex !important;
     flex-direction: column !important;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-    opacity: 0; animation: atelier-fade-in 0.22s ease-out forwards;
+    opacity: 0; animation: fitlook-fade-in 0.22s ease-out forwards;
   `;
     const contentArea = document.createElement("div");
-    contentArea.setAttribute("data-atelier-content-area", "true");
+    contentArea.setAttribute("data-fitlook-content-area", "true");
     contentArea.style.cssText = "flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;padding:max(8px, env(safe-area-inset-top)) 12px max(8px, env(safe-area-inset-bottom));box-sizing:border-box;background:#ececec;";
-    const spinWrap = document.createElement("div");
-    spinWrap.style.cssText = "flex:1;display:flex;align-items:center;justify-content:center;width:100%;";
-    const spin = document.createElement("img");
-    spin.src = `${getApiBaseUrl()}/logo.png`;
-    spin.alt = "";
-    spin.style.cssText = "width:56px;height:56px;object-fit:contain;animation:atelier-spin 2s linear infinite;";
-    spinWrap.appendChild(spin);
-    contentArea.appendChild(spinWrap);
+    const splashWrap = document.createElement("div");
+    splashWrap.style.cssText = "flex:1;display:flex;align-items:center;justify-content:center;width:100%;min-height:0;background:#f8f6f1;";
+    const cancelSplash = mountFitLookLogoLoadingAnimation(splashWrap);
+    contentArea.appendChild(splashWrap);
     overlay.appendChild(contentArea);
     document.body.appendChild(overlay);
-    const cleanup = { fn: () => {
-    } };
-    overlay.__atelierCleanup = cleanup;
+    const cleanup = { fn: cancelSplash };
+    overlay.__fitlookCleanup = cleanup;
     return { overlay, contentArea };
   }
   function updateModalWithConfig(_shadowRoot, config, params, overlay, contentArea) {
     var _a, _b, _c, _d;
     if (!overlay || !contentArea) return;
     injectStyles();
+    const prevCleanup = overlay.__fitlookCleanup;
+    if (prevCleanup == null ? void 0 : prevCleanup.fn) prevCleanup.fn();
     contentArea.innerHTML = "";
     contentArea.style.cssText = "flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;position:relative;background:#ececec;padding:max(8px, env(safe-area-inset-top)) 12px max(8px, env(safe-area-inset-bottom));box-sizing:border-box;";
     const ui = config.design;
@@ -631,7 +704,7 @@
     function weightKgFromBodyVal(v) {
       return Math.round(50 + v / 100 * 40);
     }
-    const cleanup = overlay.__atelierCleanup;
+    const cleanup = overlay.__fitlookCleanup;
     if (cleanup) {
       cleanup.fn = () => {
       };
@@ -736,7 +809,7 @@
       "div",
       `flex:1;min-height:120px;min-width:0;flex-basis:0;position:relative;background:${canvasBg};display:flex;align-items:center;justify-content:center;overflow:visible;padding:8px 12px 8px;box-sizing:border-box;`
     );
-    viewerArea.setAttribute("data-atelier-viewer-container", "true");
+    viewerArea.setAttribute("data-fitlook-viewer-container", "true");
     async function loadGarmentFitSvgInto(target, heightCm, bodyVal, options) {
       const bodyOnly = (options == null ? void 0 : options.bodyOnly) === true;
       if (!garmentFitAvailable || !params.publicKey) return;
@@ -922,12 +995,14 @@
         }).catch(() => {
         });
       }
+      const cartDetail = {
+        size: currentSize,
+        colorId: selectedColorId,
+        productId: params.externalProductId || params.productId
+      };
       try {
-        window.dispatchEvent(
-          new CustomEvent("atelier:add-to-cart", {
-            detail: { size: currentSize, colorId: selectedColorId, productId: params.externalProductId || params.productId }
-          })
-        );
+        window.dispatchEvent(new CustomEvent("fitlook:add-to-cart", { detail: cartDetail }));
+        window.dispatchEvent(new CustomEvent("Atelier:add-to-cart", { detail: cartDetail }));
       } catch {
       }
     });
@@ -951,9 +1026,9 @@
       let bodyVal = fitBodyVal;
       bodyAdjustOverlay = el(
         "div",
-        "position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;background:" + interfaceBg + ";border-radius:34px;overflow:hidden;animation:atelier-fade-in 0.2s ease-out;"
+        "position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;background:" + interfaceBg + ";border-radius:34px;overflow:hidden;animation:fitlook-fade-in 0.2s ease-out;"
       );
-      bodyAdjustOverlay.setAttribute("data-atelier-body-adjust", "true");
+      bodyAdjustOverlay.setAttribute("data-fitlook-body-adjust", "true");
       const backPadTop = "padding:10px 14px 6px;padding-top:max(10px, env(safe-area-inset-top));";
       const backRowInner = el("div", backPadTop + "flex-shrink:0;");
       const backToProduct = el(
@@ -1063,11 +1138,15 @@
     }
     bodyBtn.addEventListener("click", openBodySheet);
     if (isDevelopmentMode()) {
-      console.log("[Atelier Widget] 2D view ready", { productName, sizes: sizeKeys });
+      console.log(`${WIDGET_LOG_PREFIX} 2D view ready`, { productName, sizes: sizeKeys });
     }
   }
   function showErrorInModal(_shadowRoot, errorMessage, overlay, contentArea) {
     if (!overlay || !contentArea) return;
+    const prevCleanup = overlay.__fitlookCleanup;
+    if (prevCleanup == null ? void 0 : prevCleanup.fn) prevCleanup.fn();
+    if (prevCleanup) prevCleanup.fn = () => {
+    };
     contentArea.innerHTML = "";
     contentArea.style.cssText = `
     flex: 1; display: flex; flex-direction: column;
@@ -1082,40 +1161,40 @@
     contentArea.appendChild(div);
   }
   function initWidget() {
-    const elements = document.querySelectorAll(
-      "[data-atelier-public-key], [data-atelier-shop-id]"
-    );
+    const elements = document.querySelectorAll(WIDGET_HOST_SELECTOR);
     const currentProductIds = /* @__PURE__ */ new Set();
     elements.forEach((element) => {
-      const productId = element.getAttribute("data-atelier-product-id") || element.getAttribute("data-atelier-external-product-id");
+      const productId = readEmbedAttr(element, "product-id") || readEmbedAttr(element, "external-product-id");
       if (productId) {
         currentProductIds.add(productId);
       }
     });
-    const allWidgetContainers = document.querySelectorAll('[id^="atelier-widget-container-"]');
+    const allWidgetContainers = document.querySelectorAll(WIDGET_ALL_CONTAINER_SELECTOR);
     allWidgetContainers.forEach((container) => {
-      const containerProductId = container.getAttribute("data-atelier-product-id");
+      const containerProductId = readEmbedAttr(container, "product-id");
       if (containerProductId && !currentProductIds.has(containerProductId)) {
         container.remove();
       }
     });
     if (elements.length === 0) {
-      console.warn("[Atelier Widget] No widget elements found. Make sure you have elements with data-atelier-public-key or data-atelier-shop-id attribute.");
+      console.warn(
+        `${WIDGET_LOG_PREFIX} No widget elements found. Use data-fitlook-public-key / data-fitlook-shop-id (or legacy data-atelier-*).`
+      );
       return;
     }
     elements.forEach((element, index) => {
       if (element.shadowRoot) {
         return;
       }
-      const publicKey = element.getAttribute("data-atelier-public-key");
-      const externalProductId = element.getAttribute("data-atelier-external-product-id");
-      const shopId = element.getAttribute("data-atelier-shop-id");
-      const productId = element.getAttribute("data-atelier-product-id");
-      const sku = element.getAttribute("data-atelier-sku");
-      const handle = element.getAttribute("data-atelier-handle");
-      const url = element.getAttribute("data-atelier-url");
+      const publicKey = readEmbedAttr(element, "public-key");
+      const externalProductId = readEmbedAttr(element, "external-product-id");
+      const shopId = readEmbedAttr(element, "shop-id");
+      const productId = readEmbedAttr(element, "product-id");
+      const sku = readEmbedAttr(element, "sku");
+      const handle = readEmbedAttr(element, "handle");
+      const url = readEmbedAttr(element, "url");
       if (!publicKey && !shopId) {
-        console.warn("[Atelier Widget] public-key or shop-id is required");
+        console.warn(`${WIDGET_LOG_PREFIX} public-key or shop-id is required`);
         return;
       }
       try {
@@ -1139,13 +1218,11 @@
           url
         };
         const pid = productId || externalProductId || `widget-${Date.now()}-${Math.random()}`;
-        const containerId = `atelier-widget-container-${pid}`;
+        const containerId = `${WIDGET_CONTAINER_ID_PREFIX}${pid}`;
         renderCube(shadowRoot, params, handleCubeClick, null);
         if (publicKey) {
           const designFetch = fetchWidgetDesign(publicKey);
-          const designTimeout = new Promise(
-            (resolve) => setTimeout(() => resolve(null), 1500)
-          );
+          const designTimeout = new Promise((resolve) => setTimeout(() => resolve(null), 1500));
           Promise.race([designFetch, designTimeout]).then((design) => {
             if (design) {
               applyDesignToButton(containerId, design);
@@ -1165,7 +1242,7 @@
           showDefaultButton(containerId);
         }
       } catch (error) {
-        console.error(`[Atelier Widget] Failed to initialize widget ${index + 1}:`, error);
+        console.error(`${WIDGET_LOG_PREFIX} Failed to initialize widget ${index + 1}:`, error);
       }
     });
     updateButtonPositions();
@@ -1176,7 +1253,9 @@
       return;
     }
     if (!params.externalProductId && !params.productId) {
-      alert("ウィジェットの設定エラー: 商品IDが設定されていません。data-atelier-external-product-id属性を追加してください。");
+      alert(
+        "ウィジェットの設定エラー: 商品IDが設定されていません。data-fitlook-external-product-id（推奨）または data-atelier-external-product-id を追加してください。"
+      );
       return;
     }
     const eventShopId = params.shopId || "unknown";
@@ -1199,7 +1278,7 @@
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      console.error("[Atelier Widget] Error in handleCubeClick:", errorMessage);
+      console.error(`${WIDGET_LOG_PREFIX} Error in handleCubeClick:`, errorMessage);
       showErrorInModal(shadowRoot, `試着画面の読み込みに失敗しました。
 
 エラー: ${errorMessage}`, overlay, contentArea);
@@ -1230,9 +1309,7 @@
     }
     if (typeof MutationObserver !== "undefined") {
       const observer = new MutationObserver(() => {
-        const elements = document.querySelectorAll(
-          "[data-atelier-public-key], [data-atelier-shop-id]"
-        );
+        const elements = document.querySelectorAll(WIDGET_HOST_SELECTOR);
         const uninitialized = Array.from(elements).filter(
           (el2) => !el2.shadowRoot
         );
@@ -1246,9 +1323,7 @@
       });
     }
     setTimeout(() => {
-      const elements = document.querySelectorAll(
-        "[data-atelier-public-key], [data-atelier-shop-id]"
-      );
+      const elements = document.querySelectorAll(WIDGET_HOST_SELECTOR);
       const uninitialized = Array.from(elements).filter(
         (el2) => !el2.shadowRoot
       );

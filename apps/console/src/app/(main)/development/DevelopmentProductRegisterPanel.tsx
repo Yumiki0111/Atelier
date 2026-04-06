@@ -1,8 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import type { CustomGarmentData, GarmentType } from "./fitting/lib/types";
-import { sanitizeCustomGarmentForProductDb } from "./fitting/lib/sanitizeCustomGarmentForProductDb";
+import type {
+  CustomGarmentData,
+  GarmentType,
+  JacketSize,
+  ShirtSize,
+} from "@/app/(main)/development/fitting/lib/types";
+import { logDevFitPipelineAfterSizePresetChange } from "@/lib/fitting-compute/fittingCanvasDevSizePresetDebug";
+import { sanitizeCustomGarmentForProductDb } from "@/app/(main)/development/fitting/lib/sanitizeCustomGarmentForProductDb";
 import { validateGarmentSpecForProduction } from "@/lib/products/validateGarmentSpecForProduction";
 import { useAddProduct } from "@/features/products/useProducts";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,11 +24,19 @@ import { CircularImageCropDialog } from "@/features/products/components/Circular
 interface DevelopmentProductRegisterPanelProps {
   garment: GarmentType;
   customGarmentData: CustomGarmentData | null;
+  /** 開発用: DB 登録成功時に `computeFittingCanvasSnapshot` でパイプラインを console へ出す */
+  fitDebugContext?: {
+    height: number;
+    weight: number;
+    shirtSize: ShirtSize;
+    jacketSize: JacketSize;
+  } | null;
 }
 
 export function DevelopmentProductRegisterPanel({
   garment,
   customGarmentData,
+  fitDebugContext = null,
 }: DevelopmentProductRegisterPanelProps) {
   const { shopId } = useAuth();
   const addProduct = useAddProduct();
@@ -108,6 +122,21 @@ export function DevelopmentProductRegisterPanel({
         ...(thumb !== "" ? { thumbnailUrl: thumb } : {}),
       });
       toast.success("商品データベースに登録しました");
+      if (
+        process.env.NODE_ENV !== "production" &&
+        fitDebugContext != null &&
+        customGarmentData != null &&
+        customGarmentData.presetId === "genericSymmetricTop"
+      ) {
+        void logDevFitPipelineAfterSizePresetChange({
+          action: "productDbRegister",
+          height: fitDebugContext.height,
+          weight: fitDebugContext.weight,
+          shirtSize: fitDebugContext.shirtSize,
+          jacketSize: fitDebugContext.jacketSize,
+          customGarmentData,
+        });
+      }
       setName("");
       setThumbnailUrl("");
     } catch (e) {

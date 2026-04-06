@@ -16,14 +16,14 @@ const fs = require('fs');
 const readline = require('readline');
 
 // 環境変数のチェック
-const ATELIER_ADMIN_TOKEN = process.env.ATELIER_ADMIN_TOKEN;
+const Atelier_ADMIN_TOKEN = process.env.Atelier_ADMIN_TOKEN;
 const API_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-if (!ATELIER_ADMIN_TOKEN) {
-  console.error('❌ エラー: ATELIER_ADMIN_TOKEN 環境変数が設定されていません');
+if (!Atelier_ADMIN_TOKEN) {
+  console.error('❌ エラー: Atelier_ADMIN_TOKEN 環境変数が設定されていません（FIT&LOOK 管理者用）');
   console.error('');
   console.error('使い方:');
-  console.error('  ATELIER_ADMIN_TOKEN=your-token node scripts/bulk-provision-shops.js shops.csv');
+  console.error('  Atelier_ADMIN_TOKEN=your-token node scripts/bulk-provision-shops.js shops.csv');
   process.exit(1);
 }
 
@@ -59,7 +59,7 @@ async function provisionShop(shopName, ownerEmail, allowedDomains) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-atelier-admin-token': ATELIER_ADMIN_TOKEN,
+        'x-Atelier-admin-token': Atelier_ADMIN_TOKEN,
       },
       body: JSON.stringify({
         shopName,

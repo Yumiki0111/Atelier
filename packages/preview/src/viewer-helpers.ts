@@ -123,11 +123,11 @@ export function handleModelError(
       error.message.includes("connection"));
 
   if (!isConnectionError) {
-    console.error("[Atelier Preview] Failed to load 3D model:", error, url);
+    console.error("[FIT&LOOK Preview] Failed to load 3D model:", error, url);
   }
 
   const errorDiv = document.createElement("div");
-  errorDiv.setAttribute("data-atelier-message", "true");
+  errorDiv.setAttribute("data-fitlook-message", "true");
 
   let errorMessage = "3Dモデルの読み込みに失敗しました";
   if (isConnectionError) {
@@ -156,7 +156,7 @@ export function handleModelError(
  * 既存のメッセージ要素を安全に削除
  */
 export function removeExistingMessage(container: HTMLElement): void {
-  const existingMessage = container.querySelector("[data-atelier-message]");
+  const existingMessage = container.querySelector("[data-fitlook-message]");
   if (existingMessage) {
     try {
       existingMessage.remove();

@@ -15,6 +15,20 @@ export function totalPathVertices(pathDs: string[]): number {
   return off[off.length - 1] ?? 0;
 }
 
+/** 連結 # が属する path インデックス（0 起算）。範囲外は null */
+export function pathIndexForGlobalVertex(pathDs: string[], globalIndex: number): number | null {
+  const gi = Math.trunc(globalIndex);
+  const off = cumulativePathPointOffsets(pathDs);
+  const total = off[off.length - 1] ?? 0;
+  if (gi < 0 || gi >= total || pathDs.length === 0) return null;
+  for (let i = 0; i < pathDs.length; i++) {
+    const o0 = off[i]!;
+    const o1 = off[i + 1]!;
+    if (gi >= o0 && gi < o1) return i;
+  }
+  return null;
+}
+
 /** 連結頂点インデックス（全 path の頂点を出現順に結合、0 起算）に対応する座標。範囲外は null */
 export function pointAtGlobalVertexIndex(pathDs: string[], globalIndex: number): [number, number] | null {
   const gi = Math.trunc(globalIndex);

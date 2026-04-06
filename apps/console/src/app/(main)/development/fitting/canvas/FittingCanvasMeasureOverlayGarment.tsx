@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * カスタム服の着丈オーバーレイ。
+ * 主行の cm は `lengthGeomDebug`（メッシュ・スナップ後の紫区間と整合）。
+ * 補助行は補正後の紫の縦 px・スライダー換算 cm・目標 px・Δ（矢印と同じ座標系）。
+ */
 import React, { type ReactNode } from "react";
 import type { MeasureOverlayData } from "../lib/types";
 import {
@@ -33,41 +38,68 @@ export function FittingCanvasMeasureOverlayGarment({ g }: { g: GarmentG }): Reac
   const geom = g.lengthGeomDebug;
   const rawBefore = g.lengthGeomBeforeLengthMeshDebug;
 
-  /**
-   * 幾何の正＝補正前（Y 再スケール適用前のワープ後メッシュ縦÷bodyPxPerCm）。
-   * Y スケールは lengthTopY を原点に適用されるため、pre-scale の hemY は逆算できる:
-   *   preHemY = lengthTopY + rawBefore.px * sign(postScaleHemY - lengthTopY)
-   * 矢印もこの pre-scale 座標を使うことで「数値 = 矢印の長さ」を保証する。
-   */
-  const hemY =
-    rawBefore != null && Number.isFinite(rawBefore.px) && g.lengthMeasureTop != null
-      ? lengthTopY + rawBefore.px * Math.sign(postScaleHemY - lengthTopY)
-      : postScaleHemY;
+  /** 紫線・矢印＝メッシュ・スナップ後の画面上（`lengthGeomDebug`）。 */
+  const hemY = postScaleHemY;
 
-  const screenLengthCm =
-    rawBefore != null && Number.isFinite(rawBefore.cm)
-      ? rawBefore.cm
+  /** 矢印の長さと一致するのはメッシュ後の紫区間（`lengthGeomDebug`） */
+  const onScreenLengthCm =
+    geom != null && Number.isFinite(geom.cm)
+      ? geom.cm
+      : measuredLen != null && Number.isFinite(measuredLen)
+        ? measuredLen
+        : rawBefore != null && Number.isFinite(rawBefore.cmFromBodySlider)
+          ? rawBefore.cmFromBodySlider
+          : inputLen;
+  const onScreenLengthLabel = Number.isFinite(onScreenLengthCm) ? onScreenLengthCm.toFixed(1) : "—";
+
+  const lengthMeasureIsEditPreview = g.lengthMeasureIsEditPreview === true;
+  /**
+   * メッシュ適用時に内部で「補正前と画面上の着丈 cm」がずれていた場合に補助行を出す。
+   * 補助行の数値は補正後（矢印と同じ）のみ。
+   */
+  const showLengthMeshBeforeDiag =
+    rawBefore != null &&
+    Number.isFinite(rawBefore.cmFromBodySlider) &&
+    geom != null &&
+    Number.isFinite(geom.cm) &&
+    Math.abs(rawBefore.cmFromBodySlider - geom.cm) > 0.05;
+  const bppc = g.bodyPxPerCm;
+  const postLengthSliderCm =
+    geom != null &&
+    bppc != null &&
+    Number.isFinite(bppc) &&
+    bppc > 0 &&
+    Number.isFinite(geom.px)
+      ? geom.px / bppc
       : geom != null && Number.isFinite(geom.cm)
         ? geom.cm
-        : measuredLen != null && Number.isFinite(measuredLen)
-          ? measuredLen
-          : inputLen;
-  const screenLengthLabel = Number.isFinite(screenLengthCm) ? screenLengthCm.toFixed(1) : "—";
-
-  /**
-   * 入力値と幾何（補正前）が 0.05cm 以上ずれているとき 2 行目に入力値を表示。
-   * 一致していれば 1 行で十分。
-   */
-  const lengthMeasureIsEditPreview = g.lengthMeasureIsEditPreview === true;
-  const inputDiffLabel =
-    Number.isFinite(screenLengthCm) && Math.abs(screenLengthCm - inputLen) > 0.05
-      ? inputLen.toString()
+        : null;
+  const postLengthDeltaPx =
+    geom != null &&
+    rawBefore != null &&
+    Number.isFinite(geom.px) &&
+    Number.isFinite(rawBefore.targetLengthPx)
+      ? Math.round(geom.px) - rawBefore.targetLengthPx
       : null;
+  const showLengthInputVsScreen =
+    Number.isFinite(onScreenLengthCm) && Math.abs(onScreenLengthCm - inputLen) > 0.05;
+
   const midLengthY = (lengthTopY + hemY) / 2;
   const lengthLabelX = lineLengthX + 24;
-  /** tspan+dy は環境によって1行に潰れるため、2行目は別 <text> */
-  const lengthLine1Y = inputDiffLabel != null ? midLengthY - 10 : midLengthY;
-  const lengthLine2Y = inputDiffLabel != null ? midLengthY + 12 : null;
+  let lengthYScreen: number;
+  let lengthYMeshBefore: number | null = null;
+  let lengthYInput: number | null = null;
+  if (!showLengthMeshBeforeDiag && !showLengthInputVsScreen) {
+    lengthYScreen = midLengthY;
+  } else if (showLengthMeshBeforeDiag && showLengthInputVsScreen) {
+    lengthYScreen = midLengthY - 22;
+    lengthYMeshBefore = midLengthY + 2;
+    lengthYInput = midLengthY + 26;
+  } else {
+    lengthYScreen = midLengthY - 10;
+    lengthYMeshBefore = showLengthMeshBeforeDiag ? midLengthY + 12 : null;
+    lengthYInput = showLengthInputVsScreen ? midLengthY + 12 : null;
+  }
   return (
     <>
       {g.sizeLabel && (
@@ -94,41 +126,10 @@ export function FittingCanvasMeasureOverlayGarment({ g }: { g: GarmentG }): Reac
       <line x1={hemConnectorX} y1={hemY} x2={lineLengthX} y2={hemY} stroke="#7c3aed" strokeWidth={2} opacity={0.9} />
       <line x1={lineLengthX} y1={lengthTopY} x2={lineLengthX} y2={hemY} stroke="#7c3aed" strokeWidth={4} strokeDasharray="6 4" />
       <path d={drawArrowDown(lineLengthX, hemY)} fill="#7c3aed" stroke="#6d28d9" strokeWidth={2} />
-      {inputDiffLabel != null && lengthLine2Y != null ? (
-        <>
-          <text
-            x={lengthLabelX}
-            y={lengthLine1Y}
-            fontSize={14}
-            fontWeight="bold"
-            fill="#6d28d9"
-            fontFamily="sans-serif"
-            dominantBaseline="middle"
-          >
-            <title>
-              幾何＝Y 再スケール前（ワープ直後）のメッシュ紫区間縦÷bodyPxPerCm。矢印も同じ補正前座標。
-            </title>
-            {`着丈 幾何 ${screenLengthLabel}cm`}
-          </text>
-          <text
-            x={lengthLabelX}
-            y={lengthLine2Y}
-            fontSize={12}
-            fontWeight={600}
-            fill="#b91c1c"
-            fontFamily="sans-serif"
-            dominantBaseline="middle"
-          >
-            <title>
-              入力着丈。幾何と一致していない場合はワープ（着丈メッシュ前）の段階で歪みが生じています。
-            </title>
-            {`入力 ${inputDiffLabel}cm`}
-          </text>
-        </>
-      ) : (
+      <>
         <text
           x={lengthLabelX}
-          y={midLengthY}
+          y={lengthYScreen}
           fontSize={14}
           fontWeight="bold"
           fill="#6d28d9"
@@ -136,19 +137,59 @@ export function FittingCanvasMeasureOverlayGarment({ g }: { g: GarmentG }): Reac
           dominantBaseline="middle"
         >
           <title>
-            {lengthMeasureIsEditPreview
-              ? "編集中プレビュー: 幾何数値は確定した着丈頂点区間（gt）基準。プロットのハイライトと異なる場合があります。"
-              : "幾何＝Y 再スケール前（ワープ直後）のメッシュ紫区間縦÷bodyPxPerCm。矢印も同じ座標で一致。"}
+            メッシュ後の紫区間の縦÷bodyPxPerCm。矢印の長さと一致する。
           </title>
-          {`着丈 幾何 ${screenLengthLabel}cm${lengthMeasureIsEditPreview ? " · 編集プレビュー" : ""}`}
-          {(inputLen < 40 || inputLen > 95) && measuredLen == null && !geom && (
-            <tspan fontSize={10} fill="#b91c1c">
-              {" "}
-              （要確認）
-            </tspan>
-          )}
+          {`着丈 画面上 ${onScreenLengthLabel}cm${lengthMeasureIsEditPreview ? " · 編集プレビュー" : ""}`}
         </text>
-      )}
+        {lengthYMeshBefore != null &&
+        rawBefore != null &&
+        geom != null &&
+        Number.isFinite(geom.px) &&
+        postLengthSliderCm != null &&
+        Number.isFinite(rawBefore.targetLengthPx) &&
+        postLengthDeltaPx != null ? (
+          <text
+            x={lengthLabelX}
+            y={lengthYMeshBefore}
+            fontSize={12}
+            fontWeight={600}
+            fill="#64748b"
+            fontFamily="sans-serif"
+            dominantBaseline="middle"
+          >
+            <title>
+              {`メッシュ・裾スナップ後の紫区間の縦（px）。cm は px÷bodyPxPerCm（${postLengthSliderCm.toFixed(1)}cm）。目標縦 ${rawBefore.targetLengthPx}px は size.length×bodyPxPerCm。Δ は実測−目標（矢印の長さと同じ座標系）。`}
+            </title>
+            {`補正後（紫区間） ${geom.px}px · ${postLengthSliderCm.toFixed(1)}cm（スライダー換算） · 目標縦 ${rawBefore.targetLengthPx}px · Δ ${postLengthDeltaPx >= 0 ? "+" : ""}${postLengthDeltaPx}px`}
+          </text>
+        ) : null}
+        {lengthYInput != null ? (
+          <text
+            x={lengthLabelX}
+            y={lengthYInput}
+            fontSize={12}
+            fontWeight={600}
+            fill="#b91c1c"
+            fontFamily="sans-serif"
+            dominantBaseline="middle"
+          >
+            <title>サイズパネルの着丈（cm）。画面上と違う場合はメッシュ目標と実測の差。</title>
+            {`入力 ${inputLen.toFixed(1)}cm`}
+          </text>
+        ) : null}
+        {(inputLen < 40 || inputLen > 95) && measuredLen == null && !geom ? (
+          <text
+            x={lengthLabelX}
+            y={lengthYScreen + 36}
+            fontSize={10}
+            fill="#b91c1c"
+            fontFamily="sans-serif"
+            dominantBaseline="middle"
+          >
+            （要確認）
+          </text>
+        ) : null}
+      </>
       {(() => {
         const cl = g.chestLeft;
         const cr = g.chestRight;

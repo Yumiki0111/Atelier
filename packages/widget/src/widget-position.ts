@@ -1,5 +1,7 @@
+import { WIDGET_ALL_CONTAINER_SELECTOR } from "./embed-data";
+
 export function updateButtonPositions() {
-  const allWidgetContainers = Array.from(document.querySelectorAll<HTMLElement>('[id^="atelier-widget-container-"]'));
+  const allWidgetContainers = Array.from(document.querySelectorAll<HTMLElement>(WIDGET_ALL_CONTAINER_SELECTOR));
   
   const baseBottomPx = 24;
   const baseRightPx = 24;

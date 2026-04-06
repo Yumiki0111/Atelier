@@ -196,7 +196,7 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2
 ;
 ;
 const metadata = {
-    title: "Atelier Console",
+    title: "FIT&LOOK Console",
     description: "EC組み込みSaaS管理画面"
 };
 function RootLayout({ children }) {

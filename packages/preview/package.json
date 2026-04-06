@@ -1,11 +1,11 @@
 {
-  "name": "@atelier/preview",
+  "name": "@Atelier/preview",
   "version": "0.1.0",
   "private": true,
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "dependencies": {
-    "@atelier/shared": "*",
+    "@Atelier/shared": "*",
     "swiper": "^12.1.0",
     "three": "^0.169.0"
   },

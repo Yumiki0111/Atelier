@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => {
     build: {
       lib: {
         entry: "src/index.ts",
-        name: "AtelierWidget",
+        name: "FitLookWidget",
         fileName: "widget",
         formats: ["iife"],
       },

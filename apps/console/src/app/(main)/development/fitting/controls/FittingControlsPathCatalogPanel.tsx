@@ -2,7 +2,11 @@
 
 import type { MutableRefObject } from "react";
 import type { GenericDraft } from "./FittingControlsGenericUtils";
-import { parseLineRangeInput, parseSleeveMeasureVertexInput, parseSleeveMeasureVertexList } from "../generic";
+import {
+  parseLineRangeInput,
+  parseSleeveMeasureVertexInput,
+  parseSleeveMeasureVertexList,
+} from "../generic";
 import { DevPanelSection } from "./FittingControlsUI";
 
 export function FittingControlsPathCatalogPanel({
@@ -104,6 +108,53 @@ export function FittingControlsPathCatalogPanel({
             >
               袖丈区間をクリア
             </button>
+            <label className="flex flex-col gap-0.5 text-[9px] text-slate-600">
+              <span className="font-medium text-slate-700">下袖（任意・袖丈と同じ path）</span>
+              <span className="leading-snug">
+                上袖だけ採寸しているとき、袖口側の頂点範囲（例 <strong>16-24</strong>）を入れると、上袖が伸びた分だけ下袖が平行移動してエルボが折れにくくなります。
+                袖丈グレード後、<strong>付け根は据え置いたまま袖口から線を伸ばして</strong>胴へ自動寄せします（胴の # は動かしません）。
+              </span>
+              <input
+                className="rounded-md border border-slate-200 bg-white px-2 py-1 font-mono text-[10px] outline-none focus:ring-2 focus:ring-red-300/50"
+                placeholder="例: 16-24 / 空欄で従来どおり"
+                value={genericDraft.lowerSleeveMeasureRange}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  const t = parseLineRangeInput(raw);
+                  const degenerate = t != null && t[0] === t[1];
+                  setGenericDraft((p) => ({
+                    ...p,
+                    lowerSleeveMeasureRange: raw,
+                    lowerSleeveVertexStart: t && !degenerate ? Math.min(t[0], t[1]) : undefined,
+                    lowerSleeveVertexEnd: t && !degenerate ? Math.max(t[0], t[1]) : undefined,
+                  }));
+                }}
+              />
+            </label>
+            {(() => {
+              const t = parseLineRangeInput(genericDraft.lowerSleeveMeasureRange.trim());
+              return t && t[0] !== t[1] ? (
+                <p className="font-mono text-[9px] text-slate-700">
+                  → #{Math.min(t[0], t[1])}〜#{Math.max(t[0], t[1])}
+                </p>
+              ) : genericDraft.lowerSleeveMeasureRange.trim() !== "" && t == null ? (
+                <p className="text-[9px] text-amber-800">形式を確認（8-15）</p>
+              ) : null;
+            })()}
+            <button
+              type="button"
+              onClick={() =>
+                setGenericDraft((p) => ({
+                  ...p,
+                  lowerSleeveMeasureRange: "",
+                  lowerSleeveVertexStart: undefined,
+                  lowerSleeveVertexEnd: undefined,
+                }))
+              }
+              className="rounded bg-slate-200 px-2 py-0.5 text-[9px] font-semibold text-slate-700 hover:bg-slate-300"
+            >
+              下袖区間をクリア
+            </button>
           </div>
 
           <div className="space-y-1.5 rounded-md border border-orange-200/80 bg-orange-50/50 px-2 py-1.5">
@@ -151,6 +202,52 @@ export function FittingControlsPathCatalogPanel({
                 <p className="text-[9px] text-amber-800">形式を確認</p>
               ) : null;
             })()}
+            <label className="flex flex-col gap-0.5 text-[9px] text-slate-600">
+              <span className="font-medium text-slate-700">下袖（任意・ミラー袖と同じ path）</span>
+              <span className="leading-snug">
+                左袖と同じく、反対側の袖口〜エルボ寄りの範囲。未入力のときは左の「下袖」やセンターガイドの自動寄せに従います。
+              </span>
+              <input
+                className="rounded-md border border-slate-200 bg-white px-2 py-1 font-mono text-[10px] outline-none focus:ring-2 focus:ring-orange-300/50"
+                placeholder="例: 44-50 / 空欄"
+                value={genericDraft.lowerSleeveMirrorMeasureRange}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  const t = parseLineRangeInput(raw);
+                  const degenerate = t != null && t[0] === t[1];
+                  setGenericDraft((p) => ({
+                    ...p,
+                    lowerSleeveMirrorMeasureRange: raw,
+                    lowerSleeveMirrorVertexStart: t && !degenerate ? Math.min(t[0], t[1]) : undefined,
+                    lowerSleeveMirrorVertexEnd: t && !degenerate ? Math.max(t[0], t[1]) : undefined,
+                  }));
+                }}
+              />
+            </label>
+            {(() => {
+              const t = parseLineRangeInput(genericDraft.lowerSleeveMirrorMeasureRange.trim());
+              return t && t[0] !== t[1] ? (
+                <p className="font-mono text-[9px] text-slate-700">
+                  → #{Math.min(t[0], t[1])}〜#{Math.max(t[0], t[1])}
+                </p>
+              ) : genericDraft.lowerSleeveMirrorMeasureRange.trim() !== "" && t == null ? (
+                <p className="text-[9px] text-amber-800">形式を確認（8-15）</p>
+              ) : null;
+            })()}
+            <button
+              type="button"
+              onClick={() =>
+                setGenericDraft((p) => ({
+                  ...p,
+                  lowerSleeveMirrorMeasureRange: "",
+                  lowerSleeveMirrorVertexStart: undefined,
+                  lowerSleeveMirrorVertexEnd: undefined,
+                }))
+              }
+              className="rounded bg-slate-200 px-2 py-0.5 text-[9px] font-semibold text-slate-700 hover:bg-slate-300"
+            >
+              ミラー下袖をクリア
+            </button>
             <button
               type="button"
               onClick={() =>

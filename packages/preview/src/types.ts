@@ -1,4 +1,4 @@
-import type { ProductSize } from "@atelier/shared";
+import type { ProductSize } from "@Atelier/shared";
 
 /**
  * 着せ替えパネルに表示するアセットアイテム

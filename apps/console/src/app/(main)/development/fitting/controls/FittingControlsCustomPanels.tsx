@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { CustomGarmentData, SizeMeasure } from "../lib/types";
+import type { CustomGarmentData, JacketSize, ShirtSize, SizeMeasure } from "../lib/types";
 import { cn } from "@/lib/utils";
 import { DevPanelSection } from "./FittingControlsUI";
 import {
@@ -10,6 +10,7 @@ import {
   measureOriginalSleeveCmFromDesignPaths,
   resolveGenericGradingBodyLengthCmReference,
 } from "../generic";
+import { logDevFitPipelineAfterSizePresetChange } from "@/lib/fitting-compute/fittingCanvasDevSizePresetDebug";
 
 /**
  * 初回プリセットで「入力着丈＝ベースライン」になりスケール 1 固定になるのを避ける。
@@ -31,11 +32,14 @@ function seedGradingBaselineLengthCm(
  */
 function seedGradingBaselineSleeveCm(
   pathDs: string[],
+  lm: CustomGarmentData["landmarks"],
   gt: NonNullable<CustomGarmentData["genericSymmetricTop"]>,
   _prevSleeve: number,
-  nextSleeve: number
+  nextSleeve: number,
+  nextSize: SizeMeasure
 ): number {
-  const m = measureOriginalSleeveCmFromDesignPaths(pathDs, gt);
+  /** `bodyPxPerCm` は渡さない（分子・分母とも設計 path 系で整合）。キャンバスオーバーレイ用ではない。 */
+  const m = measureOriginalSleeveCmFromDesignPaths(pathDs, gt, lm, nextSize);
   if (m != null && Number.isFinite(m.cm) && m.cm > 0.5) return m.cm;
   return nextSleeve;
 }
@@ -50,9 +54,17 @@ function parseCmLocal(raw: string): number | undefined {
 export function FittingControlsCustomPanels({
   customGarmentData,
   onCustomGarmentApply,
+  height,
+  weight,
+  shirtSize,
+  jacketSize,
 }: {
   customGarmentData: CustomGarmentData;
   onCustomGarmentApply: (data: CustomGarmentData) => void;
+  height: number;
+  weight: number;
+  shirtSize: ShirtSize;
+  jacketSize: JacketSize;
 }) {
   // サイズプリセット管理
   const [presetLabel, setPresetLabel] = useState("");
@@ -90,7 +102,7 @@ export function FittingControlsCustomPanels({
       length: preset.length,
       sleeve: preset.sleeve,
     };
-    onCustomGarmentApply({
+    const nextData: CustomGarmentData = {
       ...customGarmentData,
       size: nextSize,
       genericSymmetricTop: {
@@ -102,13 +114,24 @@ export function FittingControlsCustomPanels({
           ? {
               gradingBaselineSleeveCm: seedGradingBaselineSleeveCm(
                 customGarmentData.pathDs,
+                customGarmentData.landmarks,
                 gt,
                 prev.sleeve,
-                preset.sleeve
+                preset.sleeve,
+                nextSize
               ),
             }
           : {}),
       },
+    };
+    onCustomGarmentApply(nextData);
+    void logDevFitPipelineAfterSizePresetChange({
+      action: "activatePreset",
+      height,
+      weight,
+      shirtSize,
+      jacketSize,
+      customGarmentData: nextData,
     });
   };
 
@@ -131,7 +154,7 @@ export function FittingControlsCustomPanels({
         !Number.isFinite(gt.gradingBaselineSleeveCm) ||
         gt.gradingBaselineSleeveCm <= 0);
     const nextSize: SizeMeasure = { ...customGarmentData.size, length: len, sleeve: slv };
-    onCustomGarmentApply({
+    const nextData: CustomGarmentData = {
       ...customGarmentData,
       size: nextSize,
       genericSymmetricTop: {
@@ -141,9 +164,27 @@ export function FittingControlsCustomPanels({
           ? { gradingBaselineLengthCm: seedGradingBaselineLengthCm(customGarmentData.pathDs, customGarmentData.landmarks, gt, nextSize) }
           : {}),
         ...(needSlvBaseline && gt != null
-          ? { gradingBaselineSleeveCm: seedGradingBaselineSleeveCm(customGarmentData.pathDs, gt, prev.sleeve, slv) }
+          ? {
+              gradingBaselineSleeveCm: seedGradingBaselineSleeveCm(
+                customGarmentData.pathDs,
+                customGarmentData.landmarks,
+                gt,
+                prev.sleeve,
+                slv,
+                nextSize
+              ),
+            }
           : {}),
       },
+    };
+    onCustomGarmentApply(nextData);
+    void logDevFitPipelineAfterSizePresetChange({
+      action: "addPreset",
+      height,
+      weight,
+      shirtSize,
+      jacketSize,
+      customGarmentData: nextData,
     });
     setPresetLabel("");
     setPresetLength("");

@@ -75,12 +75,12 @@ function LoginForm() {
             <div className="flex items-center gap-2">
               <Image
                 src="/logo.png"
-                alt="Atelier"
+                alt="FIT&LOOK"
                 width={80}
                 height={0}
                 className="h-8 w-auto object-contain"
               />
-              <span className="text-2xl font-semibold">Atelier</span>
+              <span className="text-2xl font-semibold">FIT&LOOK</span>
             </div>
           </div>
 
@@ -91,7 +91,7 @@ function LoginForm() {
               <Input
                 id="email"
                 type="email"
-                placeholder="example@atelier.com"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required

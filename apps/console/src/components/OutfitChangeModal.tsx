@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useProducts } from '@/features/products/useProducts';
-import type { Product } from '@atelier/shared';
+import type { Product } from '@Atelier/shared';
 
 interface OutfitChangeModalProps {
   isOpen: boolean;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import type { Product } from "@atelier/shared";
+import type { Product } from "@Atelier/shared";
 import { Loader2, Trash2 } from "lucide-react";
 import { useProductSelection } from "@/contexts/ProductSelectionContext";
 import { useAuth } from "@/contexts/AuthContext";

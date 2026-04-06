@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Atelier Console",
+  title: "FIT&LOOK Console",
   description: "EC組み込みSaaS管理画面",
 };
 

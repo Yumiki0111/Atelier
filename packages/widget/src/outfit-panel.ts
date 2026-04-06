@@ -1,3 +1,4 @@
+import { WIDGET_LOG_PREFIX } from "./embed-data";
 import { fetchWidgetConfig, type WidgetParams } from "./widget-api";
 import type { WidgetConfig } from "./types";
 import { isDevelopmentMode, getApiBaseUrl } from "./widget-utils";
@@ -43,7 +44,7 @@ export async function showOutfitChangePanel(
   callbacks?: OutfitChangeCallbacks
 ) {
   if (isDevelopmentMode()) {
-    console.log("[Atelier Widget] showOutfitChangePanel called", params);
+    console.log(`${WIDGET_LOG_PREFIX} showOutfitChangePanel called`, params);
   }
   
   const currentProductId = params.productId || params.externalProductId || "";
@@ -51,7 +52,7 @@ export async function showOutfitChangePanel(
   const shopId = params.shopId || "";
   
   if (!publicKey && !shopId) {
-    console.error("[Atelier Widget] publicKey or shopId is required for outfit change panel");
+    console.error(`${WIDGET_LOG_PREFIX} publicKey or shopId is required for outfit change panel`);
     if (isDevelopmentMode()) {
       alert("着せ替えパネルを開くには、publicKeyまたはshopIdが必要です");
     }
@@ -59,17 +60,27 @@ export async function showOutfitChangePanel(
   }
   
   // 試着ビュー領域を取得（パネルと同期して縮小するため）
-  const viewerContainer = container.querySelector('[data-atelier-viewer-container]') as HTMLElement || 
-                          container.querySelector('div[style*="flex: 1"]') as HTMLElement ||
-                          container.firstElementChild as HTMLElement;
-  
+  const viewerContainer =
+    (container.querySelector("[data-fitlook-viewer-container], [data-atelier-viewer-container]") as HTMLElement) ||
+    (container.querySelector('div[style*="flex: 1"]') as HTMLElement) ||
+    (container.firstElementChild as HTMLElement);
+
   // サイズボタンとフローティングボタンを取得
-  const sizeArea = container.querySelector('[data-atelier-size-area]') as HTMLElement;
+  const sizeArea = container.querySelector(
+    "[data-fitlook-size-area], [data-atelier-size-area]"
+  ) as HTMLElement;
   // floatingButtonsはoverlayの子要素として追加されているため、overlayから取得を試みる
   // なければdocument.bodyから取得（後方互換性）
-  const overlay = document.querySelector('[data-atelier-modal-overlay="true"]') as HTMLElement;
-  const floatingButtons = overlay?.querySelector('[data-atelier-floating-buttons]') as HTMLElement ||
-                          document.body.querySelector('[data-atelier-floating-buttons]') as HTMLElement;
+  const overlay = document.querySelector(
+    '[data-fitlook-modal-overlay="true"], [data-atelier-modal-overlay="true"]'
+  ) as HTMLElement;
+  const floatingButtons =
+    (overlay?.querySelector(
+      "[data-fitlook-floating-buttons], [data-atelier-floating-buttons]"
+    ) as HTMLElement) ||
+    (document.body.querySelector(
+      "[data-fitlook-floating-buttons], [data-atelier-floating-buttons]"
+    ) as HTMLElement);
   
   /** パネルを閉じる共通処理 */
   const closePanel = (targetPanel: HTMLElement, animationFrameIdRef?: { current: number | null }, observer?: ResizeObserver) => {
@@ -88,7 +99,9 @@ export async function showOutfitChangePanel(
     if (sizeArea) {
       sizeArea.style.display = "flex";
     }
-    const currentOverlay = document.querySelector('[data-atelier-modal-overlay="true"]') as HTMLElement;
+    const currentOverlay = document.querySelector(
+      '[data-fitlook-modal-overlay="true"], [data-atelier-modal-overlay="true"]'
+    ) as HTMLElement;
     if (floatingButtons && currentOverlay?.isConnected) {
       floatingButtons.style.display = "flex";
     }
@@ -109,7 +122,7 @@ export async function showOutfitChangePanel(
   };
 
   // 既存のパネルがあれば閉じてリスナーも解除
-  const existingPanel = container.querySelector("#atelier-outfit-change-panel");
+  const existingPanel = container.querySelector("#fitlook-outfit-change-panel");
   if (existingPanel) {
     closePanel(existingPanel as HTMLElement, undefined, undefined);
     return;
@@ -117,7 +130,7 @@ export async function showOutfitChangePanel(
   
   // パネルを作成（画面の約10%の高さ）
   const panel = document.createElement("div");
-  panel.id = "atelier-outfit-change-panel";
+  panel.id = "fitlook-outfit-change-panel";
   
   // コンテナの高さを取得して、10%を計算
   const containerRect = container.getBoundingClientRect();
@@ -156,7 +169,7 @@ export async function showOutfitChangePanel(
   
   // 商品リストエリア
   const body = document.createElement("div");
-  body.className = "atelier-outfit-change-panel-body";
+  body.className = "fitlook-outfit-change-panel-body";
   body.style.flex = "1";
   body.style.overflowY = "auto";
   body.style.padding = "0 20px 20px";
@@ -329,17 +342,17 @@ export async function showOutfitChangePanel(
       body.appendChild(emptyDiv);
     } else {
       // Webkit系ブラウザ用のスクロールバースタイル（一度だけ追加）
-      if (!document.getElementById('atelier-outfit-panel-scrollbar-style')) {
+      if (!document.getElementById("fitlook-outfit-panel-scrollbar-style")) {
         const style = document.createElement("style");
-        style.id = 'atelier-outfit-panel-scrollbar-style';
+        style.id = "fitlook-outfit-panel-scrollbar-style";
         style.textContent = `
-          #atelier-outfit-change-panel .atelier-outfit-change-panel-body div::-webkit-scrollbar {
+          #fitlook-outfit-change-panel .fitlook-outfit-change-panel-body div::-webkit-scrollbar {
             height: 4px !important;
           }
-          #atelier-outfit-change-panel .atelier-outfit-change-panel-body div::-webkit-scrollbar-track {
+          #fitlook-outfit-change-panel .fitlook-outfit-change-panel-body div::-webkit-scrollbar-track {
             background: transparent !important;
           }
-          #atelier-outfit-change-panel .atelier-outfit-change-panel-body div::-webkit-scrollbar-thumb {
+          #fitlook-outfit-change-panel .fitlook-outfit-change-panel-body div::-webkit-scrollbar-thumb {
             background: #d1d5db !important;
             border-radius: 2px !important;
           }
@@ -427,7 +440,7 @@ export async function showOutfitChangePanel(
                   productItem.style.pointerEvents = "auto";
                 }
               } catch (error) {
-                console.error("[Atelier Widget] Failed to fetch product config:", error);
+                console.error(`${WIDGET_LOG_PREFIX} Failed to fetch product config:`, error);
                 alert("商品データの取得に失敗しました。");
                 productItem.style.opacity = "1";
                 productItem.style.pointerEvents = "auto";
@@ -501,7 +514,7 @@ export async function showOutfitChangePanel(
                   productImage.appendChild(img);
                 })
                 .catch((error) => {
-                  console.warn("[Atelier Widget] Failed to load product image:", product.thumbnailUrl);
+                  console.warn(`${WIDGET_LOG_PREFIX} Failed to load product image:`, product.thumbnailUrl);
                 });
             }
           }
@@ -547,7 +560,7 @@ export async function showOutfitChangePanel(
     errorDiv.textContent = errorMessage;
     body.appendChild(errorDiv);
     
-    console.error("[Atelier Widget] Failed to load products:", error);
+    console.error(`${WIDGET_LOG_PREFIX} Failed to load products:`, error);
     if (isDevelopmentMode()) {
       alert("着せ替えパネルのエラー: " + errorMessage);
     }

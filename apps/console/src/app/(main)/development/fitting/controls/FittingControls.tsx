@@ -297,6 +297,10 @@ export function FittingControls({
         <FittingControlsCustomPanels
           customGarmentData={customGarmentData}
           onCustomGarmentApply={onCustomGarmentApply}
+          height={height}
+          weight={weight}
+          shirtSize={shirtSize}
+          jacketSize={jacketSize}
         />
       ) : null}
 

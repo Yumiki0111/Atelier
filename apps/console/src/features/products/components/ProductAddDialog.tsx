@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useAddProduct } from "../useProducts";
-import { createProductSchema, productCategorySchema, type ProductCategory } from "@atelier/shared";
+import { createProductSchema, productCategorySchema, type ProductCategory } from "@Atelier/shared";
 import { Plus, Upload, X } from "lucide-react";
 import { z } from "zod";
 

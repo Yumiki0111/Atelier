@@ -1,5 +1,5 @@
 import type { PreviewPanelOptions, PreviewPanelInstance, OutfitAssetsData, OutfitAssetItem } from "./types";
-import type { ProductSize } from "@atelier/shared";
+import type { ProductSize } from "@Atelier/shared";
 import { init3DViewer } from "./viewer";
 import type { ViewerInstance } from "./viewer";
 import { getBackgroundImageUrl } from "./viewer-container";
@@ -8,13 +8,13 @@ import { renderCatTabs, renderThumbs, renderLeftPanel, PREVIEW_SIZES, OUTFIT_CAT
 
 // ─── CSS injection ─────────────────────────────────────────────────────────────
 function injectStyles() {
-  if (document.getElementById("atelier-preview-styles")) return;
+  if (document.getElementById("fitlook-preview-styles")) return;
   const s = document.createElement("style");
-  s.id = "atelier-preview-styles";
+  s.id = "fitlook-preview-styles";
   s.textContent = `
-    [data-atelier-preview-thumbs]::-webkit-scrollbar { display: none; }
-    [data-atelier-preview-thumbs] { scrollbar-width: none; -ms-overflow-style: none; }
-    [data-atelier-preview-cattabs]::-webkit-scrollbar { display: none; }
+    [data-fitlook-preview-thumbs]::-webkit-scrollbar { display: none; }
+    [data-fitlook-preview-thumbs] { scrollbar-width: none; -ms-overflow-style: none; }
+    [data-fitlook-preview-cattabs]::-webkit-scrollbar { display: none; }
   `;
   document.head.appendChild(s);
 }
@@ -210,7 +210,7 @@ export function initPreviewPanel(
 
   // Thumbnails row
   const thumbsRow = document.createElement("div");
-  thumbsRow.setAttribute("data-atelier-preview-thumbs", "true");
+  thumbsRow.setAttribute("data-fitlook-preview-thumbs", "true");
   thumbsRow.style.cssText = `
     display: flex;
     flex-direction: row;
@@ -224,7 +224,7 @@ export function initPreviewPanel(
 
   // Category tabs
   const catTabs = document.createElement("div");
-  catTabs.setAttribute("data-atelier-preview-cattabs", "true");
+  catTabs.setAttribute("data-fitlook-preview-cattabs", "true");
   catTabs.style.cssText = `
     display: flex;
     flex-direction: row;

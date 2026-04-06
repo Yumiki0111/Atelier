@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAuthenticatedUser } from "@/lib/auth/middleware";
-import { updateProductSchema } from "@atelier/shared";
+import { updateProductSchema } from "@Atelier/shared";
 import { ZodError } from "zod";
 import { stripGarmentSpecForStorage } from "@/lib/products/stripGarmentSpecForStorage";
 import { validateGarmentSpecForProduction } from "@/lib/products/validateGarmentSpecForProduction";

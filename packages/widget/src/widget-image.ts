@@ -1,3 +1,4 @@
+import { WIDGET_LOG_PREFIX } from "./embed-data";
 import type { WidgetParams } from "./widget-api";
 import { fetchWidgetConfig } from "./widget-api";
 import { isDevelopmentMode } from "./widget-utils";
@@ -39,7 +40,7 @@ export async function loadProductImage(
     }
   } catch (error) {
     if (isDevelopmentMode()) {
-      console.warn("[Atelier Widget] Failed to load product image:", error);
+      console.warn(`${WIDGET_LOG_PREFIX} Failed to load product image:`, error);
     }
     imageContainer.style.display = "none";
   }

@@ -43,12 +43,12 @@ export function Sidebar() {
           <div className="flex items-center gap-2">
             <Image
               src="/logo.png"
-              alt="Atelier"
+              alt="FIT&LOOK"
               width={80}
               height={0}
               className="h-6 w-auto object-contain"
             />
-            <span className="text-xl font-semibold">Atelier</span>
+            <span className="text-xl font-semibold">FIT&LOOK</span>
           </div>
         )}
         <button

@@ -1,7 +1,7 @@
 # 管理画面プレビュー vs ウィジェットプレビューの比較
 
 ## 同じ点
-- 両方とも `@atelier/preview` パッケージの `initPreviewPanel` を使用
+- 両方とも `@Atelier/preview` パッケージの `initPreviewPanel` を使用
 - 同じ `initialHeight: 170`, `minHeight: 150`, `maxHeight: 190`
 - 同じ `availableSizes: ["S", "M", "L", "XL"]`
 - 同じベースモデル `modelUrl: "/3d/clo_model_men.glb"` (今修正済み)

@@ -25,27 +25,27 @@ npm run dev:widget
 
 **重要**: デモページを使用する前に、実際の値を設定する必要があります。
 
-1. **Atelier管理画面で以下を確認**:
+1. **FIT&LOOK 管理画面で以下を確認**:
    - Widget KeyのPublic Key（設定ページ `/settings` で確認）
    - 商品の外部商品ID（`external_product_id`）- 商品データベースで確認
 
 2. **デモページのHTMLファイルを編集**:
    - `product-page-2.html` と `product-page-4.html` を開く
-   - `data-atelier-public-key` が正しく設定されているか確認
-   - `data-atelier-external-product-id` が実際の `external_product_id` と一致しているか確認
+   - `data-fitlook-public-key` が正しく設定されているか確認
+   - `data-fitlook-external-product-id` が実際の `external_product_id` と一致しているか確認
 
 **例**:
 ```html
 <!-- 変更前 -->
 <div
-  data-atelier-public-key="YOUR_PUBLIC_KEY_HERE"
-  data-atelier-external-product-id="PRODUCT_1">
+  data-fitlook-public-key="YOUR_PUBLIC_KEY_HERE"
+  data-fitlook-external-product-id="PRODUCT_1">
 </div>
 
 <!-- 変更後（実際の値） -->
 <div
-  data-atelier-public-key="pub_live_xxxxxxxxxxxxx"
-  data-atelier-external-product-id="denim-jacket-001">
+  data-fitlook-public-key="pub_live_xxxxxxxxxxxxx"
+  data-fitlook-external-product-id="denim-jacket-001">
 </div>
 ```
 
@@ -55,9 +55,9 @@ npm run dev:widget
 
 - **商品一覧**: `http://localhost:5174/demo/index.html`
 - **商品ページ2（ダブルジャケット）**: `http://localhost:5174/demo/product-page-2.html`
-  - 外部商品ID指定: `data-atelier-external-product-id="e489b59b-e06e-4e3f-b403-823c85efd6f7"`
+  - 外部商品ID指定: `data-fitlook-external-product-id="e489b59b-e06e-4e3f-b403-823c85efd6f7"`
 - **商品ページ4（ウールコート）**: `http://localhost:5174/demo/product-page-4.html`
-  - 外部商品ID指定: `data-atelier-external-product-id="a6b494eb-a68a-45af-b868-9eb9ac03add7"`
+  - 外部商品ID指定: `data-fitlook-external-product-id="a6b494eb-a68a-45af-b868-9eb9ac03add7"`
 
 ### 3. Widgetの動作確認
 
@@ -90,8 +90,8 @@ npm run dev:widget
    ```html
    <div class="product-image">
      <div
-       data-atelier-shop-id="default_shop"
-       data-atelier-product-id="1"
+       data-fitlook-shop-id="default_shop"
+       data-fitlook-product-id="1"
        style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
      </div>
    </div>
@@ -103,8 +103,8 @@ npm run dev:widget
      <h3>3D試着</h3>
      <div class="widget-container">
        <div
-         data-atelier-shop-id="default_shop"
-         data-atelier-product-id="1">
+         data-fitlook-shop-id="default_shop"
+         data-fitlook-product-id="1">
        </div>
      </div>
    </div>
@@ -112,12 +112,12 @@ npm run dev:widget
 
 ### 商品識別子の指定方法
 
-各商品ページで `data-atelier-external-product-id` を使用してwidgetを埋め込んでいます：
+各商品ページで `data-fitlook-external-product-id` を使用してwidgetを埋め込んでいます：
 
-1. **product-page-2.html**: `data-atelier-external-product-id="e489b59b-e06e-4e3f-b403-823c85efd6f7"` - ダブルジャケットの外部商品ID
-2. **product-page-4.html**: `data-atelier-external-product-id="a6b494eb-a68a-45af-b868-9eb9ac03add7"` - ウールコートの外部商品ID
+1. **product-page-2.html**: `data-fitlook-external-product-id="e489b59b-e06e-4e3f-b403-823c85efd6f7"` - ダブルジャケットの外部商品ID
+2. **product-page-4.html**: `data-fitlook-external-product-id="a6b494eb-a68a-45af-b868-9eb9ac03add7"` - ウールコートの外部商品ID
 
-**注意**: `external_product_id` は、Atelier管理画面で登録した商品の `external_product_id` と一致している必要があります。
+**注意**: `external_product_id` は、FIT&LOOK 管理画面で登録した商品の `external_product_id` と一致している必要があります。
 
 ### スクリプトの読み込み
 
@@ -158,5 +158,5 @@ npm run dev:widget
 
 - 開発環境では、APIエラーが発生してもモックデータが使用されます
 - 実際の商品データは、consoleサーバーで管理されているデータベースから取得されます
-- `external_product_id` は、Atelier管理画面で登録した商品の `external_product_id` と一致している必要があります
+- `external_product_id` は、FIT&LOOK 管理画面で登録した商品の `external_product_id` と一致している必要があります
 - デモページは、データベースに実際に登録されている商品のみを含んでいます

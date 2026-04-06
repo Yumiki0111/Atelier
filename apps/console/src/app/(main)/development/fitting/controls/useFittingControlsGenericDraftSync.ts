@@ -18,11 +18,7 @@ import {
   parseSleeveMeasureVertexInput,
   parseSleeveMeasureVertexList,
 } from "../generic";
-import {
-  emptyGenericDraft,
-  type GenericDraft,
-  isLineTupleStored,
-} from "./FittingControlsGenericUtils";
+import { emptyGenericDraft, type GenericDraft, isLineTupleStored } from "./FittingControlsGenericUtils";
 import {
   coalesceMeasureDraftFromGt,
   measureVertexRangeStr,
@@ -119,6 +115,11 @@ export function useFittingControlsGenericDraftSync(params: {
           ? gt.sleeveMirrorMeasureVertexChain.join(",")
           : measureVertexRangeStr(gt.sleeveMirrorMeasureVertexStart, gt.sleeveMirrorMeasureVertexEnd);
       const lengthStr = measureVertexRangeStr(gt.lengthMeasureVertexStart, gt.lengthMeasureVertexEnd);
+      const lowerSleeveStr = measureVertexRangeStr(gt.lowerSleeveVertexStart, gt.lowerSleeveVertexEnd);
+      const lowerSleeveMirrorStr = measureVertexRangeStr(
+        gt.lowerSleeveMirrorVertexStart,
+        gt.lowerSleeveMirrorVertexEnd
+      );
       const d = genericDraftRef.current;
       const forceMeasureFromGt = presetBumped || pathDsChanged;
       const skipMeasureCoalesce =
@@ -165,6 +166,34 @@ export function useFittingControlsGenericDraftSync(params: {
             forceMeasureFromGt,
             parseLineRangeInput,
           );
+      const lowerSleeveCoalesced = skipMeasureCoalesce
+        ? {
+            range: d.lowerSleeveMeasureRange,
+            vs: d.lowerSleeveVertexStart,
+            ve: d.lowerSleeveVertexEnd,
+          }
+        : coalesceMeasureDraftFromGt(
+            lowerSleeveStr,
+            d.lowerSleeveMeasureRange,
+            d.lowerSleeveVertexStart,
+            d.lowerSleeveVertexEnd,
+            forceMeasureFromGt,
+            parseLineRangeInput,
+          );
+      const lowerSleeveMirrorCoalesced = skipMeasureCoalesce
+        ? {
+            range: d.lowerSleeveMirrorMeasureRange,
+            vs: d.lowerSleeveMirrorVertexStart,
+            ve: d.lowerSleeveMirrorVertexEnd,
+          }
+        : coalesceMeasureDraftFromGt(
+            lowerSleeveMirrorStr,
+            d.lowerSleeveMirrorMeasureRange,
+            d.lowerSleeveMirrorVertexStart,
+            d.lowerSleeveMirrorVertexEnd,
+            forceMeasureFromGt,
+            parseLineRangeInput,
+          );
       setGenericDraft({
         seamOuterLeft: formatLineRangeInput(gt.seamOuterLeft),
         seamOuterRight: formatLineRangeInput(gt.seamOuterRight),
@@ -173,12 +202,18 @@ export function useFittingControlsGenericDraftSync(params: {
         sleeveMeasureRange: sleeveCoalesced.range,
         sleeveMirrorMeasureRange: sleeveMirrorCoalesced.range,
         lengthMeasureRange: lengthCoalesced.range,
+        lowerSleeveMeasureRange: lowerSleeveCoalesced.range,
+        lowerSleeveMirrorMeasureRange: lowerSleeveMirrorCoalesced.range,
         sleeveMeasureVertexStart: sleeveCoalesced.vs,
         sleeveMeasureVertexEnd: sleeveCoalesced.ve,
         sleeveMirrorMeasureVertexStart: sleeveMirrorCoalesced.vs,
         sleeveMirrorMeasureVertexEnd: sleeveMirrorCoalesced.ve,
         lengthMeasureVertexStart: lengthCoalesced.vs,
         lengthMeasureVertexEnd: lengthCoalesced.ve,
+        lowerSleeveVertexStart: lowerSleeveCoalesced.vs,
+        lowerSleeveVertexEnd: lowerSleeveCoalesced.ve,
+        lowerSleeveMirrorVertexStart: lowerSleeveMirrorCoalesced.vs,
+        lowerSleeveMirrorVertexEnd: lowerSleeveMirrorCoalesced.ve,
       });
       measureSyncPresetKeyRef.current = presetSizeKey;
       measureDraftSyncedFromParentRef.current = true;
@@ -211,6 +246,11 @@ export function useFittingControlsGenericDraftSync(params: {
     ];
     const nextSn = nextS ? norm(nextS) : null;
     const nextLn = nextL ? norm(nextL) : null;
+    const lowerRaw = d.lowerSleeveMeasureRange.trim();
+    const nextLowerL = parseLineRangeInput(lowerRaw);
+    const lowerIncomplete = lowerRaw !== "" && nextLowerL == null;
+    const lowerDegenerate = nextLowerL != null && nextLowerL[0] === nextLowerL[1];
+    const nextLowerN = nextLowerL && !lowerDegenerate ? norm(nextLowerL) : null;
     /** 単一 # のみ（例: 入力途中の「8」）は区間未確定として gt に載せない（再計算で服が跳ぶのを防ぐ） */
     const sleeveDegenerate = nextSn != null && nextSn[0] === nextSn[1];
     const lengthDegenerate = nextLn != null && nextLn[0] === nextLn[1];
@@ -231,6 +271,14 @@ export function useFittingControlsGenericDraftSync(params: {
     const curL =
       gt0.lengthMeasureVertexStart != null && gt0.lengthMeasureVertexEnd != null
         ? norm([gt0.lengthMeasureVertexStart, gt0.lengthMeasureVertexEnd])
+        : null;
+    const curLower =
+      gt0.lowerSleeveVertexStart != null && gt0.lowerSleeveVertexEnd != null
+        ? norm([gt0.lowerSleeveVertexStart, gt0.lowerSleeveVertexEnd])
+        : null;
+    const curLowerMirror =
+      gt0.lowerSleeveMirrorVertexStart != null && gt0.lowerSleeveMirrorVertexEnd != null
+        ? norm([gt0.lowerSleeveMirrorVertexStart, gt0.lowerSleeveMirrorVertexEnd])
         : null;
     const same = (a: [number, number] | null, b: [number, number] | null) =>
       (a == null && b == null) || (a != null && b != null && a[0] === b[0] && a[1] === b[1]);
@@ -271,6 +319,38 @@ export function useFittingControlsGenericDraftSync(params: {
       } else if (!same(nextLn, curL)) {
         merged.lengthMeasureVertexStart = nextLn[0];
         merged.lengthMeasureVertexEnd = nextLn[1];
+        touched = true;
+      }
+    }
+    if (!lowerIncomplete && !lowerDegenerate) {
+      if (nextLowerN == null) {
+        if (curLower != null && synced) {
+          delete merged.lowerSleeveVertexStart;
+          delete merged.lowerSleeveVertexEnd;
+          touched = true;
+        }
+      } else if (!same(nextLowerN, curLower)) {
+        merged.lowerSleeveVertexStart = nextLowerN[0];
+        merged.lowerSleeveVertexEnd = nextLowerN[1];
+        touched = true;
+      }
+    }
+    const lowerMirrorRaw = d.lowerSleeveMirrorMeasureRange.trim();
+    const nextLowerMirrorL = parseLineRangeInput(lowerMirrorRaw);
+    const lowerMirrorIncomplete = lowerMirrorRaw !== "" && nextLowerMirrorL == null;
+    const lowerMirrorDegenerate = nextLowerMirrorL != null && nextLowerMirrorL[0] === nextLowerMirrorL[1];
+    const nextLowerMirrorN =
+      nextLowerMirrorL && !lowerMirrorDegenerate ? norm(nextLowerMirrorL) : null;
+    if (!lowerMirrorIncomplete && !lowerMirrorDegenerate) {
+      if (nextLowerMirrorN == null) {
+        if (curLowerMirror != null && synced) {
+          delete merged.lowerSleeveMirrorVertexStart;
+          delete merged.lowerSleeveMirrorVertexEnd;
+          touched = true;
+        }
+      } else if (!same(nextLowerMirrorN, curLowerMirror)) {
+        merged.lowerSleeveMirrorVertexStart = nextLowerMirrorN[0];
+        merged.lowerSleeveMirrorVertexEnd = nextLowerMirrorN[1];
         touched = true;
       }
     }
@@ -356,6 +436,8 @@ export function useFittingControlsGenericDraftSync(params: {
     genericDraft.sleeveMeasureRange,
     genericDraft.sleeveMirrorMeasureRange,
     genericDraft.lengthMeasureRange,
+    genericDraft.lowerSleeveMeasureRange,
+    genericDraft.lowerSleeveMirrorMeasureRange,
     commitMeasureVertexDraftToParent,
   ]);
 
@@ -413,6 +495,16 @@ export function useFittingControlsGenericDraftSync(params: {
     if (lm0 != null && lm1 != null && Number.isFinite(lm0) && Number.isFinite(lm1)) {
       next.lengthMeasure = [Math.min(lm0, lm1), Math.max(lm0, lm1)];
     }
+    const lw0 = genericDraft.lowerSleeveVertexStart;
+    const lw1 = genericDraft.lowerSleeveVertexEnd;
+    if (lw0 != null && lw1 != null && Number.isFinite(lw0) && Number.isFinite(lw1) && lw0 !== lw1) {
+      next.lowerSleeve = [Math.min(lw0, lw1), Math.max(lw0, lw1)];
+    }
+    const lwm0 = genericDraft.lowerSleeveMirrorVertexStart;
+    const lwm1 = genericDraft.lowerSleeveMirrorVertexEnd;
+    if (lwm0 != null && lwm1 != null && Number.isFinite(lwm0) && Number.isFinite(lwm1) && lwm0 !== lwm1) {
+      next.lowerSleeveMirror = [Math.min(lwm0, lwm1), Math.max(lwm0, lwm1)];
+    }
     onGenericVertexPlotHighlightChange(next);
   }, [
     isGenericTopActive,
@@ -421,6 +513,10 @@ export function useFittingControlsGenericDraftSync(params: {
     genericDraft.sleeveMeasureVertexEnd,
     genericDraft.lengthMeasureVertexStart,
     genericDraft.lengthMeasureVertexEnd,
+    genericDraft.lowerSleeveVertexStart,
+    genericDraft.lowerSleeveVertexEnd,
+    genericDraft.lowerSleeveMirrorVertexStart,
+    genericDraft.lowerSleeveMirrorVertexEnd,
     onGenericVertexPlotHighlightChange,
   ]);
 

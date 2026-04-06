@@ -1,3 +1,5 @@
+import { readApiUrlFromDocument } from "./embed-data";
+
 /** 開発ポートのセット（Vite, Next.js等） */
 const DEV_PORTS = new Set(["3000", "3001", "5173", "5174"]);
 
@@ -23,8 +25,8 @@ export function getApiBaseUrl(): string {
     return process.env.API_BASE_URL;
   }
   
-  // 2. data-atelier-api-url属性から取得（ページごとに設定可能）
-  const apiUrlAttr = document.querySelector('[data-atelier-api-url]')?.getAttribute('data-atelier-api-url');
+  // 2. data-fitlook-api-url（推奨）または data-atelier-api-url から取得
+  const apiUrlAttr = readApiUrlFromDocument();
   if (apiUrlAttr) {
     return apiUrlAttr;
   }
