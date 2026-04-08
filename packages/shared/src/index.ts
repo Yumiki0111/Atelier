@@ -5,3 +5,5 @@ export * from "./types/shop";
 // Schemas
 export * from "./schemas/product.schema";
 export * from "./schemas/shop.schema";
+
+export * from "./previewFit";

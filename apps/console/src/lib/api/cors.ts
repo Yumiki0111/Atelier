@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { isWidgetAllowedHost } from "@/lib/widget-allowed-domains";
 
 /**
  * CORSヘッダーを設定するヘルパー関数（公開API用）
@@ -65,13 +66,7 @@ export async function validatePublicKeyAndDomain(
     const host = url.host;
     const allowedDomains: string[] = widgetKey.allowed_domains || [];
 
-    const isAllowed = allowedDomains.some((domain) => {
-      // 完全一致
-      if (host === domain) return true;
-      // サブドメイン許可
-      if (host.endsWith(`.${domain}`)) return true;
-      return false;
-    });
+    const isAllowed = isWidgetAllowedHost(host, allowedDomains);
 
     if (!isAllowed) {
       const response = NextResponse.json(

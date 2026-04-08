@@ -7,6 +7,9 @@ const DRAW_MS = 1800;
 const FILL_START = 1600;
 const FILL_MS = 600;
 
+/** ストローク描画〜塗り完了まで（`tick` が止まるまで）。スプラッシュ後に本画面を開く待ち時間に使う */
+export const FITLOOK_LOGO_SPLASH_DURATION_MS = DRAW_MS + FILL_MS;
+
 function ease(t: number): number {
   return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
 }

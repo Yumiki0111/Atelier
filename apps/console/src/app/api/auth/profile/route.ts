@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     console.log("[profile API] Fetching user data from database...");
     const { data: userData, error: userError } = await supabaseAdmin
       .from("profiles")
-      .select("name, email")
+      .select("name, email, preview_fit_height_cm, preview_fit_body_val")
       .eq("id", auth.userId)
       .single();
 
@@ -53,6 +53,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       name: userData.name || "",
       email: userData.email || "",
+      preview_fit_height_cm: userData.preview_fit_height_cm ?? null,
+      preview_fit_body_val: userData.preview_fit_body_val ?? null,
     });
   } catch (error) {
     console.error("[profile API] Error in GET /api/auth/profile:", error);
@@ -82,7 +84,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, email } = body;
+    const { name, email, preview_fit_height_cm, preview_fit_body_val } = body;
 
     // バリデーション
     if (name !== undefined && typeof name !== "string") {
@@ -99,6 +101,28 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    if (
+      preview_fit_height_cm !== undefined &&
+      preview_fit_height_cm !== null &&
+      (typeof preview_fit_height_cm !== "number" || !Number.isFinite(preview_fit_height_cm))
+    ) {
+      return NextResponse.json(
+        { error: "Invalid preview_fit_height_cm" },
+        { status: 400 }
+      );
+    }
+
+    if (
+      preview_fit_body_val !== undefined &&
+      preview_fit_body_val !== null &&
+      (typeof preview_fit_body_val !== "number" || !Number.isFinite(preview_fit_body_val))
+    ) {
+      return NextResponse.json(
+        { error: "Invalid preview_fit_body_val" },
+        { status: 400 }
+      );
+    }
+
     // メールアドレスの形式チェック
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json(
@@ -107,9 +131,31 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const updateData: Record<string, string> = {};
+    const updateData: Record<string, string | number> = {};
     if (name !== undefined) updateData.name = name;
     if (email !== undefined) updateData.email = email;
+
+    if (preview_fit_height_cm !== undefined && preview_fit_height_cm !== null) {
+      const h = Math.round(preview_fit_height_cm);
+      if (h < 150 || h > 195) {
+        return NextResponse.json(
+          { error: "preview_fit_height_cm must be between 150 and 195" },
+          { status: 400 }
+        );
+      }
+      updateData.preview_fit_height_cm = h;
+    }
+
+    if (preview_fit_body_val !== undefined && preview_fit_body_val !== null) {
+      const b = Math.round(preview_fit_body_val);
+      if (b < 0 || b > 100) {
+        return NextResponse.json(
+          { error: "preview_fit_body_val must be between 0 and 100" },
+          { status: 400 }
+        );
+      }
+      updateData.preview_fit_body_val = b;
+    }
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
@@ -123,7 +169,7 @@ export async function PATCH(request: NextRequest) {
       .from("profiles")
       .update(updateData)
       .eq("id", auth.userId)
-      .select("name, email")
+      .select("name, email, preview_fit_height_cm, preview_fit_body_val")
       .single();
 
     if (userError) {
@@ -170,6 +216,8 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({
       name: userData.name || "",
       email: userData.email || "",
+      preview_fit_height_cm: userData.preview_fit_height_cm ?? null,
+      preview_fit_body_val: userData.preview_fit_body_val ?? null,
     });
   } catch (error) {
     console.error("Error in PATCH /api/auth/profile:", error);

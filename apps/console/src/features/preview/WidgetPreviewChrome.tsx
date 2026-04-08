@@ -1,13 +1,36 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { createContext, useContext, useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ArrowLeft, ShoppingCart } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export const PREVIEW_ACCENT = "#3d3835";
 
 /** 試着プレビュー全体の下地（描画キャンパス・ヘッダー下・フォン画面内を同じ色に） */
 export const PREVIEW_SURFACE_BG = "#fafafa";
+
+/** `default` = コンソールのプレビュー（コンパクト）。`embed` = ウィジェット iframe 用（タップしやすい） */
+export type PreviewChromeUiScale = "default" | "embed";
+
+const PreviewChromeScaleContext = createContext<PreviewChromeUiScale>("default");
+
+export function PreviewChromeScaleProvider({
+  value,
+  children,
+}: {
+  value: PreviewChromeUiScale;
+  children: ReactNode;
+}) {
+  return (
+    <PreviewChromeScaleContext.Provider value={value}>{children}</PreviewChromeScaleContext.Provider>
+  );
+}
+
+function usePreviewChromeScale(): PreviewChromeUiScale {
+  return useContext(PreviewChromeScaleContext);
+}
 
 /** 上部「商品に戻る」（試着メイン・体型シート共通） */
 export function PreviewBackRow({
@@ -17,14 +40,25 @@ export function PreviewBackRow({
   onClick: () => void;
   label?: string;
 }) {
+  const scale = usePreviewChromeScale();
+  const isEmbed = scale === "embed";
   return (
     <div className="shrink-0 px-3 pb-1 pt-[max(10px,env(safe-area-inset-top))]">
       <button
         type="button"
         onClick={onClick}
-        className="flex cursor-pointer items-center gap-1 border-none bg-transparent py-1.5 pl-0 pr-1 text-[12px] text-[#111]"
+        className={cn(
+          "flex cursor-pointer items-center border-none bg-transparent pl-0 pr-1 text-[#111]",
+          isEmbed
+            ? "min-h-[44px] gap-1.5 py-2 text-[14px]"
+            : "gap-1 py-1.5 text-[12px]"
+        )}
       >
-        <ArrowLeft className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
+        <ArrowLeft
+          className={cn("shrink-0", isEmbed ? "h-[18px] w-[18px]" : "h-3.5 w-3.5")}
+          strokeWidth={isEmbed ? 1.75 : 1.5}
+          aria-hidden
+        />
         {label}
       </button>
     </div>
@@ -43,25 +77,54 @@ export function PreviewProductRow({
   thumbnailUrl?: string | null;
   rightSlot?: ReactNode;
 }) {
+  const scale = usePreviewChromeScale();
+  const isEmbed = scale === "embed";
   return (
-    <div className="flex shrink-0 flex-row items-start justify-between gap-1.5 px-3 pb-2 pt-0.5">
-      <div className="flex min-w-0 flex-1 flex-row items-start gap-1.5">
+    <div
+      className={cn(
+        "flex shrink-0 flex-row items-start justify-between px-3 pb-2 pt-0.5",
+        isEmbed ? "gap-2" : "gap-1.5"
+      )}
+    >
+      <div
+        className={cn(
+          "flex min-w-0 flex-1 flex-row items-start",
+          isEmbed ? "gap-2" : "gap-1.5"
+        )}
+      >
         <div
-          className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-[#e5e7eb] bg-[#f3f4f6]"
+          className={cn(
+            "shrink-0 overflow-hidden rounded-full border border-[#e5e7eb] bg-[#f3f4f6]",
+            isEmbed ? "h-10 w-10" : "h-8 w-8"
+          )}
           style={{ borderRadius: "50%" }}
         >
           {thumbnailUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={thumbnailUrl} alt="" className="h-full w-full object-cover" />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-[7px] text-[#9ca3af]">
+            <div
+              className={cn(
+                "flex h-full w-full items-center justify-center text-[#9ca3af]",
+                isEmbed ? "text-[9px]" : "text-[7px]"
+              )}
+            >
               IMG
             </div>
           )}
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <div className="break-words text-[9px] font-normal leading-tight text-[#111]">{productName}</div>
-          <div className="text-[8px] font-normal text-[#111]">{priceDisplay}</div>
+          <div
+            className={cn(
+              "break-words font-normal text-[#111]",
+              isEmbed ? "text-[11px] leading-snug" : "text-[9px] leading-tight"
+            )}
+          >
+            {productName}
+          </div>
+          <div className={cn("font-normal text-[#111]", isEmbed ? "text-[10px]" : "text-[8px]")}>
+            {priceDisplay}
+          </div>
         </div>
       </div>
       {rightSlot ?? null}
@@ -70,19 +133,32 @@ export function PreviewProductRow({
 }
 
 export function PreviewBodyChangeButton({ onClick }: { onClick: () => void }) {
+  const scale = usePreviewChromeScale();
+  const isEmbed = scale === "embed";
+  const imgPx = isEmbed ? 16 : 12;
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex h-8 shrink-0 cursor-pointer items-center gap-[3px] whitespace-nowrap rounded-full border border-[#111] bg-white px-[7px] py-0 text-[9px] font-semibold leading-none text-[#111]"
+      className={cn(
+        "flex shrink-0 cursor-pointer items-center whitespace-nowrap rounded-full border border-[#111] bg-white font-semibold text-[#111]",
+        isEmbed
+          ? "min-h-[40px] gap-1 px-2.5 py-1.5 text-[11px] leading-tight"
+          : "h-8 gap-[3px] px-[7px] py-0 text-[9px] leading-none"
+      )}
     >
-      <span className="flex h-3 w-3 shrink-0 items-center justify-center">
+      <span
+        className={cn(
+          "flex shrink-0 items-center justify-center",
+          isEmbed ? "h-4 w-4" : "h-3 w-3"
+        )}
+      >
         <Image
           src="/human-logo.png"
           alt=""
-          width={12}
-          height={12}
-          className="h-3 w-3 shrink-0 object-contain"
+          width={imgPx}
+          height={imgPx}
+          className={cn("shrink-0 object-contain", isEmbed ? "h-4 w-4" : "h-3 w-3")}
           aria-hidden
         />
       </span>
@@ -104,15 +180,25 @@ export function PreviewColorSwatchRow({
   /** 選択枠・アクセント（未指定時は `PREVIEW_ACCENT`） */
   accentColor?: string;
 }) {
+  const scale = usePreviewChromeScale();
+  const isEmbed = scale === "embed";
   return (
-    <div className="flex shrink-0 flex-row items-center gap-2.5 px-3.5 pb-3.5">
+    <div
+      className={cn(
+        "flex shrink-0 flex-row items-center px-3.5 pb-3.5",
+        isEmbed ? "gap-3" : "gap-2.5"
+      )}
+    >
       {swatches.map((sw) => (
         <button
           key={sw.id}
           type="button"
           aria-label={sw.label || sw.id}
           onClick={() => onSelect(sw.id)}
-          className="h-7 w-7 shrink-0 cursor-pointer rounded-full p-0"
+          className={cn(
+            "shrink-0 cursor-pointer rounded-full p-0",
+            isEmbed ? "h-9 w-9" : "h-7 w-7"
+          )}
           style={{
             background: sw.hex,
             border:
@@ -149,35 +235,52 @@ export function PreviewViewerShell({
 
 const WINDOW = 3;
 
-/** サイズカルーセル（試着メインのみ） */
+/** サイズカルーセル（試着メインのみ）。‹› は表示ウィンドウではなく「前後のサイズ」に切り替える。 */
 export function PreviewSizeCarousel({
   sizeKeys,
   currentSize,
   windowStart,
-  onWindowStartChange,
   onSelectSize,
   accentColor = PREVIEW_ACCENT,
 }: {
   sizeKeys: string[];
   currentSize: string;
+  /** `currentSize` が見えるよう `sizeKeys` 上で切り出す開始インデックス（親で currentSize から算出） */
   windowStart: number;
-  onWindowStartChange: (next: number) => void;
   onSelectSize: (size: string) => void;
   accentColor?: string;
 }) {
+  const scale = usePreviewChromeScale();
+  const isEmbed = scale === "embed";
   const slice = sizeKeys.slice(windowStart, windowStart + WINDOW);
+  const idx = sizeKeys.indexOf(currentSize);
+  const canPrev = idx > 0;
+  const canNext = idx >= 0 && idx < sizeKeys.length - 1;
+
   return (
-    <div className="flex shrink-0 flex-col gap-1.5 px-3 pb-1.5 pt-2">
-      <div className="flex flex-row items-center justify-center gap-1.5">
+    <div
+      className={cn(
+        "flex shrink-0 flex-col px-3",
+        isEmbed ? "gap-2 pb-0.5 pt-2" : "gap-1.5 pb-0 pt-2"
+      )}
+    >
+      <div className={cn("flex flex-row items-center justify-center", isEmbed ? "gap-2.5" : "gap-2")}>
         <button
           type="button"
-          className="h-7 w-7 border-none bg-transparent text-[17px] leading-none text-[#111] disabled:pointer-events-none disabled:opacity-35"
-          disabled={windowStart <= 0}
-          onClick={() => onWindowStartChange(Math.max(0, windowStart - 1))}
+          aria-label="前のサイズ"
+          className={cn(
+            "flex shrink-0 items-center justify-center rounded-full border-none bg-transparent leading-none text-[#111] disabled:pointer-events-none disabled:opacity-35",
+            isEmbed ? "h-20 w-20 text-[40px]" : "h-16 w-16 text-[32px]"
+          )}
+          disabled={!canPrev}
+          onClick={() => {
+            if (!canPrev || idx <= 0) return;
+            onSelectSize(sizeKeys[idx - 1]!);
+          }}
         >
           ‹
         </button>
-        <div className="flex flex-row items-center justify-center gap-1.5">
+        <div className={cn("flex flex-row items-center justify-center", isEmbed ? "gap-2.5" : "gap-2")}>
           {slice.map((sz) => {
             const isSel = sz === currentSize;
             return (
@@ -185,7 +288,12 @@ export function PreviewSizeCarousel({
                 key={sz}
                 type="button"
                 onClick={() => onSelectSize(sz)}
-                className="h-[34px] w-[34px] shrink-0 cursor-pointer rounded-full text-[13px] font-semibold"
+                className={cn(
+                  "shrink-0 cursor-pointer rounded-full font-semibold",
+                  isEmbed
+                    ? "h-12 min-w-[48px] px-2.5 text-[16px]"
+                    : "h-9 min-w-[38px] px-1.5 text-[13px]"
+                )}
                 style={
                   isSel
                     ? { background: accentColor, color: "#fff", border: "none" }
@@ -199,11 +307,16 @@ export function PreviewSizeCarousel({
         </div>
         <button
           type="button"
-          className="h-7 w-7 border-none bg-transparent text-[17px] leading-none text-[#111] disabled:pointer-events-none disabled:opacity-35"
-          disabled={windowStart + WINDOW >= sizeKeys.length}
-          onClick={() =>
-            onWindowStartChange(Math.min(sizeKeys.length - WINDOW, windowStart + 1))
-          }
+          aria-label="次のサイズ"
+          className={cn(
+            "flex shrink-0 items-center justify-center rounded-full border-none bg-transparent leading-none text-[#111] disabled:pointer-events-none disabled:opacity-35",
+            isEmbed ? "h-20 w-20 text-[40px]" : "h-16 w-16 text-[32px]"
+          )}
+          disabled={!canNext}
+          onClick={() => {
+            if (!canNext || idx < 0) return;
+            onSelectSize(sizeKeys[idx + 1]!);
+          }}
         >
           ›
         </button>
@@ -211,6 +324,9 @@ export function PreviewSizeCarousel({
     </div>
   );
 }
+
+/** 親への数値コミット間隔（試着計算の負荷を抑える。バーはローカルで追従） */
+const SLIDER_COMMIT_INTERVAL_MS = 72;
 
 /** 身長・体型スライダー（サイズ行と同じ横パディング・段組） */
 export function PreviewFitParamSliders({
@@ -226,37 +342,159 @@ export function PreviewFitParamSliders({
   onBodyValChange: (v: number) => void;
   accentColor?: string;
 }) {
+  const scale = usePreviewChromeScale();
+  const isEmbed = scale === "embed";
+
+  const [heightLocal, setHeightLocal] = useState(heightCm);
+  const [bodyLocal, setBodyLocal] = useState(bodyVal);
+  const heightRef = useRef(heightCm);
+  const bodyRef = useRef(bodyVal);
+  const lastHCommit = useRef(0);
+  const lastBCommit = useRef(0);
+  const hTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setHeightLocal(heightCm);
+    heightRef.current = heightCm;
+  }, [heightCm]);
+  useEffect(() => {
+    setBodyLocal(bodyVal);
+    bodyRef.current = bodyVal;
+  }, [bodyVal]);
+
+  useEffect(
+    () => () => {
+      if (hTimerRef.current) clearTimeout(hTimerRef.current);
+      if (bTimerRef.current) clearTimeout(bTimerRef.current);
+    },
+    []
+  );
+
+  const commitHeight = useCallback(
+    (v: number) => {
+      lastHCommit.current = performance.now();
+      onHeightChange(v);
+    },
+    [onHeightChange]
+  );
+  const commitBody = useCallback(
+    (v: number) => {
+      lastBCommit.current = performance.now();
+      onBodyValChange(v);
+    },
+    [onBodyValChange]
+  );
+
+  const onHeightInput = useCallback(
+    (v: number) => {
+      setHeightLocal(v);
+      heightRef.current = v;
+      const now = performance.now();
+      if (hTimerRef.current) {
+        clearTimeout(hTimerRef.current);
+        hTimerRef.current = null;
+      }
+      if (now - lastHCommit.current >= SLIDER_COMMIT_INTERVAL_MS) {
+        commitHeight(v);
+      } else {
+        const wait = SLIDER_COMMIT_INTERVAL_MS - (now - lastHCommit.current);
+        hTimerRef.current = setTimeout(() => {
+          hTimerRef.current = null;
+          commitHeight(heightRef.current);
+        }, Math.max(0, wait));
+      }
+    },
+    [commitHeight]
+  );
+
+  const onBodyInput = useCallback(
+    (v: number) => {
+      setBodyLocal(v);
+      bodyRef.current = v;
+      const now = performance.now();
+      if (bTimerRef.current) {
+        clearTimeout(bTimerRef.current);
+        bTimerRef.current = null;
+      }
+      if (now - lastBCommit.current >= SLIDER_COMMIT_INTERVAL_MS) {
+        commitBody(v);
+      } else {
+        const wait = SLIDER_COMMIT_INTERVAL_MS - (now - lastBCommit.current);
+        bTimerRef.current = setTimeout(() => {
+          bTimerRef.current = null;
+          commitBody(bodyRef.current);
+        }, Math.max(0, wait));
+      }
+    },
+    [commitBody]
+  );
+
+  const flushHeight = useCallback(() => {
+    if (hTimerRef.current) {
+      clearTimeout(hTimerRef.current);
+      hTimerRef.current = null;
+    }
+    commitHeight(heightRef.current);
+  }, [commitHeight]);
+
+  const flushBody = useCallback(() => {
+    if (bTimerRef.current) {
+      clearTimeout(bTimerRef.current);
+      bTimerRef.current = null;
+    }
+    commitBody(bodyRef.current);
+  }, [commitBody]);
+
   return (
-    <div className="flex shrink-0 flex-col gap-1.5 px-3 pb-1.5 pt-2">
+    <div
+      className={cn(
+        "flex shrink-0 flex-col px-3",
+        isEmbed ? "gap-2 pb-2 pt-2" : "gap-1.5 pb-1.5 pt-2"
+      )}
+    >
       <div>
-        <div className="mb-1 flex justify-between text-[9px] font-normal leading-tight text-[#111]">
+        <div
+          className={cn(
+            "flex justify-between font-normal leading-tight text-[#111]",
+            isEmbed ? "mb-1.5 text-[11px]" : "mb-1 text-[9px]"
+          )}
+        >
           <span>身長</span>
           <span>
-            {heightCm} cm
+            {heightLocal} cm
           </span>
         </div>
         <input
           type="range"
           min={150}
           max={195}
-          value={heightCm}
-          onChange={(e) => onHeightChange(parseInt(e.target.value, 10) || 170)}
-          className="h-7 w-full"
+          value={heightLocal}
+          onChange={(e) => onHeightInput(parseInt(e.target.value, 10) || 170)}
+          onPointerUp={flushHeight}
+          onPointerCancel={flushHeight}
+          className={cn("w-full", isEmbed ? "h-8" : "h-7")}
           style={{ accentColor }}
         />
       </div>
       <div>
-        <div className="mb-1 flex justify-between text-[9px] font-normal leading-tight text-[#111]">
-          <span>体型</span>
-          <span>{bodyVal}</span>
+        <div
+          className={cn(
+            "font-normal leading-tight text-[#111]",
+            isEmbed ? "mb-1.5 text-[11px]" : "mb-1 text-[9px]"
+          )}
+        >
+          シルエット
         </div>
         <input
           type="range"
           min={0}
           max={100}
-          value={bodyVal}
-          onChange={(e) => onBodyValChange(parseInt(e.target.value, 10) || 0)}
-          className="h-7 w-full"
+          value={bodyLocal}
+          onChange={(e) => onBodyInput(parseInt(e.target.value, 10) || 0)}
+          onPointerUp={flushBody}
+          onPointerCancel={flushBody}
+          className={cn("w-full", isEmbed ? "h-8" : "h-7")}
           style={{ accentColor }}
         />
       </div>
@@ -276,22 +514,36 @@ export function PreviewAccentCtaButton({
   label: ReactNode;
   accentColor?: string;
 }) {
+  const scale = usePreviewChromeScale();
+  const isEmbed = scale === "embed";
   return (
-    <div className="shrink-0 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-2">
+    <div className="shrink-0 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-1">
       <button
         type="button"
         onClick={onClick}
-        className="flex w-full cursor-pointer flex-row items-center justify-between rounded-[10px] border-none px-3.5 py-2.5 text-[13px] font-bold text-white"
+        className={cn(
+          "flex w-full cursor-pointer flex-row items-center justify-between border-none font-bold text-white",
+          isEmbed
+            ? "min-h-[52px] rounded-[12px] px-4 py-3.5 text-[15px]"
+            : "rounded-[10px] px-3.5 py-2.5 text-[13px]"
+        )}
         style={{ background: accentColor }}
       >
         {variant === "cart" ? (
           <>
             <span className="flex items-center gap-2">
-              <ShoppingCart className="h-[15px] w-[15px]" strokeWidth={1.6} color="#fff" />
+              <ShoppingCart
+                className={isEmbed ? "h-[18px] w-[18px]" : "h-[15px] w-[15px]"}
+                strokeWidth={isEmbed ? 1.75 : 1.6}
+                color="#fff"
+              />
             </span>
             <span className="flex-1 text-center">{label}</span>
             <span
-              className="flex h-[22px] w-[22px] items-center justify-center rounded-full text-[11px]"
+              className={cn(
+                "flex items-center justify-center rounded-full",
+                isEmbed ? "h-[26px] w-[26px] text-[12px]" : "h-[22px] w-[22px] text-[11px]"
+              )}
               style={{ border: "1px solid rgba(255,255,255,0.9)" }}
             >
               →
@@ -299,10 +551,19 @@ export function PreviewAccentCtaButton({
           </>
         ) : (
           <>
-            <span className="flex h-[15px] w-[15px] shrink-0 items-center justify-center" aria-hidden />
+            <span
+              className={cn(
+                "flex shrink-0 items-center justify-center",
+                isEmbed ? "h-[18px] w-[18px]" : "h-[15px] w-[15px]"
+              )}
+              aria-hidden
+            />
             <span className="flex-1 text-center">{label}</span>
             <span
-              className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[11px]"
+              className={cn(
+                "flex shrink-0 items-center justify-center rounded-full",
+                isEmbed ? "h-[26px] w-[26px] text-[12px]" : "h-[22px] w-[22px] text-[11px]"
+              )}
               style={{ border: "1px solid rgba(255,255,255,0.9)" }}
             >
               →

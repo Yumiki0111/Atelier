@@ -58,7 +58,7 @@ async function updateWidgetKeyDomains() {
 
   // 新しい許可ドメインリストを作成
   const currentDomains: string[] = currentKey.allowed_domains || [];
-  const newDomains = [...new Set([...currentDomains, "localhost:5174", "localhost:3000"])];
+  const newDomains = [...new Set([...currentDomains, "localhost:3000"])];
 
   console.log(`新しい許可ドメイン: ${JSON.stringify(newDomains)}\n`);
 

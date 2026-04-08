@@ -85,8 +85,8 @@ async function checkWidgetKeys() {
     const allowedDomains = foundKey.allowed_domains || [];
     if (allowedDomains.length === 0) {
       console.log(`\n⚠️  許可ドメインが設定されていません。`);
-    } else if (!allowedDomains.includes("localhost:5174") && !allowedDomains.includes("localhost")) {
-      console.log(`\n⚠️  localhost:5174 が許可ドメインに含まれていません。`);
+    } else if (!allowedDomains.includes("localhost:3000") && !allowedDomains.includes("localhost")) {
+      console.log(`\n⚠️  localhost:3000 が許可ドメインに含まれていません。`);
       console.log(`   現在の許可ドメイン: ${JSON.stringify(allowedDomains)}`);
     }
   } else {

@@ -8,7 +8,6 @@
   ],
   "scripts": {
     "dev:console": "npm run dev --workspace=@Atelier/console",
-    "dev:widget": "npm run dev --workspace=@Atelier/widget",
     "build:console": "npm run build --workspace=@Atelier/console",
     "build:widget": "npm run build --workspace=@Atelier/widget",
     "copy:widget": "cp packages/widget/dist/widget.iife.js apps/console/public/widget.js",

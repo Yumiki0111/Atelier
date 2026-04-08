@@ -1,4 +1,3 @@
-import { BODY_CX } from "./constants";
 import {
   scaleBodyToSpec,
   scaleSleevePathToSpec,
@@ -62,8 +61,6 @@ function makeVertexFn(pathIdx: number, ctx: SleeveOnlyCtx): (gx: number, gy: num
     innerLeftY1,
     innerRightY0,
     innerRightY1,
-    originX,
-    centerSnapThresh,
     config,
   } = ctx;
   const {
@@ -128,9 +125,6 @@ function makeVertexFn(pathIdx: number, ctx: SleeveOnlyCtx): (gx: number, gy: num
       }
     }
 
-    if (scalableSpec.snapCenterXToBody === true && Math.abs(gx - originX) < centerSnapThresh) {
-      return [BODY_CX, pt[1]];
-    }
     return pt;
   };
 }

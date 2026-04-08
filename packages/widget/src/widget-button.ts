@@ -1,55 +1,94 @@
 import type { WidgetParams } from "./widget-api";
 import type { WidgetDesignConfig } from "./types";
-import { sendEvent } from "./widget-api";
-import { WIDGET_BUTTON_ID_PREFIX, WIDGET_CONTAINER_ID_PREFIX } from "./embed-data";
+import {
+  WIDGET_BUTTON_ID_PREFIX,
+  WIDGET_CONTAINER_ID_PREFIX,
+  isInlinePlacement,
+} from "./embed-data";
+
+function isOverlayParams(params: WidgetParams): boolean {
+  return params.overlay === true;
+}
 import { updateButtonPositions } from "./widget-position";
-import { getApiBaseUrl } from "./widget-utils";
+
+function getRootForContainer(containerId: string, shadowRoot: ShadowRoot): Document | ShadowRoot {
+  return shadowRoot.getElementById(containerId) ? shadowRoot : document;
+}
+
+function removeExistingContainer(containerId: string, shadowRoot: ShadowRoot): void {
+  const inDoc = document.getElementById(containerId);
+  if (inDoc) {
+    inDoc.remove();
+    updateButtonPositions();
+    return;
+  }
+  const inShadow = shadowRoot.getElementById(containerId);
+  if (inShadow) {
+    inShadow.remove();
+  }
+}
 
 export function renderCube(
   shadowRoot: ShadowRoot,
   params: WidgetParams,
   onCubeClick: (shadowRoot: ShadowRoot, params: WidgetParams) => Promise<void>,
-  initialDesign?: WidgetDesignConfig | null
+  initialDesign: WidgetDesignConfig | null | undefined,
+  containerId: string
 ) {
   const productId = params.productId || params.externalProductId || `widget-${Date.now()}-${Math.random()}`;
-  const buttonId = `${WIDGET_BUTTON_ID_PREFIX}${productId}`;
-  const containerId = `${WIDGET_CONTAINER_ID_PREFIX}${productId}`;
-  
-  // 既存のコンテナがあれば削除
-  const existingContainer = document.getElementById(containerId);
-  if (existingContainer) {
-    existingContainer.remove();
-    updateButtonPositions();
-  }
+  const buttonId = containerId.replace(WIDGET_CONTAINER_ID_PREFIX, WIDGET_BUTTON_ID_PREFIX);
 
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-  const buttonHeight = isMobile ? 48 : 56;
-  const buttonFontSize = isMobile ? 13 : 15;
-  const buttonPadding = isMobile ? '0 12px' : '0 16px';
-  const buttonGap = isMobile ? 6 : 8;
+  const overlay = isOverlayParams(params);
+  const inline = isInlinePlacement(params.placement) || overlay;
+
+  removeExistingContainer(containerId, shadowRoot);
+
   const baseBottomPx = 24;
   const baseRightPx = 24;
 
-  // ボタンを作成（デザイン適用まで完全に非表示）
   const button = document.createElement("button");
   button.id = buttonId;
   button.setAttribute("type", "button");
   button.setAttribute("data-fitlook-product-id", productId);
-  // 最小限のスタイルのみ設定（位置とz-indexのみ）
-  // 他のスタイルは applyDesignToButton で設定されるまで適用しない
-  button.style.cssText = `
-    position: fixed !important;
-    bottom: ${baseBottomPx}px !important;
-    right: ${baseRightPx}px !important;
-    z-index: 9999 !important;
-    display: none !important;
-    pointer-events: none !important;
-  `;
-
-  // ボタンのコンテンツを空にする（デザイン適用まで何も表示しない）
   button.innerHTML = "";
 
-  // ホバーエフェクトは applyDesignToButton で設定される
+  if (overlay) {
+    button.style.cssText = `
+      position: absolute !important;
+      inset: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      opacity: 0 !important;
+      cursor: pointer !important;
+      pointer-events: auto !important;
+      border: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      background: transparent !important;
+      display: block !important;
+      z-index: 21 !important;
+    `;
+  } else if (inline) {
+    button.style.cssText = `
+      position: relative !important;
+      display: none !important;
+      pointer-events: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+      background: transparent !important;
+      vertical-align: middle !important;
+    `;
+  } else {
+    button.style.cssText = `
+      position: fixed !important;
+      bottom: ${baseBottomPx}px !important;
+      right: ${baseRightPx}px !important;
+      z-index: 9999 !important;
+      display: none !important;
+      pointer-events: none !important;
+    `;
+  }
 
   button.addEventListener("click", async (e) => {
     e.preventDefault();
@@ -57,74 +96,127 @@ export function renderCube(
     await onCubeClick(shadowRoot, params);
   });
 
-  // コンテナを作成（デザイン適用まで完全に非表示）
   const container = document.createElement("div");
   container.id = containerId;
   container.setAttribute("data-fitlook-product-id", productId);
-  container.style.cssText = `
-    position: fixed !important;
-    bottom: ${baseBottomPx}px !important;
-    right: ${baseRightPx}px !important;
-    display: none !important;
-    align-items: center !important;
-    z-index: 9999 !important;
-    pointer-events: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-  `;
-  
-  container.appendChild(button);
-  document.body.appendChild(container);
-
-  updateButtonPositions();
-
-  // デザインが既に取得できている場合は即座に適用
-  if (initialDesign) {
-    applyDesignToButton(containerId, initialDesign);
+  if (overlay) {
+    container.setAttribute("data-fitlook-overlay", "true");
+    container.style.cssText = `
+      position: absolute !important;
+      left: 0 !important;
+      top: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      display: flex !important;
+      align-items: stretch !important;
+      z-index: 20 !important;
+      pointer-events: none !important;
+      box-sizing: border-box !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+      background: transparent !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    `;
+  } else if (inline) {
+    container.setAttribute("data-fitlook-inline", "true");
+    container.style.cssText = `
+      position: relative !important;
+      display: none !important;
+      align-items: center !important;
+      width: fit-content !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
+      pointer-events: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+    `;
+  } else {
+    container.style.cssText = `
+      position: fixed !important;
+      bottom: ${baseBottomPx}px !important;
+      right: ${baseRightPx}px !important;
+      display: none !important;
+      align-items: center !important;
+      z-index: 9999 !important;
+      pointer-events: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+    `;
   }
 
-  // イベント送信
-  const eventShopId = params.shopId || "unknown";
-  sendEvent({
-    shopId: eventShopId,
-    productId: params.productId || params.externalProductId || undefined,
-    type: "cube_view",
-  }).catch(() => {});
-}
+  container.appendChild(button);
+  if (inline) {
+    shadowRoot.appendChild(container);
+  } else {
+    document.body.appendChild(container);
+  }
 
-// フォントサイズの自動計算機能は削除（指定されたfontSizeをそのまま使用）
+  if (!inline) {
+    updateButtonPositions();
+  }
+
+  if (initialDesign) {
+    applyDesignToButton(containerId, initialDesign, getRootForContainer(containerId, shadowRoot));
+  }
+}
 
 /**
  * 既に作成済みのボタンにデザイン設定を適用する
  */
-export function applyDesignToButton(containerId: string, design: WidgetDesignConfig) {
-  const container = document.getElementById(containerId);
+export function applyDesignToButton(
+  containerId: string,
+  design: WidgetDesignConfig,
+  root: Document | ShadowRoot = document
+) {
+  const container = root.getElementById(containerId);
   if (!container) return;
 
   const button = container.querySelector("button") as HTMLButtonElement | null;
   if (!button) return;
 
-  // コンテナを表示する
+  const overlay = container.getAttribute("data-fitlook-overlay") === "true";
+  const inline = container.getAttribute("data-fitlook-inline") === "true";
+
   container.style.display = "flex";
   container.style.visibility = "visible";
   container.style.opacity = "1";
 
-  // まず、ボタンのコンテンツを完全にクリア
   button.innerHTML = "";
+
+  if (overlay) {
+    button.style.cssText = `
+      position: absolute !important;
+      inset: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      opacity: 0 !important;
+      cursor: pointer !important;
+      pointer-events: auto !important;
+      border: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      background: transparent !important;
+      display: block !important;
+      z-index: 21 !important;
+    `;
+    return;
+  }
 
   const btn = design.button;
   if (!btn) {
-    // デザインがない場合もデフォルトを表示
     button.style.display = "flex";
     return;
   }
 
   const color = btn.color || "#ffffff";
-  const shape = btn.shape || "pill"; // デフォルトは横長円
-  const text = btn.text || ""; // 空文字列をデフォルトに（円形ボタンでは使用しない）
+  const shape = btn.shape || "pill";
+  const text = btn.text || "";
   const imageUrl = btn.imageUrl || "";
 
-  // テキスト色を自動判定
   const hex = color.replace("#", "");
   let textColor = "#ffffff";
   if (hex.length === 6) {
@@ -137,11 +229,37 @@ export function applyDesignToButton(containerId: string, design: WidgetDesignCon
 
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
   const baseSize = isMobile ? 72 : 80;
+  const inlineCircle = isMobile ? 40 : 44;
+  const inlinePillH = isMobile ? 40 : 44;
 
   if (shape === "circle") {
-    // 円形ボタン：画像のみ
-    const size = baseSize;
-    button.style.cssText = `
+    const size = inline ? inlineCircle : baseSize;
+    button.style.cssText = inline
+      ? `
+      position: relative !important;
+      width: ${size}px !important;
+      height: ${size}px !important;
+      min-width: ${size}px !important;
+      max-width: ${size}px !important;
+      min-height: ${size}px !important;
+      max-height: ${size}px !important;
+      background: ${color} !important;
+      border: none !important;
+      border-radius: 50% !important;
+      cursor: pointer !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      padding: 1px !important;
+      margin: 0 !important;
+      outline: none !important;
+      pointer-events: auto !important;
+      z-index: 1 !important;
+      box-sizing: border-box !important;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    `
+      : `
       position: fixed !important;
       bottom: 24px !important;
       right: 24px !important;
@@ -168,12 +286,10 @@ export function applyDesignToButton(containerId: string, design: WidgetDesignCon
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     `;
 
-    // 円形ボタンではテキストを表示しない（画像のみ）
-    // innerHTMLは既にクリア済みなので、画像のみ追加
     if (imageUrl) {
       const img = document.createElement("img");
       img.src = imageUrl;
-      const imageSize = size - 2; // padding 1px * 2 = 2px
+      const imageSize = size - 2;
       img.style.cssText = `
         width: ${imageSize}px !important;
         height: ${imageSize}px !important;
@@ -189,53 +305,77 @@ export function applyDesignToButton(containerId: string, design: WidgetDesignCon
       `;
       button.appendChild(img);
     }
-    } else {
-      // 横長円ボタン：画像と文字
-      const height = baseSize;
-      // 画面に収まるように幅を計算
-      // 右端24px、左端24pxの余白を考慮し、画面幅の50%または最大300pxのうち小さい方を使用
-      const screenWidth = typeof window !== "undefined" ? window.innerWidth || document.documentElement.clientWidth || 375 : 375;
-      const rightMargin = 24;
-      const leftMargin = 24;
-      const maxAvailableWidth = Math.max(120, screenWidth - rightMargin - leftMargin);
-      const desiredWidth = Math.min(screenWidth * 0.5, 300);
-      const width = Math.min(desiredWidth, maxAvailableWidth);
-      
-      button.style.cssText = `
-        position: fixed !important;
-        bottom: 24px !important;
-        right: ${rightMargin}px !important;
-        left: auto !important;
-        width: ${width}px !important;
-        min-width: 120px !important;
-        max-width: ${maxAvailableWidth}px !important;
-        height: ${height}px !important;
-        background: ${color} !important;
-        border: none !important;
-        border-radius: ${height / 2}px !important;
-        cursor: pointer !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: flex-start !important;
-        gap: 8px !important;
-        padding: 0 12px !important;
-        margin: 0 !important;
-        outline: none !important;
-        pointer-events: auto !important;
-        z-index: 9999 !important;
-        box-sizing: border-box !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        overflow: hidden !important;
-      `;
+  } else {
+    const height = inline ? inlinePillH : baseSize;
+    const screenWidth =
+      typeof window !== "undefined" ? window.innerWidth || document.documentElement.clientWidth || 375 : 375;
+    const rightMargin = 24;
+    const leftMargin = 24;
+    const maxAvailableWidth = Math.max(120, screenWidth - rightMargin - leftMargin);
+    const desiredWidth = Math.min(screenWidth * 0.5, 300);
+    const width = inline
+      ? Math.min(Math.max(120, Math.min(desiredWidth, maxAvailableWidth)), 280)
+      : Math.min(desiredWidth, maxAvailableWidth);
+
+    button.style.cssText = inline
+      ? `
+      position: relative !important;
+      width: ${width}px !important;
+      min-width: 120px !important;
+      max-width: ${maxAvailableWidth}px !important;
+      height: ${height}px !important;
+      background: ${color} !important;
+      border: none !important;
+      border-radius: ${height / 2}px !important;
+      cursor: pointer !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      gap: 8px !important;
+      padding: 0 12px !important;
+      margin: 0 !important;
+      outline: none !important;
+      pointer-events: auto !important;
+      z-index: 1 !important;
+      box-sizing: border-box !important;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      overflow: hidden !important;
+    `
+      : `
+      position: fixed !important;
+      bottom: 24px !important;
+      right: ${rightMargin}px !important;
+      left: auto !important;
+      width: ${width}px !important;
+      min-width: 120px !important;
+      max-width: ${maxAvailableWidth}px !important;
+      height: ${height}px !important;
+      background: ${color} !important;
+      border: none !important;
+      border-radius: ${height / 2}px !important;
+      cursor: pointer !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      gap: 8px !important;
+      padding: 0 12px !important;
+      margin: 0 !important;
+      outline: none !important;
+      pointer-events: auto !important;
+      z-index: 9999 !important;
+      box-sizing: border-box !important;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      overflow: hidden !important;
+    `;
 
     button.innerHTML = "";
 
-    // 画像（任意）
     if (imageUrl) {
       const img = document.createElement("img");
       img.src = imageUrl;
-      const imageSize = height - 16; // padding考慮
+      const imageSize = height - 16;
       img.style.cssText = `
         width: ${imageSize}px !important;
         height: ${imageSize}px !important;
@@ -253,7 +393,6 @@ export function applyDesignToButton(containerId: string, design: WidgetDesignCon
       button.appendChild(img);
     }
 
-    // テキスト
     if (text) {
       const textEl = document.createElement("div");
       textEl.textContent = text;
@@ -274,7 +413,6 @@ export function applyDesignToButton(containerId: string, design: WidgetDesignCon
     }
   }
 
-  // ホバーエフェクト
   button.onmouseenter = () => {
     button.style.transform = "translateY(-2px) scale(1.02)";
     button.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15) !important";
@@ -284,51 +422,20 @@ export function applyDesignToButton(containerId: string, design: WidgetDesignCon
     button.style.boxShadow = "0 2px 8px rgba(0,0,0,0.1) !important";
   };
 
-  // 位置再計算
-  updateButtonPositions();
+  if (!inline) {
+    updateButtonPositions();
+  }
 }
 
-function createCubeIcon(size: number): SVGElement {
-  const iconSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  iconSvg.setAttribute("width", String(size));
-  iconSvg.setAttribute("height", String(size));
-  iconSvg.setAttribute("viewBox", "0 0 24 24");
-  iconSvg.setAttribute("fill", "none");
-  iconSvg.setAttribute("stroke", "currentColor");
-  iconSvg.setAttribute("stroke-width", "2");
-  iconSvg.setAttribute("stroke-linecap", "round");
-  iconSvg.setAttribute("stroke-linejoin", "round");
-  iconSvg.style.cssText = "flex-shrink: 0 !important;";
-  
-  const paths = [
-    "M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z",
-    "M3.27 6.96L12 12.01l8.73-5.05",
-    "M12 22.08V12"
-  ];
-  
-  paths.forEach(d => {
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("d", d);
-    iconSvg.appendChild(path);
-  });
-  
-  return iconSvg;
-}
-
-/**
- * デフォルトデザイン（円形、human-logo.png）を適用する
- */
-export function showDefaultButton(containerId: string) {
-  const apiBaseUrl = getApiBaseUrl() || (typeof window !== "undefined" ? window.location.origin : "");
-  const defaultImageUrl = `${apiBaseUrl}/human-logo.png`;
-  
+/** ショップデザイン未取得時。外部画像は使わず（配布先で 404 や誤配置の原因になる） */
+export function showDefaultButton(containerId: string, root: Document | ShadowRoot = document) {
   const defaultDesign: WidgetDesignConfig = {
     button: {
-      shape: "circle",
-      imageUrl: defaultImageUrl,
-      color: "#ffffff",
+      shape: "pill",
+      text: "試着",
+      color: "#0f172a",
     },
   };
-  
-  applyDesignToButton(containerId, defaultDesign);
+
+  applyDesignToButton(containerId, defaultDesign, root);
 }

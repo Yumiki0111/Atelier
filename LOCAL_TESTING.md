@@ -80,7 +80,7 @@ cp packages/widget/dist/widget.iife.js /path/to/ec-site/public/widget.js
 ### 開発モードの判定
 
 widget.jsは、以下の条件で開発モードと判定されます：
-- ポート番号が `5173` または `5174` の場合
+- ポート番号が `3000` または `3001` の場合（localhost / 127.0.0.1）
 - 開発モードでは、APIエラーが発生してもモックデータで動作します
 
 ### デバッグ

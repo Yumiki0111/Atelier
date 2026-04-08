@@ -4,12 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
     "build": "tsc && vite build && npm run copy-to-console",
-    "copy-to-console": "cp dist/widget.iife.js ../../apps/console/public/widget.js",
-    "preview": "vite preview"
+    "copy-to-console": "cp dist/widget.iife.js ../../apps/console/public/widget.js"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@Atelier/shared": "*"
+  },
   "devDependencies": {
     "typescript": "^5",
     "vite": "^5.4.11"

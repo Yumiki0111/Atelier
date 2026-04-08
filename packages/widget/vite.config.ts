@@ -4,12 +4,6 @@ export default defineConfig(({ mode }) => {
   const isProduction = mode === 'production';
   
   return {
-    // 開発サーバー設定
-    server: {
-      port: 5174,
-      open: true,
-      cors: true,
-    },
     define: {
       // 本番環境では環境変数から取得、開発環境ではlocalhost
       'process.env.API_BASE_URL': isProduction

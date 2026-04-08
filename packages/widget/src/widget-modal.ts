@@ -1,18 +1,22 @@
+import { weightKgFromBodyVal } from "@Atelier/shared";
 import type { WidgetConfig, WidgetColorSwatch } from "./types";
 import { WIDGET_LOG_PREFIX } from "./embed-data";
 import { isDevelopmentMode, getApiBaseUrl } from "./widget-utils";
 import { sendEvent, type WidgetParams } from "./widget-api";
+
+function widgetEventMeta(params: WidgetParams): Record<string, unknown> | undefined {
+  if (!params.placement) return undefined;
+  return { placement: params.placement };
+}
 import { mountFitLookLogoLoadingAnimation } from "./widget-fitlook-logo";
 
 const ACCENT_DEFAULT = "#3d3835";
 
-/** 開発ページのデフォルト体重 60kg と揃える（`weightKgFromBodyVal`: 50 + (v/100)*40） */
+/** コンソール `WidgetPreviewChrome` の `PREVIEW_SURFACE_BG` と同じ（グレー帯で上下が透けないようにする） */
+const SURFACE_BG = "#fafafa";
+
+/** 体型スライダー初期（`weightKgFromBodyVal` と @Atelier/shared のプレビューと同じ） */
 const DEFAULT_FIT_BODY_VAL = 25;
-const DEFAULT_SWATCHES: WidgetColorSwatch[] = [
-  { id: "default-1", hex: "#e8c547", label: "Yellow" },
-  { id: "default-2", hex: "#d4d4d4", label: "Grey" },
-  { id: "default-3", hex: "#1a1a1a", label: "Black" },
-];
 
 function injectStyles() {
   if (document.getElementById("fitlook-bs-styles")) return;
@@ -51,23 +55,6 @@ function el<K extends keyof HTMLElementTagNameMap>(
   if (style) node.style.cssText = style;
   if (text !== undefined) node.textContent = text;
   return node;
-}
-
-/** 正面シルエット（線画） */
-function createBodySilhouetteSvg(): SVGSVGElement {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", "0 0 120 260");
-  svg.setAttribute("fill", "none");
-  svg.style.cssText = "width:100%;height:100%;max-height:min(85%, 320px);opacity:0.85;";
-  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  path.setAttribute(
-    "d",
-    "M60 22c9 0 16-7 16-16S69 0 60 0s-16 7-16 16 7 16 16 16zm0 18c-12 0-22 8-24 19l-4 22 8 2 6-14 2 48-8 52 10 2 10-38 10 38 10-2-8-52 2-48 6 14 8-2-4-22c-2-11-12-19-24-19z"
-  );
-  path.setAttribute("stroke", "#c8c8c8");
-  path.setAttribute("stroke-width", "1.4");
-  svg.appendChild(path);
-  return svg;
 }
 
 function iconPerson(): SVGSVGElement {
@@ -134,7 +121,7 @@ export function renderModalWithLoading(
   overlay.setAttribute("data-fitlook-modal-overlay", "true");
   overlay.style.cssText = `
     position: fixed !important; inset: 0 !important;
-    background: #ececec !important;
+    background: ${SURFACE_BG} !important;
     z-index: 10000 !important;
     display: flex !important;
     flex-direction: column !important;
@@ -145,11 +132,15 @@ export function renderModalWithLoading(
   const contentArea = document.createElement("div");
   contentArea.setAttribute("data-fitlook-content-area", "true");
   contentArea.style.cssText =
-    "flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;padding:max(8px, env(safe-area-inset-top)) 12px max(8px, env(safe-area-inset-bottom));box-sizing:border-box;background:#ececec;";
+    "flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;padding:max(8px, env(safe-area-inset-top)) 12px max(8px, env(safe-area-inset-bottom));box-sizing:border-box;background:" +
+    SURFACE_BG +
+    ";";
 
   const splashWrap = document.createElement("div");
   splashWrap.style.cssText =
-    "flex:1;display:flex;align-items:center;justify-content:center;width:100%;min-height:0;background:#f8f6f1;";
+    "flex:1;display:flex;align-items:center;justify-content:center;width:100%;min-height:0;background:" +
+    SURFACE_BG +
+    ";";
   const cancelSplash = mountFitLookLogoLoadingAnimation(splashWrap);
   contentArea.appendChild(splashWrap);
 
@@ -175,44 +166,75 @@ export function updateModalWithConfig(
   const prevCleanup = (overlay as unknown as { __fitlookCleanup?: { fn: () => void } }).__fitlookCleanup;
   if (prevCleanup?.fn) prevCleanup.fn();
 
-  contentArea.innerHTML = "";
-  contentArea.style.cssText =
-    "flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;position:relative;background:#ececec;padding:max(8px, env(safe-area-inset-top)) 12px max(8px, env(safe-area-inset-bottom));box-sizing:border-box;";
-
   const ui = config.design;
-  const interfaceBg = ui?.interfaceBackgroundColor ?? "#fafafa";
-  const canvasBg = ui?.canvasBackgroundColor ?? "#fafafa";
+  const interfaceBg = ui?.interfaceBackgroundColor ?? SURFACE_BG;
+  const canvasBg = ui?.canvasBackgroundColor ?? SURFACE_BG;
   const ctaCart = ui?.ctaCartLabel ?? "カートに追加";
   const ctaTryOn = ui?.ctaTryOnLabel ?? "この体型で試着する";
   const accent = ui?.ctaAccentColor ?? ACCENT_DEFAULT;
 
-  /** コンソール `PreviewPanel` と同様: 端末枠内に試着 UI のみ（全画面ではなく電話サイズ） */
-  const phoneFrameOuter = el(
-    "div",
-    "width:100%;max-width:310.5px;height:100%;max-height:672px;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;"
-  );
-  const phoneShell = el(
-    "div",
-    "flex:1;min-height:0;display:flex;flex-direction:column;width:100%;height:100%;" +
-      "background:linear-gradient(145deg,#3a3a3c 0%,#1c1c1e 40%,#2c2c2e 60%,#1c1c1e 100%);" +
-      "border-radius:44px;border:1px solid rgba(130,130,135,0.5);padding:10px;box-sizing:border-box;"
-  );
-  const phoneScreen = el(
-    "div",
-    `position:relative;flex:1;min-height:0;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:${interfaceBg};border-radius:34px;`
-  );
-  phoneShell.appendChild(phoneScreen);
-  phoneFrameOuter.appendChild(phoneShell);
-  contentArea.appendChild(phoneFrameOuter);
+  contentArea.innerHTML = "";
+  contentArea.style.cssText =
+    "flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;position:relative;background:" +
+    interfaceBg +
+    ";padding:max(8px, env(safe-area-inset-top)) 12px max(8px, env(safe-area-inset-bottom));box-sizing:border-box;";
+  overlay.style.setProperty("background", interfaceBg, "important");
+
+  /**
+   * 端末枠（黒ベゼル・max-width 制限）:
+   * - `phoneFrame === true` のときのみ強制オン
+   * - `phoneFrame === false` または画像オーバーレイ試着（`overlay`）ではオフ（本番 PDP / デモは枠なし）
+   * - 未指定のフローティングボタンのみ従来どおり枠あり
+   */
+  const usePhoneFrame =
+    params.phoneFrame === true
+      ? true
+      : params.phoneFrame === false || params.overlay === true
+        ? false
+        : true;
+  if (!usePhoneFrame) {
+    contentArea.style.alignItems = "stretch";
+    contentArea.style.paddingLeft = "0";
+    contentArea.style.paddingRight = "0";
+  }
+
+  let screenRoot: HTMLElement;
+  if (usePhoneFrame) {
+    const phoneFrameOuter = el(
+      "div",
+      "width:100%;max-width:310.5px;height:100%;max-height:672px;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;"
+    );
+    const phoneShell = el(
+      "div",
+      "flex:1;min-height:0;display:flex;flex-direction:column;width:100%;height:100%;" +
+        "background:linear-gradient(145deg,#3a3a3c 0%,#1c1c1e 40%,#2c2c2e 60%,#1c1c1e 100%);" +
+        "border-radius:44px;border:1px solid rgba(130,130,135,0.5);padding:10px;box-sizing:border-box;"
+    );
+    const phoneScreen = el(
+      "div",
+      `position:relative;flex:1;min-height:0;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:${interfaceBg};border-radius:34px;`
+    );
+    phoneShell.appendChild(phoneScreen);
+    phoneFrameOuter.appendChild(phoneShell);
+    contentArea.appendChild(phoneFrameOuter);
+    screenRoot = phoneScreen;
+  } else {
+    screenRoot = el(
+      "div",
+      `position:relative;flex:1;min-height:0;min-width:0;width:100%;max-width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;background:${interfaceBg};`
+    );
+    contentArea.appendChild(screenRoot);
+  }
 
   const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  const eshopId = params.shopId || undefined;
+  const eshopId = params.shopId || config.shopId || undefined;
+  const productIdForEvents = params.productId || params.externalProductId || "";
   if (eshopId && eshopId !== "unknown") {
-    const pid = params.productId || params.externalProductId || "";
     sendEvent({
       shopId: eshopId,
-      productId: uuidRe.test(pid) ? pid : undefined,
+      productId: uuidRe.test(productIdForEvents) ? productIdForEvents : undefined,
       type: "widget_open",
+      meta: widgetEventMeta(params),
     }).catch(() => {});
   }
 
@@ -227,41 +249,50 @@ export function updateModalWithConfig(
   if (sizeKeys.length === 0) {
     sizeKeys = garmentFitAvailable ? ["default"] : ["3", "4", "5"];
   }
-  let currentSize = asset?.defaultSize && sizeKeys.includes(asset.defaultSize) ? asset.defaultSize : sizeKeys[0];
+  let currentSize = sizeKeys[0];
+  if (params.initialSize && sizeKeys.includes(params.initialSize)) {
+    currentSize = params.initialSize;
+  } else if (asset?.defaultSize && sizeKeys.includes(asset.defaultSize)) {
+    currentSize = asset.defaultSize;
+  }
 
-  const swatches = garmentFitAvailable
-    ? []
-    : asset?.colors?.length
-      ? asset.colors
-      : DEFAULT_SWATCHES;
+  /** API が colors を返す場合のみ色切替 UI を出す（未登録時は表示しない） */
+  const swatches: WidgetColorSwatch[] =
+    garmentFitAvailable || !asset?.colors?.length ? [] : asset.colors;
   let selectedColorId = swatches[0]?.id || "";
   let garmentImg: HTMLImageElement | null = null;
 
   let fitHeightCm = 170;
   let fitBodyVal = DEFAULT_FIT_BODY_VAL;
 
-  function weightKgFromBodyVal(v: number): number {
-    return Math.round(50 + (v / 100) * 40);
-  }
+  /** メイン試着ビュー用。体型シートの body-only プレビューとは別カウンタ（お互いにキャンセルしない） */
+  let fitSvgViewerGen = 0;
+  let fitSvgBodyDraftGen = 0;
 
   const cleanup = (overlay as unknown as { __fitlookCleanup?: { fn: () => void } }).__fitlookCleanup;
   if (cleanup) {
     cleanup.fn = () => {};
   }
 
-  // ── 戻る
-  const backRow = el("div", "padding:10px 14px 4px;padding-top:max(10px, env(safe-area-inset-top));");
+  // ── 戻る（PreviewBackRow に合わせる）
+  const backRow = el(
+    "div",
+    "padding:max(10px, env(safe-area-inset-top)) 12px 4px 12px;flex-shrink:0;"
+  );
   const backBtn = el(
     "button",
-    "border:none;background:transparent;padding:6px 0;font-size:15px;color:#111;cursor:pointer;display:flex;align-items:center;gap:4px;"
+    "border:none;background:transparent;padding:6px 0;font-size:12px;color:#111;cursor:pointer;display:flex;align-items:center;gap:4px;"
   );
   backBtn.textContent = "← 閉じる";
   backBtn.addEventListener("click", () => closeOverlay(overlay));
   backRow.appendChild(backBtn);
-  phoneScreen.appendChild(backRow);
+  screenRoot.appendChild(backRow);
 
   // ── 商品行（左: サムネ・名前・価格 / 右: 体型）
-  const productRow = el("div", "display:flex;flex-direction:row;align-items:flex-start;justify-content:space-between;padding:2px 12px 8px;gap:6px;");
+  const productRow = el(
+    "div",
+    "display:flex;flex-direction:row;align-items:flex-start;justify-content:space-between;flex-shrink:0;padding:2px 12px 8px 12px;gap:6px;"
+  );
   const leftCol = el("div", "display:flex;flex-direction:row;align-items:flex-start;gap:6px;min-width:0;flex:1;");
 
   const thumbWrap = el(
@@ -308,7 +339,7 @@ export function updateModalWithConfig(
   bodyBtn.appendChild(bodyLabel);
   productRow.appendChild(leftCol);
   productRow.appendChild(bodyBtn);
-  phoneScreen.appendChild(productRow);
+  screenRoot.appendChild(productRow);
 
   function colorFilterForHex(hex: string): string {
     const h = hex.replace("#", "");
@@ -353,30 +384,65 @@ export function updateModalWithConfig(
       });
       colorRow.appendChild(b);
     });
-    phoneScreen.appendChild(colorRow);
+    screenRoot.appendChild(colorRow);
   }
 
   // ── 試着表示（開発と同じ計算の SVG）または従来のシルエット＋サムネ
   const viewerArea = el(
     "div",
-    `flex:1;min-height:120px;min-width:0;flex-basis:0;position:relative;background:${canvasBg};display:flex;align-items:center;justify-content:center;overflow:visible;padding:8px 12px 8px;box-sizing:border-box;`
+    `flex:1;min-height:120px;min-width:0;flex-basis:0;position:relative;background:${canvasBg};display:flex;align-items:center;justify-content:center;overflow:visible;padding:16px;box-sizing:border-box;`
   );
   viewerArea.setAttribute("data-fitlook-viewer-container", "true");
+
+  /**
+   * コンソールの `PreviewFittingCanvasSvg`（`customGarmentData` をメモリに持つ）とは別経路。
+   * - プレビュー: `useFittingCanvasData`＋サイズ変更時の path 補間（約 480ms・RAF）。体型スライダーも同じ計算がローカルで走る。
+   * - ウィジェット: 毎回 `/api/public/widget-fit-svg` を叩き、返ってきたパスで SVG を組み立て直すだけ（サーバー計算は `computeWidgetFitSnapshot` と同系統だが、往復と離散更新のためカクつきやすい）。
+   * スマホフレームは見た目の枠であり、計算パイプラインとは無関係。
+   * 完全に同じ滑らかさにするには `garment_spec` をクライアントに載せて同じクライアント計算をバンドルする必要がある（別途大きな対応）。
+   */
+  function mountFitSvgElement(target: HTMLElement, svg: SVGSVGElement): void {
+    svg.style.opacity = "0";
+    svg.style.transition = "opacity 0.2s ease-out";
+    target.appendChild(svg);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        svg.style.opacity = "1";
+      });
+    });
+  }
 
   async function loadGarmentFitSvgInto(
     target: HTMLElement,
     heightCm: number,
     bodyVal: number,
-    options?: { bodyOnly?: boolean }
+    options?: { bodyOnly?: boolean; subtleLoading?: boolean }
   ): Promise<void> {
     const bodyOnly = options?.bodyOnly === true;
+    const subtleLoading = options?.subtleLoading === true;
     if (!garmentFitAvailable || !params.publicKey) return;
     const ext = params.externalProductId || params.productId;
     if (!ext) return;
-    target.innerHTML = "";
-    const loading = el("div", "padding:24px;color:#6b7280;font-size:14px;text-align:center;");
-    loading.textContent = "読み込み中...";
-    target.appendChild(loading);
+
+    const isBodyDraft = bodyOnly;
+    const gen = isBodyDraft ? ++fitSvgBodyDraftGen : ++fitSvgViewerGen;
+    const stale = () =>
+      isBodyDraft ? gen !== fitSvgBodyDraftGen : gen !== fitSvgViewerGen;
+
+    /** プレビュー同様：再取得時は既存 SVG/画像をそのまま表示し、完了後に差し替え（薄いオーバーレイは出さない） */
+    const canSubtle =
+      subtleLoading &&
+      (target.querySelector("svg") != null || target.querySelector("img") != null);
+
+    target.querySelectorAll("[data-fitlook-fit-loading]").forEach((n) => n.remove());
+
+    if (!canSubtle) {
+      target.innerHTML = "";
+      const loading = el("div", "padding:24px;color:#6b7280;font-size:14px;text-align:center;");
+      loading.textContent = "読み込み中...";
+      target.appendChild(loading);
+    }
+
     try {
       const sp = new URLSearchParams({
         publicKey: params.publicKey,
@@ -397,11 +463,13 @@ export function updateModalWithConfig(
         garmentPathStrokeWidths?: (number | undefined)[];
         garmentPathStrokes?: (string | undefined)[];
       };
+      if (stale()) return;
       target.innerHTML = "";
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       svg.setAttribute("viewBox", `0 0 ${data.viewBoxWidth} ${data.viewBoxHeight}`);
       svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
-      svg.style.cssText = "width:100%;height:auto;max-height:100%;display:block;";
+      svg.style.cssText =
+        "width:100%;max-width:300px;height:auto;max-height:100%;display:block;margin:0 auto;";
       const gBody = document.createElementNS("http://www.w3.org/2000/svg", "g");
       gBody.setAttribute("fill", "none");
       gBody.setAttribute("stroke", "#bbb");
@@ -434,41 +502,51 @@ export function updateModalWithConfig(
         }
         svg.appendChild(gGarment);
       }
-      target.appendChild(svg);
+      mountFitSvgElement(target, svg);
     } catch {
-      target.innerHTML = "";
-      const err = el("div", "padding:16px;color:#b91c1c;font-size:13px;text-align:center;");
-      err.textContent = "試着表示の読み込みに失敗しました";
-      target.appendChild(err);
+      if (stale()) return;
+      if (canSubtle) {
+        const err = el(
+          "div",
+          "position:absolute;bottom:8px;left:8px;right:8px;z-index:20;padding:8px 10px;background:rgba(254,242,242,0.96);border-radius:8px;text-align:center;font-size:12px;color:#b91c1c;"
+        );
+        err.setAttribute("data-fitlook-fit-err-toast", "true");
+        err.textContent = "表示の更新に失敗しました";
+        target.querySelector("[data-fitlook-fit-err-toast]")?.remove();
+        target.appendChild(err);
+        window.setTimeout(() => err.remove(), 4200);
+      } else {
+        target.innerHTML = "";
+        const err = el("div", "padding:16px;color:#b91c1c;font-size:13px;text-align:center;");
+        err.textContent = "試着表示の読み込みに失敗しました";
+        target.appendChild(err);
+      }
     }
   }
 
-  async function loadGarmentFitSvg(): Promise<void> {
-    return loadGarmentFitSvgInto(viewerArea, fitHeightCm, fitBodyVal);
+  async function loadGarmentFitSvg(opts?: { subtle?: boolean }): Promise<void> {
+    return loadGarmentFitSvgInto(viewerArea, fitHeightCm, fitBodyVal, {
+      subtleLoading: opts?.subtle === true,
+    });
   }
 
   if (garmentFitAvailable) {
     void loadGarmentFitSvg();
+  } else if (thumbnailUrl) {
+    garmentImg = document.createElement("img");
+    garmentImg.src = thumbnailUrl;
+    garmentImg.alt = productName || "";
+    const selHex = swatches.find((s) => s.id === selectedColorId)?.hex || swatches[0]?.hex;
+    const filterCss =
+      swatches.length > 0 && selHex ? `filter:${colorFilterForHex(selHex)};` : "";
+    garmentImg.style.cssText = `position:relative;z-index:1;max-width:88%;max-height:72%;width:auto;height:auto;object-fit:contain;${filterCss}`;
+    viewerArea.appendChild(garmentImg);
   } else {
-    const silhouetteLayer = el(
-      "div",
-      "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;"
-    );
-    silhouetteLayer.appendChild(createBodySilhouetteSvg());
-    viewerArea.appendChild(silhouetteLayer);
-
-    if (thumbnailUrl) {
-      garmentImg = document.createElement("img");
-      garmentImg.src = thumbnailUrl;
-      garmentImg.alt = "";
-      const firstHex = swatches[0]?.hex || "#e8c547";
-      garmentImg.style.cssText = `position:relative;z-index:1;max-width:58%;max-height:62%;object-fit:contain;filter:${colorFilterForHex(
-        swatches.find((s) => s.id === selectedColorId)?.hex || firstHex
-      )};`;
-      viewerArea.appendChild(garmentImg);
-    }
+    const empty = el("div", "padding:20px 16px;text-align:center;color:#6b7280;font-size:13px;line-height:1.5;");
+    empty.textContent = "商品画像（サムネイル）が登録されていません。コンソールの商品で画像 URL を設定してください。";
+    viewerArea.appendChild(empty);
   }
-  phoneScreen.appendChild(viewerArea);
+  screenRoot.appendChild(viewerArea);
 
   // ── サイズ（グレーディング）
   const WINDOW = 3;
@@ -478,21 +556,48 @@ export function updateModalWithConfig(
       ? Math.min(Math.max(0, idxSize), Math.max(0, sizeKeys.length - WINDOW))
       : 0;
 
-  const sizeSection = el("div", "padding:8px 12px 6px;display:flex;flex-direction:column;gap:6px;");
-  const sizeRow = el("div", "display:flex;flex-direction:row;align-items:center;justify-content:center;gap:6px;");
+  const sizeSection = el("div", "padding:8px 12px 2px;display:flex;flex-direction:column;gap:6px;");
+  const sizeRow = el("div", "display:flex;flex-direction:row;align-items:center;justify-content:center;gap:8px;");
 
   const prevBtn = el(
     "button",
-    "width:28px;height:28px;border:none;background:transparent;font-size:17px;color:#111;cursor:pointer;line-height:1;"
+    "min-width:64px;min-height:64px;width:64px;height:64px;border:none;background:transparent;font-size:34px;color:#111;cursor:pointer;line-height:1;border-radius:999px;display:flex;align-items:center;justify-content:center;"
   );
+  prevBtn.type = "button";
+  prevBtn.setAttribute("aria-label", "前のサイズ");
   prevBtn.textContent = "‹";
   const nextBtn = el(
     "button",
-    "width:28px;height:28px;border:none;background:transparent;font-size:17px;color:#111;cursor:pointer;line-height:1;"
+    "min-width:64px;min-height:64px;width:64px;height:64px;border:none;background:transparent;font-size:34px;color:#111;cursor:pointer;line-height:1;border-radius:999px;display:flex;align-items:center;justify-content:center;"
   );
+  nextBtn.type = "button";
+  nextBtn.setAttribute("aria-label", "次のサイズ");
   nextBtn.textContent = "›";
 
-  const sizeBtnsWrap = el("div", "display:flex;flex-direction:row;gap:6px;align-items:center;justify-content:center;");
+  const sizeBtnsWrap = el("div", "display:flex;flex-direction:row;gap:8px;align-items:center;justify-content:center;");
+
+  function syncWindowStartFromSelection() {
+    const idx = sizeKeys.indexOf(currentSize);
+    windowStart =
+      idx >= 0 ? Math.min(Math.max(0, idx), Math.max(0, sizeKeys.length - WINDOW)) : 0;
+  }
+
+  function selectSize(sz: string) {
+    currentSize = sz;
+    syncWindowStartFromSelection();
+    if (eshopId && eshopId !== "unknown") {
+      sendEvent({
+        shopId: eshopId,
+        productId: uuidRe.test(productIdForEvents) ? productIdForEvents : undefined,
+        type: "size_change",
+        meta: { size: sz, ...widgetEventMeta(params) },
+      }).catch(() => {});
+    }
+    renderSizeButtons();
+    if (garmentFitAvailable) {
+      void loadGarmentFitSvg({ subtle: true });
+    }
+  }
 
   function renderSizeButtons() {
     sizeBtnsWrap.innerHTML = "";
@@ -501,62 +606,57 @@ export function updateModalWithConfig(
       const isSel = sz === currentSize;
       const btn = el(
         "button",
-        `width:34px;height:34px;border-radius:50%;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0;` +
+        `min-width:44px;height:44px;padding:0 10px;box-sizing:border-box;border-radius:999px;font-size:15px;font-weight:600;cursor:pointer;flex-shrink:0;` +
           (isSel
             ? `background:${accent};color:#fff;border:none;`
             : `background:#fff;color:#111;border:1px solid #111;`)
       );
+      btn.type = "button";
       btn.textContent = sz;
       btn.addEventListener("click", () => {
-        currentSize = sz;
-        if (eshopId && eshopId !== "unknown") {
-          const pid = params.productId || params.externalProductId || "";
-          sendEvent({
-            shopId: eshopId,
-            productId: uuidRe.test(pid) ? pid : undefined,
-            type: "size_change",
-            meta: { size: sz },
-          }).catch(() => {});
-        }
-        renderSizeButtons();
-        if (garmentFitAvailable) {
-          void loadGarmentFitSvg();
-        }
+        selectSize(sz);
       });
       sizeBtnsWrap.appendChild(btn);
     });
-    prevBtn.style.opacity = windowStart <= 0 ? "0.35" : "1";
-    prevBtn.style.pointerEvents = windowStart <= 0 ? "none" : "auto";
-    nextBtn.style.opacity = windowStart + WINDOW >= sizeKeys.length ? "0.35" : "1";
-    nextBtn.style.pointerEvents = windowStart + WINDOW >= sizeKeys.length ? "none" : "auto";
+    const idx = sizeKeys.indexOf(currentSize);
+    const atStart = idx <= 0;
+    const atEnd = idx < 0 || idx >= sizeKeys.length - 1;
+    prevBtn.style.opacity = atStart ? "0.35" : "1";
+    prevBtn.style.pointerEvents = atStart ? "none" : "auto";
+    prevBtn.toggleAttribute("disabled", atStart);
+    nextBtn.style.opacity = atEnd ? "0.35" : "1";
+    nextBtn.style.pointerEvents = atEnd ? "none" : "auto";
+    nextBtn.toggleAttribute("disabled", atEnd);
   }
 
   prevBtn.addEventListener("click", () => {
-    windowStart = Math.max(0, windowStart - 1);
-    renderSizeButtons();
+    const idx = sizeKeys.indexOf(currentSize);
+    if (idx <= 0) return;
+    selectSize(sizeKeys[idx - 1]!);
   });
   nextBtn.addEventListener("click", () => {
-    windowStart = Math.min(sizeKeys.length - WINDOW, windowStart + 1);
-    renderSizeButtons();
+    const idx = sizeKeys.indexOf(currentSize);
+    if (idx < 0 || idx >= sizeKeys.length - 1) return;
+    selectSize(sizeKeys[idx + 1]!);
   });
 
   sizeRow.appendChild(prevBtn);
   sizeRow.appendChild(sizeBtnsWrap);
   sizeRow.appendChild(nextBtn);
   sizeSection.appendChild(sizeRow);
-  phoneScreen.appendChild(sizeSection);
+  screenRoot.appendChild(sizeSection);
   renderSizeButtons();
 
   // ── カート
   const cartWrap = el(
     "div",
-    "padding:8px 12px 12px;padding-bottom:max(12px, env(safe-area-inset-bottom));flex-shrink:0;"
+    "flex-shrink:0;padding-top:4px;padding-left:12px;padding-right:12px;padding-bottom:max(12px, env(safe-area-inset-bottom));"
   );
   const cartBtn = el(
     "button",
-    `width:100%;display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:10px 14px;border:none;border-radius:10px;background:${accent};color:#fff;font-size:13px;font-weight:700;cursor:pointer;`
+    `width:100%;display:flex;flex-direction:row;align-items:center;justify-content:space-between;box-sizing:border-box;padding:10px 14px;border:none;border-radius:10px;background:${accent};color:#fff;font-size:13px;font-weight:700;cursor:pointer;`
   );
-  const cartLeft = el("div", "display:flex;align-items:center;gap:8px;");
+  const cartLeft = el("div", "display:flex;align-items:center;gap:8px;flex-shrink:0;");
   cartLeft.appendChild(iconCart());
   const cartMid = el("span", "flex:1;text-align:center;");
   cartMid.textContent = ctaCart;
@@ -570,12 +670,11 @@ export function updateModalWithConfig(
   cartBtn.appendChild(cartRight);
   cartBtn.addEventListener("click", () => {
     if (eshopId && eshopId !== "unknown") {
-      const pid = params.productId || params.externalProductId || "";
       sendEvent({
         shopId: eshopId,
-        productId: uuidRe.test(pid) ? pid : undefined,
-        type: "add_to_cart",
-        meta: { size: currentSize, colorId: selectedColorId },
+        productId: uuidRe.test(productIdForEvents) ? productIdForEvents : undefined,
+        type: "add_to_cart_click",
+        meta: { size: currentSize, colorId: selectedColorId, ...widgetEventMeta(params) },
       }).catch(() => {});
     }
     const cartDetail = {
@@ -591,9 +690,9 @@ export function updateModalWithConfig(
     }
   });
   cartWrap.appendChild(cartBtn);
-  phoneScreen.appendChild(cartWrap);
+  screenRoot.appendChild(cartWrap);
 
-  // ── 体型調整（端末枠 phoneScreen 内の全画面。試着ビューと同じ SVG／シルエット＋サムネを表示）
+  // ── 体型調整（試着画面内の全画面。試着ビューと同じ SVG／シルエット＋サムネを表示）
   let bodyAdjustOverlay: HTMLElement | null = null;
   let bodyDraftPreviewTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -618,7 +717,9 @@ export function updateModalWithConfig(
       "div",
       "position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;background:" +
         interfaceBg +
-        ";border-radius:34px;overflow:hidden;animation:fitlook-fade-in 0.2s ease-out;"
+        ";border-radius:" +
+        (usePhoneFrame ? "34px" : "0") +
+        ";overflow:hidden;animation:fitlook-fade-in 0.2s ease-out;"
     );
     bodyAdjustOverlay.setAttribute("data-fitlook-body-adjust", "true");
 
@@ -644,31 +745,41 @@ export function updateModalWithConfig(
       if (bodyDraftPreviewTimer) clearTimeout(bodyDraftPreviewTimer);
       bodyDraftPreviewTimer = setTimeout(() => {
         bodyDraftPreviewTimer = null;
-        void loadGarmentFitSvgInto(figureArea, setupHeight, bodyVal, { bodyOnly: true });
+        void loadGarmentFitSvgInto(figureArea, setupHeight, bodyVal, {
+          bodyOnly: true,
+          subtleLoading: true,
+        });
       }, 140);
     }
 
     if (garmentFitAvailable) {
-      void loadGarmentFitSvgInto(figureArea, setupHeight, bodyVal, { bodyOnly: true });
+      void loadGarmentFitSvgInto(figureArea, setupHeight, bodyVal, {
+        bodyOnly: true,
+        subtleLoading: false,
+      });
+    } else if (thumbnailUrl) {
+      const prevImg = document.createElement("img");
+      prevImg.src = thumbnailUrl;
+      prevImg.alt = productName || "";
+      prevImg.style.cssText =
+        "max-width:88%;max-height:72%;width:auto;height:auto;object-fit:contain;position:relative;z-index:1;";
+      figureArea.appendChild(prevImg);
     } else {
-      const silhouetteLayer = el(
-        "div",
-        "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;"
-      );
-      silhouetteLayer.appendChild(createBodySilhouetteSvg());
-      figureArea.appendChild(silhouetteLayer);
+      const ph = el("div", "padding:16px;text-align:center;color:#6b7280;font-size:13px;");
+      ph.textContent = "商品画像が登録されていません";
+      figureArea.appendChild(ph);
     }
     bodyAdjustOverlay.appendChild(figureArea);
 
     const controls = el(
       "div",
-      "flex-shrink:0;padding:0 18px 10px;display:flex;flex-direction:column;gap:14px;background:" +
+      "flex-shrink:0;padding:0 12px 10px;display:flex;flex-direction:column;gap:6px;background:" +
         interfaceBg +
         ";"
     );
 
     const hRow = el("div", "width:100%;");
-    const hLabel = el("div", "display:flex;justify-content:space-between;align-items:center;font-size:15px;margin-bottom:8px;color:#111;");
+    const hLabel = el("div", "display:flex;justify-content:space-between;align-items:center;font-size:9px;font-weight:400;line-height:1.25;margin-bottom:4px;color:#111;");
     const hTitle = el("span", "", "身長");
     const hVal = el("span", "", `${setupHeight} cm`);
     hLabel.appendChild(hTitle);
@@ -689,11 +800,8 @@ export function updateModalWithConfig(
     controls.appendChild(hRow);
 
     const bRow = el("div", "width:100%;");
-    const bLabel = el("div", "display:flex;justify-content:space-between;align-items:center;font-size:15px;margin-bottom:8px;color:#111;");
-    const bTitle = el("span", "", "体型");
-    const bVal = el("span", "", String(fitBodyVal));
-    bLabel.appendChild(bTitle);
-    bLabel.appendChild(bVal);
+    const bLabel = el("div", "font-size:9px;font-weight:400;line-height:1.25;margin-bottom:4px;color:#111;");
+    bLabel.textContent = "シルエット";
     const bInput = document.createElement("input");
     bInput.type = "range";
     bInput.min = "0";
@@ -702,7 +810,6 @@ export function updateModalWithConfig(
     bInput.style.cssText = "width:100%;height:28px;accent-color:" + accent + ";";
     bInput.addEventListener("input", () => {
       bodyVal = parseInt(bInput.value, 10) || 0;
-      bVal.textContent = String(bodyVal);
       scheduleBodyDraftPreview();
     });
     bRow.appendChild(bLabel);
@@ -712,36 +819,50 @@ export function updateModalWithConfig(
     bodyAdjustOverlay.appendChild(controls);
 
     const ctaPad =
-      "padding:12px 18px;padding-bottom:max(14px, env(safe-area-inset-bottom));flex-shrink:0;background:" +
-      interfaceBg +
-      ";";
+      "padding:8px 12px;padding-bottom:max(12px, env(safe-area-inset-bottom));flex-shrink:0;background:" +
+        interfaceBg +
+        ";";
     const ctaWrap = el("div", ctaPad);
     const applyBtn = el(
       "button",
-      `width:100%;display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:14px 16px;border:none;border-radius:12px;background:${accent};color:#fff;font-size:15px;font-weight:700;cursor:pointer;`
+      `width:100%;box-sizing:border-box;display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:10px 14px;border:none;border-radius:10px;background:${accent};color:#fff;font-size:13px;font-weight:700;cursor:pointer;`
     );
     applyBtn.type = "button";
     const applyMid = el("span", "flex:1;text-align:center;");
     applyMid.textContent = ctaTryOn;
     const applyRight = el(
       "div",
-      "width:24px;height:24px;border-radius:50%;border:1px solid rgba(255,255,255,0.9);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;"
+      "width:22px;height:22px;border-radius:50%;border:1px solid rgba(255,255,255,0.9);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;"
     );
     applyRight.textContent = "→";
+    const applySpacer = el("span", "display:block;flex:0 0 15px;width:15px;height:15px;flex-shrink:0;");
+    applyBtn.appendChild(applySpacer);
     applyBtn.appendChild(applyMid);
     applyBtn.appendChild(applyRight);
     applyBtn.addEventListener("click", () => {
       fitHeightCm = setupHeight;
       fitBodyVal = bodyVal;
+      if (eshopId && eshopId !== "unknown") {
+        sendEvent({
+          shopId: eshopId,
+          productId: uuidRe.test(productIdForEvents) ? productIdForEvents : undefined,
+          type: "height_change",
+          meta: {
+            heightCm: fitHeightCm,
+            bodyVal: fitBodyVal,
+            ...widgetEventMeta(params),
+          },
+        }).catch(() => {});
+      }
       if (garmentFitAvailable) {
-        void loadGarmentFitSvg();
+        void loadGarmentFitSvg({ subtle: true });
       }
       closeBodyAdjustOverlay();
     });
     ctaWrap.appendChild(applyBtn);
     bodyAdjustOverlay.appendChild(ctaWrap);
 
-    phoneScreen.appendChild(bodyAdjustOverlay);
+    screenRoot.appendChild(bodyAdjustOverlay);
   }
 
   bodyBtn.addEventListener("click", openBodySheet);
@@ -749,6 +870,48 @@ export function updateModalWithConfig(
   if (isDevelopmentMode()) {
     console.log(`${WIDGET_LOG_PREFIX} 2D view ready`, { productName, sizes: sizeKeys });
   }
+}
+
+/**
+ * コンソールの `WidgetStyleProductPreview` と同一 UI（`/embed/widget-fit`）を全画面 iframe で表示。
+ * `garmentFitAvailable` のときのみ使用（クライアント試着パイプライン＝プレビューと同じ）。
+ */
+export function mountEmbedIframe(
+  overlay: HTMLElement,
+  contentArea: HTMLElement,
+  params: WidgetParams
+): void {
+  const splashCleanup = (overlay as unknown as { __fitlookCleanup?: { fn: () => void } }).__fitlookCleanup;
+  if (splashCleanup?.fn) splashCleanup.fn();
+
+  contentArea.innerHTML = "";
+  contentArea.style.cssText =
+    "flex:1;min-height:0;position:relative;width:100%;height:100%;padding:0;margin:0;overflow:hidden;background:#fafafa;";
+  overlay.style.setProperty("background", "#fafafa", "important");
+
+  const apiBase = getApiBaseUrl() || (typeof window !== "undefined" ? window.location.origin : "");
+  const pk = encodeURIComponent(params.publicKey || "");
+  const ext = encodeURIComponent(params.externalProductId || params.productId || "");
+  const iframe = document.createElement("iframe");
+  iframe.src = `${apiBase}/embed/widget-fit?publicKey=${pk}&externalProductId=${ext}`;
+  iframe.setAttribute("title", "FIT&LOOK 試着");
+  iframe.style.cssText =
+    "position:absolute;left:0;top:0;width:100%;height:100%;border:none;display:block;";
+  contentArea.style.position = "relative";
+  contentArea.appendChild(iframe);
+
+  const onMsg = (e: MessageEvent) => {
+    if (e.data?.type !== "fitlook-embed-close") return;
+    window.removeEventListener("message", onMsg);
+    closeOverlay(overlay);
+  };
+  window.addEventListener("message", onMsg);
+
+  (overlay as unknown as { __fitlookCleanup: { fn: () => void } }).__fitlookCleanup = {
+    fn: () => {
+      window.removeEventListener("message", onMsg);
+    },
+  };
 }
 
 export function showErrorInModal(
@@ -766,10 +929,11 @@ export function showErrorInModal(
   contentArea.style.cssText = `
     flex: 1; display: flex; flex-direction: column;
     overflow: hidden; align-items: center; justify-content: center;
-    padding: 24px; text-align: center; background: #ececec;
+    padding: 24px; text-align: center; background: ${SURFACE_BG};
     padding-top: max(24px, env(safe-area-inset-top));
     padding-bottom: max(24px, env(safe-area-inset-bottom));
   `;
+  overlay.style.setProperty("background", SURFACE_BG, "important");
   const div = document.createElement("div");
   div.style.cssText = "color:#dc2626;font-size:15px;line-height:1.5;white-space:pre-line;";
   div.textContent = errorMessage;

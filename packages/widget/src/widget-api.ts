@@ -10,6 +10,14 @@ export interface WidgetParams {
   sku?: string | null;
   handle?: string | null;
   url?: string | null;
+  /** 埋め込み位置（例: `inline` / `embedded` = ホスト内インライン、`floating` または未指定 = 右下固定） */
+  placement?: string | null;
+  /** モーダル表示時の初期サイズ（API のサイズキーと一致する場合のみ有効） */
+  initialSize?: string | null;
+  /** 画像上などフルエリア透明タップ（inline と併用。body へのフローティングは出さない） */
+  overlay?: boolean | null;
+  /** `false` のとき試着モーダルを端末枠（黒ベゼル・max-width 制限）なしの全幅 UI にする（デモページ向け） */
+  phoneFrame?: boolean | null;
 }
 
 /** 開発環境用のモックウィジェット設定を生成（2Dウィジェット用・サイズキーのみ利用） */
@@ -52,7 +60,7 @@ export async function fetchWidgetConfig(params: WidgetParams): Promise<WidgetCon
     throw new Error("publicKey or shopId is required");
   }
 
-  // 開発モードでAPIサーバーが利用できない場合はモックデータを返す
+  // 開発モードでも API が取れたら本番と同じデータを使う（失敗時のみモック）
   if (isDevelopmentMode()) {
     try {
       const searchParams = buildSearchParams(params);
@@ -63,7 +71,7 @@ export async function fetchWidgetConfig(params: WidgetParams): Promise<WidgetCon
       }
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
 
       const apiUrl = getApiBaseUrl() || "http://localhost:3000";
       const response = await fetch(
@@ -72,25 +80,38 @@ export async function fetchWidgetConfig(params: WidgetParams): Promise<WidgetCon
       );
       clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        console.warn(`${WIDGET_LOG_PREFIX} API returned ${response.status}, using mock config.`);
-        return createDevMockConfig();
+      const errText = await response.text();
+      let config: WidgetConfig;
+      try {
+        config = JSON.parse(errText) as WidgetConfig;
+      } catch {
+        return {
+          enabled: false,
+          error: `APIエラー: ${response.status} ${response.statusText}`,
+        };
       }
 
-      const config = await response.json();
+      if (!response.ok) {
+        console.warn(`${WIDGET_LOG_PREFIX} API returned ${response.status}`, config);
+        return {
+          enabled: false,
+          error: (config as { error?: string }).error || `APIエラー: ${response.status}`,
+        };
+      }
 
-      // 開発環境では、APIが`enabled: false`を返した場合でもモックデータを使用
       if (!config.enabled) {
-        // 実際のアセットが取得できている場合はそれを使用
         if (config.asset?.sizes && Object.keys(config.asset.sizes).length > 0) {
-          return { enabled: true, asset: config.asset };
+          return { enabled: true, asset: config.asset, shopId: config.shopId, design: config.design };
         }
-        return createDevMockConfig();
+        return {
+          enabled: false,
+          error: (config as { error?: string }).error || "この商品の試着は利用できません",
+        };
       }
 
       return config;
     } catch (error) {
-      // 開発環境では接続エラーを無視してモックデータを返す
+      console.warn(`${WIDGET_LOG_PREFIX} dev fetch failed, using mock`, error);
       return createDevMockConfig();
     }
   }

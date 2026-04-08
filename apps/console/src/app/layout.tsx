@@ -18,6 +18,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "FIT&LOOK Console",
   description: "EC組み込みSaaS管理画面",
+  icons: {
+    icon: "/logo.svg",
+  },
 };
 
 export default function RootLayout({

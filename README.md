@@ -46,12 +46,13 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 ### 開発サーバーの起動
 
 ```bash
-# Consoleを起動
+# 管理画面・API（試着プレビューはここから）
 npm run dev:console
-
-# Widgetを起動
-npm run dev:widget
 ```
+
+試着プレビュー（端末枠つきの `PreviewPanel`）は `http://localhost:3000/database/products` を開き、商品を選んでプレビューを表示してください。
+
+`npm run build:widget` で `packages/widget/dist/widget.iife.js` を生成します。
 
 ### ビルド
 

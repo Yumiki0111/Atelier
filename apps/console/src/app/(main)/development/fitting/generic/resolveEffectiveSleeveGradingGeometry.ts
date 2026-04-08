@@ -7,7 +7,6 @@ import type { CustomGarmentData, CustomLandmarks } from "../lib/types";
 import {
   getPathPoints,
   pathIndexForGlobalVertex,
-  tPathWithPointIndex,
   vertexRangeToCoveringPathRange,
 } from "../lib/pathUtils";
 import { hasDistinctVertexPair } from "./genericMeasureOnlyShared";
@@ -165,22 +164,15 @@ export function isGlobalVertexOnSymmetryGuidePath(
 }
 
 /**
- * 前中心の縦ガイド・細い縦補助線の全頂点 X を、全体レイアウト中心に揃える。
+ * 以前: 前中心付近の縦パスをレイアウト中心 X に揃えていた。
+ * ヒューリスティックが構築線以外（前中心付近の縦シーム・装飾線等）も拾い、
+ * 全頂点を同一 X に潰してしまうため無効化（呼び出し元は互換のため残す）。
  */
-export function snapVerticalConstructionPathsToLayoutCenterX(pathDs: string[], lm: CustomLandmarks): void {
-  if (pathDs.length === 0) return;
-  const cx = layoutCenterX(pathDs, lm).cx;
-  for (let i = 0; i < pathDs.length; i++) {
-    const d = pathDs[i]!;
-    if (
-      !isLikelyVerticalSymmetryGuidePath(d, lm, pathDs) &&
-      !isNearlyVerticalThinPath(d) &&
-      !isVerticalCenterSpinePath(d, lm, pathDs)
-    ) {
-      continue;
-    }
-    pathDs[i] = tPathWithPointIndex(d, (_pt, _x, y) => [cx, y]);
-  }
+export function snapVerticalConstructionPathsToLayoutCenterX(
+  _pathDs: string[],
+  _lm: CustomLandmarks
+): void {
+  // no-op
 }
 
 /** 肩ランドマークと全体 bbox の中心が大きくずれるときは bbox 中心を前後中心とみなす */

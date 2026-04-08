@@ -42,12 +42,13 @@ export async function GET(request: NextRequest) {
       .maybeSingle();
 
     if (!data) {
-      // デフォルト値（設定なし）
-      const response = NextResponse.json({});
+      // デザイン未設定でも shopId は返す（ウィジェット側の分析・イベント用）
+      const response = NextResponse.json({ shopId });
       return setCorsHeaders(response, request);
     }
 
     const design = {
+      shopId,
       button: {
         color: data.button_color || "#ffffff",
         text: data.button_text || "", // デフォルト値は空文字列（設定されていない場合は表示しない）

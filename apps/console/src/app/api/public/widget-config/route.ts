@@ -65,26 +65,26 @@ export async function GET(request: NextRequest) {
     }
 
     // assets を (shop_id, product_id) で取得（is_active: true のみ）
+    // 並びは GET /api/assets と同様（version で最新を優先）。created_at は環境によって列が無く PostgREST が失敗することがあるため使わない
     const { data: allAssets, error: assetsError } = await supabaseAdmin
       .from("assets")
-      .select("size, glb_url, model_url, version, created_at, is_active, product_id")
+      .select("size, glb_url, model_url, version, is_active, product_id")
       .eq("shop_id", shopId)
       .eq("product_id", product.id)
       .eq("is_active", true)
       .order("size", { ascending: true })
-      .order("created_at", { ascending: false });
-    
+      .order("version", { ascending: false });
+
     const category = product.category || undefined;
-    const assetsWithCategory = allAssets?.map(asset => ({
-      ...asset,
-      category,
-    })) || [];
 
     if (assetsError) {
       console.error("[widget-config API] Error fetching assets:", assetsError);
-      const response = NextResponse.json({ enabled: false, error: "Failed to fetch assets", details: assetsError.message });
-      return setCorsHeaders(response, request);
     }
+
+    const assetsWithCategory = (assetsError ? [] : allAssets ?? []).map((asset) => ({
+      ...asset,
+      category,
+    }));
 
     const garmentFitAvailable = isGarmentSpecRenderable(product.garment_spec);
 
@@ -205,6 +205,7 @@ export async function GET(request: NextRequest) {
 
     const responseData = {
       enabled: true,
+      shopId,
       asset: {
         defaultSize,
         sizes,

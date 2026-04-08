@@ -1,22 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAuthenticatedUser } from "@/lib/auth/middleware";
+import type { AnalyticsResponse, AnalyticsSeriesRow } from "@/features/analytics/analyticsTypes";
 
 type TimeRange = "24h" | "7d" | "30d" | "90d";
-
-interface AnalyticsData {
-  date: string;
-  fullDate: string;
-  キューブ表示数: number;
-  キューブクリック数: number;
-  ウィジェット開封数: number;
-  カート追加: number;
-}
 
 function getTimeRangeDates(timeRange: TimeRange): { startDate: Date; endDate: Date } {
   const endDate = new Date();
   const startDate = new Date();
-  
+
   switch (timeRange) {
     case "24h":
       startDate.setHours(startDate.getHours() - 24);
@@ -31,48 +23,87 @@ function getTimeRangeDates(timeRange: TimeRange): { startDate: Date; endDate: Da
       startDate.setDate(startDate.getDate() - 90);
       break;
   }
-  
+
   return { startDate, endDate };
 }
 
 function generateDateRange(startDate: Date, endDate: Date): Date[] {
   const dates: Date[] = [];
-  const current = new Date(startDate);
-  
-  while (current <= endDate) {
+  const start = new Date(startDate);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(endDate);
+  end.setHours(0, 0, 0, 0);
+
+  const current = new Date(start);
+  while (current <= end) {
     dates.push(new Date(current));
     current.setDate(current.getDate() + 1);
   }
-  
+
   return dates;
+}
+
+function emptyRow(date: Date): AnalyticsSeriesRow {
+  return {
+    date: date.toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" }),
+    fullDate: date.toLocaleDateString("ja-JP"),
+    cubeViews: 0,
+    cubeClicks: 0,
+    widgetOpens: 0,
+    addToCart: 0,
+    sizeChanges: 0,
+    heightChanges: 0,
+  };
+}
+
+function sumTotals(series: AnalyticsSeriesRow[]) {
+  return series.reduce(
+    (acc, row) => ({
+      cubeViews: acc.cubeViews + row.cubeViews,
+      cubeClicks: acc.cubeClicks + row.cubeClicks,
+      widgetOpens: acc.widgetOpens + row.widgetOpens,
+      addToCart: acc.addToCart + row.addToCart,
+      sizeChanges: acc.sizeChanges + row.sizeChanges,
+      heightChanges: acc.heightChanges + row.heightChanges,
+    }),
+    {
+      cubeViews: 0,
+      cubeClicks: 0,
+      widgetOpens: 0,
+      addToCart: 0,
+      sizeChanges: 0,
+      heightChanges: 0,
+    }
+  );
+}
+
+function computeRates(totals: AnalyticsResponse["totals"]): AnalyticsResponse["rates"] {
+  const clickThroughRate =
+    totals.cubeViews > 0 ? totals.cubeClicks / totals.cubeViews : null;
+  const clickToOpenRate =
+    totals.cubeClicks > 0 ? totals.widgetOpens / totals.cubeClicks : null;
+  const openToCartRate =
+    totals.widgetOpens > 0 ? totals.addToCart / totals.widgetOpens : null;
+  return { clickThroughRate, clickToOpenRate, openToCartRate };
 }
 
 export async function GET(request: NextRequest) {
   try {
     if (!supabaseAdmin) {
-      return NextResponse.json(
-        { error: "Database not configured" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Database not configured" }, { status: 500 });
     }
 
-    // 認証チェック
     const auth = await getAuthenticatedUser(request);
     if (!auth) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const searchParams = request.nextUrl.searchParams;
-    // shopIdはクエリパラメータより認証情報を優先（他人のショップのアナリティクスを見られないようにする）
     const shopId = auth.shopId;
     const timeRange = (searchParams.get("timeRange") || "30d") as TimeRange;
 
     const { startDate, endDate } = getTimeRangeDates(timeRange);
-    
-    // イベントデータを取得
+
     const { data: events, error: eventsError } = await supabaseAdmin
       .from("events")
       .select("type, created_at, product_id")
@@ -81,67 +112,70 @@ export async function GET(request: NextRequest) {
       .lte("created_at", endDate.toISOString())
       .order("created_at", { ascending: true });
 
+    const eventsRows = events ?? [];
     if (eventsError) {
-      console.error("Error fetching events:", eventsError);
-      return NextResponse.json(
-        { error: "Failed to fetch events" },
-        { status: 500 }
-      );
+      const missingTable =
+        eventsError.code === "PGRST205" ||
+        (typeof eventsError.message === "string" &&
+          eventsError.message.includes("Could not find the table"));
+      if (missingTable) {
+        console.warn(
+          "[analytics] public.events テーブルがありません。supabase/migrations/20260407120000_create_events.sql を適用してください。"
+        );
+      } else {
+        console.error("Error fetching events:", eventsError);
+        return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 });
+      }
     }
 
-    // 日付範囲を生成
     const dateRange = generateDateRange(startDate, endDate);
-    
-    // 日次データを初期化
-    const dailyData = new Map<string, AnalyticsData>();
-    
+    const dailyData = new Map<string, AnalyticsSeriesRow>();
+
     dateRange.forEach((date) => {
-      const dateKey = date.toISOString().split("T")[0];
-      dailyData.set(dateKey, {
-        date: date.toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" }),
-        fullDate: date.toLocaleDateString("ja-JP"),
-        キューブ表示数: 0,
-        キューブクリック数: 0,
-        ウィジェット開封数: 0,
-        カート追加: 0,
-      });
+      const dateKey = date.toISOString().split("T")[0]!;
+      dailyData.set(dateKey, emptyRow(date));
     });
 
-    // イベントを集計
-    events?.forEach((event) => {
-      const eventDate = new Date(event.created_at);
-      const dateKey = eventDate.toISOString().split("T")[0];
+    eventsRows.forEach((event) => {
+      const eventDate = new Date(event.created_at as string);
+      const dateKey = eventDate.toISOString().split("T")[0]!;
       const dayData = dailyData.get(dateKey);
-      
+
       if (!dayData) return;
 
       switch (event.type) {
         case "cube_view":
-          dayData.キューブ表示数 += 1;
+          dayData.cubeViews += 1;
           break;
         case "cube_click":
-          dayData.キューブクリック数 += 1;
+          dayData.cubeClicks += 1;
           break;
         case "widget_open":
-          dayData.ウィジェット開封数 += 1;
+          dayData.widgetOpens += 1;
           break;
         case "add_to_cart_click":
-          dayData.カート追加 += 1;
+        case "add_to_cart":
+          dayData.addToCart += 1;
+          break;
+        case "size_change":
+          dayData.sizeChanges += 1;
+          break;
+        case "height_change":
+          dayData.heightChanges += 1;
           break;
         default:
           break;
       }
     });
 
-    // 配列に変換して返す
-    const result = Array.from(dailyData.values());
+    const series = Array.from(dailyData.values());
+    const totals = sumTotals(series);
+    const rates = computeRates(totals);
 
-    return NextResponse.json(result);
+    const payload: AnalyticsResponse = { series, totals, rates };
+    return NextResponse.json(payload);
   } catch (error) {
     console.error("Error in analytics API:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

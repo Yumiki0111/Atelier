@@ -100,8 +100,9 @@ export async function PATCH(
     const body = await request.json();
     
     // shopIdは更新対象外なので除外
-    const { shopId, ...bodyWithoutShopId } = body;
-    
+    const { shopId: _stripShopId, ...bodyWithoutShopId } = body;
+    void _stripShopId;
+
     const validated = updateProductSchema.parse(bodyWithoutShopId);
 
     const updateData: Record<string, unknown> = {};

@@ -32,29 +32,28 @@ export function Sidebar() {
         isCollapsed ? "w-16" : "w-64"
       )}
     >
-      {/* Logo */}
+      {/* Logo（折りたたみ時は非表示） */}
       <div
         className={cn(
-          "flex h-16 items-center border-b transition-all",
-          isCollapsed ? "justify-center px-2" : "justify-between px-6"
+          "flex h-16 shrink-0 items-center border-b transition-all",
+          isCollapsed ? "justify-center px-2" : "justify-between px-4"
         )}
       >
         {!isCollapsed && (
-          <div className="flex items-center gap-2">
-            <Image
-              src="/logo.png"
+          <Link href="/" className="flex min-w-0 flex-1 items-center pr-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo.svg"
               alt="FIT&LOOK"
-              width={80}
-              height={0}
-              className="h-6 w-auto object-contain"
+              className="h-auto max-h-7 w-full max-w-[min(100%,11rem)] object-contain object-left"
             />
-            <span className="text-xl font-semibold">FIT&LOOK</span>
-          </div>
+          </Link>
         )}
         <button
+          type="button"
           onClick={() => setIsCollapsed(!isCollapsed)}
           className={cn(
-            "rounded-lg p-1.5 hover:bg-gray-100 transition-colors",
+            "shrink-0 rounded-lg p-1.5 hover:bg-gray-100 transition-colors",
             !isCollapsed && "ml-auto"
           )}
           aria-label={isCollapsed ? "サイドバーを展開" : "サイドバーを折りたたみ"}

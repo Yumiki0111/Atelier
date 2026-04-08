@@ -37,8 +37,9 @@ export function torsoLateralSpreadFactor(y: number, z: BodyZones, xs: number): n
     [z.chest, 1],
     [z.belly, 1],
     [z.waist, 1],
-    [z.hip, 1],
-    [z.crotch, 0.96],
+    /** 体重最大付近で尻の横広がりが強すぎるため、腰〜尻帯だけ k をやや抑える */
+    [z.hip, 0.88],
+    [z.crotch, 0.9],
     [z.knee, 0.78],
     [z.ankle, 0.22],
     [z.foot, 0.1],

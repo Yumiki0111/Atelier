@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FIT&amp;LOOK 外部ECデモ（サイズ欄インライン埋め込み）</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 640px;
+        margin: 24px auto;
+        padding: 0 16px;
+        line-height: 1.5;
+      }
+      h1 {
+        font-size: 1.25rem;
+      }
+      .note {
+        background: #f0f9ff;
+        border: 1px solid #bae6fd;
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin-bottom: 20px;
+        font-size: 0.9rem;
+      }
+      .note code {
+        background: #e0f2fe;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.85em;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 12px;
+      }
+      th,
+      td {
+        border: 1px solid #e5e7eb;
+        padding: 10px 12px;
+        text-align: left;
+      }
+      th {
+        background: #f9fafb;
+      }
+      .size-cell {
+        font-weight: 600;
+        width: 4rem;
+      }
+      .fit-cell {
+        vertical-align: middle;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>外部ECを想定した商品ページ（サイズごとに試着ホスト）</h1>
+
+    <div class="note">
+      <strong>開き方</strong>：FIT&amp;LOOK コンソールを <code>http://localhost:3000</code> で起動し、本ページを
+      <code>http://localhost:3000/demo-embedded-ec.html</code> で開いてください（<code>widget.js</code> と API
+      と同一オリジンにします）。
+      <br /><br />
+      <strong>許可ドメイン</strong>：コンソールの Widget キーに <code>localhost</code>（または
+      <code>127.0.0.1</code>）を含めてください。さもなくば <code>/api/public/widget-config</code> が 403
+      になります。
+      <br /><br />
+      <strong>本番 CDN</strong>：EC サイトではコンソールの「埋め込み」に表示される
+      <code>NEXT_PUBLIC_WIDGET_CDN_URL</code>（未設定時はコンソールのオリジン + <code>/widget.js</code>）を
+      <code>&lt;script async src="…"&gt;</code> に指定し、API はコンソールのオリジンを
+      <code>data-fitlook-api-url</code> で明示すると安全です。
+      <br /><br />
+      <strong>下のプレースホルダーを差し替え</strong>：有効な <code>public_key</code> と、コンソール商品に登録済みの
+      <code>external_product_id</code> に置き換えてください。
+    </div>
+
+    <p><strong>商品名（デモ）</strong> サンプルジャケット</p>
+    <p><strong>価格</strong> ¥12,000</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>サイズ</th>
+          <th>試着</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="size-cell">S</td>
+          <td class="fit-cell">
+            <div
+              data-fitlook-public-key="YOUR_PUBLIC_KEY"
+              data-fitlook-external-product-id="YOUR_EXTERNAL_PRODUCT_ID"
+              data-fitlook-placement="inline"
+              data-fitlook-initial-size="S"
+            ></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="size-cell">M</td>
+          <td class="fit-cell">
+            <div
+              data-fitlook-public-key="YOUR_PUBLIC_KEY"
+              data-fitlook-external-product-id="YOUR_EXTERNAL_PRODUCT_ID"
+              data-fitlook-placement="inline"
+              data-fitlook-initial-size="M"
+            ></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="size-cell">L</td>
+          <td class="fit-cell">
+            <div
+              data-fitlook-public-key="YOUR_PUBLIC_KEY"
+              data-fitlook-external-product-id="YOUR_EXTERNAL_PRODUCT_ID"
+              data-fitlook-placement="inline"
+              data-fitlook-initial-size="L"
+            ></div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p style="margin-top: 24px; font-size: 0.9rem; color: #6b7280">
+      フローティング（右下固定）にしたい場合はホストの <code>data-fitlook-placement</code> を付けないか
+      <code>floating</code> にしてください。
+    </p>
+
+    <script async src="/widget.js"></script>
+  </body>
+</html>

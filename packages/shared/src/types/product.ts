@@ -15,6 +15,10 @@ export interface Product {
   thumbnailUrl?: string;
   /** 開発フィットから登録した SVG＋採寸・グレーディング（リグ・デバッグ除く） */
   garmentSpec?: unknown;
+  /**
+   * GET /api/products の一覧レスポンスでのみ付与。アクティブ 3D アセットのサイズラベル（重複なし・ソート済み）。
+   */
+  assetSizes?: string[];
   createdAt: string;
   updatedAt: string;
 }

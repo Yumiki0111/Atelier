@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,11 +33,12 @@ export default function SignupPage() {
       await signup(email, password, name);
       // サインアップ成功後、ログインページにリダイレクト
       router.push("/login?message=アカウントが作成されました。ログインしてください。");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("サインアップエラー:", error);
-      
+
       // エラーメッセージの処理
-      let errorMessage = error.message || "サインアップに失敗しました";
+      let errorMessage =
+        error instanceof Error ? error.message : "サインアップに失敗しました";
       
       if (errorMessage.includes("招待されていません") || errorMessage.includes("Not invited")) {
         errorMessage = "このメールアドレスは招待されていません。アカウントを作成するには、管理者からの招待が必要です。";
@@ -65,16 +65,12 @@ export default function SignupPage() {
         <div className="p-8">
           {/* Logo */}
           <div className="flex flex-col items-center mb-8">
-            <div className="flex items-center gap-2">
-              <Image
-                src="/logo.png"
-                alt="FIT&LOOK"
-                width={80}
-                height={0}
-                className="h-8 w-auto object-contain"
-              />
-              <span className="text-2xl font-semibold">FIT&LOOK</span>
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo.svg"
+              alt="FIT&LOOK"
+              className="h-auto w-full max-w-[min(100%,17rem)] object-contain"
+            />
           </div>
 
           {/* Info Message */}

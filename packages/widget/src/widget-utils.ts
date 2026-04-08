@@ -1,7 +1,7 @@
 import { readApiUrlFromDocument } from "./embed-data";
 
 /** 開発ポートのセット（Vite, Next.js等） */
-const DEV_PORTS = new Set(["3000", "3001", "5173", "5174"]);
+const DEV_PORTS = new Set(["3000", "3001"]);
 
 /**
  * 開発モードかどうかを判定

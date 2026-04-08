@@ -2,7 +2,6 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,8 +40,9 @@ function LoginForm() {
       await login(email, password);
       // ログイン成功後、ログイン関数内でリダイレクトが実行される
       // 念のため、isAuthenticatedが更新されたらリダイレクト
-    } catch (error: any) {
-      const message = error?.message || "ログインに失敗しました";
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "ログインに失敗しました";
       if (process.env.NODE_ENV === "development") {
         console.error("ログインエラー:", error);
       }
@@ -72,16 +72,12 @@ function LoginForm() {
         <div className="p-8">
           {/* Logo */}
           <div className="flex flex-col items-center mb-8">
-            <div className="flex items-center gap-2">
-              <Image
-                src="/logo.png"
-                alt="FIT&LOOK"
-                width={80}
-                height={0}
-                className="h-8 w-auto object-contain"
-              />
-              <span className="text-2xl font-semibold">FIT&LOOK</span>
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo.svg"
+              alt="FIT&LOOK"
+              className="h-auto w-full max-w-[min(100%,17rem)] object-contain"
+            />
           </div>
 
           {/* Login Form */}

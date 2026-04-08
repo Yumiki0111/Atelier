@@ -54,7 +54,7 @@ async function testWidgetConfigAPI() {
     try {
       const response = await fetch(url, {
         headers: {
-          "Origin": "http://localhost:5174", // デモページのオリジン
+          "Origin": "http://localhost:3000",
         },
       });
 

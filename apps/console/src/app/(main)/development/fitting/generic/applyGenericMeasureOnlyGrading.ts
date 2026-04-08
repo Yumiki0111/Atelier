@@ -58,7 +58,6 @@ export function applyGenericMeasureOnlyGrading(
       sleeve: { anchorIdx: 0, lengthStartIdx: 0, lengthEndIdx: 1, cuffIdx: 1 },
       defaultSleeveCm: size.sleeve,
       sleeveMeasureIndices: [0, 0],
-      snapCenterXToBody: false,
     };
     for (let i = 0; i < n; i++) {
       pathDs[i] = scaleBodyToSpec(pathDs[i]!, i, bodySpec, size.length, lm.shoulderY);

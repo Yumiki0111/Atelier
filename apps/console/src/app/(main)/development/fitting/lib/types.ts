@@ -206,11 +206,6 @@ export interface ScalableGarmentSpec {
   /** 脇ラインブレンド距離(px)。省略時は500。服の長さに応じて調整 */
   seamBlendMaxDist?: number;
   /**
-   * true のときのみ、設計座標で胴バウンディングの中心 X ±3px 付近の頂点をボディ中心 BODY_CX に寄せる（ブローゾン用）。
-   * 汎用 SVG では前中心・ポケット付近まで縦線に潰れて「変な線」になるため既定は付けない。
-   */
-  snapCenterXToBody?: boolean;
-  /**
    * 着丈グレーディング（`scaleBodyToSpec`）時、裾帯の前中心付近だけ design Y を `designHemY` まで引き上げる基準 X（design 座標）。
    * 未指定なら一様スケールのみ（従来どおり）。
    */

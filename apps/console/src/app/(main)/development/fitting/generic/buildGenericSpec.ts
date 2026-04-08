@@ -93,8 +93,6 @@ export function buildGenericScalableSpec(
     designHemY: lm.hemY,
     bodyLengthCm: options?.bodyLengthCmReference ?? size.length,
     gradingHemAlignOriginX: (lm.shoulderLx + lm.shoulderRx) / 2,
-    /** 汎用 SVG では前中心スナップで縦線アーティファクトになりやすいため常に無効 */
-    snapCenterXToBody: false,
     bodyPathIndices,
     sleeve: {
       anchorIdx: 0,

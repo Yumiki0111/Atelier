@@ -1,4 +1,6 @@
 export interface WidgetDesignConfig {
+  /** public-key 経由で解決したショップ ID（分析・イベント紐付け用） */
+  shopId?: string;
   button?: {
     color?: string; // ボタンの色
     text?: string; // 文言
@@ -17,7 +19,7 @@ export interface WidgetDesignConfig {
   ctaAccentColor?: string;
 }
 
-/** カラー切替用（APIが返す場合）。未指定時はウィジェットのデフォルトスウォッチを表示 */
+/** カラー切替用。API の asset.colors を返したときのみウィジェットに色 UI を表示する */
 export interface WidgetColorSwatch {
   id: string;
   hex: string;
@@ -26,6 +28,8 @@ export interface WidgetColorSwatch {
 
 export interface WidgetConfig {
   enabled: boolean;
+  /** public-key 経由で解決したショップ ID（分析・イベント紐付け用） */
+  shopId?: string;
   error?: string; // エラーメッセージ（enabled: falseの場合）
   asset?: {
     defaultSize: string; // 柔軟なサイズ形式（"S", "M", "L", "1", "2", "3", "28", "30"など）

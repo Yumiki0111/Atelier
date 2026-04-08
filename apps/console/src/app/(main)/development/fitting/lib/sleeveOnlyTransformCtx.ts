@@ -91,8 +91,6 @@ export type SleeveOnlyCtx = {
   innerLeftY1: number;
   innerRightY0: number;
   innerRightY1: number;
-  originX: number;
-  centerSnapThresh: number;
   debugFitting: boolean;
 };
 
@@ -113,7 +111,6 @@ export function buildSleeveOnlyCtx(p: SleeveOnlyTransformParams): SleeveOnlyCtx 
   } = p;
 
   const bbox = getPathsBBox(pathDs);
-  const originX = bbox ? (bbox.minX + bbox.maxX) / 2 : (lm.shoulderLx + lm.shoulderRx) / 2;
   const spanX = bbox && bbox.maxX > bbox.minX ? bbox.maxX - bbox.minX : 400;
   let scalableSpec = specIn;
   if (specIn.gradingHemAlignOriginX != null && Number.isFinite(specIn.gradingHemAlignOriginX)) {
@@ -155,7 +152,6 @@ export function buildSleeveOnlyCtx(p: SleeveOnlyTransformParams): SleeveOnlyCtx 
     sleevePathRightEnd,
   } = config;
 
-  const centerSnapThresh = 3;
   const attachLxFallback = config.attachLSvg[0];
   const attachRxFallback = config.attachRSvg[0];
   const hemFadeBuffer = Math.max(120, (lm.hemY - lm.shoulderY) * 0.075);
@@ -276,8 +272,6 @@ export function buildSleeveOnlyCtx(p: SleeveOnlyTransformParams): SleeveOnlyCtx 
     innerLeftY1,
     innerRightY0,
     innerRightY1,
-    originX,
-    centerSnapThresh,
     debugFitting,
   };
 }

@@ -1,12 +1,34 @@
 import { fetchWidgetConfig, fetchWidgetDesign, sendEvent, type WidgetParams } from "./widget-api";
-import { renderCube, applyDesignToButton, showDefaultButton, renderModalWithLoading, updateModalWithConfig, showErrorInModal, updateButtonPositions } from "./widget-render";
+import { FITLOOK_LOGO_SPLASH_DURATION_MS } from "./widget-fitlook-logo";
+import {
+  renderCube,
+  applyDesignToButton,
+  showDefaultButton,
+  renderModalWithLoading,
+  updateModalWithConfig,
+  showErrorInModal,
+  updateButtonPositions,
+  mountEmbedIframe,
+} from "./widget-render";
 import {
   readEmbedAttr,
   WIDGET_HOST_SELECTOR,
   WIDGET_CONTAINER_ID_PREFIX,
   WIDGET_ALL_CONTAINER_SELECTOR,
   WIDGET_LOG_PREFIX,
+  isInlinePlacement,
+  isOverlayModeFromAttr,
+  isPhoneFrameDisabledFromAttr,
 } from "./embed-data";
+import type { WidgetDesignConfig } from "./types";
+
+function widgetEventMeta(params: WidgetParams): Record<string, unknown> | undefined {
+  const meta: Record<string, unknown> = {};
+  if (params.placement) meta.placement = params.placement;
+  if (params.initialSize) meta.initialSize = params.initialSize;
+  if (params.overlay) meta.overlay = true;
+  return Object.keys(meta).length ? meta : undefined;
+}
 
 export function initWidget() {
   // 既存のボタンをクリーンアップ（ページ遷移時などに対応）
@@ -56,6 +78,10 @@ export function initWidget() {
     const sku = readEmbedAttr(element, "sku");
     const handle = readEmbedAttr(element, "handle");
     const url = readEmbedAttr(element, "url");
+    const placement = readEmbedAttr(element, "placement");
+    const initialSize = readEmbedAttr(element, "initial-size");
+    const overlay = isOverlayModeFromAttr(readEmbedAttr(element, "overlay"));
+    const phoneFrameDisabled = isPhoneFrameDisabledFromAttr(readEmbedAttr(element, "phone-frame"));
 
     if (!publicKey && !shopId) {
       console.warn(`${WIDGET_LOG_PREFIX} public-key or shop-id is required`);
@@ -63,14 +89,35 @@ export function initWidget() {
     }
 
     try {
-      // 親要素のスタイルをリセット（Shadow DOMの内容が正しく表示されるように）
-      element.style.display = "block";
-      element.style.width = "auto";
-      element.style.height = "auto";
-      element.style.margin = "0";
-      element.style.padding = "0";
-      element.style.border = "none";
-      element.style.background = "transparent";
+      // 親要素のスタイル（インラインは行内に収まるよう inline-block）
+      if (overlay) {
+        element.style.display = "block";
+        element.style.position = "absolute";
+        element.style.left = "0";
+        element.style.top = "0";
+        element.style.right = "0";
+        element.style.bottom = "0";
+        element.style.width = "100%";
+        element.style.height = "100%";
+        element.style.zIndex = "10";
+        element.style.margin = "0";
+        element.style.padding = "0";
+        element.style.border = "none";
+        element.style.background = "transparent";
+      } else if (isInlinePlacement(placement)) {
+        element.style.display = "inline-block";
+        element.style.verticalAlign = "middle";
+      } else {
+        element.style.display = "block";
+      }
+      if (!overlay) {
+        element.style.width = "auto";
+        element.style.height = "auto";
+        element.style.margin = "0";
+        element.style.padding = "0";
+        element.style.border = "none";
+        element.style.background = "transparent";
+      }
 
       // Create shadow DOM
       const shadowRoot = element.attachShadow({ mode: "open" });
@@ -83,13 +130,39 @@ export function initWidget() {
         sku,
         handle,
         url,
+        placement: placement || null,
+        initialSize: initialSize || null,
+        overlay: overlay ? true : null,
+        /** オーバーレイは常に全幅モーダル（属性が効かない環境でも枠を出さない） */
+        phoneFrame: phoneFrameDisabled || overlay ? false : null,
       };
 
       const pid = productId || externalProductId || `widget-${Date.now()}-${Math.random()}`;
-      const containerId = `${WIDGET_CONTAINER_ID_PREFIX}${pid}`;
+      const safePid = String(pid).replace(/[^a-zA-Z0-9_-]/g, "_");
+      const containerId = `${WIDGET_CONTAINER_ID_PREFIX}${safePid}-${index}`;
+      const designRoot: Document | ShadowRoot =
+        isInlinePlacement(placement) || overlay ? shadowRoot : document;
 
       // ボタンを即座に作成（デザイン取得前に非表示で）
-      renderCube(shadowRoot, params, handleCubeClick, null);
+      renderCube(shadowRoot, params, handleCubeClick, null, containerId);
+
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const productIdForEvent =
+        params.productId || params.externalProductId || undefined;
+      const validProductIdForEvent =
+        productIdForEvent && uuidRe.test(productIdForEvent) ? productIdForEvent : undefined;
+
+      let cubeViewSent = false;
+      function trySendCubeView(shopIdForEvent: string) {
+        if (cubeViewSent || !shopIdForEvent || shopIdForEvent === "unknown") return;
+        cubeViewSent = true;
+        sendEvent({
+          shopId: shopIdForEvent,
+          productId: validProductIdForEvent,
+          type: "cube_view",
+          meta: widgetEventMeta(params),
+        }).catch(() => {});
+      }
 
       if (publicKey) {
         // 最大1500msでデザインを取得。タイムアウトした場合はデフォルトを表示
@@ -97,26 +170,38 @@ export function initWidget() {
         const designTimeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500));
         Promise.race([designFetch, designTimeout])
           .then((design) => {
-            if (design) {
-              applyDesignToButton(containerId, design);
-            } else {
-              showDefaultButton(containerId);
+            const d = design as WidgetDesignConfig | null;
+            if (d?.shopId) {
+              params.shopId = d.shopId;
             }
+            if (d?.button) {
+              applyDesignToButton(containerId, d, designRoot);
+            } else {
+              showDefaultButton(containerId, designRoot);
+            }
+            trySendCubeView(d?.shopId || params.shopId || "");
           })
           .catch(() => {
-            showDefaultButton(containerId);
+            showDefaultButton(containerId, designRoot);
           });
-        // タイムアウト後に実際のデザインが届いた場合も適用
+        // タイムアウト後に実際のデザインが届いた場合も適用（cube_view は未送信なら shopId 取得時に送る）
         designFetch
           .then((design) => {
-            if (design) {
-              applyDesignToButton(containerId, design);
+            const d = design as WidgetDesignConfig | null;
+            if (!d) return;
+            if (d.shopId) {
+              params.shopId = d.shopId;
             }
+            if (d.button) {
+              applyDesignToButton(containerId, d, designRoot);
+            }
+            trySendCubeView(d.shopId || params.shopId || "");
           })
           .catch(() => {});
       } else {
         // publicKeyがない場合はデフォルトを即時適用
-        showDefaultButton(containerId);
+        showDefaultButton(containerId, designRoot);
+        trySendCubeView(params.shopId || "");
       }
     } catch (error) {
       console.error(`${WIDGET_LOG_PREFIX} Failed to initialize widget ${index + 1}:`, error);
@@ -125,6 +210,14 @@ export function initWidget() {
 
   // すべてのボタンの位置を再計算（初期化後）
   updateButtonPositions();
+}
+
+/** ロゴ立ち上げ SVG が一周するまで待つ（API が先に返ってもスプラッシュを切らない） */
+function waitForFitLookSplashElapsed(splashStartMs: number): Promise<void> {
+  const elapsed = Date.now() - splashStartMs;
+  const remaining = FITLOOK_LOGO_SPLASH_DURATION_MS - elapsed;
+  if (remaining <= 0) return Promise.resolve();
+  return new Promise((resolve) => setTimeout(resolve, remaining));
 }
 
 async function handleCubeClick(shadowRoot: ShadowRoot, params: WidgetParams) {
@@ -141,22 +234,30 @@ async function handleCubeClick(shadowRoot: ShadowRoot, params: WidgetParams) {
     return;
   }
 
-  // cube_clickイベント送信（失敗しても続行）
-  const eventShopId = params.shopId || "unknown";
-  sendEvent({
-    shopId: eventShopId,
-    productId: params.productId || params.externalProductId || undefined,
-    type: "cube_click",
-  }).catch(() => {});
-
   // モーダルを即座に表示（ローディング状態）
   const { overlay, contentArea } = renderModalWithLoading(shadowRoot, params);
+  const splashStartMs = Date.now();
 
   // バックグラウンドで設定を取得
   try {
     const config = await fetchWidgetConfig(params);
+    await waitForFitLookSplashElapsed(splashStartMs);
 
-    if (config.enabled) {
+    const resolvedShopId = params.shopId || config.shopId || "";
+    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const pid = params.productId || params.externalProductId || "";
+    if (resolvedShopId && resolvedShopId !== "unknown") {
+      sendEvent({
+        shopId: resolvedShopId,
+        productId: uuidRe.test(pid) ? pid : undefined,
+        type: "cube_click",
+        meta: widgetEventMeta(params),
+      }).catch(() => {});
+    }
+
+    if (config.enabled && config.asset?.garmentFitAvailable) {
+      mountEmbedIframe(overlay, contentArea, params);
+    } else if (config.enabled) {
       updateModalWithConfig(shadowRoot, config, params, overlay, contentArea);
     } else {
       const errorDetails = config.error || "不明なエラー";
@@ -165,6 +266,7 @@ async function handleCubeClick(shadowRoot: ShadowRoot, params: WidgetParams) {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error(`${WIDGET_LOG_PREFIX} Error in handleCubeClick:`, errorMessage);
+    await waitForFitLookSplashElapsed(splashStartMs);
     showErrorInModal(shadowRoot, `試着画面の読み込みに失敗しました。\n\nエラー: ${errorMessage}`, overlay, contentArea);
   }
 }

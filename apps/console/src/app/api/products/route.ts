@@ -52,19 +52,48 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const productIds = data?.map((p) => p.id) ?? [];
+    let sizesByProductId = new Map<string, Set<string>>();
+    if (productIds.length > 0 && shopId) {
+      const { data: assetRows, error: assetsErr } = await supabaseAdmin
+        .from("assets")
+        .select("product_id, size")
+        .eq("shop_id", shopId)
+        .in("product_id", productIds)
+        .eq("is_active", true);
+      if (!assetsErr && assetRows) {
+        sizesByProductId = new Map();
+        for (const row of assetRows) {
+          const pid = row.product_id as string;
+          const sz = typeof row.size === "string" ? row.size.trim() : "";
+          if (!sz) continue;
+          if (!sizesByProductId.has(pid)) sizesByProductId.set(pid, new Set());
+          sizesByProductId.get(pid)!.add(sz);
+        }
+      }
+    }
+
     // Transform database format to API format
-    const products = data?.map((p) => ({
-      id: p.id,
-      shopId: p.shop_id,
-      externalProductId: p.external_product_id,
-      name: p.name,
-      brand: p.brand,
-      category: p.category,
-      thumbnailUrl: p.thumbnail_url,
-      garmentSpec: p.garment_spec ?? undefined,
-      createdAt: p.created_at,
-      updatedAt: p.updated_at,
-    }));
+    const products = data?.map((p) => {
+      const set = sizesByProductId.get(p.id);
+      const assetSizes =
+        set && set.size > 0
+          ? Array.from(set).sort((a, b) => a.localeCompare(b, "ja"))
+          : undefined;
+      return {
+        id: p.id,
+        shopId: p.shop_id,
+        externalProductId: p.external_product_id,
+        name: p.name,
+        brand: p.brand,
+        category: p.category,
+        thumbnailUrl: p.thumbnail_url,
+        garmentSpec: p.garment_spec ?? undefined,
+        assetSizes,
+        createdAt: p.created_at,
+        updatedAt: p.updated_at,
+      };
+    });
 
     return NextResponse.json(products || []);
   } catch (error) {

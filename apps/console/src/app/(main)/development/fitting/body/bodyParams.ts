@@ -9,8 +9,8 @@ export interface BodyParams {
 /**
  * 横幅に使う体重の下限（kg）。`sqrt(w/60)` だけだと低体重が細すぎるため、これ未満はこの値として扱う。
  */
-/** これ未満は横幅をこの体重相当に（低体重の細さをさらに緩和） */
-const MIN_WEIGHT_KG_FOR_X_SCALE = 56;
+/** これ未満は横幅をこの体重相当に（プレビュー体重レンジの下限 40kg と揃える） */
+const MIN_WEIGHT_KG_FOR_X_SCALE = 40;
 
 /**
  * 身長・体重からワープ用スケールを返す。

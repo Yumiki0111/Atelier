@@ -710,11 +710,13 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2
 var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$copy$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Copy$3e$__ = __turbopack_context__.i("[project]/atelier/node_modules/lucide-react/dist/esm/icons/copy.js [app-client] (ecmascript) <export default as Copy>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$check$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Check$3e$__ = __turbopack_context__.i("[project]/atelier/node_modules/lucide-react/dist/esm/icons/check.js [app-client] (ecmascript) <export default as Check>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$sonner$2f$dist$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/atelier/node_modules/sonner/dist/index.mjs [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/atelier/node_modules/next/dist/client/app-dir/link.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$contexts$2f$AuthContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/atelier/apps/console/src/contexts/AuthContext.tsx [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$lib$2f$auth$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/atelier/apps/console/src/lib/auth/api-client.ts [app-client] (ecmascript)");
 ;
 var _s = __turbopack_context__.k.signature();
 "use client";
+;
 ;
 ;
 ;
@@ -764,7 +766,8 @@ function InstallPage() {
     const selectedProduct = selectedProductId ? products.find((p)=>p.id === selectedProductId) : null;
     // 有効な最初のpublic_keyを取得
     const publicKey = widgetKeys.find((key)=>key.enabled)?.public_key;
-    const generateSnippet = (externalProductId)=>{
+    const [embedMode, setEmbedMode] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("floating");
+    const generateSnippet = (externalProductId, mode = "floating")=>{
         if (!publicKey) {
             return "<!-- Widgetキーが設定されていません。設定ページでWidgetキーを確認してください。 -->";
         }
@@ -777,12 +780,17 @@ function InstallPage() {
         if (externalProductId) {
             attributes.push(`data-fitlook-external-product-id="${externalProductId}"`);
         }
-        return `<div
+        if (mode === "inline") {
+            attributes.push(`data-fitlook-placement="inline"`);
+            attributes.push(`data-fitlook-initial-size="M"`);
+        }
+        const inlineHint = mode === "inline" ? `<!-- サイズ行ごとに data-fitlook-initial-size を在庫サイズキー（S/M/L 等）に合わせて変えてください -->\n` : "";
+        return `${inlineHint}<div
   ${attributes.join("\n  ")}>
 </div>
 <script async src="${widgetUrl}"></script>`;
     };
-    const snippet = generateSnippet(selectedProduct?.externalProductId);
+    const snippet = generateSnippet(selectedProduct?.externalProductId, embedMode);
     const handleCopy = async ()=>{
         try {
             await navigator.clipboard.writeText(snippet);
@@ -802,12 +810,12 @@ function InstallPage() {
                 children: "読み込み中..."
             }, void 0, false, {
                 fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                lineNumber: 106,
+                lineNumber: 121,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-            lineNumber: 105,
+            lineNumber: 120,
             columnNumber: 7
         }, this);
     }
@@ -822,7 +830,7 @@ function InstallPage() {
                             children: "埋め込みスニペット"
                         }, void 0, false, {
                             fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                            lineNumber: 115,
+                            lineNumber: 130,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -830,13 +838,13 @@ function InstallPage() {
                             children: "商品ページに埋め込むためのHTMLスニペットを生成します"
                         }, void 0, false, {
                             fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                            lineNumber: 116,
+                            lineNumber: 131,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                    lineNumber: 114,
+                    lineNumber: 129,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -847,7 +855,7 @@ function InstallPage() {
                             children: "Widgetキーが設定されていません"
                         }, void 0, false, {
                             fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                            lineNumber: 121,
+                            lineNumber: 136,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -855,19 +863,19 @@ function InstallPage() {
                             children: "設定ページでWidgetキーを確認してください。ショップがプロビジョニングされていない場合は、管理者に連絡してください。"
                         }, void 0, false, {
                             fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                            lineNumber: 124,
+                            lineNumber: 139,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                    lineNumber: 120,
+                    lineNumber: 135,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-            lineNumber: 113,
+            lineNumber: 128,
             columnNumber: 7
         }, this);
     }
@@ -881,7 +889,7 @@ function InstallPage() {
                         children: "埋め込みスニペット"
                     }, void 0, false, {
                         fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                        lineNumber: 135,
+                        lineNumber: 150,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -889,13 +897,29 @@ function InstallPage() {
                         children: "商品ページに埋め込むためのHTMLスニペットを生成します"
                     }, void 0, false, {
                         fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                        lineNumber: 136,
+                        lineNumber: 151,
+                        columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                        className: "mt-2 text-sm",
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
+                            href: "/install/demo",
+                            className: "font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900",
+                            children: "インライン埋め込みの動作をデモで確認"
+                        }, void 0, false, {
+                            fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
+                            lineNumber: 155,
+                            columnNumber: 11
+                        }, this)
+                    }, void 0, false, {
+                        fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
+                        lineNumber: 154,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                lineNumber: 134,
+                lineNumber: 149,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -905,11 +929,103 @@ function InstallPage() {
                         className: "space-y-2",
                         children: [
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Label"], {
+                                htmlFor: "embed-mode",
+                                children: "埋め込みスタイル"
+                            }, void 0, false, {
+                                fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
+                                lineNumber: 163,
+                                columnNumber: 11
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Select"], {
+                                value: embedMode,
+                                onValueChange: (value)=>setEmbedMode(value),
+                                children: [
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectTrigger"], {
+                                        id: "embed-mode",
+                                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectValue"], {}, void 0, false, {
+                                            fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
+                                            lineNumber: 169,
+                                            columnNumber: 15
+                                        }, this)
+                                    }, void 0, false, {
+                                        fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
+                                        lineNumber: 168,
+                                        columnNumber: 13
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectContent"], {
+                                        children: [
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectItem"], {
+                                                value: "floating",
+                                                children: "フローティング（右下固定ボタン）"
+                                            }, void 0, false, {
+                                                fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
+                                                lineNumber: 172,
+                                                columnNumber: 15
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectItem"], {
+                                                value: "inline",
+                                                children: "インライン（サイズ欄・ブロック内に配置）"
+                                            }, void 0, false, {
+                                                fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
+                                                lineNumber: 173,
+                                                columnNumber: 15
+                                            }, this)
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
+                                        lineNumber: 171,
+                                        columnNumber: 13
+                                    }, this)
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
+                                lineNumber: 164,
+                                columnNumber: 11
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                className: "text-sm text-gray-500",
+                                children: [
+                                    "インラインでは ",
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("code", {
+                                        className: "text-xs bg-gray-100 px-1 rounded",
+                                        children: 'data-fitlook-placement="inline"'
+                                    }, void 0, false, {
+                                        fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
+                                        lineNumber: 177,
+                                        columnNumber: 21
+                                    }, this),
+                                    " ",
+                                    "が付き、ホスト要素の位置にトリガーが表示されます。サイズ行ごとにホストを置き、",
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("code", {
+                                        className: "text-xs bg-gray-100 px-1 rounded",
+                                        children: "data-fitlook-initial-size"
+                                    }, void 0, false, {
+                                        fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
+                                        lineNumber: 179,
+                                        columnNumber: 13
+                                    }, this),
+                                    " をその行のサイズキーに合わせてください。"
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
+                                lineNumber: 176,
+                                columnNumber: 11
+                            }, this)
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
+                        lineNumber: 162,
+                        columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "space-y-2",
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Label"], {
                                 htmlFor: "product",
                                 children: "商品を選択（任意）"
                             }, void 0, false, {
                                 fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                lineNumber: 143,
+                                lineNumber: 184,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Select"], {
@@ -922,12 +1038,12 @@ function InstallPage() {
                                             placeholder: "商品を選択（任意）"
                                         }, void 0, false, {
                                             fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                            lineNumber: 149,
+                                            lineNumber: 190,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                        lineNumber: 148,
+                                        lineNumber: 189,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectContent"], {
@@ -937,7 +1053,7 @@ function InstallPage() {
                                                 children: "商品を指定しない"
                                             }, void 0, false, {
                                                 fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                                lineNumber: 152,
+                                                lineNumber: 193,
                                                 columnNumber: 15
                                             }, this),
                                             products.map((product)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -945,33 +1061,44 @@ function InstallPage() {
                                                     children: product.name
                                                 }, product.id, false, {
                                                     fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                                    lineNumber: 154,
+                                                    lineNumber: 195,
                                                     columnNumber: 17
                                                 }, this))
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                        lineNumber: 151,
+                                        lineNumber: 192,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                lineNumber: 144,
+                                lineNumber: 185,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                 className: "text-sm text-gray-500",
-                                children: "商品を選択しない場合、ページから自動的に商品IDを取得します（external_product_idが必要です）"
-                            }, void 0, false, {
+                                children: [
+                                    "外部ECの商品IDは ",
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("code", {
+                                        className: "text-xs bg-gray-100 px-1 rounded",
+                                        children: "data-fitlook-external-product-id"
+                                    }, void 0, false, {
+                                        fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
+                                        lineNumber: 202,
+                                        columnNumber: 24
+                                    }, this),
+                                    " で必ず指定してください。商品を選択すると例としてその値が入ります。"
+                                ]
+                            }, void 0, true, {
                                 fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                lineNumber: 160,
+                                lineNumber: 201,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                        lineNumber: 142,
+                        lineNumber: 183,
                         columnNumber: 9
                     }, this),
                     selectedProduct && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -982,7 +1109,7 @@ function InstallPage() {
                                 children: "選択中の商品"
                             }, void 0, false, {
                                 fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                lineNumber: 167,
+                                lineNumber: 208,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -990,7 +1117,7 @@ function InstallPage() {
                                 children: selectedProduct.name
                             }, void 0, false, {
                                 fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                lineNumber: 168,
+                                lineNumber: 209,
                                 columnNumber: 13
                             }, this),
                             selectedProduct.externalProductId && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1001,13 +1128,13 @@ function InstallPage() {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                lineNumber: 170,
+                                lineNumber: 211,
                                 columnNumber: 15
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                        lineNumber: 166,
+                        lineNumber: 207,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1020,7 +1147,7 @@ function InstallPage() {
                                         children: "埋め込みスニペット"
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                        lineNumber: 177,
+                                        lineNumber: 218,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
@@ -1034,7 +1161,7 @@ function InstallPage() {
                                                     className: "h-4 w-4"
                                                 }, void 0, false, {
                                                     fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                                    lineNumber: 186,
+                                                    lineNumber: 227,
                                                     columnNumber: 21
                                                 }, this),
                                                 "コピーしました"
@@ -1045,7 +1172,7 @@ function InstallPage() {
                                                     className: "h-4 w-4"
                                                 }, void 0, false, {
                                                     fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                                    lineNumber: 191,
+                                                    lineNumber: 232,
                                                     columnNumber: 21
                                                 }, this),
                                                 "コピー"
@@ -1053,13 +1180,13 @@ function InstallPage() {
                                         }, void 0, true)
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                        lineNumber: 178,
+                                        lineNumber: 219,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                lineNumber: 176,
+                                lineNumber: 217,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1070,18 +1197,18 @@ function InstallPage() {
                                     className: "w-full p-3 border rounded-md font-mono text-sm min-h-[100px] resize-none bg-gray-50"
                                 }, void 0, false, {
                                     fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                    lineNumber: 198,
+                                    lineNumber: 239,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                lineNumber: 197,
+                                lineNumber: 238,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                        lineNumber: 175,
+                        lineNumber: 216,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1092,7 +1219,7 @@ function InstallPage() {
                                 children: "使用方法"
                             }, void 0, false, {
                                 fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                lineNumber: 207,
+                                lineNumber: 248,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("ol", {
@@ -1102,21 +1229,14 @@ function InstallPage() {
                                         children: "上記のスニペットをコピーします"
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                        lineNumber: 211,
+                                        lineNumber: 252,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
-                                        children: "商品ページのHTMLに貼り付けます"
+                                        children: "商品ページのHTMLに貼り付けます（インラインはサイズ表のセルなどにホスト用の空 div を置きます）"
                                     }, void 0, false, {
                                         fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                        lineNumber: 212,
-                                        columnNumber: 13
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
-                                        children: "商品IDが指定されていない場合、ウィジェットはページから自動的に商品を識別しようとします"
-                                    }, void 0, false, {
-                                        fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                        lineNumber: 213,
+                                        lineNumber: 253,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
@@ -1127,70 +1247,116 @@ function InstallPage() {
                                                 children: "data-fitlook-public-key"
                                             }, void 0, false, {
                                                 fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                                lineNumber: 217,
+                                                lineNumber: 255,
                                                 columnNumber: 23
                                             }, this),
                                             " が含まれます（必須）"
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                        lineNumber: 216,
+                                        lineNumber: 254,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
                                         children: [
-                                            "商品を指定する場合は ",
+                                            "EC側の商品IDは ",
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("code", {
                                                 className: "bg-blue-100 px-1 rounded",
                                                 children: "data-fitlook-external-product-id"
                                             }, void 0, false, {
                                                 fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                                lineNumber: 220,
-                                                columnNumber: 26
+                                                lineNumber: 258,
+                                                columnNumber: 25
                                             }, this),
-                                            " を使用します（従来の",
+                                            " でコンソールの",
+                                            " ",
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("code", {
+                                                className: "bg-blue-100 px-1 rounded",
+                                                children: "external_product_id"
+                                            }, void 0, false, {
+                                                fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
+                                                lineNumber: 259,
+                                                columnNumber: 15
+                                            }, this),
+                                            " と一致させます（従来の",
                                             " ",
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("code", {
                                                 className: "bg-blue-100 px-1 rounded",
                                                 children: "data-atelier-*"
                                             }, void 0, false, {
                                                 fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                                lineNumber: 221,
+                                                lineNumber: 260,
                                                 columnNumber: 15
                                             }, this),
-                                            " もウィジェットは読み取り互換）"
+                                            " も読み取り互換）"
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                        lineNumber: 219,
+                                        lineNumber: 257,
+                                        columnNumber: 13
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
+                                        children: [
+                                            "Widget キーの ",
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
+                                                children: "許可ドメイン"
+                                            }, void 0, false, {
+                                                fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
+                                                lineNumber: 263,
+                                                columnNumber: 26
+                                            }, this),
+                                            "に EC サイトのホストを登録してください（未登録だと API が拒否されます）"
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
+                                        lineNumber: 262,
+                                        columnNumber: 13
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
+                                        children: [
+                                            "ローカル検証用のサンプルページ:",
+                                            " ",
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("code", {
+                                                className: "bg-blue-100 px-1 rounded",
+                                                children: "/demo-embedded-ec.html"
+                                            }, void 0, false, {
+                                                fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
+                                                lineNumber: 267,
+                                                columnNumber: 15
+                                            }, this),
+                                            "（コンソール起動後に同じオリジンで開く）"
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
+                                        lineNumber: 265,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                                lineNumber: 210,
+                                lineNumber: 251,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                        lineNumber: 206,
+                        lineNumber: 247,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-                lineNumber: 141,
+                lineNumber: 161,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/atelier/apps/console/src/app/(main)/install/page.tsx",
-        lineNumber: 133,
+        lineNumber: 148,
         columnNumber: 5
     }, this);
 }
-_s(InstallPage, "jeplAG31IfL3VMxIbOgbFk7cAsE=", false, function() {
+_s(InstallPage, "Ib8urOydvq0MfBHY/SEZ2Jo43LE=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$contexts$2f$AuthContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useAuth"],
         __TURBOPACK__imported__module__$5b$project$5d2f$atelier$2f$apps$2f$console$2f$src$2f$features$2f$products$2f$useProducts$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useProducts"],

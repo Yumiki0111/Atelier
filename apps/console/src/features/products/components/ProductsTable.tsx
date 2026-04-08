@@ -210,17 +210,18 @@ export function ProductsTable({
                       }}
                     >
                       {product.thumbnailUrl ? (
-                        <div className="relative h-16 w-16 overflow-hidden rounded flex items-center justify-center">
+                        <div className="relative h-16 w-12 overflow-hidden rounded-md border border-black/5 bg-stone-100 p-0.5 flex items-center justify-center">
+                          {/* eslint-disable-next-line @next/next/no-img-element -- 外部・可変URLのサムネイル */}
                           <img
                             src={product.thumbnailUrl}
                             alt={product.name}
-                            className="max-h-full max-w-full object-contain"
+                            className="h-full w-full object-cover object-center"
                             onClick={(e) => e.stopPropagation()}
                             onTouchEnd={(e) => e.stopPropagation()}
                           />
                         </div>
                       ) : (
-                        <div className="h-16 w-16 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">
+                        <div className="h-16 w-12 overflow-hidden rounded-md border border-dashed border-gray-200 bg-gray-50 flex items-center justify-center text-gray-400 text-[10px] leading-tight text-center px-0.5">
                           画像なし
                         </div>
                       )}

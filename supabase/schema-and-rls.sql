@@ -70,7 +70,7 @@ ALTER TABLE public.widget_keys ENABLE ROW LEVEL SECURITY;
 
 -- -----------------------------------------------------------------------------
 -- 既存テーブルにカラムがない場合の補足（必要なら手動で ALTER を実行）
--- profiles: id, shop_id, role, email, name, created_at, updated_at
+-- profiles: id, shop_id, role, email, name, preview_fit_height_cm, preview_fit_body_val, created_at, updated_at
 -- pending_invites: id, shop_id, email, role, accepted_at, created_at, UNIQUE(shop_id, email)
 -- shops: id, name, enabled, created_at, updated_at
 -- widget_keys: id, shop_id, public_key, secret_key_hash, allowed_domains, enabled, created_at, updated_at
@@ -94,5 +94,31 @@ CREATE TABLE IF NOT EXISTS public.widget_designs (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+-- -----------------------------------------------------------------------------
+-- 6. events（ウィジェットのイベントログ・アナリティクス。API は service_role のみ）
+-- 詳細は supabase/migrations/20260407120000_create_events.sql
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  shop_id uuid NOT NULL REFERENCES public.shops (id) ON DELETE CASCADE,
+  product_id uuid,
+  type text NOT NULL,
+  meta jsonb,
+  session_id text,
+  user_agent text,
+  ip_address text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS events_shop_id_created_at_idx
+  ON public.events (shop_id, created_at DESC);
+
+ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
+
+-- -----------------------------------------------------------------------------
+-- 7. demo_share_links（営業用公開デモ URL /share/{token}。詳細は migrations）
+-- -----------------------------------------------------------------------------
+-- 20260408140000_demo_share_links.sql を参照
 
 -- =============================================================================

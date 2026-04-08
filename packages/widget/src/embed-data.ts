@@ -13,6 +13,23 @@ export function readEmbedAttr(el: Element, name: string): string | null {
   );
 }
 
+/** `data-fitlook-placement` が `inline` / `embedded` のとき、ホスト内インライン表示（固定フローティングではない） */
+export function isInlinePlacement(placement: string | null | undefined): boolean {
+  if (!placement) return false;
+  const p = placement.trim().toLowerCase();
+  return p === "inline" || p === "embedded";
+}
+
+/** `data-fitlook-overlay="true"` … ホスト上に透明の全幅タップ領域のみ（フローティングボタンは出さない） */
+export function isOverlayModeFromAttr(value: string | null | undefined): boolean {
+  return value?.trim().toLowerCase() === "true";
+}
+
+/** `data-fitlook-phone-frame="false"` … 試着モーダルにスマホ端末枠（プレビュー用ベゼル）を出さない */
+export function isPhoneFrameDisabledFromAttr(value: string | null | undefined): boolean {
+  return value?.trim().toLowerCase() === "false";
+}
+
 /** ウィジェットを初期化するホスト要素（新・旧 data 属性） */
 export const WIDGET_HOST_SELECTOR = [
   "[data-fitlook-public-key]",

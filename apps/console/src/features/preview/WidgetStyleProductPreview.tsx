@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ProductSize } from "@Atelier/shared";
+import { weightKgFromBodyVal } from "@Atelier/shared";
 import { authenticatedFetch } from "@/lib/auth/api-client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFittingCanvasData } from "@/app/(main)/development/fitting/canvas/useFittingCanvasData";
@@ -9,11 +10,20 @@ import { shouldSuppressGarmentPathRender } from "@/app/(main)/development/fittin
 import { landmarksEqual, pathDsContentEqual, sizeEqual } from "@/app/(main)/development/fitting/lib/fittingStateUtils";
 import type { CustomGarmentData, JacketSize, ShirtSize } from "@/app/(main)/development/fitting/lib/types";
 import { applyWidgetSizeToCustomGarmentData } from "@/lib/widget-fit/applyWidgetSizeToGarment";
+import { bodyHeight } from "@/app/(main)/development/fitting/lib/bodyUtils";
+import { REF_HEIGHT_CM } from "@/app/(main)/development/fitting/lib/constants";
+import {
+  DEFAULT_PREVIEW_FIT_BODY_VAL,
+  DEFAULT_PREVIEW_FIT_HEIGHT_CM,
+  loadPreviewFit,
+  savePreviewFit,
+} from "@/lib/previewFitStorage";
 import {
   PreviewAccentCtaButton,
   PreviewBackRow,
   PreviewBodyChangeButton,
   PreviewBodySilhouette,
+  PreviewChromeScaleProvider,
   PreviewColorSwatchRow,
   PreviewFitParamSliders,
   PreviewProductRow,
@@ -67,31 +77,33 @@ type FitSvgPayload = {
   garmentPathStrokes?: (string | undefined)[];
 };
 
-function weightKgFromBodyVal(v: number): number {
-  return Math.round(50 + (v / 100) * 40);
-}
-
-/** 開発ページのデフォルト体重 60kg と揃える */
+/** 開発ページのデフォルト体重（`weightKgFromBodyVal(DEFAULT)` ≈ 53kg） */
 const DEFAULT_FIT_BODY_VAL = 25;
 
 const VIEWBOX_W = 1505;
-/** `PreviewFitParamSliders` の max（cm）と揃える */
-const PREVIEW_FIT_HEIGHT_SLIDER_MAX = 195;
 const PREVIEW_SHIRT_SIZE: ShirtSize = "48";
 const PREVIEW_JACKET_SIZE: JacketSize = "4";
 /** 開発ページよりやや長め（smootherStep 併用で立ち上がりを緩める） */
 const PREVIEW_SIZE_ANIM_MS = 480;
 
 /**
- * 体型変更シートのみ：身長が低いほど viewBox が短く meet で引き伸ばされるのを抑える。
- * 商品試着メイン画面ではキャンパス内に余白ができるため使わない。
+ * 試着プレビュー用の viewBox 高さ。衣装リグの脊髄スパンで yScale が服ごとに変わると
+ * `meet` のスケールがぶれて見た目の身長が違うため、身長スライダー（cm）からだけ求める。
+ * 体型シート（bodyOnly）でもメイン試着でも同じ式にし、服を表示した瞬間に身長が変わって見えないようにする。
  */
-function previewFitNormalizedViewBoxHeight(
-  heightCm: number,
-  viewBoxHeightAtActual: number
-): number {
-  const h = Math.max(1, Math.min(heightCm, PREVIEW_FIT_HEIGHT_SLIDER_MAX));
-  return (viewBoxHeightAtActual * PREVIEW_FIT_HEIGHT_SLIDER_MAX) / h;
+function uniformPreviewViewBoxHeightFromHeightCm(heightCm: number): number {
+  const h = Math.max(150, Math.min(195, Math.round(heightCm)));
+  return Math.ceil(bodyHeight(h / REF_HEIGHT_CM));
+}
+
+/**
+ * 体型変更シート専用。身長スライダーを上げたときに、画面上のシルエットが大きく見えるようにする。
+ * （viewBox 高さが伸びると `meet` で縮みやすいため、表示だけ身長比で補正する）
+ */
+function bodySheetPreviewHeightScale(heightCm: number): number {
+  const h = Math.max(150, Math.min(195, Math.round(heightCm)));
+  const raw = h / DEFAULT_PREVIEW_FIT_HEIGHT_CM;
+  return Math.max(0.88, Math.min(1.12, raw));
 }
 
 /**
@@ -108,6 +120,7 @@ export function PreviewFittingCanvasSvg({
   currentSize,
   customGarmentData,
   bodyOnly = false,
+  bodySheetHeightScale = false,
 }: {
   fitHeightCm: number;
   fitBodyVal: number;
@@ -115,6 +128,8 @@ export function PreviewFittingCanvasSvg({
   customGarmentData: CustomGarmentData;
   /** 体型調整シートなど：体型ラインのみ（服パスを描かない） */
   bodyOnly?: boolean;
+  /** 体型変更オーバーレイ：身長に応じて表示を拡大（`meet` による見かけの縮小を補う） */
+  bodySheetHeightScale?: boolean;
 }) {
   const sizedTarget = useMemo(
     () => applyWidgetSizeToCustomGarmentData(customGarmentData, currentSize),
@@ -209,26 +224,22 @@ export function PreviewFittingCanvasSvg({
     rigBodyEnabled: false,
     genericVertexPlotHighlight: null,
   });
-  /** 体型シート（bodyOnly）の表示 viewBox だけスライダー上限身長に揃える。メイン試着は snap の実寸で余白を作らない。 */
-  const snapAtSliderMax = useFittingCanvasData({
-    height: PREVIEW_FIT_HEIGHT_SLIDER_MAX,
-    weight: weightKgFromBodyVal(fitBodyVal),
-    garment: "custom",
-    shirtSize: PREVIEW_SHIRT_SIZE,
-    jacketSize: PREVIEW_JACKET_SIZE,
-    customGarmentData: sizedTarget,
-    animProgress,
-    fromSize: null,
-    toSize: null,
-    fromCustomGarmentData: fromCustom,
-    toCustomGarmentData: toCustom,
-    rigBodyEnabled: false,
-    genericVertexPlotHighlight: null,
-  });
-  const displayViewBoxHeight = bodyOnly ? snapAtSliderMax.viewBoxHeight : snap.viewBoxHeight;
+  /** シート内は親から `bodyDraftHeight` が渡る。メインと同じ身長基準で viewBox を揃える。 */
+  const displayViewBoxHeight = uniformPreviewViewBoxHeightFromHeightCm(fitHeightCm);
+  const sheetScale = bodySheetHeightScale ? bodySheetPreviewHeightScale(fitHeightCm) : 1;
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 max-w-[300px] items-center justify-center overflow-visible">
+    <div
+      className="flex h-full min-h-0 w-full min-w-0 max-w-[300px] items-center justify-center overflow-visible"
+      style={
+        bodySheetHeightScale
+          ? {
+              transform: `scale(${sheetScale})`,
+              transformOrigin: "center center",
+            }
+          : undefined
+      }
+    >
       <svg
         viewBox={`0 0 ${VIEWBOX_W} ${displayViewBoxHeight}`}
         preserveAspectRatio="xMidYMid meet"
@@ -269,25 +280,7 @@ export function PreviewFittingCanvasSvg({
  * - `garmentFitAvailable` のみ: `/api/products/.../fit-svg` フォールバック
  * - それ以外: シルエット＋サムネ
  */
-export function WidgetStyleProductPreview({
-  productId,
-  productName,
-  thumbnailUrl,
-  priceDisplay = "—",
-  sizeKeys: sizeKeysProp,
-  initialSize,
-  garmentFitAvailable,
-  customGarmentData = null,
-  onClose,
-  interfaceBackgroundColor,
-  canvasBackgroundColor,
-  ctaCartLabel,
-  ctaTryOnLabel,
-  ctaAccentColor,
-  bodyAdjustEnabled = true,
-  sizeCarouselEnabled = true,
-  garmentPathsInViewer = true,
-}: {
+export type WidgetStyleProductPreviewProps = {
   productId: string;
   productName: string;
   thumbnailUrl?: string | null;
@@ -314,14 +307,44 @@ export function WidgetStyleProductPreview({
   sizeCarouselEnabled?: boolean;
   /** false のとき試着エリアは体型ラインのみ（服パスを描かない） */
   garmentPathsInViewer?: boolean;
-}) {
+  /**
+   * 埋め込み iframe（`/embed/widget-fit`）専用。コンソールログインなし・体型は localStorage のみ。
+   * `customGarmentData` あり時はプレビューと同一のクライアント試着（滑らか）。
+   */
+  embedPublicWidget?: boolean;
+};
+
+export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps) {
+  const {
+    productId,
+    productName,
+    thumbnailUrl,
+    priceDisplay = "—",
+    sizeKeys: sizeKeysProp,
+    initialSize,
+    garmentFitAvailable,
+    customGarmentData = null,
+    onClose,
+    interfaceBackgroundColor,
+    canvasBackgroundColor,
+    ctaCartLabel,
+    ctaTryOnLabel,
+    ctaAccentColor,
+    bodyAdjustEnabled = true,
+    sizeCarouselEnabled = true,
+    garmentPathsInViewer = true,
+    embedPublicWidget = false,
+  } = props;
+
   const interfaceBg = interfaceBackgroundColor ?? PREVIEW_SURFACE_BG;
   const canvasBg = canvasBackgroundColor ?? PREVIEW_SURFACE_BG;
   const cartLabel = ctaCartLabel ?? "カートに追加";
   const tryOnLabel = ctaTryOnLabel ?? "この体型で試着する";
   const accent = ctaAccentColor ?? PREVIEW_ACCENT;
 
-  const { isLoading: authLoading, isAuthenticated } = useAuth();
+  const { isLoading: authLoadingFromAuth, isAuthenticated: isAuthenticatedFromAuth } = useAuth();
+  const authLoading = embedPublicWidget ? false : authLoadingFromAuth;
+  const isAuthenticated = embedPublicWidget ? false : isAuthenticatedFromAuth;
   const swatches = DEFAULT_SWATCHES;
   const [selectedColorId, setSelectedColorId] = useState<string>(swatches[0]?.id ?? "");
 
@@ -343,8 +366,16 @@ export function WidgetStyleProductPreview({
     }
   }, [initialSize, sizeKeys]);
 
-  const [fitHeightCm, setFitHeightCm] = useState(170);
-  const [fitBodyVal, setFitBodyVal] = useState(DEFAULT_FIT_BODY_VAL);
+  /**
+   * 埋め込み SSR だけ localStorage が使えず水合不一致になるため、そこだけ定数初期化 + `useLayoutEffect`。
+   * コンソールのプレビューは従来どおり `loadPreviewFit()` で初回から復元。
+   */
+  const [fitHeightCm, setFitHeightCm] = useState(() =>
+    embedPublicWidget ? DEFAULT_PREVIEW_FIT_HEIGHT_CM : loadPreviewFit().heightCm
+  );
+  const [fitBodyVal, setFitBodyVal] = useState(() =>
+    embedPublicWidget ? DEFAULT_PREVIEW_FIT_BODY_VAL : loadPreviewFit().bodyVal
+  );
   /** 体型調整シート内の下書き（適用は「この体型で試着する」まで保留） */
   const [bodyDraftHeight, setBodyDraftHeight] = useState(170);
   const [bodyDraftVal, setBodyDraftVal] = useState(DEFAULT_FIT_BODY_VAL);
@@ -356,6 +387,67 @@ export function WidgetStyleProductPreview({
   const [draftFitData, setDraftFitData] = useState<FitSvgPayload | null>(null);
   const [draftFitLoading, setDraftFitLoading] = useState(false);
   const [draftFitError, setDraftFitError] = useState<string | null>(null);
+
+  /** 埋め込み iframe のみ: 水合と一致した直後に localStorage を反映（ペイント前） */
+  useLayoutEffect(() => {
+    if (!embedPublicWidget) return;
+    const local = loadPreviewFit();
+    setFitHeightCm(local.heightCm);
+    setFitBodyVal(local.bodyVal);
+  }, [embedPublicWidget]);
+
+  /** ログイン時は DB（profiles）。未ログインは localStorage（埋め込みは上の layout で済む）。 */
+  useEffect(() => {
+    if (embedPublicWidget) return;
+    if (authLoading) return;
+    if (!isAuthenticated) {
+      const local = loadPreviewFit();
+      setFitHeightCm(local.heightCm);
+      setFitBodyVal(local.bodyVal);
+      return;
+    }
+
+    const ac = new AbortController();
+    void (async () => {
+      try {
+        const res = await authenticatedFetch("/api/auth/profile", {
+          signal: ac.signal,
+          cache: "no-store",
+        });
+        if (!res.ok) {
+          const local = loadPreviewFit();
+          setFitHeightCm(local.heightCm);
+          setFitBodyVal(local.bodyVal);
+          return;
+        }
+        const p = (await res.json()) as {
+          preview_fit_height_cm?: number | null;
+          preview_fit_body_val?: number | null;
+        };
+        const h = p.preview_fit_height_cm;
+        const b = p.preview_fit_body_val;
+        if (
+          typeof h === "number" &&
+          Number.isFinite(h) &&
+          typeof b === "number" &&
+          Number.isFinite(b)
+        ) {
+          setFitHeightCm(Math.min(195, Math.max(150, Math.round(h))));
+          setFitBodyVal(Math.min(100, Math.max(0, Math.round(b))));
+        } else {
+          const local = loadPreviewFit();
+          setFitHeightCm(local.heightCm);
+          setFitBodyVal(local.bodyVal);
+        }
+      } catch (e) {
+        if (e instanceof Error && e.name === "AbortError") return;
+        const local = loadPreviewFit();
+        setFitHeightCm(local.heightCm);
+        setFitBodyVal(local.bodyVal);
+      }
+    })();
+    return () => ac.abort();
+  }, [embedPublicWidget, authLoading, isAuthenticated]);
 
   useEffect(() => {
     if (!bodyAdjustEnabled) setBodySheetOpen(false);
@@ -571,14 +663,9 @@ export function WidgetStyleProductPreview({
     swatches.find((s) => s.id === selectedColorId)?.hex ?? swatches[0]?.hex ?? "#e8c547";
 
   const WINDOW = 3;
-  const idxSize = sizeKeys.indexOf(currentSize);
-  const [windowStart, setWindowStart] = useState(0);
-
-  useEffect(() => {
+  const windowStart = useMemo(() => {
     const idx = sizeKeys.indexOf(currentSize);
-    const start =
-      idx >= 0 ? Math.min(Math.max(0, idx), Math.max(0, sizeKeys.length - WINDOW)) : 0;
-    setWindowStart(start);
+    return idx >= 0 ? Math.min(Math.max(0, idx), Math.max(0, sizeKeys.length - WINDOW)) : 0;
   }, [currentSize, sizeKeys]);
 
   const openBodyAdjustSheet = useCallback(() => {
@@ -592,6 +679,7 @@ export function WidgetStyleProductPreview({
   }, [fitHeightCm, fitBodyVal, fitData, customGarmentData, garmentFitAvailable]);
 
   return (
+    <PreviewChromeScaleProvider value={embedPublicWidget ? "embed" : "default"}>
     <div
       className="relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden"
       style={{
@@ -643,7 +731,7 @@ export function WidgetStyleProductPreview({
               <div className="flex h-full min-h-0 w-full min-w-0 flex-1 items-center justify-center overflow-visible">
                 <div className="flex h-full w-full min-h-0 min-w-0 max-h-full max-w-[300px] items-center justify-center">
                   <svg
-                    viewBox={`0 0 ${fitData.viewBoxWidth} ${fitData.viewBoxHeight}`}
+                    viewBox={`0 0 ${fitData.viewBoxWidth} ${uniformPreviewViewBoxHeightFromHeightCm(fitHeightCm)}`}
                     preserveAspectRatio="xMidYMid meet"
                     className="h-auto max-h-full w-full min-w-0 max-w-[300px] overflow-visible"
                     xmlns="http://www.w3.org/2000/svg"
@@ -696,7 +784,6 @@ export function WidgetStyleProductPreview({
           sizeKeys={sizeKeys}
           currentSize={currentSize}
           windowStart={windowStart}
-          onWindowStartChange={setWindowStart}
           onSelectSize={setCurrentSize}
           accentColor={accent}
         />
@@ -735,6 +822,7 @@ export function WidgetStyleProductPreview({
                       currentSize={currentSize}
                       customGarmentData={customGarmentData}
                       bodyOnly
+                      bodySheetHeightScale
                     />
                   </div>
                 ) : authLoading ? (
@@ -747,9 +835,15 @@ export function WidgetStyleProductPreview({
                   </div>
                 ) : draftFitData ? (
                   <div className="flex h-full min-h-0 w-full min-w-0 flex-1 items-center justify-center overflow-visible">
-                    <div className="flex h-full w-full min-h-0 min-w-0 max-h-full max-w-[300px] items-center justify-center">
+                    <div
+                      className="flex h-full w-full min-h-0 min-w-0 max-h-full max-w-[300px] items-center justify-center overflow-visible"
+                      style={{
+                        transform: `scale(${bodySheetPreviewHeightScale(bodyDraftHeight)})`,
+                        transformOrigin: "center center",
+                      }}
+                    >
                       <svg
-                        viewBox={`0 0 ${draftFitData.viewBoxWidth} ${previewFitNormalizedViewBoxHeight(bodyDraftHeight, draftFitData.viewBoxHeight)}`}
+                        viewBox={`0 0 ${draftFitData.viewBoxWidth} ${uniformPreviewViewBoxHeightFromHeightCm(bodyDraftHeight)}`}
                         preserveAspectRatio="xMidYMid meet"
                         className="h-auto max-h-full w-full min-w-0 max-w-[300px] overflow-visible"
                         xmlns="http://www.w3.org/2000/svg"
@@ -787,13 +881,31 @@ export function WidgetStyleProductPreview({
             label={tryOnLabel}
             accentColor={accent}
             onClick={() => {
-              setFitHeightCm(bodyDraftHeight);
-              setFitBodyVal(bodyDraftVal);
-              setBodySheetOpen(false);
+              void (async () => {
+                setFitHeightCm(bodyDraftHeight);
+                setFitBodyVal(bodyDraftVal);
+                savePreviewFit({ heightCm: bodyDraftHeight, bodyVal: bodyDraftVal });
+                if (isAuthenticated && !embedPublicWidget) {
+                  try {
+                    await authenticatedFetch("/api/auth/profile", {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        preview_fit_height_cm: bodyDraftHeight,
+                        preview_fit_body_val: bodyDraftVal,
+                      }),
+                    });
+                  } catch {
+                    // オフライン等は localStorage のみ
+                  }
+                }
+                setBodySheetOpen(false);
+              })();
             }}
           />
         </div>
       ) : null}
     </div>
+    </PreviewChromeScaleProvider>
   );
 }
