@@ -25,6 +25,7 @@ export interface CustomGarmentData {
    * 汎用（genericSymmetricTop）。
    * - 袖 Y スケール対象 path は `sleeveMeasureVertexStart`〜`End` が収まる単一 path のみ（コードは path を差し替えない）。
    * - `sleeveMeasureVertexChain` がある場合、各 # はその path 上に無ければならない（跨ぎは無効）。
+   * - `sleeveMeasureArcTargetChain` は任意で、指定時のみ袖丈ソルバの弧長目標がそのサブチェーンになる（赤線は `sleeveMeasureVertexChain` のまま）。
    * - 着丈・袖丈の連結 # で軽量グレーディング（design 縦スケール）→ 通常プレース。
    * - `applied` と 4 連結区間はデータ互換・API 用。
    */
@@ -57,18 +58,31 @@ export interface CustomGarmentData {
      */
     sleeveMeasureVertexChain?: number[];
     /**
-     * 下袖（エルボ〜袖口など）の連結頂点範囲。両方指定し、かつ袖丈採寸と同じ単一 path 上にあるとき：
-     * 上袖の anchor スケールで接続点が動いた分だけ、この範囲の頂点（採寸区間外）を平行移動し、エルボで折れないようにする。
+     * 袖丈 **cm 合わせ・ソルバ** の弧長にだけ使う連結 #（順序付き）。未指定時は `sleeveMeasureVertexChain` と同じ。
+     * 赤線の表示チェーンを長くしつつ、目標弧長は短いサブチェーンにしたいとき（例: カフ折れを除く）に指定する。
+     * 各 # は `sleeveMeasureVertex*` と同じ袖 path 上に無ければならない。
+     */
+    sleeveMeasureArcTargetChain?: number[];
+    /**
+     * 下袖（袖下）の連結頂点範囲。袖丈採寸と同じ単一 path 上にあるとき、胴端・ジャンクションを固定したうえで内点を再配置する（`tryLowerSleeveFollowArgs` が非 null のときのみ）。
+     * **1 辺だけ**より、袖下に沿って **複数頂点** を含めると形状がなめらかになりやすい。
      */
     lowerSleeveVertexStart?: number;
     lowerSleeveVertexEnd?: number;
+    /**
+     * 下袖シームの連続グローバル #（胴端→ジャンクションの path 順）。指定時は `lowerSleeveVertex*` から推論したチェーンより優先する。
+     */
+    lowerSleeveSeamVertexChain?: number[];
     /**
      * ミラー袖 path 用の下袖範囲（袖丈採寸と同じ path 上）。未設定時は左袖の `lowerSleeveVertex*` のガイド path 寄せロジックのみ。
      */
     lowerSleeveMirrorVertexStart?: number;
     lowerSleeveMirrorVertexEnd?: number;
+    /** ミラー袖 path 用の {@link lowerSleeveSeamVertexChain} と同じ意味。 */
+    lowerSleeveMirrorSeamVertexChain?: number[];
     /**
-     * @deprecated 手動指定は廃止。保存データ互換のため残すがパイプラインでは読まない。
+     * 下袖の「胴と接する」頂点のグローバル #。`lowerSleeveVertex*` レンジ内なら、袖丈パイプラインで**胴側固定端**として優先する。
+     * 未指定時はレンジの端（ジャンクションの反対側）を胴端とみなす。
      */
     lowerSleeveSnapToBodyGlobalVertex?: number;
     /**
@@ -84,7 +98,7 @@ export interface CustomGarmentData {
      */
     lowerSleeveFollowWeldPairs?: [number, number][];
     /**
-     * @deprecated 近接溶接は廃止（下袖平行移動に統一）。
+     * @deprecated 近接溶接は廃止。
      */
     lowerSleeveFollowProximityWeldPx?: number;
     /**
@@ -96,6 +110,18 @@ export interface CustomGarmentData {
     sleeveMirrorMeasureVertexStart?: number;
     sleeveMirrorMeasureVertexEnd?: number;
     sleeveMirrorMeasureVertexChain?: number[];
+    /**
+     * ミラー袖の {@link sleeveMeasureArcTargetChain} と同じ意味（プライマリと独立）。
+     */
+    sleeveMirrorMeasureArcTargetChain?: number[];
+    /**
+     * **推奨**: 袖丈 cm を合わせるときに伸縮する **袖口側の隣接1辺**（グローバル # のペア）。
+     * 未指定時は採寸終端の Y が大きい方＋その隣へフォールバックし、path 向きによっては見た目の袖口とずれる。
+     * 同一袖 path 上で隣接していること。
+     */
+    sleeveFirstEdgeGlobalPair?: [number, number];
+    /** ミラー袖 path 上の `sleeveFirstEdgeGlobalPair` と同じ意味（プライマリと対になる袖口1辺を指定）。 */
+    sleeveMirrorFirstEdgeGlobalPair?: [number, number];
     /**
      * 着丈計測用の連結頂点（グレード分母・採寸オーバーレイ）。服プロットの太い紫ポリラインは描画しない。
      */
@@ -143,7 +169,7 @@ export type GenericVertexPlotHighlight = {
   sleeveMeasure?: [number, number];
   /** 袖丈計測: カンマ列があるときはこの順の # だけ強調（非連続対応） */
   sleeveMeasureVertexChain?: number[];
-  /** 下袖（上袖伸びに追従する平行移動対象の頂点範囲） */
+  /** 下袖（上袖1辺長さ変化を弧長に載せる対象の頂点範囲） */
   lowerSleeve?: [number, number];
   /** ミラー袖側の下袖範囲（プロット強調） */
   lowerSleeveMirror?: [number, number];
@@ -381,6 +407,28 @@ export interface MeasureOverlayData {
     lengthMeasureIsEditPreview?: boolean;
     /** 汎用トップ: `buildTopPlacement` と同じ縦 px/cm（着丈を px にしたときの換算） */
     bodyPxPerCm?: number;
+    /** プライマリ袖: チェーンの弧長（三平方の辺の和）÷ 袖 px/cm。草案もパイプラインも同一定義。 */
+    sleeveGeomMeasureKind?: "arc";
+    /**
+     * 措定 # 区間・連結列、弧長（スケール前後）。汎用トップでサイズプリセットが1件以上あるときオーバーレイに出す。
+     */
+    sleeveMeasureDefinitionDebug?: {
+      gLo: number;
+      gHi: number;
+      chainGlobal?: number[];
+      pxPerCm: number;
+      beforeSleeveFix: { arcPx: number; arcCm: number };
+      afterPipeline: { arcPx: number; arcCm: number };
+      inputSleeveCm: number;
+    };
+    /**
+     * 汎用トップ: 入力袖丈と幾何弧長の差が大きいとき（チェーン・px/cm の確認用）。
+     */
+    sleeveMeasureMismatchWarning?: string;
+    /**
+     * 汎用トップ: 採寸が単一 path に収まらず袖Yスケールが走らない。幾何は設計のまま・入力は目標として扱う。
+     */
+    sleeveMeasureYScaleInactive?: boolean;
     /** 袖: グレード袖丈の px/cm（表示用。赤線は選択チェーンの実座標） */
     sleeveGeomDebug?: { px: number; cm: number };
     /** 袖丈 canvas スケール補正前（applyGenericSleeveScaleAfterLengthMesh 適用前）の同チェーン縦スパン。補正量が大きいと着丈同様に歪みを示す */

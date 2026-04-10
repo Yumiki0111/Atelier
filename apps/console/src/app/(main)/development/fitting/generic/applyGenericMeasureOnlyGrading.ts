@@ -1,24 +1,18 @@
 /**
  * 汎用トップ（measure-only）: sleeveOnly は使わない。
- * - 着丈（胴）: `gradingBaselineLengthCm`（自動シード）を分母にだけ使い `scaleBodyToSpec`。
- *   紫の px→cm は分母に使わない（縮み過ぎ防止）。ベースライン未設定フレームは s=1 相当でスキップ。
- *   紫があるとき、非リグ（`placementLockToModelRig === false`）では `buildTopPlacement` の
- *   `garmentLengthOverride`＝グレード後の紫 |ΔY| でプレースし実測と入力を揃える。
- *   リグロック時はモデルと服を同じ線形写像に固定するため `scaleModelViewToBodyTemplate` のみとし、
- *   オーバーレイの「縦 px÷bodyPxPerCm」は身長スライダー換算であり入力着丈 cm と一致しないことがある。
- * - 袖丈: **ここでは変形しない**。設計座標で袖をスケールしたあと、リグワープ・着丈メッシュ後に
- *   `applyGenericSleeveScaleAfterLengthMesh` で再度スケール＋下袖スナップすると二重になり、折れ・跳ねの原因になる。
- *   袖は同関数（キャンバス袖パイプライン）に一本化する。
+ * - 着丈: `gradingBaselineLengthCm` を分母に `scaleBodyToSpec`。**袖 path も含め全 path** を同一ルールで縦スケールし、
+ *   胴–袖の二重頂点が着丈だけでズレないようにする（袖丈 cm は後段パイプラインに一本化）。
+ *   紫の px→cm は分母に使わない。ベースライン未設定フレームは s=1 相当でスキップ。
+ *   紫があるとき、非リグでは `buildTopPlacement` の `garmentLengthOverride`＝グレード後の紫 |ΔY| でプレース。
+ *   リグロック時は `scaleModelViewToBodyTemplate` のみ。
+ * - 袖丈 cm: **ここでは専用の弧長補正はしない**。`applyGenericSleeveScaleAfterLengthMesh` に一本化。
  *
- * 実装は `genericMeasureOnly*.ts` / `genericSleeveMeasurePublic.ts` / `genericMeasureOnlyLowerSleeveSnap.ts` に分割。
+ * 実装は `genericMeasureOnly*.ts` / `genericSleeveMeasurePublic.ts` 等に分割。
  */
 
 import type { CustomGarmentData, CustomLandmarks, ScalableGarmentSpec, SizeMeasure } from "../lib/types";
 import { scaleBodyToSpec } from "../lib/scalableGarmentArmLogic";
-import {
-  collectSleevePathIndicesForGrading,
-  snapVerticalConstructionPathsToLayoutCenterX,
-} from "./resolveEffectiveSleeveGradingGeometry";
+import { snapVerticalConstructionPathsToLayoutCenterX } from "./resolveEffectiveSleeveGradingGeometry";
 import { hasDistinctVertexPair } from "./genericMeasureOnlyShared";
 
 /**
@@ -29,8 +23,7 @@ export function applyGenericMeasureOnlyGrading(
   pathDsIn: string[],
   lm: CustomLandmarks,
   size: SizeMeasure,
-  gt: NonNullable<CustomGarmentData["genericSymmetricTop"]>,
-  _opts?: { bodyPxPerCmForSleeve?: number }
+  gt: NonNullable<CustomGarmentData["genericSymmetricTop"]>
 ): string[] {
   const pathDs = [...pathDsIn];
   const n = pathDs.length;
@@ -48,8 +41,7 @@ export function applyGenericMeasureOnlyGrading(
     Number.isFinite(size.length) &&
     size.length > 0
   ) {
-    const excludedSleevePaths = collectSleevePathIndicesForGrading(pathDs, lm, gt);
-    const bodyPathIndices = Array.from({ length: n }, (_, i) => i).filter((i) => !excludedSleevePaths.has(i));
+    const bodyPathIndices = Array.from({ length: n }, (_, i) => i);
     const bodySpec: ScalableGarmentSpec = {
       designShoulderY: lm.shoulderY,
       designHemY: lm.hemY,
@@ -92,6 +84,7 @@ export function genericSymmetricTopCanvasSleeveSnapEligible(
 export type { GenericSleeveMeasureVertexOverride } from "./genericSleeveMeasurePublic";
 export {
   applyGenericSleeveScaleAfterLengthMesh,
+  GenericSleevePipelineInvariantError,
   measureGenericTopSleeveCmFromPath,
   measureOriginalSleeveCmFromDesignPaths,
   resolveGenericSleevePxPerCmForMeasure,

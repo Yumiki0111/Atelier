@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { isGarmentSpecRenderable } from "@/lib/widget-fit/applyWidgetSizeToGarment";
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
+import { resolveWidgetFitSizeKeysOrder } from "@/lib/widget/resolveWidgetFitSizeKeysOrder";
 
 export type PublicEmbedWidgetFitProps = {
   productId: string;
@@ -17,10 +18,6 @@ export type PublicEmbedWidgetFitProps = {
   ctaTryOnLabel?: string;
   ctaAccentColor?: string;
 };
-
-function sortSizeKeys(keys: string[]): string[] {
-  return [...keys].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-}
 
 /**
  * `/embed/widget-fit` 用。Referer 検証なし（サーバー専用・公開キーは URL に含まれる）。
@@ -99,39 +96,10 @@ export async function getPublicEmbedWidgetFitProps(
     }
   }
 
-  const sizeKeySet = new Set<string>();
-  if (assetsBySizeAndCategory.size > 0) {
-    for (const size of assetsBySizeAndCategory.keys()) {
-      sizeKeySet.add(size);
-    }
-  } else {
-    const gs = product.garment_spec as CustomGarmentData;
-    const presets = gs.genericSymmetricTop?.sizePresets ?? [];
-    if (presets.length > 0) {
-      for (const p of presets) {
-        sizeKeySet.add(p.label);
-      }
-    } else {
-      sizeKeySet.add("default");
-    }
-  }
-
-  const sizeKeys = sortSizeKeys(Array.from(sizeKeySet));
-  let defaultSize: string | undefined;
-  if (assetsBySizeAndCategory.size > 0) {
-    for (const size of assetsBySizeAndCategory.keys()) {
-      if (!defaultSize || size === "M") {
-        defaultSize = size;
-      }
-    }
-    if (!defaultSize) {
-      defaultSize = Array.from(assetsBySizeAndCategory.keys())[0];
-    }
-  } else {
-    const gs = product.garment_spec as CustomGarmentData;
-    const presets = gs.genericSymmetricTop?.sizePresets ?? [];
-    defaultSize = presets.length > 0 ? presets[0].label : "default";
-  }
+  const assetKeys = Array.from(assetsBySizeAndCategory.keys());
+  const sizeKeys = resolveWidgetFitSizeKeysOrder(assetKeys, product.garment_spec);
+  const defaultSize =
+    sizeKeys.includes("M") ? "M" : sizeKeys.length > 0 ? sizeKeys[0] : undefined;
 
   const initialSize = defaultSize && sizeKeys.includes(defaultSize) ? defaultSize : sizeKeys[0] ?? "M";
 

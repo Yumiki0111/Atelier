@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useProducts } from "@/features/products/useProducts";
 import {
   Select,
   SelectContent,
@@ -14,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Copy, Check } from "lucide-react";
 import { toast } from "sonner";
-import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { authenticatedFetch } from "@/lib/auth/api-client";
 import { ShareDemoLinkSection } from "@/features/demo-share/ShareDemoLinkSection";
@@ -39,13 +37,11 @@ async function fetchWidgetKeys(shopId: string): Promise<WidgetKey[]> {
 
 export default function InstallPage() {
   const { shopId } = useAuth();
-  const { data: products = [], isLoading: isLoadingProducts } = useProducts();
   const { data: widgetKeys = [], isLoading: isLoadingKeys } = useQuery({
     queryKey: ["widget-keys", shopId],
     queryFn: () => fetchWidgetKeys(shopId),
     enabled: !!shopId,
   });
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [widgetUrl, setWidgetUrl] = useState<string>("");
 
@@ -60,8 +56,6 @@ export default function InstallPage() {
     }
   }, []);
 
-  const selectedProduct = selectedProductId ? products.find((p) => p.id === selectedProductId) : null;
-  
   // 有効な最初のpublic_keyを取得
   const publicKey = widgetKeys.find((key) => key.enabled)?.public_key;
 
@@ -100,7 +94,7 @@ export default function InstallPage() {
 <script async src="${widgetUrl}"></script>`;
   };
 
-  const snippet = generateSnippet(selectedProduct?.externalProductId, embedMode);
+  const snippet = generateSnippet(undefined, embedMode);
 
   const handleCopy = async () => {
     try {
@@ -113,7 +107,7 @@ export default function InstallPage() {
     }
   };
 
-  const isLoading = isLoadingProducts || isLoadingKeys;
+  const isLoading = isLoadingKeys;
 
   if (isLoading) {
     return (
@@ -151,11 +145,6 @@ export default function InstallPage() {
         <p className="text-gray-600 mt-2">
           商品ページに埋め込むためのHTMLスニペットを生成します
         </p>
-        <p className="mt-2 text-sm">
-          <Link href="/install/demo" className="font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900">
-            インライン埋め込みの動作をデモで確認
-          </Link>
-        </p>
       </div>
 
       <ShareDemoLinkSection />
@@ -183,68 +172,35 @@ export default function InstallPage() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="product">商品を選択（任意）</Label>
-          <Select
-            value={selectedProductId || "none"}
-            onValueChange={(value) => setSelectedProductId(value === "none" ? null : value)}
-          >
-            <SelectTrigger id="product">
-              <SelectValue placeholder="商品を選択（任意）" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">商品を指定しない</SelectItem>
-              {products.map((product) => (
-                <SelectItem key={product.id} value={product.id}>
-                  {product.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-sm text-gray-500">
-            外部ECの商品IDは <code className="text-xs bg-gray-100 px-1 rounded">data-fitlook-external-product-id</code> で必ず指定してください。商品を選択すると例としてその値が入ります。
-          </p>
+          <div className="flex items-center justify-between">
+            <Label>埋め込みスニペット</Label>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopy}
+              className="gap-2"
+            >
+              {copied ? (
+                <>
+                  <Check className="h-4 w-4" />
+                  コピーしました
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4" />
+                  コピー
+                </>
+              )}
+            </Button>
+          </div>
+          <div className="relative">
+            <textarea
+              value={snippet}
+              readOnly
+              className="w-full p-3 border rounded-md font-mono text-sm min-h-[100px] resize-none bg-gray-50"
+            />
+          </div>
         </div>
-
-        {selectedProduct && (
-          <div className="p-4 bg-gray-50 rounded-md">
-            <p className="text-sm font-medium">選択中の商品</p>
-            <p className="text-sm text-gray-600">{selectedProduct.name}</p>
-            {selectedProduct.externalProductId && (
-              <p className="text-sm text-gray-600">外部商品ID: {selectedProduct.externalProductId}</p>
-            )}
-          </div>
-        )}
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>埋め込みスニペット</Label>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCopy}
-                className="gap-2"
-              >
-                {copied ? (
-                  <>
-                    <Check className="h-4 w-4" />
-                    コピーしました
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4" />
-                    コピー
-                  </>
-                )}
-              </Button>
-            </div>
-            <div className="relative">
-              <textarea
-                value={snippet}
-                readOnly
-                className="w-full p-3 border rounded-md font-mono text-sm min-h-[100px] resize-none bg-gray-50"
-              />
-            </div>
-          </div>
 
         <div className="p-4 bg-blue-50 rounded-md">
           <p className="text-sm font-medium text-blue-900 mb-2">

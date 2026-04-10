@@ -4,6 +4,8 @@ import { computeFittingCanvasSnapshot } from "@/lib/fitting-compute/fittingCanva
 import { loadBPATHS_RIG_LINES } from "@/app/(main)/development/fitting/lib/pathData";
 import { shouldSuppressGarmentPathRender } from "@/app/(main)/development/fitting/lib/pathUtils";
 import type { CustomGarmentData, ShirtSize } from "@/app/(main)/development/fitting/lib/types";
+import { buildWidgetFitEaseSummaryFromSnapshot } from "@/lib/widget-fit/computeWidgetFitEaseSummary";
+import type { WidgetFitEaseSummaryJson } from "@/lib/widget-fit/computeWidgetFitEaseSummary";
 
 /**
  * 開発の FittingCanvas と同じ計算（オーバーレイ・プロットは呼び出し側で使わない）。
@@ -20,6 +22,7 @@ export async function computeWidgetFitSnapshot(params: {
   garmentPathStrokeDasharrays: (string | undefined)[];
   garmentPathStrokeWidths: (number | undefined)[];
   garmentPathStrokes: (string | undefined)[];
+  fitEaseSummary: WidgetFitEaseSummaryJson;
 }> {
   const rigLinePaths = await loadBPATHS_RIG_LINES();
   const shirtSize: ShirtSize = "48";
@@ -52,6 +55,8 @@ export async function computeWidgetFitSnapshot(params: {
     garmentPathStrokes.push(snap.customPathStrokes[i]);
   }
 
+  const fitEaseSummary = buildWidgetFitEaseSummaryFromSnapshot(snap, params.heightCm, params.weightKg);
+
   return {
     viewBoxHeight: snap.viewBoxHeight,
     bodyPaths: snap.bodyPaths,
@@ -59,5 +64,6 @@ export async function computeWidgetFitSnapshot(params: {
     garmentPathStrokeDasharrays,
     garmentPathStrokeWidths,
     garmentPathStrokes,
+    fitEaseSummary,
   };
 }

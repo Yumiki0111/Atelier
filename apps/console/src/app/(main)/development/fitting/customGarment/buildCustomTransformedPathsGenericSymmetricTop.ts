@@ -1,8 +1,6 @@
 import type { CustomGarmentData, CustomLandmarks } from "../lib/types";
 import { buildTopPlacement } from "../lib/garmentBase";
 import { REF_HEIGHT_CM } from "../lib/constants";
-import { getBodyParams } from "../body";
-import { bodyHeight } from "../lib/bodyUtils";
 import { applyGenericMeasureOnlyGrading, genericMeasureOnlyGradingActive } from "../generic";
 import { tPath } from "../lib/pathUtils";
 import { genericLengthMeasureVerticalSpanPx, vertexPlotsPlaceOnly } from "./buildCustomTransformedPathsPlaceUtils";
@@ -32,11 +30,7 @@ export function buildGradedBodyPathsAndVertexPlotsForGenericTop(
     return null;
   }
 
-  const { yScale: yScaleCal } = getBodyParams(REF_HEIGHT_CM, w, null);
-  const bodyPxPerCmForSleeve = bodyHeight(yScaleCal) / REF_HEIGHT_CM;
-  const graded = applyGenericMeasureOnlyGrading(data.pathDs, lm, data.size, gtForGeneric!, {
-    bodyPxPerCmForSleeve,
-  });
+  const graded = applyGenericMeasureOnlyGrading(data.pathDs, lm, data.size, gtForGeneric!);
   const purpleDyDesign =
     !placementLockToModelRig ? genericLengthMeasureVerticalSpanPx(graded, gtForGeneric!) : null;
   const chosenPlace =

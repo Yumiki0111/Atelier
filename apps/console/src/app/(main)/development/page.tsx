@@ -85,6 +85,22 @@ export default function DevelopmentPage() {
   }, [shirtSize]);
 
   const handleCustomGarmentApply = useCallback((newData: CustomGarmentData) => {
+    // #region agent log
+    const n = newData.genericSymmetricTop?.sizePresets?.length ?? -1;
+    fetch("http://127.0.0.1:7468/ingest/8ae11b2e-0353-49f9-add8-94485bd038d3", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "ccdd04" },
+      body: JSON.stringify({
+        sessionId: "ccdd04",
+        runId: "pre-fix",
+        hypothesisId: "C",
+        location: "development/page.tsx:handleCustomGarmentApply",
+        message: "parent received customGarment apply",
+        data: { sizePresetCount: n },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     const prev = customGarmentData;
     setCustomGarmentData(newData);
     if (

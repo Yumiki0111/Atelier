@@ -33,9 +33,25 @@ export function genericTopSizeForKey(sizeKey: "3" | "4" | "5"): SizeMeasure {
   return GENERIC_TOP_SIZE_BY_KEY[sizeKey] ?? GENERIC_TOP_SIZE_BY_KEY["4"];
 }
 
+/**
+ * サイズプリセットの並び: 着丈 → 袖丈（いずれも数値）→ ラベル（数値なら数値順、それ以外は locale 比較）。
+ */
+export function compareGenericSizePresetRow(
+  a: { label: string; length: number; sleeve: number },
+  b: { label: string; length: number; sleeve: number }
+): number {
+  if (a.length !== b.length) return a.length - b.length;
+  if (a.sleeve !== b.sleeve) return a.sleeve - b.sleeve;
+  const na = Number(a.label);
+  const nb = Number(b.label);
+  if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
+  return a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: "base" });
+}
+
 export function genericTopSizePresets(): { label: "3" | "4" | "5"; length: number; sleeve: number }[] {
-  return (["3", "4", "5"] as const).map((k) => {
+  const rows = (["3", "4", "5"] as const).map((k) => {
     const s = genericTopSizeForKey(k);
     return { label: k, length: s.length, sleeve: s.sleeve };
   });
+  return [...rows].sort(compareGenericSizePresetRow);
 }

@@ -190,7 +190,13 @@ export function scaleSleevePathToSpec(
 
 /**
  * 上袖採寸区間 [lengthIdxLo, lengthIdxHi] と下袖 global 範囲から、エルボ側の接続頂点のローカル index を決める。
- * 下袖がインデックス上すべて採寸 max より先なら `lengthIdxHi`、すべてより前なら `lengthIdxLo`。重なり・曖昧なら null。
+ * 下袖が採寸終端以降（境界頂点を共有する場合も含む）なら `lengthIdxHi`、
+ * 採寸始端以前（境界共有含む）なら `lengthIdxLo`。両区間が内部で重なるなら null。
+ *
+ * 旧実装は厳密な不等号（`>`/`<`）だったため、下袖レンジが採寸終端（または始端）に
+ * ちょうど接触するだけのとき null を返していた。これによりエルボ追従がスキップされ、
+ * 一様 Y スケール後にジャンクションだけが動いて下袖が元の位置に残る段差・めり込みを引き起こしていた。
+ * `>=`/`<=` に修正することで境界共有を「重なりなし」と正しく判定する。
  */
 export function pickSleeveLowerJunctionLocalIndex(
   pathGlobalVertexOffset: number,
@@ -210,9 +216,98 @@ export function pickSleeveLowerJunctionLocalIndex(
     if (li > lowerLocalMax) lowerLocalMax = li;
   }
   if (!Number.isFinite(lowerLocalMin) || lowerLocalMax < 0) return null;
-  if (lowerLocalMin > lengthIdxHi) return lengthIdxHi;
-  if (lowerLocalMax < lengthIdxLo) return lengthIdxLo;
+  // 下袖が採寸終端以降（境界頂点を共有する場合も含む）
+  if (lowerLocalMin >= lengthIdxHi) return lengthIdxHi;
+  // 下袖が採寸始端以前（境界頂点を共有する場合も含む）
+  if (lowerLocalMax <= lengthIdxLo) return lengthIdxLo;
   return null;
+}
+
+/**
+ * 下袖の「胴側」端点（袖口ではない方）。`lowerSleeveSnapToBodyGlobalVertex` がレンジ内なら優先、
+ * さもなければ junction から見て反対端（下袖が採寸終端より index が大きいときは `lb`、小さいときは `la`）。
+ */
+export function resolveLowerSleeveBodySeamLocal(
+  junctionLocal: number,
+  la: number,
+  lb: number,
+  lowerOnHigherPathIndices: boolean,
+  bodyLocalOverride: number | null
+): number | null {
+  if (la > lb || !Number.isFinite(la) || !Number.isFinite(lb)) return null;
+  if (
+    bodyLocalOverride != null &&
+    Number.isFinite(bodyLocalOverride) &&
+    bodyLocalOverride >= la &&
+    bodyLocalOverride <= lb
+  ) {
+    return Math.trunc(bodyLocalOverride);
+  }
+  return lowerOnHigherPathIndices ? lb : la;
+}
+
+/**
+ * ジャンクションから下袖区間へ入った最初の頂点（歴史的用途・他モジュール向け）。
+ * 下袖内点の幾何は `generic/sleeveLower` が {@link resolveLowerSleeveBodySeamLocal} および
+ * {@link buildLowerSleeveChainBodyToJunction} と併用する。
+ */
+export function resolveLowerSleeveBodyAnchorLocal(
+  junctionLocal: number,
+  lowerGlobalLo: number,
+  lowerGlobalHi: number,
+  pathGlobalVertexOffset: number,
+  lowerOnHigherPathIndices: boolean,
+  pathPointCount: number
+): number | null {
+  const rgLo = Math.min(lowerGlobalLo, lowerGlobalHi);
+  const rgHi = Math.max(lowerGlobalLo, lowerGlobalHi);
+  const off = pathGlobalVertexOffset;
+  const la = rgLo - off;
+  const lb = rgHi - off;
+  if (!Number.isFinite(la) || !Number.isFinite(lb) || la > lb) return null;
+  if (la < 0 || lb >= pathPointCount) return null;
+
+  if (lowerOnHigherPathIndices) {
+    let best: number | null = null;
+    for (let li = la; li <= lb; li++) {
+      if (li <= junctionLocal) continue;
+      if (best === null || li < best) best = li;
+    }
+    return best;
+  }
+  let best: number | null = null;
+  for (let li = la; li <= lb; li++) {
+    if (li >= junctionLocal) continue;
+    if (best === null || li > best) best = li;
+  }
+  return best;
+}
+
+/**
+ * 胴端〜ジャンクションの path 上連続 index 列（両端含む）。
+ * ジャンクションは採寸終端と共有され **下袖レンジ [la,lb] 外**（例 Hi=24, 下袖 25–30）になり得る。
+ * 歩道上の各 index は「下袖レンジ内」または「ジャンクションのみ」なら通過可。
+ */
+export function buildLowerSleeveChainBodyToJunction(
+  bodyLocal: number,
+  junctionLocal: number,
+  la: number,
+  lb: number,
+  pathPointCount: number
+): number[] | null {
+  if (bodyLocal < la || bodyLocal > lb) return null;
+  if (bodyLocal === junctionLocal) return null;
+  const step = bodyLocal < junctionLocal ? 1 : -1;
+  const out: number[] = [];
+  for (let li = bodyLocal; ; li += step) {
+    if (li < 0 || li >= pathPointCount) return null;
+    const inBand = li >= la && li <= lb;
+    const isJunc = li === junctionLocal;
+    if (!inBand && !isJunc) return null;
+    out.push(li);
+    if (li === junctionLocal) break;
+  }
+  return out;
 }
 
 /**
@@ -242,8 +337,64 @@ export function translateSleeveLowerFollowElbowMove(
 }
 
 /**
- * 決め打ちの一様スケール s を袖の length 区間に適用（`scaleSleevePathToSpec` と同じ変形）。
- * 汎用トップでチェーン縦 |Δy| の cm を目標に合わせる格子探索に使う。内袖ありのときは `specSleeveCmForInner` を渡す。
+ * 袖パス上の連続2頂点 i0（固定）と i1（移動）のみ変形。
+ * i1 を i0→i1 の直線上に移動し、**最初の1辺のユークリッド長**が targetSegLenPx になる（他の頂点は変更しない）。
+ */
+export function applySleeveFirstEdgeEuclideanStretchToPath(
+  pathD: string,
+  i0: number,
+  i1: number,
+  targetSegLenPx: number
+): string {
+  const pts = getPathPoints(pathD);
+  if (i0 < 0 || i1 < 0 || i0 >= pts.length || i1 >= pts.length || i0 === i1) return pathD;
+  const p0 = pts[i0]!;
+  const p1 = pts[i1]!;
+  const u = [p1[0] - p0[0], p1[1] - p0[1]];
+  const len = Math.hypot(u[0], u[1]);
+  if (len < 1e-9) return pathD;
+  const ux = u[0] / len;
+  const uy = u[1] / len;
+  const t = Math.max(targetSegLenPx, 0);
+  const p1New: [number, number] = [p0[0] + t * ux, p0[1] + t * uy];
+  return tPathWithPointIndex(pathD, (pointIndex, x, y) => {
+    if (pointIndex === i1) return p1New;
+    return [x, y];
+  });
+}
+
+/**
+ * 袖パス上の連続2頂点 i0（上袖口側・固定）と i1（その次）だけを変形する。
+ * i1 を i0→i1 の直線上に移動し、縦スパン |Δy| が targetVertPx に一致する（他の頂点は変更しない）。
+ * @deprecated 袖丈の幾何は弧長（三平方）に統一したため、通常は {@link applySleeveFirstEdgeEuclideanStretchToPath} またはチェーン弧長ソルバを使う。
+ */
+export function applySleeveFirstEdgeVerticalStretchToPath(
+  pathD: string,
+  i0: number,
+  i1: number,
+  targetVertPxAbs: number
+): string {
+  const pts = getPathPoints(pathD);
+  if (i0 < 0 || i1 < 0 || i0 >= pts.length || i1 >= pts.length || i0 === i1) return pathD;
+  const p0 = pts[i0]!;
+  const p1 = pts[i1]!;
+  const u = [p1[0] - p0[0], p1[1] - p0[1]];
+  const len = Math.hypot(u[0], u[1]);
+  if (len < 1e-9) return pathD;
+  const ux = u[0] / len;
+  const uy = u[1] / len;
+  if (Math.abs(uy) < 1e-12) return pathD;
+  const sign = Math.sign(uy) || 1;
+  const t = (sign * Math.max(targetVertPxAbs, 0)) / uy;
+  const p1New: [number, number] = [p0[0] + t * ux, p0[1] + t * uy];
+  return tPathWithPointIndex(pathD, (pointIndex, x, y) => {
+    if (pointIndex === i1) return p1New;
+    return [x, y];
+  });
+}
+
+/** 決め打ちの一様スケール s を袖の length 区間に適用（`scaleSleevePathToSpec` と同じ変形）。
+ * 汎用トップの格子探索・フォールバックに使う。内袖ありのときは `specSleeveCmForInner` を渡す。
  */
 export function applySleeveUniformYScaleFromAnchor(
   pathD: string,

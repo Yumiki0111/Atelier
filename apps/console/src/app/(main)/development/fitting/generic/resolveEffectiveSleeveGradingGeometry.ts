@@ -206,15 +206,66 @@ export type EffectiveSleeveGradingGeometry = {
   sleevePathIdx: number;
   gLo: number;
   gHi: number;
-  /** 袖丈ポリライン計測（縦 |Δy| 合算）。未指定なら gLo/gHi の 2 点のみ */
+  /** 袖丈ポリライン計測（弧長）。オーバーレイ・表示は主にこちら。未指定なら gLo/gHi の 2 点のみ */
   globalChainForMeasure?: number[];
+  /**
+   * cm 合わせ・袖丈ソルバが使う弧長チェーン。未指定時は `globalChainForMeasure` と同じ。
+   */
+  globalChainForArcTarget?: number[];
   /** 互換用。常に false（コードは袖 path を差し替えない） */
   remappedFromSymmetryGuide: boolean;
 };
 
+function attachArcTargetChainIfValid(
+  pathDs: string[],
+  base: EffectiveSleeveGradingGeometry,
+  arcTargetGt: number[] | undefined
+): EffectiveSleeveGradingGeometry {
+  if (arcTargetGt == null || arcTargetGt.length < 2) return base;
+  const deduped = dedupeGlobalChainPreserveOrder(arcTargetGt.map((g) => Math.trunc(g)));
+  if (deduped.length < 2) return base;
+  for (const g of deduped) {
+    const pi = pathIndexForGlobalVertex(pathDs, g);
+    if (pi == null || pi !== base.sleevePathIdx) return base;
+  }
+  return { ...base, globalChainForArcTarget: deduped };
+}
+
 /**
- * 袖 Y スケール対象は採寸始点・終点が収まる単一 path のみ。
- * `chainGt` がある場合は各 # がその path 上にあること（跨ぎは null）。
+ * 始点〜終点の min/max が path を跨ぐが、連結チェーンの全 # が同一 path に乗るときの救済。
+ * （UI では終点が次 path の先頭に吸われている等で min/max だけが跨ぐことがある）
+ */
+function trySleeveGradingGeometryFromChainOnSinglePath(
+  pathDs: string[],
+  chainGt: number[]
+): EffectiveSleeveGradingGeometry | null {
+  const deduped = dedupeGlobalChainPreserveOrder(chainGt.map((g) => Math.trunc(g)));
+  if (deduped.length < 2) return null;
+  let pathIdx: number | null = null;
+  for (const g of deduped) {
+    const pi = pathIndexForGlobalVertex(pathDs, g);
+    if (pi == null) return null;
+    if (pathIdx == null) pathIdx = pi;
+    else if (pi !== pathIdx) return null;
+  }
+  const gLo = Math.min(...deduped);
+  const gHi = Math.max(...deduped);
+  const cover = vertexRangeToCoveringPathRange(pathDs, gLo, gHi);
+  if (!cover || cover.from !== cover.to || cover.from !== pathIdx) return null;
+  return {
+    sleevePathIdx: pathIdx,
+    gLo,
+    gHi,
+    globalChainForMeasure: deduped,
+    remappedFromSymmetryGuide: false,
+  };
+}
+
+/**
+ * 袖 Y スケール対象は単一 path 上の区間。
+ * - まず始点・終点の min/max が単一 path に収まるか見る。
+ * - 収まらず **`sleeveMeasureVertexChain` が 2 点以上**あるとき、チェーンの全 # が同一 path なら **そのチェーンの min/max** で採寸区間を決める（上記救済）。
+ * - チェーンが複数 path に跨ぐ場合は null。
  */
 export function resolveSleeveGradingGeometryForVertexRange(
   pathDs: string[],
@@ -236,7 +287,13 @@ export function resolveSleeveGradingGeometryForVertexRange(
   const rawLo = Math.min(a, b);
   const rawHi = Math.max(a, b);
   const cover = vertexRangeToCoveringPathRange(pathDs, rawLo, rawHi);
-  if (!cover || cover.from !== cover.to) return null;
+  if (!cover || cover.from !== cover.to) {
+    if (chainGt && chainGt.length >= 2) {
+      const fromChain = trySleeveGradingGeometryFromChainOnSinglePath(pathDs, chainGt);
+      if (fromChain != null) return fromChain;
+    }
+    return null;
+  }
   const rawPathIdx = cover.from;
 
   let globalChainForMeasure: number[] | undefined;
@@ -260,20 +317,21 @@ export function resolveSleeveGradingGeometryForVertexRange(
 }
 
 /**
- * 袖 Y スケール対象は `sleeveMeasureVertexStart`〜`End` が収まる単一 path のみ。
- * `sleeveMeasureVertexChain` がある場合は各 # がその path 上にあること（跨ぎは null）。
+ * 袖 Y スケール対象は単一 path 上の区間（`resolveSleeveGradingGeometryForVertexRange` 参照）。
  */
 export function resolveEffectiveSleeveGradingGeometry(
   pathDs: string[],
   _lm: CustomLandmarks,
   gt: NonNullable<CustomGarmentData["genericSymmetricTop"]>
 ): EffectiveSleeveGradingGeometry | null {
-  return resolveSleeveGradingGeometryForVertexRange(
+  const base = resolveSleeveGradingGeometryForVertexRange(
     pathDs,
     gt.sleeveMeasureVertexStart,
     gt.sleeveMeasureVertexEnd,
     gt.sleeveMeasureVertexChain
   );
+  if (base == null) return null;
+  return attachArcTargetChainIfValid(pathDs, base, gt.sleeveMeasureArcTargetChain);
 }
 
 /** ミラー袖（`sleeveMirrorMeasureVertex*`）の単一 path 幾何。 */
@@ -282,12 +340,14 @@ export function resolveEffectiveMirrorSleeveGradingGeometry(
   _lm: CustomLandmarks,
   gt: NonNullable<CustomGarmentData["genericSymmetricTop"]>
 ): EffectiveSleeveGradingGeometry | null {
-  return resolveSleeveGradingGeometryForVertexRange(
+  const base = resolveSleeveGradingGeometryForVertexRange(
     pathDs,
     gt.sleeveMirrorMeasureVertexStart,
     gt.sleeveMirrorMeasureVertexEnd,
     gt.sleeveMirrorMeasureVertexChain
   );
+  if (base == null) return null;
+  return attachArcTargetChainIfValid(pathDs, base, gt.sleeveMirrorMeasureArcTargetChain);
 }
 
 /**

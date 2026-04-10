@@ -172,6 +172,213 @@ export function applyGradeLengthVerticalScaleToMeshPaths(
   return { customPathDs: newPathDs, customPoints: newPoints };
 }
 
+/** 袖パイプライン後の下袖–胴近傍同期で使う胴–袖頂点ペア */
+export type BodySleeveSeamPair = {
+  sleevePathIdx: number;
+  sleeveLocalIdx: number;
+  bodyPathIdx: number;
+  bodyLocalIdx: number;
+};
+
+/** 袖パイプライン後の下袖帯のみ（現状座標で最近傍胴頂点へ） */
+export const POST_SLEEVE_PIPELINE_LOWER_SEAM_SYNC_TOL_PX = 6;
+
+/**
+ * 下袖の胴接点だけ、胴 path の **辺**への最近傍投影で揃える（胴頂点蔵の最近傍だと内側に寄って食い込むことがある）。
+ */
+export const LOWER_SLEEVE_BODY_SEAM_OUTLINE_SNAP_MAX_DIST_PX = 16;
+
+function closestPointOnOpenPolylineSegmentsToXY(
+  pts: ReturnType<typeof getPathPoints>,
+  px: number,
+  py: number
+): { x: number; y: number; dist2: number } | null {
+  if (pts.length < 2) return null;
+  let best: { x: number; y: number; dist2: number } | null = null;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const ax = pts[i]![0]!;
+    const ay = pts[i]![1]!;
+    const bx = pts[i + 1]![0]!;
+    const by = pts[i + 1]![1]!;
+    const abx = bx - ax;
+    const aby = by - ay;
+    const segLen2 = abx * abx + aby * aby;
+    if (segLen2 < 1e-18) continue;
+    const apx = px - ax;
+    const apy = py - ay;
+    const t = Math.max(0, Math.min(1, (apx * abx + apy * aby) / segLen2));
+    const qx = ax + t * abx;
+    const qy = ay + t * aby;
+    const dx = px - qx;
+    const dy = py - qy;
+    const d2 = dx * dx + dy * dy;
+    if (best == null || d2 < best.dist2) {
+      best = { x: qx, y: qy, dist2: d2 };
+    }
+  }
+  return best;
+}
+
+/**
+ * 袖 path 上の 1 頂点（胴接点）を、袖以外の全 path の折れ線に対する最近傍点へ移す（距離が maxDistPx を超えたら何もしない）。
+ */
+export function snapSleeveBodySeamVertexToBodyOutline(
+  pathDs: readonly string[],
+  sleevePathIdx: number,
+  sleeveLocalIdx: number,
+  sleevePathIndices: ReadonlySet<number>,
+  maxDistPx: number
+): string | null {
+  const d = pathDs[sleevePathIdx];
+  if (!d) return null;
+  const pts = getPathPoints(d);
+  if (sleeveLocalIdx < 0 || sleeveLocalIdx >= pts.length) return null;
+  const sp = pts[sleeveLocalIdx]!;
+  const sx = sp[0]!;
+  const sy = sp[1]!;
+  if (!Number.isFinite(sx) || !Number.isFinite(sy)) return null;
+  const max2 = maxDistPx * maxDistPx;
+  let best: { x: number; y: number; dist2: number } | null = null;
+  for (let pi = 0; pi < pathDs.length; pi++) {
+    if (sleevePathIndices.has(pi)) continue;
+    const bd = pathDs[pi];
+    if (!bd) continue;
+    const bpts = getPathPoints(bd);
+    const c = closestPointOnOpenPolylineSegmentsToXY(bpts, sx, sy);
+    if (c == null) continue;
+    if (best == null || c.dist2 < best.dist2) best = c;
+  }
+  if (best == null || best.dist2 > max2 || best.dist2 < 1e-16) return null;
+  return tPathWithPointIndex(d, (i, x, y) =>
+    i === sleeveLocalIdx ? [best!.x, best!.y] : [x, y]
+  );
+}
+
+export function lowerSleeveGlobalIndexRangesFromGt(gt: {
+  lowerSleeveVertexStart?: number;
+  lowerSleeveVertexEnd?: number;
+  lowerSleeveMirrorVertexStart?: number;
+  lowerSleeveMirrorVertexEnd?: number;
+}): { lo: number; hi: number }[] {
+  const out: { lo: number; hi: number }[] = [];
+  const push = (a?: number | null, b?: number | null) => {
+    if (a == null || b == null || !Number.isFinite(a) || !Number.isFinite(b) || a === b) return;
+    const lo = Math.min(Math.trunc(a), Math.trunc(b));
+    const hi = Math.max(Math.trunc(a), Math.trunc(b));
+    out.push({ lo, hi });
+  };
+  push(gt.lowerSleeveVertexStart, gt.lowerSleeveVertexEnd);
+  push(gt.lowerSleeveMirrorVertexStart, gt.lowerSleeveMirrorVertexEnd);
+  return out;
+}
+
+/**
+ * 袖グローバル # が `globalRanges` のいずれかに入る頂点だけ、胴の最近傍点（距離 ≤ tolPx）へ対応付ける。
+ * 袖パイプライン**後**の下袖–胴の残差用（メッシュ前ペアは作らない）。
+ * `allowedGlobalIndices` を渡すとその # に限定する（下袖中間を同期すると i1 Δ 並進が潰れるため、胴接点など端のみ推奨）。
+ */
+export function computeBodySleeveSeamPairsForSleeveVerticesInGlobalRanges(
+  pathDs: string[],
+  sleevePathIndices: Set<number>,
+  globalRanges: readonly { lo: number; hi: number }[],
+  tolPx: number,
+  allowedGlobalIndices?: ReadonlySet<number> | null
+): BodySleeveSeamPair[] {
+  if (globalRanges.length === 0 || tolPx <= 0) return [];
+  const inRange = (g: number) => globalRanges.some((r) => g >= r.lo && g <= r.hi);
+  const useAllow =
+    allowedGlobalIndices != null && allowedGlobalIndices.size > 0;
+  const tol2 = tolPx * tolPx;
+  const off = cumulativePathPointOffsets(pathDs);
+
+  const bodyVerts: { pi: number; li: number; x: number; y: number }[] = [];
+  for (let pi = 0; pi < pathDs.length; pi++) {
+    if (sleevePathIndices.has(pi)) continue;
+    const d = pathDs[pi];
+    if (!d) continue;
+    const pts = getPathPoints(d);
+    for (let li = 0; li < pts.length; li++) {
+      const p = pts[li]!;
+      const x = p[0]!;
+      const y = p[1]!;
+      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+      bodyVerts.push({ pi, li, x, y });
+    }
+  }
+
+  const pairs: BodySleeveSeamPair[] = [];
+  for (let pi = 0; pi < pathDs.length; pi++) {
+    if (!sleevePathIndices.has(pi)) continue;
+    const d = pathDs[pi];
+    if (!d) continue;
+    const pts = getPathPoints(d);
+    const o0 = off[pi] ?? 0;
+    for (let li = 0; li < pts.length; li++) {
+      const g = o0 + li;
+      if (!inRange(g)) continue;
+      if (useAllow && !allowedGlobalIndices!.has(g)) continue;
+      const p = pts[li]!;
+      const sx = p[0]!;
+      const sy = p[1]!;
+      if (!Number.isFinite(sx) || !Number.isFinite(sy)) continue;
+      let bestPi = -1;
+      let bestLi = -1;
+      let bestD2 = Infinity;
+      for (const b of bodyVerts) {
+        const dx = sx - b.x;
+        const dy = sy - b.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 <= tol2 && d2 < bestD2 - 1e-18) {
+          bestD2 = d2;
+          bestPi = b.pi;
+          bestLi = b.li;
+        }
+      }
+      if (bestPi >= 0) {
+        pairs.push({
+          sleevePathIdx: pi,
+          sleeveLocalIdx: li,
+          bodyPathIdx: bestPi,
+          bodyLocalIdx: bestLi,
+        });
+      }
+    }
+  }
+  return pairs;
+}
+
+/** ペアに従い袖 path の該当頂点を胴 path 上の座標へ上書きする */
+export function applyBodySleeveSeamSyncAfterLengthMesh(pathDsIn: string[], pairs: BodySleeveSeamPair[]): string[] {
+  if (pairs.length === 0) return pathDsIn;
+  const pathDs = [...pathDsIn];
+  const bySleeve = new Map<number, Map<number, [number, number]>>();
+  for (const pr of pairs) {
+    const bodyD = pathDs[pr.bodyPathIdx];
+    if (!bodyD) continue;
+    const bodyPts = getPathPoints(bodyD);
+    const bp = bodyPts[pr.bodyLocalIdx];
+    if (bp == null) continue;
+    const nx = bp[0]!;
+    const ny = bp[1]!;
+    if (!Number.isFinite(nx) || !Number.isFinite(ny)) continue;
+    let locals = bySleeve.get(pr.sleevePathIdx);
+    if (locals == null) {
+      locals = new Map();
+      bySleeve.set(pr.sleevePathIdx, locals);
+    }
+    locals.set(pr.sleeveLocalIdx, [nx, ny]);
+  }
+  for (const [sleevePi, locals] of bySleeve) {
+    const d = pathDs[sleevePi];
+    if (!d) continue;
+    pathDs[sleevePi] = tPathWithPointIndex(d, (pointIndex, x, y) => {
+      const np = locals.get(pointIndex);
+      return np ?? [x, y];
+    });
+  }
+  return pathDs;
+}
+
 export function wrapDesignToGarmentCanvasWithYScale(
   designToGarmentCanvas: (gx: number, gy: number) => [number, number],
   lengthTopY: number,

@@ -6,6 +6,8 @@ import {
   shoulderPointOnLine,
 } from "@/app/(main)/development/fitting/lib/fittingContourUtils";
 import { resolveGenericScalableSpec } from "@/app/(main)/development/fitting/generic";
+import { hasDistinctVertexPair } from "@/app/(main)/development/fitting/generic/genericMeasureOnlyShared";
+import { resolveEffectiveSleeveGradingGeometry } from "@/app/(main)/development/fitting/generic/resolveEffectiveSleeveGradingGeometry";
 import { applyYScaleToCanvasPoints } from "./fittingCanvasCustomGarmentGradeLength";
 import { isDebugFittingMeasureEnabled } from "./fittingCanvasDebugFlags";
 import {
@@ -62,6 +64,10 @@ export type CustomGarmentOverlayAssemblyInput = {
   /** 袖丈 canvas スケール補正前（applyGenericSleeveScaleAfterLengthMesh 適用前）の同チェーン縦スパン */
   sleeveGeomBeforeSleeveFixDebug?: { px: number; cm: number };
   sleeveGeomBeforeSleeveFixDebugRight?: { px: number; cm: number };
+  /** プライマリ袖: 措定区間の弧長（DEBUG 時のみオーバーレイに載せる） */
+  sleeveMeasureDefinitionDebug?: NonNullable<
+    NonNullable<MeasureOverlayData["garment"]>["sleeveMeasureDefinitionDebug"]
+  >;
   /** 服リグ: ファブリックワープ後に縦スケールをかけたときのパラメータ（肩コンターと同じ Y 変換を適用） */
   canvasYGradeScale?: { lengthTopY: number; scale: number } | null;
   /** 着丈 Y メッシュ前の紫区間（実測 px / スライダー換算 cm / 目標縦 px / Δ）。入力 cm を幾何として偽装しないこと。 */
@@ -102,6 +108,7 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
     lengthGeomBeforeLengthMeshDebug: lengthGeomBeforeLengthMeshDebugInput,
     lengthMeshSkipReason,
     animatingCustomSizeBlend,
+    sleeveMeasureDefinitionDebug,
   } = input;
 
   const sleevePxPerCmForOverlay = sleevePxPerCmForMeasure ?? bodyPxPerCm;
@@ -170,9 +177,20 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
   );
   const leftSleeve = leftSleeveStrict.length > 0 ? leftSleeveStrict : customAllOutline.filter((p) => p[0] < centerXGarment && p[1] > shoulderSeamY);
   const sleeveEndPt = leftSleeve.length > 0 ? leftSleeve.reduce((a, b) => (a[1] > b[1] ? a : b)) : null;
-  /** キャンバス側 `buildTopPlacement` と同一の縦 px/cm。袖丈はチェーンの縦 |Δy| を sleevePxPerCmForOverlay で cm 化。 */
+  /** キャンバス側 `buildTopPlacement` と同一の袖 px/cm。袖丈はチェーン弧長を sleevePxPerCmForOverlay で cm 化。 */
   const scalableSpec = scalableSpecForCustomGarment(customGarmentData);
   const gtSym = customGarmentData.genericSymmetricTop;
+  const effPrimarySleeve =
+    customGarmentData.presetId === "genericSymmetricTop" &&
+    gtSym != null &&
+    hasDistinctVertexPair(gtSym.sleeveMeasureVertexStart, gtSym.sleeveMeasureVertexEnd)
+      ? resolveEffectiveSleeveGradingGeometry(customGarmentData.pathDs, c, gtSym)
+      : null;
+  const sleeveMeasureYScaleInactive =
+    customGarmentData.presetId === "genericSymmetricTop" &&
+    gtSym != null &&
+    hasDistinctVertexPair(gtSym.sleeveMeasureVertexStart, gtSym.sleeveMeasureVertexEnd) &&
+    effPrimarySleeve === null;
   const primarySleeve = computePrimarySleeveOverlayDraft({
     customPoints,
     customGarmentData,
@@ -191,12 +209,23 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
   const sleeveVertexChainVisual = primarySleeve.sleeveVertexChainVisual;
 
   /** 確定 gt＋最終 path の袖丈（ハイライト用チェーンの一時列と数値が食い違わないようにする） */
+  let sleeveGeomMeasureKind: "arc" | undefined;
   if (sleevePipelineGeom != null && customGarmentData.presetId === "genericSymmetricTop") {
     sleevePathLengthDebug = {
       px: Math.round(sleevePipelineGeom.px),
       cm: sleevePipelineGeom.cm,
     };
+    sleeveGeomMeasureKind = "arc";
+  } else if (sleevePathLengthDebug != null) {
+    sleeveGeomMeasureKind = "arc";
   }
+
+  /** サイズプリセットを1件以上追加したあと（開発パネル「サイズ追加」相当）なら sessionStorage 不要で表示 */
+  const hasGenericSizePreset =
+    customGarmentData.presetId === "genericSymmetricTop" &&
+    (customGarmentData.genericSymmetricTop?.sizePresets?.length ?? 0) > 0;
+  const showSleeveMeasureDefOnOverlay =
+    sleeveMeasureDefinitionDebug != null && hasGenericSizePreset;
 
   let sleeveMeasuredCm: number | undefined;
 
@@ -250,7 +279,7 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
 
   let sleeveGeomDebug: { px: number; cm: number } | undefined;
   if (sleeveStart && sleeveEnd) {
-    /** チェーンがあるときは縦 |Δy| ÷ sleevePxPerCmForOverlay（入力と同じ数値に上書きしない） */
+    /** チェーンがあるときは弧長 ÷ sleevePxPerCmForOverlay（入力と同じ数値に上書きしない） */
     if (sleevePathLengthDebug != null) {
       sleeveMeasuredCm = sleevePathLengthDebug.cm;
       sleeveGeomDebug = {
@@ -297,6 +326,31 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
     };
   }
 
+  /** チェーン弧長と入力袖丈の差が大きいとき（サイレント不一致の可視化）。袖Yスケール無効時は根因を先に出す。 */
+  const SLEEVE_GEOM_INPUT_MISMATCH_CM = 0.75;
+  let sleeveMeasureMismatchWarning: string | undefined;
+  if (
+    customGarmentData.presetId === "genericSymmetricTop" &&
+    sleeveStart &&
+    sleeveEnd &&
+    sleevePathLengthDebug != null &&
+    sleeveGeomDebug != null &&
+    Number.isFinite(customGarmentData.size.sleeve) &&
+    customGarmentData.size.sleeve > 0.5 &&
+    gtSym != null
+  ) {
+    const inputCm = customGarmentData.size.sleeve;
+    const geomCm = sleeveGeomDebug.cm;
+    const d = Math.abs(geomCm - inputCm);
+    if (d > SLEEVE_GEOM_INPUT_MISMATCH_CM) {
+      if (effPrimarySleeve == null) {
+        sleeveMeasureMismatchWarning = `袖Yスケールが効いていません（採寸が単一pathに収まらない／チェーンが別pathを跨ぐ）。入力は目標、表示の弧長は設計ジオメトリのままです。チェーンの#を同一ストローク上に揃えてください。`;
+      } else {
+        sleeveMeasureMismatchWarning = `入力袖丈 ${inputCm.toFixed(1)}cm と幾何弧長 ${geomCm.toFixed(1)}cm が ${d.toFixed(1)}cm ずれています（チェーン・px/cm を確認）`;
+      }
+    }
+  }
+
   let garmentOverlay: MeasureOverlayData["garment"] = {
     shoulderLeft,
     shoulderRight,
@@ -325,6 +379,12 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
         }
       : {}),
     ...(sleeveGeomDebug ? { sleeveGeomDebug } : {}),
+    ...(sleeveGeomMeasureKind != null ? { sleeveGeomMeasureKind } : {}),
+    ...(sleeveMeasureMismatchWarning != null ? { sleeveMeasureMismatchWarning } : {}),
+    ...(sleeveMeasureYScaleInactive ? { sleeveMeasureYScaleInactive: true } : {}),
+    ...(showSleeveMeasureDefOnOverlay && sleeveMeasureDefinitionDebug != null
+      ? { sleeveMeasureDefinitionDebug }
+      : {}),
     ...(sleeveGeomBeforeSleeveFixDebug != null ? { sleeveGeomBeforeSleeveFixDebug } : {}),
     ...(sleeveGeomDebugRight ? { sleeveGeomDebugRight } : {}),
     ...(sleeveGeomBeforeSleeveFixDebugRight != null

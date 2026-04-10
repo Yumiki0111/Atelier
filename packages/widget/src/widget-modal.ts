@@ -245,7 +245,11 @@ export function updateModalWithConfig(
   /** 開発で登録した garment_spec をサーバーで着用計算するモード（publicKey 必須） */
   const garmentFitAvailable = asset?.garmentFitAvailable === true && !!params.publicKey;
 
-  let sizeKeys = sortSizeKeys(Object.keys(asset?.sizes || {}));
+  /** API が `sizes` に挿入したキー順＝着丈→袖丈順。2D 試着時は再ソートしない（locale 順に戻さない） */
+  let sizeKeys = Object.keys(asset?.sizes || {});
+  if (!garmentFitAvailable) {
+    sizeKeys = sortSizeKeys(sizeKeys);
+  }
   if (sizeKeys.length === 0) {
     sizeKeys = garmentFitAvailable ? ["default"] : ["3", "4", "5"];
   }

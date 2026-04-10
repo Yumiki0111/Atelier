@@ -40,6 +40,7 @@ export type { GenericSleeveMeasureVertexOverride } from "./applyGenericMeasureOn
 export {
   applyGenericMeasureOnlyGrading,
   applyGenericSleeveScaleAfterLengthMesh,
+  GenericSleevePipelineInvariantError,
   genericMeasureOnlyGradingActive,
   genericSymmetricTopCanvasSleeveSnapEligible,
   measureGenericTopSleeveCmFromPath,
@@ -49,7 +50,19 @@ export {
 } from "./applyGenericMeasureOnlyGrading";
 
 export {
+  buildSolveRequestFromPaths,
+  solveLowerSleeveInteriorFromRest,
+  smoothOpenChainInteriorsLaplacian2D,
+  relaxOpenChainInteriorsTowardChordWhereBent2D,
+  applyLocalVertexUpdatesToPathD,
+  resolveLowerSleeveChainLocals,
+  type LowerSleeveSolveRequest,
+  type LowerSleeveSolveResult,
+} from "./sleeveLower";
+
+export {
   resolveEffectiveSleeveGradingGeometry,
+  resolveEffectiveMirrorSleeveGradingGeometry,
   isLikelyVerticalSymmetryGuidePath,
   isNearlyVerticalThinPath,
   isVerticalCenterSpinePath,

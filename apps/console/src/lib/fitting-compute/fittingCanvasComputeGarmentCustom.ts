@@ -437,6 +437,7 @@ export function computeCustomGarmentBranch(
   const sleevePxPerCmForMeasure = sleevePhase.sleevePxPerCmForMeasure;
   const sleevePipelineGeom = sleevePhase.sleevePipelineGeom;
   const sleevePipelineGeomMirror = sleevePhase.sleevePipelineGeomMirror;
+  const sleeveMeasureDefinitionDebug = sleevePhase.sleeveMeasureDefinitionDebug;
 
   const spanAfterSleeve =
     customGarmentData.presetId === "genericSymmetricTop"
@@ -509,6 +510,7 @@ export function computeCustomGarmentBranch(
     lengthGeomBeforeLengthMeshDebug,
     lengthMeshSkipReason,
     animatingCustomSizeBlend,
+    sleeveMeasureDefinitionDebug,
   });
 
   return {

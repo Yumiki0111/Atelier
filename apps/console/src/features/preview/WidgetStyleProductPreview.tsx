@@ -28,6 +28,7 @@ import {
   PreviewFitParamSliders,
   PreviewProductRow,
   PreviewSizeCarousel,
+  PREVIEW_SIZE_CAROUSEL_WINDOW,
   PREVIEW_ACCENT,
   PREVIEW_SURFACE_BG,
   PreviewViewerShell,
@@ -35,10 +36,6 @@ import {
 /** 服は塗りなし（透明）。輪郭のみ */
 const GARMENT_FILL = "none";
 const GARMENT_STROKE = "rgba(70, 70, 70, 0.82)";
-
-function sortSizeKeys(keys: string[]): string[] {
-  return [...keys].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-}
 
 function colorFilterForHex(hex: string): string {
   const h = hex.replace("#", "");
@@ -348,10 +345,11 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
   const swatches = DEFAULT_SWATCHES;
   const [selectedColorId, setSelectedColorId] = useState<string>(swatches[0]?.id ?? "");
 
-  const sizeKeys = useMemo(() => {
-    const k = sizeKeysProp.length > 0 ? sortSizeKeys(sizeKeysProp) : ["3", "4", "5"];
-    return k;
-  }, [sizeKeysProp]);
+  /** 親（`getPreviewSizeKeys`）が着丈・袖丈順で並べた配列をそのまま使う。ここで localeCompare 再ソートすると順序が壊れる */
+  const sizeKeys = useMemo(
+    () => (sizeKeysProp.length > 0 ? [...sizeKeysProp] : ["3", "4", "5"]),
+    [sizeKeysProp]
+  );
 
   const [currentSize, setCurrentSize] = useState<string>(() => {
     if (sizeKeys.includes(initialSize as string)) return initialSize as string;
@@ -662,10 +660,16 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
   const selectedHex =
     swatches.find((s) => s.id === selectedColorId)?.hex ?? swatches[0]?.hex ?? "#e8c547";
 
-  const WINDOW = 3;
+  /** 選択サイズが ‹› 間のチップ列の中央付近に来るようウィンドウをずらす */
   const windowStart = useMemo(() => {
     const idx = sizeKeys.indexOf(currentSize);
-    return idx >= 0 ? Math.min(Math.max(0, idx), Math.max(0, sizeKeys.length - WINDOW)) : 0;
+    if (idx < 0) return 0;
+    const w = PREVIEW_SIZE_CAROUSEL_WINDOW;
+    const centerOffset = Math.floor((w - 1) / 2);
+    const maxStart = Math.max(0, sizeKeys.length - w);
+    let start = idx - centerOffset;
+    start = Math.min(Math.max(0, start), maxStart);
+    return start;
   }, [currentSize, sizeKeys]);
 
   const openBodyAdjustSheet = useCallback(() => {

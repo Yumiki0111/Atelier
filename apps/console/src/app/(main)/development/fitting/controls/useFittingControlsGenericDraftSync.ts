@@ -204,6 +204,32 @@ export function useFittingControlsGenericDraftSync(params: {
         lengthMeasureRange: lengthCoalesced.range,
         lowerSleeveMeasureRange: lowerSleeveCoalesced.range,
         lowerSleeveMirrorMeasureRange: lowerSleeveMirrorCoalesced.range,
+        sleeveFirstEdgeGlobalPairRange: skipMeasureCoalesce
+          ? d.sleeveFirstEdgeGlobalPairRange
+          : gt.sleeveFirstEdgeGlobalPair
+            ? formatLineRangeInput([
+                Math.min(gt.sleeveFirstEdgeGlobalPair[0], gt.sleeveFirstEdgeGlobalPair[1]),
+                Math.max(gt.sleeveFirstEdgeGlobalPair[0], gt.sleeveFirstEdgeGlobalPair[1]),
+              ])
+            : "",
+        sleeveMirrorFirstEdgeGlobalPairRange: skipMeasureCoalesce
+          ? d.sleeveMirrorFirstEdgeGlobalPairRange
+          : gt.sleeveMirrorFirstEdgeGlobalPair
+            ? formatLineRangeInput([
+                Math.min(gt.sleeveMirrorFirstEdgeGlobalPair[0], gt.sleeveMirrorFirstEdgeGlobalPair[1]),
+                Math.max(gt.sleeveMirrorFirstEdgeGlobalPair[0], gt.sleeveMirrorFirstEdgeGlobalPair[1]),
+              ])
+            : "",
+        sleeveMeasureArcTargetRange: skipMeasureCoalesce
+          ? d.sleeveMeasureArcTargetRange
+          : gt.sleeveMeasureArcTargetChain != null && gt.sleeveMeasureArcTargetChain.length >= 2
+            ? gt.sleeveMeasureArcTargetChain.join(",")
+            : "",
+        sleeveMirrorMeasureArcTargetRange: skipMeasureCoalesce
+          ? d.sleeveMirrorMeasureArcTargetRange
+          : gt.sleeveMirrorMeasureArcTargetChain != null && gt.sleeveMirrorMeasureArcTargetChain.length >= 2
+            ? gt.sleeveMirrorMeasureArcTargetChain.join(",")
+            : "",
         sleeveMeasureVertexStart: sleeveCoalesced.vs,
         sleeveMeasureVertexEnd: sleeveCoalesced.ve,
         sleeveMirrorMeasureVertexStart: sleeveMirrorCoalesced.vs,
@@ -371,6 +397,25 @@ export function useFittingControlsGenericDraftSync(params: {
         touched = true;
       }
     }
+    const arcTargetRaw = d.sleeveMeasureArcTargetRange.trim();
+    const arcTargetList = parseSleeveMeasureVertexList(arcTargetRaw);
+    const arcTargetIncomplete = arcTargetRaw !== "" && arcTargetList == null;
+    const arcTargetValid =
+      arcTargetList != null &&
+      arcTargetList.length >= 2 &&
+      arcTargetList[0] !== arcTargetList[arcTargetList.length - 1];
+    const curArcTarget = gt0.sleeveMeasureArcTargetChain;
+    if (!arcTargetIncomplete) {
+      if (arcTargetValid && arcTargetList) {
+        if (!numberArraysEqual(arcTargetList, curArcTarget)) {
+          merged.sleeveMeasureArcTargetChain = [...arcTargetList];
+          touched = true;
+        }
+      } else if (curArcTarget != null && curArcTarget.length > 0 && synced) {
+        delete merged.sleeveMeasureArcTargetChain;
+        touched = true;
+      }
+    }
     if (!mirrorIncomplete) {
       const nextList = parseSleeveMeasureVertexList(mirrorRaw);
       const chainValid =
@@ -388,13 +433,108 @@ export function useFittingControlsGenericDraftSync(params: {
         touched = true;
       }
     }
+    const arcMirrorRaw = d.sleeveMirrorMeasureArcTargetRange.trim();
+    const arcMirrorList = parseSleeveMeasureVertexList(arcMirrorRaw);
+    const arcMirrorIncomplete = arcMirrorRaw !== "" && arcMirrorList == null;
+    const arcMirrorValid =
+      arcMirrorList != null &&
+      arcMirrorList.length >= 2 &&
+      arcMirrorList[0] !== arcMirrorList[arcMirrorList.length - 1];
+    const curArcMirror = gt0.sleeveMirrorMeasureArcTargetChain;
+    if (!arcMirrorIncomplete) {
+      if (arcMirrorValid && arcMirrorList) {
+        if (!numberArraysEqual(arcMirrorList, curArcMirror)) {
+          merged.sleeveMirrorMeasureArcTargetChain = [...arcMirrorList];
+          touched = true;
+        }
+      } else if (curArcMirror != null && curArcMirror.length > 0 && synced) {
+        delete merged.sleeveMirrorMeasureArcTargetChain;
+        touched = true;
+      }
+    }
+    const feRaw = d.sleeveFirstEdgeGlobalPairRange.trim();
+    const nextFe = parseLineRangeInput(feRaw);
+    const feIncomplete = feRaw !== "" && nextFe == null;
+    const feDegenerate = nextFe != null && nextFe[0] === nextFe[1];
+    const nextFeN = nextFe && !feDegenerate ? norm(nextFe) : null;
+    const curFe =
+      gt0.sleeveFirstEdgeGlobalPair != null
+        ? norm([gt0.sleeveFirstEdgeGlobalPair[0], gt0.sleeveFirstEdgeGlobalPair[1]])
+        : null;
+    if (!feIncomplete && !feDegenerate) {
+      if (nextFeN == null) {
+        if (curFe != null && synced) {
+          delete merged.sleeveFirstEdgeGlobalPair;
+          touched = true;
+        }
+      } else if (!same(nextFeN, curFe)) {
+        merged.sleeveFirstEdgeGlobalPair = [nextFeN[0], nextFeN[1]];
+        touched = true;
+      }
+    }
+    const feMirRaw = d.sleeveMirrorFirstEdgeGlobalPairRange.trim();
+    const nextFeMir = parseLineRangeInput(feMirRaw);
+    const feMirIncomplete = feMirRaw !== "" && nextFeMir == null;
+    const feMirDegenerate = nextFeMir != null && nextFeMir[0] === nextFeMir[1];
+    const nextFeMirN = nextFeMir && !feMirDegenerate ? norm(nextFeMir) : null;
+    const curFeMir =
+      gt0.sleeveMirrorFirstEdgeGlobalPair != null
+        ? norm([
+            gt0.sleeveMirrorFirstEdgeGlobalPair[0],
+            gt0.sleeveMirrorFirstEdgeGlobalPair[1],
+          ])
+        : null;
+    if (!feMirIncomplete && !feMirDegenerate) {
+      if (nextFeMirN == null) {
+        if (curFeMir != null && synced) {
+          delete merged.sleeveMirrorFirstEdgeGlobalPair;
+          touched = true;
+        }
+      } else if (!same(nextFeMirN, curFeMir)) {
+        merged.sleeveMirrorFirstEdgeGlobalPair = [nextFeMirN[0], nextFeMirN[1]];
+        touched = true;
+      }
+    }
     if (!touched) return;
+    /** `gt0` が空のスナップショットだと `merged` に `sizePresets` が載らず、5件目以降が採寸 flush で消える */
+    const prevPresets = dataSnap.genericSymmetricTop?.sizePresets;
+    let restoredPresets = false;
+    if (
+      Array.isArray(prevPresets) &&
+      prevPresets.length > 0 &&
+      merged.sizePresets == null
+    ) {
+      merged.sizePresets = [...prevPresets];
+      restoredPresets = true;
+    }
     const keys = Object.keys(merged);
+    // #region agent log
+    const msp = merged.sizePresets;
+    fetch("http://127.0.0.1:7468/ingest/8ae11b2e-0353-49f9-add8-94485bd038d3", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "ccdd04" },
+      body: JSON.stringify({
+        sessionId: "ccdd04",
+        runId: "pre-fix",
+        hypothesisId: "A",
+        location: "useFittingControlsGenericDraftSync.ts:commitMeasureVertexDraftToParent",
+        message: "measure commit flush",
+        data: {
+          prevPresetCount: Array.isArray(prevPresets) ? prevPresets.length : -1,
+          mergedPresetCount: Array.isArray(msp) ? msp.length : msp == null ? -1 : -2,
+          restoredPresets,
+          mergedKeysCount: keys.length,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     onCustomGarmentApplyRef.current({
       ...dataSnap,
-      ...(keys.length > 0
-        ? { genericSymmetricTop: merged as NonNullable<CustomGarmentData["genericSymmetricTop"]> }
-        : { genericSymmetricTop: undefined }),
+      genericSymmetricTop:
+        keys.length > 0
+          ? (merged as NonNullable<CustomGarmentData["genericSymmetricTop"]>)
+          : dataSnap.genericSymmetricTop,
     });
   }, []);
 
@@ -438,6 +578,10 @@ export function useFittingControlsGenericDraftSync(params: {
     genericDraft.lengthMeasureRange,
     genericDraft.lowerSleeveMeasureRange,
     genericDraft.lowerSleeveMirrorMeasureRange,
+    genericDraft.sleeveFirstEdgeGlobalPairRange,
+    genericDraft.sleeveMirrorFirstEdgeGlobalPairRange,
+    genericDraft.sleeveMeasureArcTargetRange,
+    genericDraft.sleeveMirrorMeasureArcTargetRange,
     commitMeasureVertexDraftToParent,
   ]);
 

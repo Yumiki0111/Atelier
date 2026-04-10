@@ -10,13 +10,39 @@ import {
   measureGenericTopSleeveCmFromPath,
   resolveGenericSleevePxPerCmForMeasure,
 } from "@/app/(main)/development/fitting/generic/applyGenericMeasureOnlyGrading";
-import { collectSleevePathIndicesForGrading } from "@/app/(main)/development/fitting/generic/resolveEffectiveSleeveGradingGeometry";
+import { hasDistinctVertexPair } from "@/app/(main)/development/fitting/generic/genericMeasureOnlyShared";
+import { sleeveVerticalPxFromGlobalVertices } from "@/app/(main)/development/fitting/generic/genericSleeveChainMeasure";
+import type { SleeveVertexLockForPipelineMeasure } from "@/app/(main)/development/fitting/generic/genericSleeveMeasurePublic";
+import {
+  resolveEffectiveMirrorSleeveGradingGeometry,
+  resolveEffectiveSleeveGradingGeometry,
+} from "@/app/(main)/development/fitting/generic/resolveEffectiveSleeveGradingGeometry";
 import {
   applyGradeLengthVerticalScaleToMeshPaths,
   computeGradeLengthVerticalScaleParams,
   wrapDesignToGarmentCanvasWithYScale,
 } from "./fittingCanvasCustomGarmentGradeLength";
-import { isDebugFittingSleevePipelineEnabled } from "./fittingCanvasDebugFlags";
+import { isDebugFittingMeasureEnabled, isDebugFittingSleevePipelineEnabled } from "./fittingCanvasDebugFlags";
+
+function resolvePrimarySleeveGRangeAndChain(
+  pathDs: string[],
+  lm: CustomLandmarks,
+  gt: NonNullable<CustomGarmentData["genericSymmetricTop"]>
+): { gLo: number; gHi: number; chain: number[] | undefined } | null {
+  const s = gt.sleeveMeasureVertexStart;
+  const e = gt.sleeveMeasureVertexEnd;
+  if (!hasDistinctVertexPair(s, e)) return null;
+  let gLo = Math.min(Math.trunc(s!), Math.trunc(e!));
+  let gHi = Math.max(Math.trunc(s!), Math.trunc(e!));
+  let chain = gt.sleeveMeasureVertexChain;
+  const eff = resolveEffectiveSleeveGradingGeometry(pathDs, lm, gt);
+  if (eff) {
+    gLo = eff.gLo;
+    gHi = eff.gHi;
+    chain = eff.globalChainForMeasure ?? chain;
+  }
+  return { gLo, gHi, chain };
+}
 
 /**
  * 頂点列から紫着丈区間の縦スパン（px）。ワープ前後どちらの `customPoints` でも可。
@@ -183,18 +209,6 @@ export function applyGenericTopLengthMeshIfEligible(input: {
         targetLengthPx: targetRounded,
         deltaPxFromTarget: pxRounded - targetRounded,
       };
-      let excludePathIndices: Set<number> | undefined;
-      if (
-        customGarmentData.presetId === "genericSymmetricTop" &&
-        customGarmentData.genericSymmetricTop != null
-      ) {
-        const ex = collectSleevePathIndicesForGrading(
-          customPathDs,
-          c as CustomLandmarks,
-          customGarmentData.genericSymmetricTop
-        );
-        if (ex.size > 0) excludePathIndices = ex;
-      }
       /** 縦スケールが実質 1 なら path 再構築・オーバーレイ用ラップを省略（補間中の無駄なコピーを減らす） */
       const lengthMeshScale = gradeParams.scale;
       if (Number.isFinite(lengthMeshScale) && Math.abs(lengthMeshScale - 1) > 1e-5) {
@@ -202,8 +216,7 @@ export function applyGenericTopLengthMeshIfEligible(input: {
           customPathDs,
           customPoints,
           gradeParams.lengthTopY,
-          gradeParams.scale,
-          excludePathIndices != null ? { excludePathIndices } : undefined
+          gradeParams.scale
         );
         customPathDs = applied.customPathDs;
         customPoints = applied.customPoints;
@@ -240,6 +253,16 @@ export type GenericTopSleevePipelineResult = {
   sleevePxPerCmForMeasure?: number;
   sleevePipelineGeom: { px: number; cm: number } | null;
   sleevePipelineGeomMirror: { px: number; cm: number } | null;
+  /** プライマリ袖: 措定区間の弧長（三平方の辺の和）、スケール前後 */
+  sleeveMeasureDefinitionDebug?: {
+    gLo: number;
+    gHi: number;
+    chainGlobal?: number[];
+    pxPerCm: number;
+    beforeSleeveFix: { arcPx: number; arcCm: number };
+    afterPipeline: { arcPx: number; arcCm: number };
+    inputSleeveCm: number;
+  };
 };
 
 /**
@@ -268,11 +291,45 @@ export function runGenericSymmetricTopSleevePipeline(input: {
   let sleeveGeomBeforeSleeveFixDebug: { px: number; cm: number } | undefined;
   let sleeveGeomBeforeSleeveFixDebugRight: { px: number; cm: number } | undefined;
 
+  let sleevePxPerCmUsedForScale: number | undefined;
+  let sleeveVertexLockForMeasure:
+    | {
+        primary?: SleeveVertexLockForPipelineMeasure;
+        mirror?: SleeveVertexLockForPipelineMeasure;
+      }
+    | undefined;
+  let sleevePipelineGeomReportedFromFix:
+    | { primary?: { px: number; cm: number }; mirror?: { px: number; cm: number } }
+    | undefined;
+  let sleeveMeasureDefinitionDebug: GenericTopSleevePipelineResult["sleeveMeasureDefinitionDebug"];
+
   if (
     customGarmentData.presetId === "genericSymmetricTop" &&
     customGarmentData.genericSymmetricTop != null
   ) {
     const gtSymTop = customGarmentData.genericSymmetricTop;
+    const pxPerCmDenom = resolveGenericSleevePxPerCmForMeasure(
+      customPathDs,
+      c,
+      sizeForSleeve,
+      gtSymTop,
+      bodyPxPerCm
+    );
+    const rangePrimary = resolvePrimarySleeveGRangeAndChain(customPathDs, c, gtSymTop);
+    let beforeSleeveFixArc: { arcPx: number; arcCm: number } | undefined;
+    if (rangePrimary != null) {
+      const arcPx0 = sleeveVerticalPxFromGlobalVertices(
+        customPathDs,
+        rangePrimary.gLo,
+        rangePrimary.gHi,
+        rangePrimary.chain,
+        customPoints
+      );
+      beforeSleeveFixArc = {
+        arcPx: arcPx0,
+        arcCm: arcPx0 / pxPerCmDenom,
+      };
+    }
     /** 袖スナップ前の canvas 頂点（applyGenericSleeveScaleAfterLengthMesh の pre-measure と同じ座標・定義） */
     const beforeSleeve = measureGenericTopSleeveCmFromPath(
       customPathDs,
@@ -295,6 +352,11 @@ export function runGenericSymmetricTopSleevePipeline(input: {
       Number.isFinite(mE) &&
       mS !== mE
     ) {
+      const effMir0 = resolveEffectiveMirrorSleeveGradingGeometry(customPathDs, c, gtSymTop);
+      const mirrorChain0 =
+        effMir0?.globalChainForArcTarget ??
+        effMir0?.globalChainForMeasure ??
+        gtSymTop.sleeveMirrorMeasureVertexChain;
       const beforeMirror = measureGenericTopSleeveCmFromPath(
         customPathDs,
         c,
@@ -303,7 +365,7 @@ export function runGenericSymmetricTopSleevePipeline(input: {
         {
           start: mS,
           end: mE,
-          chain: gtSymTop.sleeveMirrorMeasureVertexChain,
+          chain: mirrorChain0,
         },
         customPoints,
         bodyPxPerCm
@@ -319,15 +381,53 @@ export function runGenericSymmetricTopSleevePipeline(input: {
       sizeForSleeve,
       gtSymTop,
       bodyPxPerCm,
-      animatingCustomSizeBlend ? { maxSleeveCorrectionIters: 1 } : undefined
+      /** 補間中も最低 2 回: 下袖スナップ後の残差で 1 回だと入力袖丈から数 cm 残ることがある */
+      animatingCustomSizeBlend ? { maxSleeveCorrectionIters: 2 } : undefined
     );
     customPathDs = sleeveFix.pathDs;
     customPoints = sleeveFix.customPoints;
+    sleevePxPerCmUsedForScale = sleeveFix.sleevePxPerCmUsedForScale;
+    sleeveVertexLockForMeasure = sleeveFix.sleeveVertexLockForMeasure;
+    sleevePipelineGeomReportedFromFix = sleeveFix.sleevePipelineGeomReported;
+
+    if (beforeSleeveFixArc != null) {
+      const pxPerCmFinal = sleevePxPerCmUsedForScale ?? pxPerCmDenom;
+      const rangeAfter =
+        sleeveVertexLockForMeasure?.primary != null
+          ? {
+              gLo: sleeveVertexLockForMeasure.primary.start,
+              gHi: sleeveVertexLockForMeasure.primary.end,
+              chain: sleeveVertexLockForMeasure.primary.chain,
+            }
+          : resolvePrimarySleeveGRangeAndChain(customPathDs, c, gtSymTop);
+      if (rangeAfter != null) {
+        const arcPx1 = sleeveVerticalPxFromGlobalVertices(
+          customPathDs,
+          rangeAfter.gLo,
+          rangeAfter.gHi,
+          rangeAfter.chain,
+          customPoints
+        );
+        sleeveMeasureDefinitionDebug = {
+          gLo: rangeAfter.gLo,
+          gHi: rangeAfter.gHi,
+          chainGlobal: rangeAfter.chain,
+          pxPerCm: pxPerCmFinal,
+          beforeSleeveFix: beforeSleeveFixArc,
+          afterPipeline: {
+            arcPx: arcPx1,
+            arcCm: arcPx1 / pxPerCmFinal,
+          },
+          inputSleeveCm: sizeForSleeve.sleeve,
+        };
+      }
+    }
   }
 
   const sleevePxPerCmForMeasure =
     customGarmentData.presetId === "genericSymmetricTop" && customGarmentData.genericSymmetricTop != null
-      ? resolveGenericSleevePxPerCmForMeasure(
+      ? sleevePxPerCmUsedForScale ??
+        resolveGenericSleevePxPerCmForMeasure(
           customPathDs,
           c,
           sizeForSleeve,
@@ -337,16 +437,21 @@ export function runGenericSymmetricTopSleevePipeline(input: {
       : undefined;
 
   const gtForSleeveGeom = customGarmentData.genericSymmetricTop;
+  const primaryLock = sleeveVertexLockForMeasure?.primary;
   const sleevePipelineGeom =
     customGarmentData.presetId === "genericSymmetricTop" && gtForSleeveGeom != null
-      ? measureGenericTopSleeveCmFromPath(
+      ? sleevePipelineGeomReportedFromFix?.primary ??
+        measureGenericTopSleeveCmFromPath(
           customPathDs,
           c,
           sizeForSleeve,
           gtForSleeveGeom,
-          undefined,
+          primaryLock != null
+            ? { start: primaryLock.start, end: primaryLock.end, chain: primaryLock.chain }
+            : undefined,
           customPoints,
-          bodyPxPerCm
+          bodyPxPerCm,
+          sleevePxPerCmUsedForScale
         )
       : null;
 
@@ -364,18 +469,29 @@ export function runGenericSymmetricTopSleevePipeline(input: {
           ) {
             return null;
           }
+          const fromFix = sleevePipelineGeomReportedFromFix?.mirror;
+          if (fromFix != null) return fromFix;
+          const mirrorLock = sleeveVertexLockForMeasure?.mirror;
+          const effMir = resolveEffectiveMirrorSleeveGradingGeometry(customPathDs, c, gtForSleeveGeom);
+          const mirrorChainFallback =
+            effMir?.globalChainForArcTarget ??
+            effMir?.globalChainForMeasure ??
+            gtForSleeveGeom.sleeveMirrorMeasureVertexChain;
           return measureGenericTopSleeveCmFromPath(
             customPathDs,
             c,
             sizeForSleeve,
             gtForSleeveGeom,
-            {
-              start: ms,
-              end: me,
-              chain: gtForSleeveGeom.sleeveMirrorMeasureVertexChain,
-            },
+            mirrorLock != null
+              ? { start: mirrorLock.start, end: mirrorLock.end, chain: mirrorLock.chain }
+              : {
+                  start: ms,
+                  end: me,
+                  chain: mirrorChainFallback,
+                },
             customPoints,
-            bodyPxPerCm
+            bodyPxPerCm,
+            sleevePxPerCmUsedForScale
           );
         })()
       : null;
@@ -393,6 +509,54 @@ export function runGenericSymmetricTopSleevePipeline(input: {
           ? sleevePipelineGeom.cm - slIn
           : null,
       mirrorGeomCm: sleevePipelineGeomMirror?.cm ?? null,
+      sleeveMeasureDefinitionDebug: sleeveMeasureDefinitionDebug ?? null,
+    });
+    // #region agent log
+    fetch("http://127.0.0.1:7468/ingest/8ae11b2e-0353-49f9-add8-94485bd038d3", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "c35241" },
+      body: JSON.stringify({
+        sessionId: "c35241",
+        hypothesisId: "H_pipeline_length_output",
+        location: "fittingCanvasComputeGarmentCustomSymmetricTop.ts:pipeline_out",
+        message: "pipeline_out_primary_mirror",
+        data: {
+          inputSleeveCm: slIn,
+          beforeSleeveFixCm: sleeveGeomBeforeSleeveFixDebug?.cm ?? null,
+          afterPipelinePrimaryGeomCm: sleevePipelineGeom?.cm ?? null,
+          afterPipelinePrimaryGeomPx: sleevePipelineGeom?.px ?? null,
+          mirrorGeomCm: sleevePipelineGeomMirror?.cm ?? null,
+          deltaGeomMinusInput:
+            sleevePipelineGeom != null && Number.isFinite(slIn)
+              ? sleevePipelineGeom.cm - slIn
+              : null,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+  }
+
+  if (
+    (isDebugFittingMeasureEnabled() || dbgSleeve) &&
+    sleeveMeasureDefinitionDebug != null
+  ) {
+    console.info("[FITTING_SLEEVE_PIPELINE] primary_sleeve_interval_arc", {
+      措定区間: {
+        gLo: sleeveMeasureDefinitionDebug.gLo,
+        gHi: sleeveMeasureDefinitionDebug.gHi,
+        chainGlobal: sleeveMeasureDefinitionDebug.chainGlobal ?? null,
+      },
+      pxPerCm: sleeveMeasureDefinitionDebug.pxPerCm,
+      袖スケール前_弧長: {
+        cm: sleeveMeasureDefinitionDebug.beforeSleeveFix.arcCm,
+        px: sleeveMeasureDefinitionDebug.beforeSleeveFix.arcPx,
+      },
+      袖スケール後_弧長: {
+        cm: sleeveMeasureDefinitionDebug.afterPipeline.arcCm,
+        px: sleeveMeasureDefinitionDebug.afterPipeline.arcPx,
+      },
+      入力袖丈cm: sleeveMeasureDefinitionDebug.inputSleeveCm,
     });
   }
 
@@ -404,5 +568,6 @@ export function runGenericSymmetricTopSleevePipeline(input: {
     sleevePxPerCmForMeasure,
     sleevePipelineGeom,
     sleevePipelineGeomMirror,
+    ...(sleeveMeasureDefinitionDebug != null ? { sleeveMeasureDefinitionDebug } : {}),
   };
 }

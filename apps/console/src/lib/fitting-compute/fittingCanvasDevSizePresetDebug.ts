@@ -10,16 +10,16 @@ import {
   isLikelyVerticalSymmetryGuidePath,
   isNearlyVerticalThinPath,
   isVerticalCenterSpinePath,
+  resolveEffectiveMirrorSleeveGradingGeometry,
   resolveEffectiveSleeveGradingGeometry,
   type EffectiveSleeveGradingGeometry,
 } from "@/app/(main)/development/fitting/generic";
-import { resolveLowerSleeveGlobalsOntoSleevePath } from "@/app/(main)/development/fitting/generic/genericMeasureOnlySleeveFollowArgs";
 import {
-  previewLowerSleeveSeamOnPathSnapshot,
-  type LowerSleeveSeamPathPreview,
-  type LowerSleeveSeamRunStats,
-} from "@/app/(main)/development/fitting/generic/genericMeasureOnlyLowerSleeveSnap";
-import { cumulativePathPointOffsets } from "@/app/(main)/development/fitting/lib/pathUtils";
+  resolveLowerSleeveGlobalsOntoSleevePath,
+  tryLowerSleeveFollowArgs,
+} from "@/app/(main)/development/fitting/generic/genericMeasureOnlySleeveFollowArgs";
+import { globalToLocal } from "@/app/(main)/development/fitting/generic/genericMeasureOnlyShared";
+import { getPathPoints } from "@/app/(main)/development/fitting/lib/pathUtils";
 
 export type DevFitPipelineLogAction = "addPreset" | "activatePreset" | "productDbRegister";
 
@@ -43,7 +43,7 @@ function primarySleeveCanvasScaleLabel(
   if (!eff) {
     return "なし（採寸 min/max が単一 path に収まらない、または袖チェーンが別 path を跨ぐ）";
   }
-  return `あり（1 path: index ${eff.sleevePathIdx}。採寸頂点の所属 path のみ Y スケール。build・キャンバス後段共通）`;
+  return `あり（1 path: index ${eff.sleevePathIdx}。キャンバス後段は隣接1辺伸縮＋袖口隣接角維持＋下袖内点の比例 remap（弧長）。build・キャンバス後段共通）`;
 }
 
 /** 採寸が乗っている path が構築線っぽいとき、外腕に採寸を移すよう促す（推測で path は変えない） */
@@ -52,11 +52,11 @@ function sleeveScalePathAdvisory(
   landmarks: CustomGarmentData["landmarks"],
   eff: EffectiveSleeveGradingGeometry | null
 ): string {
-  if (!eff) return "（Y スケール対象 path なし）";
+  if (!eff) return "（袖 path 未確定）";
   const d = pathDs[eff.sleevePathIdx];
-  if (!d) return "Y スケール index の path が無い";
+  if (!d) return "袖 path index の path が無い";
   if (isLikelyVerticalSymmetryGuidePath(d, landmarks, pathDs)) {
-    return "採寸が縦センターガイドっぽい path 上です。Y スケールはこの線だけ動き外腕輪郭は動きません（見た目が大きくズレます）。袖丈採寸の # を左外腕の輪郭 path 上に付け替えてください。";
+    return "採寸が縦センターガイドっぽい path 上です。この線だけ動き外腕輪郭は動きません（見た目が大きくズレます）。袖丈採寸の # を左外腕の輪郭 path 上に付け替えてください。";
   }
   if (isNearlyVerticalThinPath(d)) {
     return "採寸が細い縦 path（構築線の可能性）上です。上記と同様に、採寸 # を外腕輪郭 path に付け替えてください。";
@@ -64,7 +64,7 @@ function sleeveScalePathAdvisory(
   if (isVerticalCenterSpinePath(d, landmarks, pathDs)) {
     return "採寸が前中心スパイン（構築線）上です。上記と同様に、採寸 # を外腕輪郭 path に付け替えてください。";
   }
-  return "なし（採寸 path は構築線判定を通過。それでもズレる場合は下袖区間・胴合わせ先 #・袖 path を確認）";
+  return "なし（採寸 path は構築線判定を通過。それでもズレる場合は下袖区間・袖 path を確認）";
 }
 
 function mirrorSleeveMeasureLabel(gt: NonNullable<CustomGarmentData["genericSymmetricTop"]>): string {
@@ -73,9 +73,40 @@ function mirrorSleeveMeasureLabel(gt: NonNullable<CustomGarmentData["genericSymm
   }
   const chain = gt.sleeveMirrorMeasureVertexChain;
   if (chain != null && chain.length >= 2) {
-    return `あり（チェーン ${chain.length} 頂点・オーバーレイ採寸。キャンバス袖スケールはプライマリのみ）`;
+    return `あり（チェーン ${chain.length} 頂点・オーバーレイ採寸）`;
   }
-  return "あり（端点ペア・オーバーレイ採寸。キャンバス袖スケールはプライマリのみ）";
+  return "あり（端点ペア・オーバーレイ採寸）";
+}
+
+function mirrorSleeveCanvasScaleLabel(
+  eff: EffectiveSleeveGradingGeometry | null,
+  gt: NonNullable<CustomGarmentData["genericSymmetricTop"]>
+): string {
+  if (!distinctVertexPair(gt.sleeveMirrorMeasureVertexStart, gt.sleeveMirrorMeasureVertexEnd)) {
+    return "なし（ミラー袖 始点/終点が未設定）";
+  }
+  if (!eff) {
+    return "なし（採寸が単一 path に収まらない、またはチェーンが別 path を跨ぐ）";
+  }
+  return `あり（1 path: index ${eff.sleevePathIdx}。applyGenericSleeveScaleAfterLengthMesh がプライマリと同型で適用）`;
+}
+
+function firstEdgePairDevSummary(gt: NonNullable<CustomGarmentData["genericSymmetricTop"]>): {
+  プライマリ: string;
+  ミラー: string;
+} {
+  const p = gt.sleeveFirstEdgeGlobalPair;
+  const m = gt.sleeveMirrorFirstEdgeGlobalPair;
+  return {
+    プライマリ:
+      p != null && p.length === 2
+        ? `明示 #${Math.min(p[0], p[1])}–#${Math.max(p[0], p[1])}（推奨）`
+        : "未設定（採寸終端の Y ヒューリスティック）",
+    ミラー:
+      m != null && m.length === 2
+        ? `明示 #${Math.min(m[0], m[1])}–#${Math.max(m[0], m[1])}（推奨）`
+        : "未設定（ミラー側も Y ヒューリスティック）",
+  };
 }
 
 function primarySleeveMeasureLabel(gt: NonNullable<CustomGarmentData["genericSymmetricTop"]>): string {
@@ -83,85 +114,55 @@ function primarySleeveMeasureLabel(gt: NonNullable<CustomGarmentData["genericSym
     return "なし";
   }
   const chain = gt.sleeveMeasureVertexChain;
+  const arcT = gt.sleeveMeasureArcTargetChain;
+  const hasArcDiff =
+    arcT != null &&
+    arcT.length >= 2 &&
+    (chain == null ||
+      chain.length !== arcT.length ||
+      chain.some((v, i) => v !== arcT[i]));
   if (chain != null && chain.length >= 2) {
-    return `あり（チェーン ${chain.length} 頂点・縦|Δy| 合算）`;
+    return hasArcDiff
+      ? `あり（表示 ${chain.length} 頂点・目標弧長 ${arcT!.length}）`
+      : `あり（チェーン ${chain.length} 頂点・弧長）`;
   }
-  return "あり（端点ペア・|Δy|）";
+  if (hasArcDiff) {
+    return `あり（端点＋目標弧長 ${arcT!.length} 頂点）`;
+  }
+  return "あり（端点ペア・弧長）";
 }
 
 function lowerSleeveRangeLabel(gt: NonNullable<CustomGarmentData["genericSymmetricTop"]>): string {
   if (!distinctVertexPair(gt.lowerSleeveVertexStart, gt.lowerSleeveVertexEnd)) {
-    return "なし（寄せ先ポリラインは袖 path 全体にフォールバック）";
+    return "なし（下袖追従は tryLowerSleeveFollowArgs が null のときスキップ）";
   }
   const a = Math.trunc(gt.lowerSleeveVertexStart!);
   const b = Math.trunc(gt.lowerSleeveVertexEnd!);
-  return `あり #${Math.min(a, b)}〜#${Math.max(a, b)}`;
+  const span = Math.abs(b - a) + 1;
+  const hint = span <= 2 ? "・長袖は複数頂点に広げるとなめらかになりやすい" : "";
+  return `あり #${Math.min(a, b)}〜#${Math.max(a, b)}（${span} 頂点。胴端・ジャンクション固定のうえ下袖弧長を比例 remap${hint}）`;
 }
 
-function buildLowerSleeveSeamOneLineSummary(
-  stats: LowerSleeveSeamRunStats,
-  moved: number[],
-  sleevePathIdx: number
-): string {
-  const parts: string[] = [];
-  if (stats.skipReason && stats.sleeveVerticesTranslated === 0 && moved.length === 0) {
-    parts.push(stats.skipReason);
-  } else {
-    if (stats.snapTargetBodyGlobal != null) {
-      const src =
-        stats.snapTargetSource === "auto_nearest_body"
-          ? "自動・最近傍胴"
-          : stats.snapTargetSource === "legacy_linked"
-            ? "旧連結リスト"
-            : "";
-      parts.push(`合わせ先胴#${stats.snapTargetBodyGlobal}${src ? `（${src}）` : ""}（胴は固定）`);
-    }
-    if (stats.translation && (stats.translation.dx !== 0 || stats.translation.dy !== 0)) {
-      parts.push(
-        `袖口方向に最大 Δx=${stats.translation.dx.toFixed(2)} Δy=${stats.translation.dy.toFixed(2)}（付け根は0〜袖口でブレンド）`
-      );
-    }
-    if (stats.sleeveVerticesTranslated > 0) {
-      parts.push(`下袖で動いた袖頂点≈${stats.sleeveVerticesTranslated}個`);
-    }
-  }
-  if (moved.length > 0) {
-    const head =
-      moved.length <= 14 ? moved.join(", ") : `${moved.slice(0, 14).join(", ")}+他${moved.length - 14}`;
-    parts.push(`座標が変わった#=[${head}]`);
-  }
-  if (parts.length === 0) {
-    return `この path 試算では移動なし（袖 path index=${sleevePathIdx}）`;
-  }
-  return parts.join(" ／ ");
-}
-
-function formatLowerSleeveSeamPreviewJa(
-  preview: LowerSleeveSeamPathPreview,
-  sleevePathIdx: number
-): Record<string, unknown> {
-  const { stats, movedGlobalVertexIndices } = preview;
-  const oneLine = buildLowerSleeveSeamOneLineSummary(stats, movedGlobalVertexIndices, sleevePathIdx);
+function sleeveLengthIndicesFromMeasureGlobals(
+  pathDs: string[],
+  sleevePathIdx: number,
+  gLo: number,
+  gHi: number
+): { lengthStartIdx: number; lengthEndIdx: number } | null {
+  const li0 = globalToLocal(pathDs, sleevePathIdx, gLo);
+  const li1 = globalToLocal(pathDs, sleevePathIdx, gHi);
+  if (li0 == null || li1 == null) return null;
+  const pts = getPathPoints(pathDs[sleevePathIdx]!);
+  const pa = pts[li0]!;
+  const pb = pts[li1]!;
+  const topIs0 = pa[1] <= pb[1];
   return {
-    要約: oneLine,
-    読み方:
-      "胴の # は動かさない。下袖区間では**ジャンクション側は据え置き**、**袖口側へ寄せる量を線形に増やして**折れ線を伸ばし、最近点が胴 # に来るようにします（袖 path 全体フォールバック時は剛体移動）。",
-    動いた全局番号: movedGlobalVertexIndices,
-    内訳: {
-      ポリライン頂点数: stats.polyPointCount,
-      ポリライン由来: stats.polySource === "lower_sleeve_segment" ? "下袖区間" : "袖 path 全体（フォールバック）",
-      合わせ先胴全局番号: stats.snapTargetBodyGlobal,
-      合わせ先の決め方: stats.snapTargetSource,
-      自動推定時の距離上限px: stats.autoSnapMaxPx,
-      袖口側への最大移動量px: stats.translation,
-      下袖で実際に動いた袖頂点数: stats.sleeveVerticesTranslated,
-      スキップ理由: stats.skipReason,
-    },
-    注: "本番 build は袖スケール・エルボ追従の後に同じロジックが走ります",
+    lengthStartIdx: topIs0 ? li0 : li1,
+    lengthEndIdx: topIs0 ? li1 : li0,
   };
 }
 
-function lowerSleeveSeamPreviewOnCurrentPaths(
+function lowerSleevePipelineNote(
   pathDs: string[],
   landmarks: CustomGarmentData["landmarks"],
   gt: NonNullable<CustomGarmentData["genericSymmetricTop"]>,
@@ -171,20 +172,43 @@ function lowerSleeveSeamPreviewOnCurrentPaths(
     return "スキップ（プライマリ袖 path が未確定。採寸が単一 path に収まっていない等）";
   }
   const low = resolveLowerSleeveGlobalsOntoSleevePath(pathDs, landmarks, effPrimary.sleevePathIdx, gt);
-  const off = cumulativePathPointOffsets(pathDs)[effPrimary.sleevePathIdx]!;
-  const lengthIdxLo = Math.min(effPrimary.gLo, effPrimary.gHi) - off;
-  const lengthIdxHi = Math.max(effPrimary.gLo, effPrimary.gHi) - off;
-  const preview = previewLowerSleeveSeamOnPathSnapshot(
+  const lenIdx = sleeveLengthIndicesFromMeasureGlobals(
     pathDs,
-    landmarks,
-    gt,
     effPrimary.sleevePathIdx,
-    low?.lowGlo,
-    low?.lowGhi,
-    lengthIdxLo,
-    lengthIdxHi
+    effPrimary.gLo,
+    effPrimary.gHi
   );
-  return formatLowerSleeveSeamPreviewJa(preview, effPrimary.sleevePathIdx);
+  const follow =
+    lenIdx != null
+      ? tryLowerSleeveFollowArgs(
+          pathDs,
+          landmarks,
+          effPrimary.sleevePathIdx,
+          lenIdx.lengthStartIdx,
+          lenIdx.lengthEndIdx,
+          gt
+        )
+      : null;
+
+  let junctionNote: string;
+  if (low == null) {
+    junctionNote = "スキップ（下袖グローバル範囲が袖 path に乗らない等）";
+  } else if (lenIdx == null) {
+    junctionNote = "スキップ（採寸 gLo/gHi の local 解決失敗）";
+  } else if (follow == null) {
+    junctionNote =
+      "スキップ（採寸帯と下袖帯が path 上で内部重複 → ジャンクション一意に定まらない。区間を離すか採寸チェーンを見直す）";
+  } else {
+    junctionNote = `実行可（junctionLocal=${follow.junction}。胴端〜ジャンクションの下袖チェーンで弧長 remap）`;
+  }
+
+  return {
+    説明:
+      "キャンバス袖丈は着丈メッシュ後に袖パイプライン実行。弧長はチェーン＋隣接1辺伸縮。袖口は隣接頂点で上袖–袖口角を維持。下袖内点は静止弦フレームで等方スケール（generic/sleeveLower）。胴接点の outline snap は post seam sync 後に 1 回。",
+    下袖区間解決: low != null ? { lowGlo: low.lowGlo, lowGhi: low.lowGhi } : "未解決（ガイド path 上のみ等）",
+    下袖追従_tryLowerSleeveFollowArgs: junctionNote,
+    デバッグ: "sessionStorage DEBUG_FITTING_SLEEVE_WELD=0 で [FITTING_LOWER_SLEEVE_FOLLOW] を抑止",
+  };
 }
 
 function lowerSleeveSeamConfigSummary(gt: NonNullable<CustomGarmentData["genericSymmetricTop"]>): Record<string, unknown> {
@@ -201,7 +225,7 @@ function lowerSleeveSeamConfigSummary(gt: NonNullable<CustomGarmentData["generic
   return {
     下袖区間_プライマリ: lowerSleeveRangeLabel(gt),
     下袖区間_ミラー: mirrorLower,
-    脇合わせ先: "自動（旧連結リストの胴 # があれば互換フォールバック）",
+    脇合わせ先: "（廃止）胴への自動スナップは行わない",
     旧_連結リスト_非推奨: legacyLinked?.length ? legacyLinked.join(", ") : "（なし）",
   };
 }
@@ -221,7 +245,7 @@ export function logGarmentSleeveMeasureUsage(input: {
   if (presetId !== "genericSymmetricTop" || gt == null) {
     console.info(`[FIT][dev] 袖・採寸の使い分け (${action})`, {
       presetId,
-      袖: "汎用トップ以外 — measure-only / キャンバス袖スナップの対象外（コート等は ScalableGarmentSpec 経由）",
+      袖: "汎用トップ以外 — measure-only / キャンバス袖の対象外（コート等は ScalableGarmentSpec 経由）",
     });
     return;
   }
@@ -231,14 +255,43 @@ export function logGarmentSleeveMeasureUsage(input: {
       ? resolveEffectiveSleeveGradingGeometry(pathDs, customGarmentData.landmarks, gt)
       : null;
 
-  const seamPrev = lowerSleeveSeamPreviewOnCurrentPaths(
-    pathDs,
-    customGarmentData.landmarks,
-    gt,
-    effPrimary
-  );
-  const seamSummaryLine =
-    typeof seamPrev === "string" ? seamPrev : String((seamPrev as Record<string, unknown>).要約 ?? "");
+  const effMirror =
+    distinctVertexPair(gt.sleeveMirrorMeasureVertexStart, gt.sleeveMirrorMeasureVertexEnd)
+      ? resolveEffectiveMirrorSleeveGradingGeometry(pathDs, customGarmentData.landmarks, gt)
+      : null;
+
+  const lowerNote = lowerSleevePipelineNote(pathDs, customGarmentData.landmarks, gt, effPrimary);
+
+  // #region agent log
+  if (action === "addPreset") {
+    let lowerOntoPath: boolean | null = null;
+    if (effPrimary != null) {
+      lowerOntoPath =
+        resolveLowerSleeveGlobalsOntoSleevePath(pathDs, customGarmentData.landmarks, effPrimary.sleevePathIdx, gt) !=
+        null;
+    }
+    fetch("http://127.0.0.1:7468/ingest/8ae11b2e-0353-49f9-add8-94485bd038d3", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "c35241" },
+      body: JSON.stringify({
+        sessionId: "c35241",
+        runId: "size-add",
+        hypothesisId: "H0_addPreset",
+        location: "fittingCanvasDevSizePresetDebug.ts:logGarmentSleeveMeasureUsage",
+        message: "size_preset_added_dev_summary",
+        data: {
+          action,
+          sleeveCm: customGarmentData.size.sleeve,
+          lengthCm: customGarmentData.size.length,
+          effPrimaryPathIdx: effPrimary?.sleevePathIdx ?? null,
+          lowerSleeveGlobalsResolveOk: lowerOntoPath,
+          canvasSleeveSnapEligible: genericSymmetricTopCanvasSleeveSnapEligible(gt),
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+  }
+  // #endregion
 
   console.info(`[FIT][dev] 袖・採寸の使い分け (${action})`, {
     presetId,
@@ -246,18 +299,18 @@ export function logGarmentSleeveMeasureUsage(input: {
     build_applyGenericMeasureOnlyGrading: genericMeasureOnlyGradingActive(gt)
       ? "有効"
       : "無効（汎用トップの採寸頂点が不足）",
-    キャンバス袖スナップ候補: genericSymmetricTopCanvasSleeveSnapEligible(gt)
+    キャンバス袖丈補正候補: genericSymmetricTopCanvasSleeveSnapEligible(gt)
       ? "あり（プライマリまたはミラーに採寸頂点）"
       : "なし",
     プライマリ袖採寸: primarySleeveMeasureLabel(gt),
-    プライマリ袖キャンバスYスケール: primarySleeveCanvasScaleLabel(effPrimary, gt),
-    Yスケール対象pathの注意: sleeveScalePathAdvisory(pathDs, customGarmentData.landmarks, effPrimary),
+    プライマリ袖キャンバス袖丈: primarySleeveCanvasScaleLabel(effPrimary, gt),
+    ミラー袖キャンバス袖丈: mirrorSleeveCanvasScaleLabel(effMirror, gt),
+    袖丈1辺_明示ペア: firstEdgePairDevSummary(gt),
+    袖pathの注意: sleeveScalePathAdvisory(pathDs, customGarmentData.landmarks, effPrimary),
     ミラー袖採寸: mirrorSleeveMeasureLabel(gt),
-    下袖脇合わせ設定: lowerSleeveSeamConfigSummary(gt),
-    下袖脇合わせプレビュー_要約: seamSummaryLine,
-    下袖脇合わせプレビュー_現在のpathDs: seamPrev,
-    詳細ログ_任意:
-      "sessionStorage DEBUG_FITTING_SLEEVE_WELD=1 後リロードで [FITTING_LOWER_SLEEVE_SNAP]",
+    下袖設定: lowerSleeveSeamConfigSummary(gt),
+    下袖パイプライン: lowerNote,
+    詳細ログ_任意: "sessionStorage DEBUG_FITTING_SLEEVE_WELD=1 で [FITTING_LOWER_SLEEVE_FOLLOW]",
   });
 }
 

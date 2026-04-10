@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { CustomGarmentData, JacketSize, ShirtSize, SizeMeasure } from "../lib/types";
 import { cn } from "@/lib/utils";
 import { DevPanelSection } from "./FittingControlsUI";
@@ -10,6 +10,7 @@ import {
   measureOriginalSleeveCmFromDesignPaths,
   resolveGenericGradingBodyLengthCmReference,
 } from "../generic";
+import { compareGenericSizePresetRow } from "../generic/genericDevDefaults";
 import { logDevFitPipelineAfterSizePresetChange } from "@/lib/fitting-compute/fittingCanvasDevSizePresetDebug";
 
 /**
@@ -78,11 +79,18 @@ export function FittingControlsCustomPanels({
   const measureGradingReady = isGenericTop && genericMeasureOnlyGradingActive(gt);
   const canvasSleeveSnapEligible = isGenericTop && genericSymmetricTopCanvasSleeveSnapEligible(gt);
 
-  const normalizedSizePresets = sizePresets.map((p) => ({
-    label: p.label,
-    length: p.length,
-    sleeve: p.sleeve,
-  }));
+  const normalizedSizePresets = useMemo(
+    () =>
+      [...sizePresets]
+        .map((p) => ({ label: p.label, length: p.length, sleeve: p.sleeve }))
+        .sort(compareGenericSizePresetRow),
+    [sizePresets]
+  );
+
+  const sameSizePresetRow = (
+    a: { label: string; length: number; sleeve: number },
+    b: { label: string; length: number; sleeve: number }
+  ) => a.label === b.label && a.length === b.length && a.sleeve === b.sleeve;
 
   const activatePreset = (preset: { label: string; length: number; sleeve: number }) => {
     const prev = customGarmentData.size;
@@ -140,7 +148,7 @@ export function FittingControlsCustomPanels({
     const slv = parseCmLocal(presetSleeve);
     if (len == null || slv == null) return;
     const label = presetLabel.trim() || String.fromCharCode(65 + sizePresets.length);
-    const next = [...sizePresets, { label, length: len, sleeve: slv }];
+    const next = [...sizePresets, { label, length: len, sleeve: slv }].sort(compareGenericSizePresetRow);
     const prev = customGarmentData.size;
     const gt = customGarmentData.genericSymmetricTop;
     const needLenBaseline =
@@ -192,13 +200,13 @@ export function FittingControlsCustomPanels({
     presetLabelRef.current?.focus();
   };
 
-  const deletePreset = (idx: number) => {
-    const next = sizePresets.filter((_, i) => i !== idx);
+  const deletePreset = (target: { label: string; length: number; sleeve: number }) => {
+    const next = sizePresets.filter((p) => !sameSizePresetRow(p, target));
     onCustomGarmentApply({
       ...customGarmentData,
       genericSymmetricTop: {
-        ...customGarmentData.genericSymmetricTop,
-        sizePresets: next.length > 0 ? next : undefined,
+        ...(customGarmentData.genericSymmetricTop ?? {}),
+        sizePresets: next.length > 0 ? next.sort(compareGenericSizePresetRow) : undefined,
       },
     });
   };
@@ -234,12 +242,14 @@ export function FittingControlsCustomPanels({
           )}
           {normalizedSizePresets.length > 0 && (
             <div className="mt-2 flex flex-col gap-1.5">
-              {normalizedSizePresets.map((preset, idx) => {
+              {normalizedSizePresets.map((preset, rowIdx) => {
                 const isActive =
                   customGarmentData.size.length === preset.length &&
                   customGarmentData.size.sleeve === preset.sleeve;
+                /** ラベル＋寸法が重複しても行が潰れないようインデックスを含める */
+                const rowKey = `${rowIdx}:${preset.label}:${preset.length}:${preset.sleeve}`;
                 return (
-                  <div key={idx} className="flex items-center gap-1.5">
+                  <div key={rowKey} className="flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => activatePreset(preset)}
@@ -257,7 +267,7 @@ export function FittingControlsCustomPanels({
                     </button>
                     <button
                       type="button"
-                      onClick={() => deletePreset(idx)}
+                      onClick={() => deletePreset(preset)}
                       className="shrink-0 rounded-md px-2 py-1.5 text-[10px] text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
                       aria-label={`${preset.label}を削除`}
                     >

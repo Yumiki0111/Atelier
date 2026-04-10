@@ -1,6 +1,6 @@
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
 import { resolveEffectiveSleeveGradingGeometry } from "@/app/(main)/development/fitting/generic/resolveEffectiveSleeveGradingGeometry";
-import { polylineVerticalAbsDySumPx } from "./fittingCanvasPolylineMeasure";
+import { polylineArcLengthPx } from "./fittingCanvasPolylineMeasure";
 
 /** ミラー袖の赤線頂点列と端点（採寸チェーン or 頂点範囲） */
 export function resolveMirrorSleeveCanvasPoints(
@@ -292,7 +292,7 @@ export function computePrimarySleeveOverlayDraft(input: {
       .map((i) => customPoints[i])
       .filter((p): p is [number, number] => p != null);
     if (pathPtsMeasure.length >= 2) {
-      const deltaBodyPx = polylineVerticalAbsDySumPx(pathPtsMeasure);
+      const deltaBodyPx = polylineArcLengthPx(pathPtsMeasure);
       const measured = deltaBodyPx / sleevePxPerCmForOverlay;
       sleevePathLengthDebug = { px: Math.round(deltaBodyPx), cm: measured };
     }
@@ -313,8 +313,11 @@ export function computePrimarySleeveOverlayDraft(input: {
       }
       const deltaBodyPx =
         pathPts.length >= 2
-          ? polylineVerticalAbsDySumPx(pathPts)
-          : Math.abs(customPoints[endIdx]![1] - customPoints[startIdx]![1]);
+          ? polylineArcLengthPx(pathPts)
+          : Math.hypot(
+              customPoints[endIdx]![0] - customPoints[startIdx]![0],
+              customPoints[endIdx]![1] - customPoints[startIdx]![1]
+            );
       const measured = deltaBodyPx / sleevePxPerCmForOverlay;
       sleevePathLengthDebug = { px: Math.round(deltaBodyPx), cm: measured };
     }

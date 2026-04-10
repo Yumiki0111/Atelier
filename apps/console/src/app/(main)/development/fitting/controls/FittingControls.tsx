@@ -10,7 +10,7 @@ import type {
   ShoulderDebug,
   GenericVertexPlotHighlight,
 } from "../lib/types";
-import { calcFitFromSize, jacketFitLabel } from "../lib/fitCalc";
+import { calcFitFromSize, jacketFitLabel, shirtFitLabel } from "../lib/fitCalc";
 import { measureSleeveLengthFromPath, vertexRangeToCoveringPathRange } from "../lib/pathUtils";
 import { appendSleeveMeasureVertexWithR, parseLineRangeInput, parseSleeveMeasureVertexInput } from "../generic";
 import { FittingControlsCustomPanels } from "./FittingControlsCustomPanels";
@@ -133,7 +133,8 @@ export function FittingControls({
   }, [showPlotCoords, hoveredGarmentVertexIndex, isGenericTopActive, setGenericDraft]);
 
   const fit = calcFitFromSize(height, weight, customGarmentData?.size ?? null);
-  const fitLabel = jacketFitLabel(fit.chestDiff);
+  const fitLabel =
+    garment === "shirt" ? shirtFitLabel(fit.chestDiff) : jacketFitLabel(fit.chestDiff);
   const sizeSpec = customGarmentData?.size ?? null;
 
   return (
@@ -253,7 +254,7 @@ export function FittingControls({
             <div className="h-2 shrink-0" aria-hidden />
             <span className="text-gray-400">推定胸囲</span> <b>{fit.estChest}cm</b>
             <br />
-            <span className="text-gray-400">身幅ゆとり</span>{" "}
+            <span className="text-gray-400">胸のゆとり（身幅×2−推定胸囲）</span>{" "}
             <b
               className={
                 fitLabel === "tight"
@@ -263,7 +264,7 @@ export function FittingControls({
                     : "text-blue-600"
               }
             >
-              {fit.chestDiff > 0 ? "+" : ""}
+              約 {fit.chestDiff > 0 ? "+" : ""}
               {Math.round(fit.chestDiff * 10) / 10}cm
             </b>
             {garment === "custom" && (
@@ -276,20 +277,28 @@ export function FittingControls({
                 </b>
               </>
             )}
+            <div
+              className={cn(
+                "mt-3 rounded-md px-2 py-2 text-center text-[11px] font-bold",
+                fitLabel === "tight" && "bg-red-50 text-red-700",
+                fitLabel === "ok" && "bg-emerald-50 text-emerald-800",
+                fitLabel === "loose" && "bg-sky-50 text-sky-800"
+              )}
+            >
+              {fitLabel === "tight" && "きつめ"}
+              {fitLabel === "ok" && "ちょうどいい"}
+              {fitLabel === "loose" && "ゆったり"}
+            </div>
+            <p className="mt-2 rounded-md bg-slate-800 px-2 py-1.5 text-[10px] leading-snug text-slate-100">
+              数値は推定です。素材の伸縮性により、実際の着用感と異なる場合があります。
+            </p>
           </>
         )}
-        </div>
-        <div
-          className={cn(
-            "mt-3 rounded-md px-2 py-2 text-center text-[11px] font-bold",
-            fitLabel === "tight" && "bg-red-50 text-red-700",
-            fitLabel === "ok" && "bg-emerald-50 text-emerald-800",
-            fitLabel === "loose" && "bg-sky-50 text-sky-800"
-          )}
-        >
-          {fitLabel === "tight" && "⚠ きつめ"}
-          {fitLabel === "ok" && "✓ 適正"}
-          {fitLabel === "loose" && "↔ ゆったり"}
+        {!sizeSpec && (
+          <p className="text-[11px] leading-snug text-slate-500">
+            採寸（着丈・肩・身幅・袖）を入力すると、胸のゆとりとざっくりした体感を表示します。
+          </p>
+        )}
         </div>
       </DevPanelSection>
 

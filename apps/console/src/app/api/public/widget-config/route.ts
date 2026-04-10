@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { setCorsHeaders, handleCorsOptions, validatePublicKeyAndDomain } from "@/lib/api/cors";
 import { isGarmentSpecRenderable } from "@/lib/widget-fit/applyWidgetSizeToGarment";
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
+import { resolveWidgetFitSizeKeysOrder } from "@/lib/widget/resolveWidgetFitSizeKeysOrder";
 
 /**
  * Widget Config 公開API
@@ -135,7 +136,7 @@ export async function GET(request: NextRequest) {
     }
 
     // サイズごとのアセットリストを構築（GLB がある場合）。無い場合は garment_spec のプリセットから
-    const sizes: Record<string, { glbUrl?: string; modelUrl?: string; category?: string }[]> = {};
+    let sizes: Record<string, { glbUrl?: string; modelUrl?: string; category?: string }[]> = {};
     let defaultSize: string | undefined;
 
     if (assetsBySizeAndCategory.size > 0) {
@@ -175,6 +176,29 @@ export async function GET(request: NextRequest) {
         sizes.default = [{ category }];
         defaultSize = "default";
       }
+    }
+
+    /** `Object.keys` の順が UI の並びになるため、プレビューと同じ着丈→袖丈順に組み替え（プリセットのみキーもマージ） */
+    if (garmentFitAvailable) {
+      const ordered = resolveWidgetFitSizeKeysOrder(Object.keys(sizes), product.garment_spec);
+      const gs = product.garment_spec as CustomGarmentData;
+      const presetLabels = new Set(
+        (gs.genericSymmetricTop?.sizePresets ?? [])
+          .map((p) => String(p.label).trim())
+          .filter(Boolean)
+      );
+      const next: Record<string, { glbUrl?: string; modelUrl?: string; category?: string }[]> = {};
+      for (const k of ordered) {
+        const existing = sizes[k];
+        if (existing != null && existing.length > 0) {
+          next[k] = existing;
+        } else if (presetLabels.has(k)) {
+          next[k] = [{ category }];
+        }
+      }
+      sizes = next;
+      if (ordered.includes("M")) defaultSize = "M";
+      else if (ordered[0]) defaultSize = ordered[0];
     }
 
     // ウィジェットデザイン設定を取得

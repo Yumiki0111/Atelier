@@ -16,10 +16,17 @@ export type GenericDraft = {
   sleeveMirrorMeasureRange: string;
   /** 着丈計測区間（連結 #） */
   lengthMeasureRange: string;
-  /** 下袖: 上袖スケール時にエルボ移動分だけ平行移動する頂点範囲（例 16-24） */
+  /** 下袖: 上袖1辺長さ変化を胴端固定の折れ線弧長に載せる頂点範囲（例 16-24） */
   lowerSleeveMeasureRange: string;
   /** ミラー袖 path 用の下袖範囲 */
   lowerSleeveMirrorMeasureRange: string;
+  /** 上袖「最初の1辺」の隣接 # ペア（例 `8-9`）。空欄で自動推定 */
+  sleeveFirstEdgeGlobalPairRange: string;
+  /** ミラー袖側の `sleeveFirstEdgeGlobalPairRange` と同じ */
+  sleeveMirrorFirstEdgeGlobalPairRange: string;
+  /** 袖丈の目標弧長だけを短いチェーンにしたいとき（カンマ列。例 37,38,39） */
+  sleeveMeasureArcTargetRange: string;
+  sleeveMirrorMeasureArcTargetRange: string;
   sleeveMeasureVertexStart?: number;
   sleeveMeasureVertexEnd?: number;
   sleeveMirrorMeasureVertexStart?: number;
@@ -43,6 +50,10 @@ export function emptyGenericDraft(): GenericDraft {
     lengthMeasureRange: "",
     lowerSleeveMeasureRange: "",
     lowerSleeveMirrorMeasureRange: "",
+    sleeveFirstEdgeGlobalPairRange: "",
+    sleeveMirrorFirstEdgeGlobalPairRange: "",
+    sleeveMeasureArcTargetRange: "",
+    sleeveMirrorMeasureArcTargetRange: "",
   };
 }
 
