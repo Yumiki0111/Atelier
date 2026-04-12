@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  WIDGET_DESIGN_CANVAS_BG_DEFAULT,
+  WIDGET_DESIGN_INTERFACE_BG_DEFAULT,
+  normalizeWidgetCtaAccentColor,
+} from "@Atelier/shared";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAuthenticatedUser } from "@/lib/auth/middleware";
 
@@ -16,11 +21,14 @@ function toApiFormat(row: Record<string, unknown>) {
     buttonText: row.button_text ?? "", // デフォルト値は空文字列（設定されていない場合は表示しない）
     buttonShape: row.button_shape === "circle" ? "circle" : "pill",
     buttonImageUrl: row.button_image_url ?? "",
-    interfaceBackgroundColor: (row.interface_background_color as string) ?? "#fafafa",
-    canvasBackgroundColor: (row.canvas_background_color as string) ?? "#fafafa",
+    interfaceBackgroundColor:
+      (row.interface_background_color as string) ?? WIDGET_DESIGN_INTERFACE_BG_DEFAULT,
+    canvasBackgroundColor:
+      (row.canvas_background_color as string) ?? WIDGET_DESIGN_CANVAS_BG_DEFAULT,
     ctaCartLabel: (row.cta_cart_label as string) ?? "カートに追加",
     ctaTryOnLabel: (row.cta_try_on_label as string) ?? "この体型で試着する",
-    ctaAccentColor: (row.cta_accent_color as string) ?? "#3d3835",
+    ctaAccentColor: normalizeWidgetCtaAccentColor(row.cta_accent_color as string | null),
+    launcherPlacement: row.launcher_placement === "floating" ? "floating" : "inline",
   };
 }
 
@@ -40,6 +48,10 @@ function toDbFormat(body: Record<string, unknown>) {
   if (body.ctaCartLabel !== undefined) fields.cta_cart_label = body.ctaCartLabel;
   if (body.ctaTryOnLabel !== undefined) fields.cta_try_on_label = body.ctaTryOnLabel;
   if (body.ctaAccentColor !== undefined) fields.cta_accent_color = body.ctaAccentColor;
+  if (body.launcherPlacement !== undefined) {
+    fields.launcher_placement =
+      body.launcherPlacement === "inline" ? "inline" : "floating";
+  }
   return fields;
 }
 

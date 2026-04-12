@@ -10,7 +10,6 @@ import type {
   ShirtSize,
   JacketSize,
   CustomGarmentData,
-  ShoulderDebug,
   GenericVertexPlotHighlight,
 } from "@/app/(main)/development/fitting/lib/types";
 import { DevelopmentProductRegisterPanel } from "./DevelopmentProductRegisterPanel";
@@ -52,7 +51,7 @@ export default function DevelopmentPage() {
   const [shirtSize, setShirtSize] = useState<ShirtSize>("48");
   const [jacketSize, setJacketSize] = useState<JacketSize>("4");
   const [customGarmentData, setCustomGarmentData] = useState<CustomGarmentData | null>(() =>
-    getGenericSymmetricTopPreset("4")
+    getGenericSymmetricTopPreset()
   );
   const [hydrated, setHydrated] = useState(false);
   const [animFromSize, setAnimFromSize] = useState<ShirtSize | null>(null);
@@ -67,7 +66,6 @@ export default function DevelopmentPage() {
   const [showRigAngleDiagram, setShowRigAngleDiagram] = useState(false);
   const [rigBodyEnabled, setRigBodyEnabled] = useState(false);
   const [rigGarmentEnabled, setRigGarmentEnabled] = useState(false);
-  const [shoulderDebug, setShoulderDebug] = useState<ShoulderDebug | null>(null);
   const [genericVertexPlotHighlight, setGenericVertexPlotHighlight] = useState<GenericVertexPlotHighlight | null>(
     null
   );
@@ -85,22 +83,6 @@ export default function DevelopmentPage() {
   }, [shirtSize]);
 
   const handleCustomGarmentApply = useCallback((newData: CustomGarmentData) => {
-    // #region agent log
-    const n = newData.genericSymmetricTop?.sizePresets?.length ?? -1;
-    fetch("http://127.0.0.1:7468/ingest/8ae11b2e-0353-49f9-add8-94485bd038d3", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "ccdd04" },
-      body: JSON.stringify({
-        sessionId: "ccdd04",
-        runId: "pre-fix",
-        hypothesisId: "C",
-        location: "development/page.tsx:handleCustomGarmentApply",
-        message: "parent received customGarment apply",
-        data: { sizePresetCount: n },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     const prev = customGarmentData;
     setCustomGarmentData(newData);
     if (
@@ -139,7 +121,7 @@ export default function DevelopmentPage() {
     if (saved?.shirtSize != null) setShirtSize(saved.shirtSize);
     if (saved?.jacketSize != null) setJacketSize(saved.jacketSize);
     if (saved?.garment === "custom" && saved?.jacketSize != null) {
-      setCustomGarmentData(getGenericSymmetricTopPreset(saved.jacketSize));
+      setCustomGarmentData(getGenericSymmetricTopPreset());
     }
   }, [hydrated]);
 
@@ -186,15 +168,15 @@ export default function DevelopmentPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden overscroll-none">
-      <div className="flex shrink-0 flex-col gap-2 py-2">
-        <h1 className="text-xl font-semibold">開発</h1>
+      <div className="flex shrink-0 flex-col gap-4 py-1">
+        <h1 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">開発</h1>
         <DevelopmentProductRegisterPanel
           garment={garment}
           customGarmentData={customGarmentData}
           fitDebugContext={{ height, weight, shirtSize, jacketSize }}
         />
       </div>
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden rounded-lg bg-[#f0ede8] p-3 lg:flex-row lg:items-stretch lg:gap-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden border-t border-border/40 bg-background pt-3 lg:flex-row lg:items-stretch lg:gap-4 lg:pt-4">
         <div className="relative flex h-full min-h-0 min-h-[min(55dvh,520px)] flex-1 flex-col overflow-hidden lg:order-2 lg:min-h-0">
           <FittingCanvas
             height={height}
@@ -215,7 +197,6 @@ export default function DevelopmentPage() {
             showRigAngleDiagram={showRigAngleDiagram}
             rigBodyEnabled={rigBodyEnabled}
             rigGarmentEnabled={rigGarmentEnabled}
-            onShoulderDebugChange={setShoulderDebug}
             genericVertexPlotHighlight={genericVertexPlotHighlight}
             onGarmentVertexHover={setHoveredGarmentVertexIndex}
             garmentVertexPickEnabled={
@@ -226,7 +207,7 @@ export default function DevelopmentPage() {
           />
         </div>
         <FittingControls
-          className="max-h-[min(42vh,360px)] w-full max-w-none shrink-0 rounded-md bg-white/60 px-2 py-2 ring-1 ring-slate-200/70 lg:order-1 lg:max-h-none lg:w-[min(17rem,100%)] lg:bg-transparent lg:px-0 lg:py-1 lg:ring-0"
+          className="max-h-[min(42vh,360px)] w-full max-w-none shrink-0 bg-secondary/30 px-2 py-2 lg:order-1 lg:max-h-none lg:w-[min(17rem,100%)] lg:bg-transparent lg:px-0 lg:py-1"
           height={height}
           weight={weight}
           garment={garment}
@@ -253,7 +234,6 @@ export default function DevelopmentPage() {
           onToggleRigAngleDiagram={() => setShowRigAngleDiagram((v) => !v)}
           onToggleRigBody={() => setRigBodyEnabled((v) => !v)}
           onToggleRigGarment={() => setRigGarmentEnabled((v) => !v)}
-          shoulderDebug={shoulderDebug}
           onGenericVertexPlotHighlightChange={handleGenericVertexPlotHighlightChange}
           hoveredGarmentVertexIndex={hoveredGarmentVertexIndex}
         />

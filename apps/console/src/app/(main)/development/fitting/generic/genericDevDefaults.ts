@@ -48,6 +48,7 @@ export function compareGenericSizePresetRow(
   return a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: "base" });
 }
 
+/** 旧ブローゾン表（3/4/5）に相当する 3 行。初期データには載せず、必要なら UI から追加する想定 */
 export function genericTopSizePresets(): { label: "3" | "4" | "5"; length: number; sleeve: number }[] {
   const rows = (["3", "4", "5"] as const).map((k) => {
     const s = genericTopSizeForKey(k);

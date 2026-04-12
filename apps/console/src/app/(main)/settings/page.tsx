@@ -5,10 +5,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { UserPlus, Mail, Shield, AlertCircle, X } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { UserPlus, Mail, Shield, X } from "lucide-react";
 import { toast } from "sonner";
 import { authenticatedFetch } from "@/lib/auth/api-client";
+import { PageHeader } from "@/components/page-header/PageHeader";
 import { MemberManagement } from "./MemberManagement";
 import { WidgetSettings } from "./WidgetSettings";
 
@@ -95,13 +96,8 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">設定</h1>
-        <p className="text-sm text-gray-600 mt-1">
-          アカウントとショップの設定を管理します
-        </p>
-      </div>
+    <div className="mx-auto w-full max-w-[120rem] space-y-8">
+      <PageHeader title="アカウント設定" />
 
       {/* アカウント情報 */}
       <Card>
@@ -110,16 +106,15 @@ export default function SettingsPage() {
             <Shield className="h-5 w-5" />
             アカウント情報
           </CardTitle>
-          <CardDescription>現在ログイン中のアカウント情報</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label className="text-sm text-gray-600">メールアドレス</Label>
+              <Label className="text-sm text-muted-foreground">メールアドレス</Label>
               <p className="text-sm font-medium mt-1">{user?.email || "-"}</p>
             </div>
             <div>
-              <Label className="text-sm text-gray-600">ショップID</Label>
+              <Label className="text-sm text-muted-foreground">ショップID</Label>
               <p className="text-sm font-mono mt-1">{shopId || "-"}</p>
             </div>
           </div>
@@ -134,9 +129,6 @@ export default function SettingsPage() {
             <UserPlus className="h-5 w-5" />
             メンバー招待
           </CardTitle>
-          <CardDescription>
-            新しいメンバーをこのショップに招待します（オーナーのみ、複数人一括招待可能）
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleInviteMembers} className="space-y-4">
@@ -144,12 +136,12 @@ export default function SettingsPage() {
               <Label htmlFor="memberEmails">招待するメールアドレス</Label>
               
               {emailList.length > 0 && (
-                <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-gray-50 min-h-[60px]">
+                <div className="flex min-h-[60px] flex-wrap gap-2 rounded-md bg-secondary/50 p-3">
                   {emailList.map((email) => (
-                      <div key={email} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 text-blue-800 rounded-md text-sm">
-                      <Mail className="h-3.5 w-3.5" />
+                      <div key={email} className="flex items-center gap-1.5 rounded-md bg-muted/50 px-3 py-1.5 text-sm text-foreground">
+                      <Mail className="h-3.5 w-3.5 text-muted-foreground" />
                       <span>{email}</span>
-                        <button type="button" onClick={() => handleRemoveEmail(email)} className="ml-1 hover:bg-blue-200 rounded-full p-0.5 transition-colors" disabled={isInviting}>
+                        <button type="button" onClick={() => handleRemoveEmail(email)} className="ml-1 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" disabled={isInviting}>
                         <X className="h-3.5 w-3.5" />
                       </button>
                     </div>
@@ -158,7 +150,7 @@ export default function SettingsPage() {
               )}
 
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="memberEmails"
                   type="text"
@@ -175,25 +167,6 @@ export default function SettingsPage() {
                 <Button type="submit" disabled={isInviting || emailList.length === 0} className="w-full">
                 {isInviting ? "送信中..." : `${emailList.length}件の招待を送信`}
               </Button>
-              <p className="text-xs text-gray-500">
-                Enter キーまたはカンマ（,）でメールアドレスを確定します。複数人を一度に招待できます。
-              </p>
-            </div>
-
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-blue-800">
-                  <p className="font-medium mb-1">招待の流れ:</p>
-                  <ol className="space-y-1 list-decimal list-inside">
-                    <li>メールアドレスを入力して Enter または「追加」ボタンをクリック</li>
-                    <li>複数のメールアドレスを追加できます</li>
-                    <li>「招待を送信」ボタンで一括送信</li>
-                    <li>メンバーがメールのリンクからパスワードを設定</li>
-                    <li>ログイン後、このショップにアクセス可能になります</li>
-                  </ol>
-                </div>
-              </div>
             </div>
           </form>
         </CardContent>

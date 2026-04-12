@@ -4,6 +4,7 @@ import { setCorsHeaders, handleCorsOptions, validatePublicKeyAndDomain } from "@
 import { isGarmentSpecRenderable } from "@/lib/widget-fit/applyWidgetSizeToGarment";
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
 import { resolveWidgetFitSizeKeysOrder } from "@/lib/widget/resolveWidgetFitSizeKeysOrder";
+import { formatPriceYenForDisplay, normalizeWidgetCtaAccentColor } from "@Atelier/shared";
 
 /**
  * Widget Config 公開API
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
     // products を (shop_id, external_product_id) で検索（garment_spec は 2D 試着用）
     const { data: product, error: productError } = await supabaseAdmin
       .from("products")
-      .select("id, name, category, thumbnail_url, garment_spec")
+      .select("id, name, category, thumbnail_url, garment_spec, price_yen")
       .eq("shop_id", shopId)
       .eq("external_product_id", externalProductId)
       .single();
@@ -223,7 +224,9 @@ export async function GET(request: NextRequest) {
           canvasBackgroundColor: designData.canvas_background_color ?? "#fafafa",
           ctaCartLabel: designData.cta_cart_label ?? "カートに追加",
           ctaTryOnLabel: designData.cta_try_on_label ?? "この体型で試着する",
-          ctaAccentColor: designData.cta_accent_color ?? "#3d3835",
+          ctaAccentColor: normalizeWidgetCtaAccentColor(designData.cta_accent_color),
+          launcherPlacement:
+            designData.launcher_placement === "floating" ? "floating" : "inline",
         }
       : undefined;
 
@@ -235,6 +238,7 @@ export async function GET(request: NextRequest) {
         sizes,
         productName: product.name,
         thumbnailUrl: product.thumbnail_url || undefined,
+        priceDisplay: formatPriceYenForDisplay(product.price_yen as number | null | undefined),
         /** 開発で登録した SVG 試着を API `/api/public/widget-fit-svg` で再現可能 */
         garmentFitAvailable,
       },

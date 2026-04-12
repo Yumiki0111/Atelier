@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     // 同じshop_idの商品一覧を取得
     const { data: products, error: productError } = await supabaseAdmin
       .from("products")
-      .select("id, external_product_id, name, category, thumbnail_url")
+      .select("id, external_product_id, name, category, thumbnail_url, price_yen")
       .eq("shop_id", shopId)
       .order("created_at", { ascending: false });
 
@@ -67,6 +67,7 @@ export async function GET(request: NextRequest) {
       name: p.name,
       category: p.category || "その他",
       thumbnailUrl: p.thumbnail_url || null,
+      priceYen: p.price_yen ?? null,
     }));
 
     const response = NextResponse.json(responseData);

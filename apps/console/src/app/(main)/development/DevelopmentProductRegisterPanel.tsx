@@ -41,6 +41,7 @@ export function DevelopmentProductRegisterPanel({
   const { shopId } = useAuth();
   const addProduct = useAddProduct();
   const [name, setName] = useState("");
+  const [priceYenInput, setPriceYenInput] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
   const [cropOpen, setCropOpen] = useState(false);
@@ -113,15 +114,27 @@ export function DevelopmentProductRegisterPanel({
     }
 
     const thumb = thumbnailUrl.trim();
+    const priceTrim = priceYenInput.replace(/,/g, "").trim();
+    let priceYen: number | undefined;
+    if (priceTrim !== "") {
+      const n = Math.round(Number(priceTrim));
+      if (!Number.isFinite(n) || n < 0) {
+        toast.error("金額は0以上の整数（円）で入力してください");
+        return;
+      }
+      priceYen = n;
+    }
+
     try {
       await addProduct.mutateAsync({
         shopId,
         name: trimmed,
         category: "トップス",
         garmentSpec,
+        ...(priceYen !== undefined ? { priceYen } : {}),
         ...(thumb !== "" ? { thumbnailUrl: thumb } : {}),
       });
-      toast.success("商品データベースに登録しました");
+      toast.success("商品ライブラリに登録しました");
       if (
         process.env.NODE_ENV !== "production" &&
         fitDebugContext != null &&
@@ -138,6 +151,7 @@ export function DevelopmentProductRegisterPanel({
         });
       }
       setName("");
+      setPriceYenInput("");
       setThumbnailUrl("");
     } catch (e) {
       console.error(e);
@@ -154,10 +168,10 @@ export function DevelopmentProductRegisterPanel({
 
   return (
     <>
-    <div className="shrink-0 rounded-lg border border-amber-200/80 bg-amber-50/50 px-3 py-2 text-sm ring-1 ring-amber-100">
+    <div className="shrink-0 border-b border-border/40 py-3 text-sm text-foreground">
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-[12rem] flex-1 space-y-1">
-          <Label htmlFor="dev-product-name" className="text-xs text-amber-950/80">
+          <Label htmlFor="dev-product-name" className="text-xs font-medium text-muted-foreground">
             商品DB登録名
           </Label>
           <Input
@@ -165,11 +179,25 @@ export function DevelopmentProductRegisterPanel({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="例: サンプルブラウス A"
-            className="h-9 bg-white"
+            className="h-9 bg-background"
+          />
+        </div>
+        <div className="w-[7.5rem] shrink-0 space-y-1">
+          <Label htmlFor="dev-product-price-yen" className="text-xs font-medium text-muted-foreground">
+            金額（円・任意）
+          </Label>
+          <Input
+            id="dev-product-price-yen"
+            inputMode="numeric"
+            value={priceYenInput}
+            onChange={(e) => setPriceYenInput(e.target.value)}
+            placeholder="19800"
+            className="h-9 bg-background"
+            autoComplete="off"
           />
         </div>
         <div className="min-w-[14rem] flex-1 space-y-1">
-          <span className="text-xs text-amber-950/80">サムネイル（任意）</span>
+          <span className="text-xs font-medium text-muted-foreground">サムネイル（任意）</span>
           <div className="flex flex-wrap items-center gap-2">
             <input
               id="dev-product-register-thumbnail-file"
@@ -199,16 +227,13 @@ export function DevelopmentProductRegisterPanel({
               <Upload className="h-4 w-4" />
               画像をアップロード
             </Button>
-            <span className="text-xs text-amber-900/60">
-              円形に切り取ってから保存されます
-            </span>
           </div>
           {thumbnailUrl ? (
             <div className="relative mt-1 inline-block">
               <img
                 src={thumbnailUrl}
                 alt=""
-                className="h-14 w-14 rounded border border-amber-200/80 object-cover"
+                className="h-14 w-14 rounded-full border border-border object-cover object-top"
               />
               <button
                 type="button"
@@ -224,23 +249,15 @@ export function DevelopmentProductRegisterPanel({
         <Button
           type="button"
           size="sm"
-          className="gap-2 bg-amber-900 text-white hover:bg-amber-950"
+          variant="default"
+          className="gap-2"
           disabled={!canRegister || addProduct.isPending}
           onClick={handleRegister}
         >
           <Database className="h-4 w-4" />
-          {addProduct.isPending ? "登録中…" : "商品データベースに登録"}
+          {addProduct.isPending ? "登録中…" : "商品ライブラリに登録"}
         </Button>
       </div>
-      {!canRegister ? (
-        <p className="mt-2 text-xs text-amber-900/70">
-          カスタム服で SVG を読み込んだ状態でのみ登録できます。試着と同じ着せ方にするため、服 SVG 内のリグ線（debugRigPathDs）も保存されます。
-        </p>
-      ) : (
-        <p className="mt-2 text-xs text-amber-900/70">
-          送信内容: SVG path、ランドマーク、採寸、袖丈・着丈の計測頂点、グレーディング、服リグ線（モデル試着と整合するため）
-        </p>
-      )}
     </div>
     <CircularImageCropDialog
       open={cropOpen}

@@ -9,15 +9,12 @@ import { getGenericSymmetricTopPreset } from "../generic/getGenericSymmetricTopP
 import { GENERIC_EMPTY_SIZE } from "../generic/genericDevDefaults";
 import type { CustomGarmentData, GarmentType } from "../lib/types";
 
-export type GenericSvgUploadPresetKey = "3" | "4" | "5";
-
 /**
  * 汎用トップ用: SVG テキストを解析し `genericSymmetricTop` プリセットとして親へ渡す。
  * 採寸は自動推定しない（`GENERIC_EMPTY_SIZE`）。パネルで手入力する。
  */
 export function applyGenericSymmetricTopFromSvgText(
   text: string,
-  presetSizeKey: GenericSvgUploadPresetKey,
   ctx: {
     onGarmentChange: (g: GarmentType) => void;
     onCustomGarmentApply: (d: CustomGarmentData) => void;
@@ -49,7 +46,7 @@ export function applyGenericSymmetricTopFromSvgText(
   setUploadError(null);
   const autoLm = getLandmarksFromPaths(garmentPathDs);
   const rigLm = rigPathDs.length >= 6 ? inferLandmarksFromRigPaths(rigPathDs) : null;
-  const base = getGenericSymmetricTopPreset(presetSizeKey);
+  const base = getGenericSymmetricTopPreset();
   const rigShoulderY = rigLm?.shoulderY ?? null;
   const effectiveHemY =
     autoLm?.hemY != null && rigShoulderY != null && autoLm.hemY > (rigLm?.hemY ?? 0)

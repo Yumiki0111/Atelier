@@ -3,6 +3,10 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAuthenticatedUser } from "@/lib/auth/middleware";
 import { createAssetSchema } from "@Atelier/shared";
 import { isValidUUID } from "@/lib/api/validation";
+import {
+  isPostgrestSchemaCacheError,
+  POSTGREST_SCHEMA_DRIFT_MESSAGE_JA,
+} from "@/lib/supabase/postgrestSchemaErrors";
 
 // GET /api/assets - List assets
 export async function GET(request: NextRequest) {
@@ -67,11 +71,22 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error("Error fetching assets:", error);
+      if (isPostgrestSchemaCacheError(error.message)) {
+        return NextResponse.json(
+          {
+            error: "Database schema error",
+            message: POSTGREST_SCHEMA_DRIFT_MESSAGE_JA,
+            details: error.message,
+            code: error.code,
+          },
+          { status: 500 }
+        );
+      }
       return NextResponse.json(
-        { 
+        {
           error: "Failed to fetch assets",
           details: error.message,
-          code: error.code
+          code: error.code,
         },
         { status: 500 }
       );
@@ -175,6 +190,17 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error("Error creating asset:", error);
+      if (isPostgrestSchemaCacheError(error.message)) {
+        return NextResponse.json(
+          {
+            error: "Database schema error",
+            message: POSTGREST_SCHEMA_DRIFT_MESSAGE_JA,
+            details: error.message,
+            code: error.code,
+          },
+          { status: 500 }
+        );
+      }
       return NextResponse.json(
         { error: "Failed to create asset" },
         { status: 500 }

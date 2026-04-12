@@ -35,7 +35,6 @@ export default async function ShareDemoPage({ params }: Props) {
       publicKey={data.publicKey}
       externalProductId={data.externalProductId}
       productName={data.productName}
-      thumbnailUrl={data.thumbnailUrl}
       widgetJsPath="/widget.js"
       apiBaseUrl={apiBaseUrl}
     />

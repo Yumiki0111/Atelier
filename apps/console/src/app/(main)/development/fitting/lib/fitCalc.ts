@@ -1,39 +1,66 @@
-import type { FitResult, SizeMeasure } from "./types";
-import { SIZES } from "./constants";
+/**
+ * Widget fit band helpers. Thresholds apply to geometric ease (garment vs model chord), not BMI heuristics.
+ */
 
-function fitFromSize(h: number, w: number, size: SizeMeasure): FitResult {
-  const bmi = w / (h / 100) ** 2;
-  const estChest = h * 0.52 + (bmi - 22) * 1.5;
-  const chestDiff = size.chest * 2 - estChest;
-  const estTorso = h * 0.395;
-  const hemDiff = size.length - estTorso;
-  return {
-    chestDiff: Math.round(chestDiff * 10) / 10,
-    hemDiff: Math.round(hemDiff * 10) / 10,
-    estChest: Math.round(estChest),
-  };
+/** 胸まわりバンドの表示文言（「この体型では」や二重括弧は付けず、そのまま表示） */
+export const WIDGET_FIT_CHEST_BAND_JA = {
+  tight: "小さめなサイズ",
+  ok: "おすすめのサイズ",
+  loose: "大きめなサイズ",
+} as const;
+
+export type WidgetFitChestBandJaLabel =
+  (typeof WIDGET_FIT_CHEST_BAND_JA)[keyof typeof WIDGET_FIT_CHEST_BAND_JA];
+
+/**
+ * Pick shirt vs jacket thresholds from product category (rule-based).
+ */
+export function resolveWidgetFitChestBandMode(category: string | null | undefined): "shirt" | "jacket" {
+  if (category == null || typeof category !== "string") return "jacket";
+  const t = category.trim();
+  if (t.length === 0) return "jacket";
+  if (t === "トップス") return "shirt";
+  const s = t.toLowerCase();
+  if (
+    t.includes("トップス") ||
+    s.includes("shirt") ||
+    s.includes("knit") ||
+    t.includes("ニット") ||
+    t.includes("カットソ") ||
+    s.includes("cut-and-sew") ||
+    s.includes("cut and sew") ||
+    t.includes("シャツ") ||
+    t.includes("Tシャツ") ||
+    t.includes("tシャツ") ||
+    s.includes("t-shirt") ||
+    s.includes("tee") ||
+    t.includes("ポロ") ||
+    s.includes("polo")
+  ) {
+    return "shirt";
+  }
+  return "jacket";
 }
 
-export function calcFit(h: number, w: number, sizeName: string): FitResult {
-  const size = SIZES[sizeName];
-  if (!size) return { chestDiff: 0, hemDiff: 0, estChest: 0 };
-  return fitFromSize(h, w, size);
-}
-
-/** 採寸値から直接フィットを計算（アップロード品用） */
-export function calcFitFromSize(h: number, w: number, size: SizeMeasure | null): FitResult {
-  if (!size) return { chestDiff: 0, hemDiff: 0, estChest: 0 };
-  return fitFromSize(h, w, size);
-}
-
-export function jacketFitLabel(chestDiff: number): "tight" | "ok" | "loose" {
-  if (chestDiff < 5) return "tight";
-  if (chestDiff < 30) return "ok";
+/**
+ * 身長×サイズ列が使えないときのフォールバック（幾何のみ）。
+ * メインは `widgetFitChestBandOrdinal` の序数ロジック。
+ */
+export function widgetChestEaseBand(easeCm: number, mode: "shirt" | "jacket"): "tight" | "ok" | "loose" {
+  const tightBelow = 3;
+  const looseFrom = mode === "shirt" ? 22 : 26;
+  if (easeCm < tightBelow) return "tight";
+  if (easeCm < looseFrom) return "ok";
   return "loose";
 }
 
-export function shirtFitLabel(chestDiff: number): "tight" | "ok" | "loose" {
-  if (chestDiff < 10) return "tight";
-  if (chestDiff < 30) return "ok";
-  return "loose";
+/** Japanese copy from ease in cm. */
+export function widgetFitChestBandJaFromDiff(
+  easeCm: number,
+  mode: "shirt" | "jacket"
+): WidgetFitChestBandJaLabel {
+  const band = widgetChestEaseBand(easeCm, mode);
+  if (band === "tight") return WIDGET_FIT_CHEST_BAND_JA.tight;
+  if (band === "ok") return WIDGET_FIT_CHEST_BAND_JA.ok;
+  return WIDGET_FIT_CHEST_BAND_JA.loose;
 }

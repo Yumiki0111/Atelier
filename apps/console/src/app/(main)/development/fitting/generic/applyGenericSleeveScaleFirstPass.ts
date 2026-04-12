@@ -40,11 +40,9 @@ export function applyGenericSleeveScaleFirstPass(
     const gLo = eff.gLo;
     const gHi = eff.gHi;
     const pxChain =
-      eff.globalChainForArcTarget && eff.globalChainForArcTarget.length >= 2
-        ? eff.globalChainForArcTarget
-        : eff.globalChainForMeasure && eff.globalChainForMeasure.length >= 2
-          ? eff.globalChainForMeasure
-          : chainFallback;
+      eff.globalChainForMeasure && eff.globalChainForMeasure.length >= 2
+        ? eff.globalChainForMeasure
+        : chainFallback;
 
     const li0 = globalToLocal(pathDs, sleevePathIdx, gLo);
     const li1 = globalToLocal(pathDs, sleevePathIdx, gHi);

@@ -1,8 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type DependencyList,
+} from "react";
+import { buildPreviewChromeTheme } from "@/lib/previewChromeTheme";
 import type { ProductSize } from "@Atelier/shared";
-import { weightKgFromBodyVal } from "@Atelier/shared";
+import {
+  interpolateAddToCartUrlTemplate,
+  resolveAddToCartNavigationHref,
+  weightKgFromBodyVal,
+} from "@Atelier/shared";
 import { authenticatedFetch } from "@/lib/auth/api-client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFittingCanvasData } from "@/app/(main)/development/fitting/canvas/useFittingCanvasData";
@@ -10,6 +23,20 @@ import { shouldSuppressGarmentPathRender } from "@/app/(main)/development/fittin
 import { landmarksEqual, pathDsContentEqual, sizeEqual } from "@/app/(main)/development/fitting/lib/fittingStateUtils";
 import type { CustomGarmentData, JacketSize, ShirtSize } from "@/app/(main)/development/fitting/lib/types";
 import { applyWidgetSizeToCustomGarmentData } from "@/lib/widget-fit/applyWidgetSizeToGarment";
+import {
+  buildWidgetFitEaseDiagramFromSnapshot,
+  type WidgetFitEaseDiagramJson,
+} from "@/lib/widget-fit/buildWidgetFitEaseDiagram";
+import {
+  buildWidgetFitEaseSummaryFromSnapshot,
+  type WidgetFitEaseSummaryJson,
+} from "@/lib/widget-fit/computeWidgetFitEaseSummary";
+import { resolveWidgetFitChestBandMode } from "@/app/(main)/development/fitting/lib/fitCalc";
+import {
+  orderedSizeLabelsFromCustomGarment,
+  resolveOrderedSizeKeysForBand,
+} from "@/lib/widget-fit/widgetFitChestBandOrdinal";
+import { WidgetFitEaseDiagramSvg } from "@/features/preview/WidgetFitEaseDiagramSvg";
 import { bodyHeight } from "@/app/(main)/development/fitting/lib/bodyUtils";
 import { REF_HEIGHT_CM } from "@/app/(main)/development/fitting/lib/constants";
 import {
@@ -24,6 +51,8 @@ import {
   PreviewBodyChangeButton,
   PreviewBodySilhouette,
   PreviewChromeScaleProvider,
+  PreviewChromeThemeProvider,
+  usePreviewChromeTheme,
   PreviewColorSwatchRow,
   PreviewFitParamSliders,
   PreviewProductRow,
@@ -35,7 +64,6 @@ import {
 } from "./WidgetPreviewChrome";
 /** 服は塗りなし（透明）。輪郭のみ */
 const GARMENT_FILL = "none";
-const GARMENT_STROKE = "rgba(70, 70, 70, 0.82)";
 
 function colorFilterForHex(hex: string): string {
   const h = hex.replace("#", "");
@@ -72,7 +100,105 @@ type FitSvgPayload = {
   garmentPathStrokeDasharrays?: (string | undefined)[];
   garmentPathStrokeWidths?: (number | undefined)[];
   garmentPathStrokes?: (string | undefined)[];
+  fitEaseSummary?: WidgetFitEaseSummaryJson;
+  fitEaseDiagram?: WidgetFitEaseDiagramJson | null;
 };
+
+function fitChestBandBadgeClass(band: string): string {
+  if (band === "小さめなサイズ") return "bg-rose-50 text-rose-900";
+  if (band === "おすすめのサイズ") return "bg-emerald-50 text-emerald-950";
+  if (band === "大きめなサイズ") return "bg-sky-50 text-sky-950";
+  return "bg-slate-100 text-slate-800";
+}
+
+function PreviewFitEaseSummary({ summary }: { summary: WidgetFitEaseSummaryJson | null | undefined }) {
+  const theme = usePreviewChromeTheme();
+  const band = summary?.fitChestBandJa?.trim() ?? "";
+  const tone = summary?.fitToneJa?.trim() ?? "";
+  const lines = summary?.linesJa?.filter((l) => l.trim().length > 0) ?? [];
+  if (!band && !tone && lines.length === 0) return null;
+  const toneClass =
+    tone.includes("きつめ")
+      ? "bg-rose-50 text-rose-900"
+      : tone.includes("ゆったり")
+        ? "bg-sky-50 text-sky-950"
+        : tone.includes("バランス良")
+          ? "bg-emerald-50 text-emerald-950"
+          : tone.includes("短め")
+            ? "bg-amber-50 text-amber-950"
+            : tone.includes("長め")
+              ? "bg-indigo-50 text-indigo-950"
+              : "bg-slate-100 text-slate-800";
+  return (
+    <div className="w-full max-w-full shrink-0 px-1 pb-0.5 text-center">
+      {band ? (
+        <div
+          className={`mx-auto mb-1 inline-block rounded-md px-3 py-1 text-center text-[10px] font-bold leading-tight ${fitChestBandBadgeClass(band)}`}
+        >
+          {band}
+        </div>
+      ) : null}
+      {tone ? (
+        <div
+          className={`mx-auto mb-1 inline-block rounded-md px-3 py-1 text-center text-[9px] font-semibold leading-tight ${toneClass}`}
+        >
+          {tone}
+        </div>
+      ) : null}
+      {lines.length > 0 ? (
+        <div
+          className="text-left text-[11px] leading-snug"
+          style={{ color: theme.canvas.fg }}
+        >
+          {lines.map((line, i) => (
+            <div key={i} className="flex gap-1 py-px">
+              <span className="shrink-0" style={{ color: theme.canvas.mutedFg }} aria-hidden>
+                ・
+              </span>
+              <span>{line}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function PreviewFitEaseFootnote({ summary }: { summary: WidgetFitEaseSummaryJson | null | undefined }) {
+  const band = summary?.fitChestBandJa?.trim() ?? "";
+  const tone = summary?.fitToneJa?.trim() ?? "";
+  if (!band && !tone) return null;
+  const toneClass =
+    tone.includes("きつめ")
+      ? "bg-rose-50 text-rose-900"
+      : tone.includes("ゆったり")
+        ? "bg-sky-50 text-sky-950"
+        : tone.includes("バランス良")
+          ? "bg-emerald-50 text-emerald-950"
+          : tone.includes("短め")
+            ? "bg-amber-50 text-amber-950"
+            : tone.includes("長め")
+              ? "bg-indigo-50 text-indigo-950"
+              : "bg-slate-100 text-slate-800";
+  return (
+    <div className="w-full max-w-full shrink-0 px-1 pb-0.5 text-center">
+      {band ? (
+        <div
+          className={`mx-auto mb-0.5 inline-block rounded-md px-3 py-1 text-center text-[9px] font-bold leading-tight ${fitChestBandBadgeClass(band)}`}
+        >
+          {band}
+        </div>
+      ) : null}
+      {tone ? (
+        <div
+          className={`mx-auto inline-block rounded-md px-3 py-1 text-center text-[9px] font-semibold leading-tight ${toneClass}`}
+        >
+          {tone}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 /** 開発ページのデフォルト体重（`weightKgFromBodyVal(DEFAULT)` ≈ 53kg） */
 const DEFAULT_FIT_BODY_VAL = 25;
@@ -82,6 +208,35 @@ const PREVIEW_SHIRT_SIZE: ShirtSize = "48";
 const PREVIEW_JACKET_SIZE: JacketSize = "4";
 /** 開発ページよりやや長め（smootherStep 併用で立ち上がりを緩める） */
 const PREVIEW_SIZE_ANIM_MS = 480;
+
+/**
+ * 試着 SVG: 体型・服 → 図解（ポイント・採寸数値）→ 下段テキストの順でフェード。
+ * ウィジェット `widget-modal.ts` の `mountFitSvgStaged` とタイミングを揃える。
+ * 依存は「初回だけ段階表示したい軸」に限定し、サイズ・身長・体重の更新では再フェードしない。
+ */
+function useFitSvgStage(hasDiagram: boolean, deps: DependencyList): 0 | 1 | 2 | 3 {
+  const [stage, setStage] = useState<0 | 1 | 2 | 3>(0);
+  useLayoutEffect(() => {
+    setStage(0);
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setStage(1));
+    });
+    let t2: number | undefined;
+    let t3: number | undefined;
+    if (hasDiagram) {
+      t2 = window.setTimeout(() => setStage(2), 420);
+      t3 = window.setTimeout(() => setStage(3), 540);
+    } else {
+      t2 = window.setTimeout(() => setStage(3), 480);
+    }
+    return () => {
+      cancelAnimationFrame(id);
+      if (t2 !== undefined) clearTimeout(t2);
+      if (t3 !== undefined) clearTimeout(t3);
+    };
+  }, deps);
+  return stage;
+}
 
 /**
  * 試着プレビュー用の viewBox 高さ。衣装リグの脊髄スパンで yScale が服ごとに変わると
@@ -116,18 +271,28 @@ export function PreviewFittingCanvasSvg({
   fitBodyVal,
   currentSize,
   customGarmentData,
+  orderedSizeKeys = [],
+  fitChestBandCategory = null,
   bodyOnly = false,
   bodySheetHeightScale = false,
+  fitEaseRevealNonce = 0,
 }: {
   fitHeightCm: number;
   fitBodyVal: number;
   currentSize: string;
   customGarmentData: CustomGarmentData;
+  /** 小→大のサイズ列。未指定時は `customGarmentData` の sizePresets 順を使う */
+  orderedSizeKeys?: string[];
+  /** `products.category` 相当。未指定はジャケット基準のしきい値 */
+  fitChestBandCategory?: string | null;
   /** 体型調整シートなど：体型ラインのみ（服パスを描かない） */
   bodyOnly?: boolean;
   /** 体型変更オーバーレイ：身長に応じて表示を拡大（`meet` による見かけの縮小を補う） */
   bodySheetHeightScale?: boolean;
+  /** 増やすたびに図解・胸バンド文言の段階表示をやり直す（体型適用など） */
+  fitEaseRevealNonce?: number;
 }) {
+  const { bodyStroke, garmentStroke } = usePreviewChromeTheme().canvas;
   const sizedTarget = useMemo(
     () => applyWidgetSizeToCustomGarmentData(customGarmentData, currentSize),
     [customGarmentData, currentSize]
@@ -221,52 +386,141 @@ export function PreviewFittingCanvasSvg({
     rigBodyEnabled: false,
     genericVertexPlotHighlight: null,
   });
-  /** シート内は親から `bodyDraftHeight` が渡る。メインと同じ身長基準で viewBox を揃える。 */
-  const displayViewBoxHeight = uniformPreviewViewBoxHeightFromHeightCm(fitHeightCm);
+  const weightKg = weightKgFromBodyVal(fitBodyVal);
+  const fitChestBandMode = useMemo(
+    () => resolveWidgetFitChestBandMode(fitChestBandCategory),
+    [fitChestBandCategory]
+  );
+  const bandOrdinalKeys = useMemo(
+    () =>
+      resolveOrderedSizeKeysForBand(
+        orderedSizeLabelsFromCustomGarment(customGarmentData),
+        orderedSizeKeys,
+        currentSize
+      ),
+    [customGarmentData, orderedSizeKeys, currentSize]
+  );
+  const fitEaseSummary = useMemo(
+    () =>
+      buildWidgetFitEaseSummaryFromSnapshot(snap, weightKg, {
+        fitChestBandMode,
+        customGarmentData: sizedTarget,
+        heightCm: bandOrdinalKeys != null ? fitHeightCm : undefined,
+        orderedSizeKeys: bandOrdinalKeys ?? undefined,
+        currentSize: bandOrdinalKeys != null ? currentSize : undefined,
+      }),
+    [snap, weightKg, fitChestBandMode, sizedTarget, fitHeightCm, bandOrdinalKeys, currentSize]
+  );
+  const fitEaseDiagram = useMemo(
+    () => buildWidgetFitEaseDiagramFromSnapshot(snap, fitEaseSummary),
+    [snap, fitEaseSummary]
+  );
+  /** パス・採寸オーバーレイと同じ `snap.viewBoxHeight`（身長＋体重の yScale）。ここをずらすと図解が viewBox 外に出る。 */
+  const viewBoxH = snap.viewBoxHeight;
   const sheetScale = bodySheetHeightScale ? bodySheetPreviewHeightScale(fitHeightCm) : 1;
+  const hasEaseDiagram = Boolean(fitEaseDiagram?.ops?.length);
+  /** 商品切替・体型適用（`fitEaseRevealNonce`）のときに段階表示をやり直す。サイズ変更のみではリセットしない */
+  const [easeRevealDone, setEaseRevealDone] = useState(false);
+  const [easeRevealKey, setEaseRevealKey] = useState(0);
+  useLayoutEffect(() => {
+    setEaseRevealDone(false);
+    setEaseRevealKey((k) => k + 1);
+  }, [customGarmentData, fitEaseRevealNonce]);
+  const fitSvgStage = useFitSvgStage(hasEaseDiagram, [bodyOnly, hasEaseDiagram, easeRevealKey]);
+  useEffect(() => {
+    if (easeRevealDone) return;
+    if (fitSvgStage >= 3) setEaseRevealDone(true);
+  }, [fitSvgStage, easeRevealDone]);
+  const showEaseOverlay = easeRevealDone || fitSvgStage >= 2;
+  const showEaseText = easeRevealDone || fitSvgStage >= 3;
 
   return (
-    <div
-      className="flex h-full min-h-0 w-full min-w-0 max-w-[300px] items-center justify-center overflow-visible"
-      style={
-        bodySheetHeightScale
-          ? {
-              transform: `scale(${sheetScale})`,
-              transformOrigin: "center center",
-            }
-          : undefined
-      }
-    >
-      <svg
-        viewBox={`0 0 ${VIEWBOX_W} ${displayViewBoxHeight}`}
-        preserveAspectRatio="xMidYMid meet"
-        className="h-auto max-h-full w-full min-w-0 max-w-[300px] overflow-visible"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden
+    <div className="flex h-full min-h-0 w-full min-w-0 max-w-full flex-col items-center justify-center gap-1 overflow-visible">
+      <div
+        className="flex min-h-0 w-full flex-1 items-center justify-center overflow-visible"
+        style={
+          bodySheetHeightScale
+            ? {
+                transform: `scale(${sheetScale})`,
+                transformOrigin: "center center",
+              }
+            : undefined
+        }
       >
-        <g fill="none" stroke="#bbb" strokeWidth={4}>
-          {snap.bodyPaths.map((d, i) => (
-            <path key={`b-${i}`} d={d} />
-          ))}
-        </g>
-        {!bodyOnly ? (
-          <g fill={GARMENT_FILL}>
-            {snap.customPathDs.map((d, i) => {
-              if (!d || d.length === 0 || shouldSuppressGarmentPathRender(d)) return null;
-              return (
-                <path
-                  key={`g-${i}`}
-                  d={d}
-                  fill="none"
-                  stroke={snap.customPathStrokes[i] ?? GARMENT_STROKE}
-                  strokeWidth={snap.customPathStrokeWidths[i] ?? 8}
-                  strokeDasharray={snap.customPathStrokeDasharrays[i] ?? undefined}
-                />
-              );
-            })}
+        <svg
+          viewBox={`0 0 ${VIEWBOX_W} ${viewBoxH}`}
+          preserveAspectRatio="xMidYMid meet"
+          className="h-auto max-h-full w-full min-w-0 max-w-full overflow-visible"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-hidden
+        >
+          <g
+            fill="none"
+            stroke={bodyStroke}
+            strokeWidth={4}
+            style={{
+              opacity: fitSvgStage >= 1 ? 1 : 0,
+              transition: "opacity 0.42s ease-out",
+            }}
+          >
+            {snap.bodyPaths.map((d, i) => (
+              <path key={`b-${i}`} d={d} />
+            ))}
           </g>
-        ) : null}
-      </svg>
+          {!bodyOnly ? (
+            <g
+              fill={GARMENT_FILL}
+              style={{
+                opacity: fitSvgStage >= 1 ? 1 : 0,
+                transition: "opacity 0.42s ease-out",
+              }}
+            >
+              {snap.customPathDs.map((d, i) => {
+                if (!d || d.length === 0 || shouldSuppressGarmentPathRender(d)) return null;
+                return (
+                  <path
+                    key={`g-${i}`}
+                    d={d}
+                    fill="none"
+                    stroke={snap.customPathStrokes[i] ?? garmentStroke}
+                    strokeWidth={snap.customPathStrokeWidths[i] ?? 8}
+                    strokeDasharray={snap.customPathStrokeDasharrays[i] ?? undefined}
+                  />
+                );
+              })}
+            </g>
+          ) : null}
+          {!bodyOnly && hasEaseDiagram ? (
+            <g
+              style={{
+                opacity: showEaseOverlay ? 1 : 0,
+                transition: "opacity 0.35s ease-out",
+              }}
+            >
+              <WidgetFitEaseDiagramSvg diagram={fitEaseDiagram} />
+            </g>
+          ) : null}
+        </svg>
+      </div>
+      {!bodyOnly && hasEaseDiagram ? (
+        <div
+          style={{
+            opacity: showEaseText ? 1 : 0,
+            transition: "opacity 0.35s ease-out",
+          }}
+        >
+          <PreviewFitEaseFootnote summary={fitEaseSummary} />
+        </div>
+      ) : !bodyOnly ? (
+        <div
+          style={{
+            opacity: showEaseText ? 1 : 0,
+            transition: "opacity 0.35s ease-out",
+          }}
+        >
+          <PreviewFitEaseSummary summary={fitEaseSummary} />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -279,6 +533,12 @@ export function PreviewFittingCanvasSvg({
  */
 export type WidgetStyleProductPreviewProps = {
   productId: string;
+  /** DB の商品カテゴリ（試着の胸バンドしきい値に使用） */
+  productCategory?: string | null;
+  /** 店舗の外部商品 ID（カート URL の `{{productId}}` 用）。未指定時は `productId` を使う */
+  externalProductId?: string;
+  /** `data-fitlook-add-to-cart-url` 相当。指定時のみカートボタンで遷移する */
+  addToCartUrlTemplate?: string | null;
   productName: string;
   thumbnailUrl?: string | null;
   priceDisplay?: string;
@@ -314,6 +574,9 @@ export type WidgetStyleProductPreviewProps = {
 export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps) {
   const {
     productId,
+    productCategory = null,
+    externalProductId,
+    addToCartUrlTemplate,
     productName,
     thumbnailUrl,
     priceDisplay = "—",
@@ -335,9 +598,23 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
 
   const interfaceBg = interfaceBackgroundColor ?? PREVIEW_SURFACE_BG;
   const canvasBg = canvasBackgroundColor ?? PREVIEW_SURFACE_BG;
+  const chromeForStrokes = useMemo(
+    () => buildPreviewChromeTheme(interfaceBg, canvasBg),
+    [interfaceBg, canvasBg]
+  );
   const cartLabel = ctaCartLabel ?? "カートに追加";
   const tryOnLabel = ctaTryOnLabel ?? "この体型で試着する";
   const accent = ctaAccentColor ?? PREVIEW_ACCENT;
+
+  const embedReferrerOrigin = useMemo(() => {
+    if (!embedPublicWidget || typeof document === "undefined") return null;
+    try {
+      if (document.referrer) return new URL(document.referrer).origin;
+    } catch {
+      return null;
+    }
+    return null;
+  }, [embedPublicWidget]);
 
   const { isLoading: authLoadingFromAuth, isAuthenticated: isAuthenticatedFromAuth } = useAuth();
   const authLoading = embedPublicWidget ? false : authLoadingFromAuth;
@@ -364,6 +641,41 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
     }
   }, [initialSize, sizeKeys]);
 
+  const handleAddToCartClick = useCallback(() => {
+    const template = addToCartUrlTemplate?.trim();
+    if (!template) return;
+    const pid = (externalProductId ?? productId) || "";
+    const interpolated = interpolateAddToCartUrlTemplate(template, {
+      productId: pid,
+      size: currentSize,
+      colorId: selectedColorId,
+    });
+    const baseOrigin = embedPublicWidget
+      ? embedReferrerOrigin
+      : typeof window !== "undefined"
+        ? window.location.origin
+        : null;
+    const href = resolveAddToCartNavigationHref(interpolated, baseOrigin);
+    if (!href || typeof window === "undefined") return;
+    try {
+      if (embedPublicWidget && window.top) {
+        window.top.location.assign(href);
+      } else {
+        window.location.assign(href);
+      }
+    } catch {
+      window.location.assign(href);
+    }
+  }, [
+    addToCartUrlTemplate,
+    externalProductId,
+    productId,
+    currentSize,
+    selectedColorId,
+    embedPublicWidget,
+    embedReferrerOrigin,
+  ]);
+
   /**
    * 埋め込み SSR だけ localStorage が使えず水合不一致になるため、そこだけ定数初期化 + `useLayoutEffect`。
    * コンソールのプレビューは従来どおり `loadPreviewFit()` で初回から復元。
@@ -381,10 +693,61 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
   const [fitLoading, setFitLoading] = useState(false);
   const [fitError, setFitError] = useState<string | null>(null);
   const [bodySheetOpen, setBodySheetOpen] = useState(false);
+  /** 「この体型で試着する」適用のたびに増やし、試着の段階表示をやり直す */
+  const [fitEaseRevealNonce, setFitEaseRevealNonce] = useState(0);
   /** 体型シート内のサーバー試着 SVG（下書きの身長・体重に合わせて取得） */
   const [draftFitData, setDraftFitData] = useState<FitSvgPayload | null>(null);
   const [draftFitLoading, setDraftFitLoading] = useState(false);
   const [draftFitError, setDraftFitError] = useState<string | null>(null);
+
+  const hasEaseDiagramEmbed = Boolean(
+    garmentPathsInViewer && fitData && (fitData.fitEaseDiagram?.ops?.length ?? 0) > 0
+  );
+  /** 初回取得・商品切替・服表示トグル時のみ段階表示。サイズ・体型変更の再取得では図解・文言は即時 */
+  const [embedEaseRevealDone, setEmbedEaseRevealDone] = useState(false);
+  const [embedEaseRevealKey, setEmbedEaseRevealKey] = useState(0);
+  useLayoutEffect(() => {
+    setEmbedEaseRevealDone(false);
+    setEmbedEaseRevealKey((k) => k + 1);
+  }, [productId, garmentPathsInViewer, fitEaseRevealNonce]);
+  const fitSvgStageEmbed = useFitSvgStage(hasEaseDiagramEmbed, [
+    hasEaseDiagramEmbed,
+    embedEaseRevealKey,
+  ]);
+  useEffect(() => {
+    if (embedEaseRevealDone) return;
+    if (!fitData) return;
+    if (fitSvgStageEmbed >= 3) setEmbedEaseRevealDone(true);
+  }, [fitSvgStageEmbed, embedEaseRevealDone, fitData]);
+  const showEmbedEaseOverlay = embedEaseRevealDone || fitSvgStageEmbed >= 2;
+  const showEmbedEaseText = embedEaseRevealDone || fitSvgStageEmbed >= 3;
+
+  /** 体型シートがサーバー SVG のみ: 初回だけ下段を遅らせる。シート再開・体型適用後も「アニメーション後」と同じ即表示 */
+  const [draftEaseRevealDone, setDraftEaseRevealDone] = useState(false);
+  const [draftEaseRevealKey, setDraftEaseRevealKey] = useState(0);
+  const draftEaseStagedOnceRef = useRef(false);
+  useLayoutEffect(() => {
+    draftEaseStagedOnceRef.current = false;
+    setDraftEaseRevealDone(false);
+  }, [productId, fitEaseRevealNonce]);
+  useLayoutEffect(() => {
+    if (!bodySheetOpen || customGarmentData) return;
+    if (draftFitData && !draftEaseStagedOnceRef.current) {
+      setDraftEaseRevealDone(false);
+      setDraftEaseRevealKey((k) => k + 1);
+    }
+  }, [bodySheetOpen, customGarmentData, draftFitData]);
+  useEffect(() => {
+    if (draftEaseRevealDone) draftEaseStagedOnceRef.current = true;
+  }, [draftEaseRevealDone]);
+  const draftRevealActive = Boolean(bodySheetOpen && !customGarmentData && draftFitData);
+  const draftFitSvgStage = useFitSvgStage(draftRevealActive, [draftEaseRevealKey, draftRevealActive]);
+  useEffect(() => {
+    if (draftEaseRevealDone) return;
+    if (!draftRevealActive) return;
+    if (draftFitSvgStage >= 3) setDraftEaseRevealDone(true);
+  }, [draftFitSvgStage, draftEaseRevealDone, draftRevealActive]);
+  const showDraftEaseText = draftEaseRevealDone || draftFitSvgStage >= 3;
 
   /** 埋め込み iframe のみ: 水合と一致した直後に localStorage を反映（ペイント前） */
   useLayoutEffect(() => {
@@ -497,6 +860,8 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
           garmentPathStrokeDasharrays?: (string | undefined)[];
           garmentPathStrokeWidths?: (number | undefined)[];
           garmentPathStrokes?: (string | undefined)[];
+          fitEaseSummary?: WidgetFitEaseSummaryJson;
+          fitEaseDiagram?: WidgetFitEaseDiagramJson | null;
         };
         if (!res.ok) {
           const hint =
@@ -529,6 +894,8 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
           garmentPathStrokeDasharrays: body.garmentPathStrokeDasharrays,
           garmentPathStrokeWidths: body.garmentPathStrokeWidths,
           garmentPathStrokes: body.garmentPathStrokes,
+          fitEaseSummary: body.fitEaseSummary,
+          fitEaseDiagram: body.fitEaseDiagram,
         });
       } catch (e) {
         if (e instanceof Error && e.name === "AbortError") return;
@@ -596,6 +963,8 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
             garmentPathStrokeDasharrays?: (string | undefined)[];
             garmentPathStrokeWidths?: (number | undefined)[];
             garmentPathStrokes?: (string | undefined)[];
+            fitEaseSummary?: WidgetFitEaseSummaryJson;
+            fitEaseDiagram?: WidgetFitEaseDiagramJson | null;
           };
           if (ac.signal.aborted) return;
           if (!res.ok) {
@@ -629,6 +998,8 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
             garmentPathStrokeDasharrays: body.garmentPathStrokeDasharrays,
             garmentPathStrokeWidths: body.garmentPathStrokeWidths,
             garmentPathStrokes: body.garmentPathStrokes,
+            fitEaseSummary: body.fitEaseSummary,
+            fitEaseDiagram: body.fitEaseDiagram,
           });
         } catch (e) {
           if (e instanceof Error && e.name === "AbortError") return;
@@ -684,35 +1055,41 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
 
   return (
     <PreviewChromeScaleProvider value={embedPublicWidget ? "embed" : "default"}>
-    <div
-      className="relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden"
-      style={{
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        backgroundColor: interfaceBg,
-      }}
-    >
-      <PreviewBackRow onClick={onClose} />
-      <PreviewProductRow
-        productName={productName}
-        priceDisplay={priceDisplay}
-        thumbnailUrl={thumbnailUrl}
-        rightSlot={
-          bodyAdjustEnabled ? (
-            <PreviewBodyChangeButton onClick={openBodyAdjustSheet} />
-          ) : undefined
-        }
-      />
+      <PreviewChromeThemeProvider
+        interfaceBackgroundColor={interfaceBg}
+        canvasBackgroundColor={canvasBg}
+      >
+        <div
+          className="relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden"
+          style={{
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+            backgroundColor: canvasBg,
+          }}
+        >
+          <div className="flex shrink-0 flex-col" style={{ backgroundColor: interfaceBg }}>
+            <PreviewBackRow onClick={onClose} />
+            <PreviewProductRow
+              productName={productName}
+              priceDisplay={priceDisplay}
+              thumbnailUrl={thumbnailUrl}
+              rightSlot={
+                bodyAdjustEnabled ? (
+                  <PreviewBodyChangeButton onClick={openBodyAdjustSheet} />
+                ) : undefined
+              }
+            />
 
-      {!garmentFitAvailable ? (
-        <PreviewColorSwatchRow
-          swatches={swatches}
-          selectedId={selectedColorId}
-          onSelect={setSelectedColorId}
-          accentColor={accent}
-        />
-      ) : null}
+            {!garmentFitAvailable ? (
+              <PreviewColorSwatchRow
+                swatches={swatches}
+                selectedId={selectedColorId}
+                onSelect={setSelectedColorId}
+                accentColor={accent}
+              />
+            ) : null}
+          </div>
 
-      <PreviewViewerShell backgroundColor={canvasBg}>
+          <PreviewViewerShell backgroundColor={canvasBg}>
         {garmentFitAvailable ? (
           <>
             {customGarmentData ? (
@@ -722,53 +1099,107 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
                   fitBodyVal={fitBodyVal}
                   currentSize={currentSize}
                   customGarmentData={customGarmentData}
+                  orderedSizeKeys={sizeKeys}
+                  fitChestBandCategory={productCategory}
                   bodyOnly={!garmentPathsInViewer}
+                  fitEaseRevealNonce={fitEaseRevealNonce}
                 />
               </div>
             ) : authLoading || fitLoading ? (
-              <div className="px-6 text-center text-[14px] text-[#6b7280]">読み込み中…</div>
+              <div
+                className="px-6 text-center text-[14px]"
+                style={{ color: chromeForStrokes.canvas.mutedFg }}
+              >
+                読み込み中…
+              </div>
             ) : fitError || !fitData ? (
               <div className="max-w-[280px] px-4 text-center text-[13px] leading-snug text-red-700">
                 {fitError ?? "試着表示を読み込めませんでした"}
               </div>
             ) : (
-              <div className="flex h-full min-h-0 w-full min-w-0 flex-1 items-center justify-center overflow-visible">
-                <div className="flex h-full w-full min-h-0 min-w-0 max-h-full max-w-[300px] items-center justify-center">
+              <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col items-center justify-center gap-1 overflow-visible py-0.5">
+                <div className="flex min-h-0 w-full max-w-full flex-1 items-center justify-center">
                   <svg
-                    viewBox={`0 0 ${fitData.viewBoxWidth} ${uniformPreviewViewBoxHeightFromHeightCm(fitHeightCm)}`}
+                    viewBox={`0 0 ${fitData.viewBoxWidth} ${fitData.viewBoxHeight}`}
                     preserveAspectRatio="xMidYMid meet"
-                    className="h-auto max-h-full w-full min-w-0 max-w-[300px] overflow-visible"
+                    className="h-auto max-h-full w-full min-w-0 max-w-full overflow-visible"
                     xmlns="http://www.w3.org/2000/svg"
                     aria-hidden
                   >
-                    <g fill="none" stroke="#bbb" strokeWidth={4}>
+                    <g
+                      fill="none"
+                      stroke={chromeForStrokes.canvas.bodyStroke}
+                      strokeWidth={4}
+                      style={{
+                        opacity: fitSvgStageEmbed >= 1 ? 1 : 0,
+                        transition: "opacity 0.42s ease-out",
+                      }}
+                    >
                       {fitData.bodyPaths.map((d, i) => (
                         <path key={`b-${i}`} d={d} />
                       ))}
                     </g>
                     {garmentPathsInViewer ? (
-                      <g fill={GARMENT_FILL}>
+                      <g
+                        fill={GARMENT_FILL}
+                        style={{
+                          opacity: fitSvgStageEmbed >= 1 ? 1 : 0,
+                          transition: "opacity 0.42s ease-out",
+                        }}
+                      >
                         {fitData.garmentPaths.map((d, i) => (
                           <path
                             key={`g-${i}`}
                             d={d}
                             fill="none"
-                            stroke={fitData.garmentPathStrokes?.[i] ?? GARMENT_STROKE}
+                            stroke={fitData.garmentPathStrokes?.[i] ?? chromeForStrokes.canvas.garmentStroke}
                             strokeWidth={fitData.garmentPathStrokeWidths?.[i] ?? 8}
                             strokeDasharray={fitData.garmentPathStrokeDasharrays?.[i] ?? undefined}
                           />
                         ))}
                       </g>
                     ) : null}
+                    {garmentPathsInViewer && (fitData.fitEaseDiagram?.ops?.length ?? 0) > 0 ? (
+                      <g
+                        style={{
+                          opacity: showEmbedEaseOverlay ? 1 : 0,
+                          transition: "opacity 0.35s ease-out",
+                        }}
+                      >
+                        <WidgetFitEaseDiagramSvg diagram={fitData.fitEaseDiagram} />
+                      </g>
+                    ) : null}
                   </svg>
                 </div>
+                {garmentPathsInViewer && (fitData.fitEaseDiagram?.ops?.length ?? 0) > 0 ? (
+                  <div
+                    style={{
+                      opacity: showEmbedEaseText ? 1 : 0,
+                      transition: "opacity 0.35s ease-out",
+                    }}
+                  >
+                    <PreviewFitEaseFootnote summary={fitData.fitEaseSummary} />
+                  </div>
+                ) : garmentPathsInViewer ? (
+                  <div
+                    style={{
+                      opacity: showEmbedEaseText ? 1 : 0,
+                      transition: "opacity 0.35s ease-out",
+                    }}
+                  >
+                    <PreviewFitEaseSummary summary={fitData.fitEaseSummary} />
+                  </div>
+                ) : null}
               </div>
             )}
           </>
         ) : (
           <>
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <PreviewBodySilhouette className="max-h-[min(85%,320px)] w-full" />
+              <PreviewBodySilhouette
+                className="max-h-[min(85%,320px)] w-full"
+                stroke={chromeForStrokes.canvas.bodyStroke}
+              />
             </div>
             {thumbnailUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -793,28 +1224,35 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
         />
       ) : null}
 
-      <PreviewAccentCtaButton variant="cart" label={cartLabel} accentColor={accent} />
+      <PreviewAccentCtaButton
+        variant="cart"
+        label={cartLabel}
+        accentColor={accent}
+        onClick={addToCartUrlTemplate?.trim() ? handleAddToCartClick : undefined}
+      />
 
       {bodyAdjustEnabled && bodySheetOpen ? (
         <div
           className="absolute inset-0 z-50 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[34px]"
-          style={{ backgroundColor: interfaceBg }}
+          style={{ backgroundColor: canvasBg }}
           data-fitlook-body-adjust
         >
-          <PreviewBackRow onClick={() => setBodySheetOpen(false)} />
-          <PreviewProductRow
-            productName={productName}
-            priceDisplay={priceDisplay}
-            thumbnailUrl={thumbnailUrl}
-          />
-          {!garmentFitAvailable ? (
-            <PreviewColorSwatchRow
-              swatches={swatches}
-              selectedId={selectedColorId}
-              onSelect={setSelectedColorId}
-              accentColor={accent}
+          <div className="flex shrink-0 flex-col" style={{ backgroundColor: interfaceBg }}>
+            <PreviewBackRow onClick={() => setBodySheetOpen(false)} />
+            <PreviewProductRow
+              productName={productName}
+              priceDisplay={priceDisplay}
+              thumbnailUrl={thumbnailUrl}
             />
-          ) : null}
+            {!garmentFitAvailable ? (
+              <PreviewColorSwatchRow
+                swatches={swatches}
+                selectedId={selectedColorId}
+                onSelect={setSelectedColorId}
+                accentColor={accent}
+              />
+            ) : null}
+          </div>
           <PreviewViewerShell backgroundColor={canvasBg}>
             {garmentFitAvailable ? (
               <>
@@ -825,12 +1263,18 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
                       fitBodyVal={bodyDraftVal}
                       currentSize={currentSize}
                       customGarmentData={customGarmentData}
+                      orderedSizeKeys={sizeKeys}
+                      fitChestBandCategory={productCategory}
                       bodyOnly
                       bodySheetHeightScale
+                      fitEaseRevealNonce={fitEaseRevealNonce}
                     />
                   </div>
                 ) : authLoading ? (
-                  <div className="flex flex-1 items-center justify-center px-6 text-center text-[14px] text-[#6b7280]">
+                  <div
+                    className="flex flex-1 items-center justify-center px-6 text-center text-[14px]"
+                    style={{ color: chromeForStrokes.canvas.mutedFg }}
+                  >
                     読み込み中…
                   </div>
                 ) : draftFitError && !draftFitData ? (
@@ -838,9 +1282,9 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
                     {draftFitError}
                   </div>
                 ) : draftFitData ? (
-                  <div className="flex h-full min-h-0 w-full min-w-0 flex-1 items-center justify-center overflow-visible">
+                  <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col items-center justify-center gap-1 overflow-visible py-0.5">
                     <div
-                      className="flex h-full w-full min-h-0 min-w-0 max-h-full max-w-[300px] items-center justify-center overflow-visible"
+                      className="flex min-h-0 w-full max-w-full flex-1 items-center justify-center overflow-visible"
                       style={{
                         transform: `scale(${bodySheetPreviewHeightScale(bodyDraftHeight)})`,
                         transformOrigin: "center center",
@@ -849,27 +1293,41 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
                       <svg
                         viewBox={`0 0 ${draftFitData.viewBoxWidth} ${uniformPreviewViewBoxHeightFromHeightCm(bodyDraftHeight)}`}
                         preserveAspectRatio="xMidYMid meet"
-                        className="h-auto max-h-full w-full min-w-0 max-w-[300px] overflow-visible"
+                        className="h-auto max-h-full w-full min-w-0 max-w-full overflow-visible"
                         xmlns="http://www.w3.org/2000/svg"
                         aria-hidden
                       >
-                        <g fill="none" stroke="#bbb" strokeWidth={4}>
+                        <g fill="none" stroke={chromeForStrokes.canvas.bodyStroke} strokeWidth={4}>
                           {draftFitData.bodyPaths.map((d, i) => (
                             <path key={`bod-${i}`} d={d} />
                           ))}
                         </g>
                       </svg>
                     </div>
+                    <div
+                      style={{
+                        opacity: showDraftEaseText ? 1 : 0,
+                        transition: "opacity 0.35s ease-out",
+                      }}
+                    >
+                      <PreviewFitEaseSummary summary={draftFitData.fitEaseSummary} />
+                    </div>
                   </div>
                 ) : (
-                  <div className="flex flex-1 items-center justify-center text-[14px] text-[#6b7280]">
+                  <div
+                    className="flex flex-1 items-center justify-center text-[14px]"
+                    style={{ color: chromeForStrokes.canvas.mutedFg }}
+                  >
                     {draftFitLoading ? "読み込み中…" : fitError ?? "試着表示を読み込めませんでした"}
                   </div>
                 )}
               </>
             ) : (
               <div className="pointer-events-none flex flex-1 items-center justify-center">
-                <PreviewBodySilhouette className="max-h-[min(85%,320px)] w-full" />
+                <PreviewBodySilhouette
+                  className="max-h-[min(85%,320px)] w-full"
+                  stroke={chromeForStrokes.canvas.bodyStroke}
+                />
               </div>
             )}
           </PreviewViewerShell>
@@ -904,12 +1362,15 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
                   }
                 }
                 setBodySheetOpen(false);
+                /** メイン試着に戻ってから段階表示をやり直す（シート表示中に nonce が変わらないようにする） */
+                setFitEaseRevealNonce((n) => n + 1);
               })();
             }}
           />
         </div>
       ) : null}
-    </div>
+        </div>
+      </PreviewChromeThemeProvider>
     </PreviewChromeScaleProvider>
   );
 }

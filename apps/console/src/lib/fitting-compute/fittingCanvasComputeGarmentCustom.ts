@@ -93,7 +93,6 @@ export function computeCustomGarmentBranch(
         bodyShoulderContour,
         garmentShoulderContour: [],
         garmentShoulderPoints: [],
-        shoulderPointIndex: null,
         garmentType: "custom",
       },
       garmentOverlay: null,

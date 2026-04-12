@@ -38,8 +38,8 @@ function computeLayout(
 }
 
 /**
- * パンは「画像の端がプレビュー正方形の辺（円が上下左右で接する位置）に来る」ところまで。
- * left = (S-dw)/2 + panX は [S-dw, 0] に収まる ⇔ panX ∈ [-|S-dw|/2, |S-dw|/2]
+ * Pan range: image edges can reach the square preview frame.
+ * left = (S-dw)/2 + panX stays in [S-dw, 0] (panX in [-|S-dw|/2, |S-dw|/2]).
  */
 function clampPan(
   panX: number,
@@ -56,7 +56,8 @@ function clampPan(
   };
 }
 
-export function exportCircularCropBlob(
+/** Square thumbnail export (no circular mask). */
+export function exportThumbnailCropBlob(
   image: HTMLImageElement,
   zoom: number,
   panX: number,
@@ -78,9 +79,6 @@ export function exportCircularCropBlob(
   }
   const scale = exportSize / S;
   ctx.scale(scale, scale);
-  ctx.beginPath();
-  ctx.arc(S / 2, S / 2, S / 2, 0, Math.PI * 2);
-  ctx.clip();
   ctx.drawImage(image, left, top, dw, dh);
   return new Promise((resolve, reject) => {
     canvas.toBlob(
@@ -227,7 +225,7 @@ export function CircularImageCropDialog({
     const cr = cropRef.current;
     if (!image || !file) return;
     try {
-      const blob = await exportCircularCropBlob(
+      const blob = await exportThumbnailCropBlob(
         image,
         cr.zoom,
         cr.panX,
@@ -256,15 +254,15 @@ export function CircularImageCropDialog({
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="z-[100] max-w-[min(100vw-2rem,24rem)] sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>円形サムネイルの範囲</DialogTitle>
+          <DialogTitle>サムネイルのトリミング</DialogTitle>
           <DialogDescription>
-            ドラッグで位置（端は円の外枠に揃うまで）、スライダーで拡大してから確定してください。
+            ドラッグで位置、スライダーで拡大してから確定してください。正方形の画像として保存されます。
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col items-center gap-4">
           <div
-            className="relative cursor-grab touch-none overflow-hidden rounded-full bg-muted ring-2 ring-border select-none active:cursor-grabbing"
+            className="relative cursor-grab touch-none overflow-hidden rounded-2xl bg-muted ring-2 ring-border select-none active:cursor-grabbing"
             style={{ width: S, height: S, touchAction: "none" }}
             onPointerDown={handlePointerDown}
           >

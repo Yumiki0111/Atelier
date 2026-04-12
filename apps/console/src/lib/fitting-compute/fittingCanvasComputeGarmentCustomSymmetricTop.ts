@@ -354,9 +354,7 @@ export function runGenericSymmetricTopSleevePipeline(input: {
     ) {
       const effMir0 = resolveEffectiveMirrorSleeveGradingGeometry(customPathDs, c, gtSymTop);
       const mirrorChain0 =
-        effMir0?.globalChainForArcTarget ??
-        effMir0?.globalChainForMeasure ??
-        gtSymTop.sleeveMirrorMeasureVertexChain;
+        effMir0?.globalChainForMeasure ?? gtSymTop.sleeveMirrorMeasureVertexChain;
       const beforeMirror = measureGenericTopSleeveCmFromPath(
         customPathDs,
         c,
@@ -474,9 +472,7 @@ export function runGenericSymmetricTopSleevePipeline(input: {
           const mirrorLock = sleeveVertexLockForMeasure?.mirror;
           const effMir = resolveEffectiveMirrorSleeveGradingGeometry(customPathDs, c, gtForSleeveGeom);
           const mirrorChainFallback =
-            effMir?.globalChainForArcTarget ??
-            effMir?.globalChainForMeasure ??
-            gtForSleeveGeom.sleeveMirrorMeasureVertexChain;
+            effMir?.globalChainForMeasure ?? gtForSleeveGeom.sleeveMirrorMeasureVertexChain;
           return measureGenericTopSleeveCmFromPath(
             customPathDs,
             c,

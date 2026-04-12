@@ -1,12 +1,23 @@
 import { BZ, REF_WEIGHT_KG } from "@/app/(main)/development/fitting/lib/constants";
-import { calcFitFromSize } from "@/app/(main)/development/fitting/lib/fitCalc";
+import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
+import { widgetFitChestBandJaFromDiff } from "@/app/(main)/development/fitting/lib/fitCalc";
 import type { FittingCanvasSnapshot } from "@/lib/fitting-compute/fittingCanvasComputeTypes";
+import {
+  bodyArmPeakSpanCm,
+  bodyIndentReferenceChordLengthCm,
+  garmentFitCompareSpanCm,
+} from "@/lib/widget-fit/bodyPlotReferenceMeasures";
+import { resolveWidgetFitChestBandJaOrdinal } from "@/lib/widget-fit/widgetFitChestBandOrdinal";
 
 /** 基準体型（170/60）相当の参考肩幅 cm。`constants` のボディ肩 px と整合 */
 const REF_BODY_SHOULDER_WIDTH_CM = 47;
 
 const BODY_TEMPLATE_SPAN = BZ.foot - BZ.head_top;
 const CROTCH_Y_FRAC = (BZ.crotch - BZ.head_top) / BODY_TEMPLATE_SPAN;
+
+/** 採寸表の列ズレ等で明らかに壊れた値は数値表示から除外 */
+const MAX_ABS_CHEST_EASE_CM = 34;
+const MAX_ABS_SHOULDER_EASE_CM = 22;
 
 function round1(n: number): number {
   return Math.round(n * 10) / 10;
@@ -20,25 +31,58 @@ function fmtSignedCm(n: number | null): string {
   return (r > 0 ? "+" : r < 0 ? "-" : "") + s + "cm";
 }
 
+/** 半袖など：袖丈が肩〜手首の腕長に比べて短すぎるときは「手首から」比較をしない */
+function isLongSleeveStyleSleeveMeasure(sleeveGarmentCm: number, armCm: number): boolean {
+  if (!Number.isFinite(sleeveGarmentCm) || !Number.isFinite(armCm) || armCm <= 1) return false;
+  return sleeveGarmentCm >= armCm * 0.62;
+}
+
+type SleeveFitBand = "short" | "mid" | "long";
+
+function bandSleeve(cm: number | null): SleeveFitBand | null {
+  if (cm == null || !Number.isFinite(cm)) return null;
+  if (cm < -2) return "short";
+  if (cm > 4) return "long";
+  return "mid";
+}
+
+/** Sleeve clause for `fitToneJa` (hem is not part of the tone copy). */
+function sleevePhraseForTone(b: SleeveFitBand | null): string | null {
+  if (b == null) return null;
+  if (b === "short") return "袖はやや短め";
+  if (b === "long") return "袖はやや長め";
+  return "袖は標準寄り";
+}
+
 export type WidgetFitEaseSummaryJson = {
   shoulderEaseCm: number | null;
   chestEaseCm: number | null;
   sleeveFromWristCm: number | null;
   hemFromCrotchCm: number | null;
+  /** Chest ease band: garment 2-vertex chord vs model reference chord (or fallbacks). */
+  fitChestBandJa: string;
   /** 短い総評（日本語） */
   fitToneJa: string;
-  /** 4 行程度の箇条書き用 */
+  /** 箇条書き用（有効な行だけ） */
   linesJa: string[];
 };
 
 /**
  * 開発キャンバスと同じ `FittingCanvasSnapshot` から、ウィジェット向けの「ゆとり目安」を組み立てる。
- * 身長・体重のみの体型は推定のため、文言に「目安」を含める。
  */
 export function buildWidgetFitEaseSummaryFromSnapshot(
   snap: FittingCanvasSnapshot,
-  heightCm: number,
-  weightKg: number
+  weightKg: number,
+  opts?: {
+    fitChestBandMode?: "shirt" | "jacket";
+    customGarmentData?: CustomGarmentData | null;
+    /** 身長（cm）。`orderedSizeKeys` + `currentSize` と組み合わせて推奨サイズ帯を決める */
+    heightCm?: number;
+    /** 小→大のサイズラベル列（通常は sizePresets の順） */
+    orderedSizeKeys?: string[];
+    /** 現在選択中のサイズラベル */
+    currentSize?: string;
+  }
 ): WidgetFitEaseSummaryJson {
   const g = snap.measureOverlay.garment;
   if (!g?.size) {
@@ -47,17 +91,107 @@ export function buildWidgetFitEaseSummaryFromSnapshot(
       chestEaseCm: null,
       sleeveFromWristCm: null,
       hemFromCrotchCm: null,
+      fitChestBandJa: "",
       fitToneJa: "",
       linesJa: [],
     };
   }
 
-  const { chestDiff } = calcFitFromSize(heightCm, weightKg, g.size);
-  const chestEaseCm = round1(chestDiff);
+  const mode = opts?.fitChestBandMode ?? "jacket";
+
+  const bppc = g.bodyPxPerCm;
+  let chestRaw: number;
+  /** 胸バンド用の幾何ゆとり（cm）。序数ロジックの矛盾検出にも使う */
+  let chestEaseForBand: number | null = null;
+  const chordCm =
+    bppc != null && bppc > 0 ? bodyIndentReferenceChordLengthCm(snap, bppc) : null;
+  const garmentChestProxyCm = g.size.chest * 2;
+  const fitPair = opts?.customGarmentData?.genericSymmetricTop?.fitCompareVertexGlobalPair;
+  let easeVsChord: number | null = null;
+  if (
+    fitPair != null &&
+    fitPair.length === 2 &&
+    bppc != null &&
+    bppc > 0 &&
+    snap.customPathDs.length > 0 &&
+    chordCm != null &&
+    Number.isFinite(chordCm) &&
+    chordCm > 8 &&
+    chordCm < 200
+  ) {
+    const garmentCm = garmentFitCompareSpanCm(snap.customPathDs, fitPair, bppc);
+    if (garmentCm != null && Number.isFinite(garmentCm) && garmentCm > 1 && garmentCm < 220) {
+      easeVsChord = garmentCm - chordCm;
+    }
+  }
+  if (easeVsChord != null && Number.isFinite(easeVsChord) && Math.abs(easeVsChord) <= 120) {
+    chestRaw = round1(easeVsChord);
+    chestEaseForBand = easeVsChord;
+  } else if (
+    chordCm != null &&
+    Number.isFinite(chordCm) &&
+    Number.isFinite(garmentChestProxyCm) &&
+    chordCm > 8 &&
+    chordCm < 200
+  ) {
+    const fb = garmentChestProxyCm - chordCm;
+    chestRaw = round1(fb);
+    chestEaseForBand = fb;
+  } else {
+    chestRaw = Number.NaN;
+    chestEaseForBand = null;
+  }
+
+  let fitChestBandJa = "";
+  const heightCm = opts?.heightCm;
+  const orderedSizeKeys = opts?.orderedSizeKeys;
+  const currentSize = opts?.currentSize?.trim();
+  if (
+    heightCm != null &&
+    Number.isFinite(heightCm) &&
+    orderedSizeKeys != null &&
+    orderedSizeKeys.length > 0 &&
+    currentSize != null &&
+    currentSize.length > 0 &&
+    orderedSizeKeys.includes(currentSize)
+  ) {
+    fitChestBandJa = resolveWidgetFitChestBandJaOrdinal({
+      heightCm,
+      weightKg,
+      orderedSizeKeys,
+      currentSize,
+      chestEaseCm: chestEaseForBand,
+      fitChestBandMode: mode,
+    }).bandJa;
+  } else if (chestEaseForBand != null && Number.isFinite(chestEaseForBand)) {
+    fitChestBandJa = widgetFitChestBandJaFromDiff(chestEaseForBand, mode);
+  }
+
+  let chestEaseCm: number | null = chestRaw;
+  if (!Number.isFinite(chestEaseCm) || Math.abs(chestEaseCm) > MAX_ABS_CHEST_EASE_CM) {
+    chestEaseCm = null;
+  }
 
   const wClamp = Math.max(35, Math.min(120, weightKg));
   const estShoulderCm = REF_BODY_SHOULDER_WIDTH_CM * Math.sqrt(Math.max(wClamp, 40) / REF_WEIGHT_KG);
-  const shoulderEaseCm = round1(g.size.shoulder - estShoulderCm);
+  const shoulderRawFormula = round1(g.size.shoulder - estShoulderCm);
+
+  let shoulderRaw = shoulderRawFormula;
+  const armPeakCm = bppc != null && bppc > 0 ? bodyArmPeakSpanCm(snap, bppc) : null;
+  if (
+    armPeakCm != null &&
+    Number.isFinite(armPeakCm) &&
+    armPeakCm > 8 &&
+    armPeakCm < 200 &&
+    Number.isFinite(g.size.shoulder)
+  ) {
+    shoulderRaw = round1(g.size.shoulder - armPeakCm);
+  }
+
+  let shoulderEaseCm: number | null = shoulderRaw;
+  if (!Number.isFinite(shoulderEaseCm) || Math.abs(shoulderEaseCm) > MAX_ABS_SHOULDER_EASE_CM) {
+    shoulderEaseCm = null;
+  }
 
   const pxPerCm = g.bodyPxPerCm;
   let sleeveFromWristCm: number | null = null;
@@ -66,7 +200,12 @@ export function buildWidgetFitEaseSummaryFromSnapshot(
     const armPx = Math.hypot(wristL[0] - shoulderL[0], wristL[1] - shoulderL[1]);
     const armCm = armPx / pxPerCm;
     const sleeveGarmentCm = g.sleeveMeasuredCm ?? g.sleeveGeomDebug?.cm ?? g.size.sleeve;
-    if (Number.isFinite(sleeveGarmentCm) && Number.isFinite(armCm) && sleeveGarmentCm > 0) {
+    if (
+      Number.isFinite(sleeveGarmentCm) &&
+      Number.isFinite(armCm) &&
+      sleeveGarmentCm > 0 &&
+      isLongSleeveStyleSleeveMeasure(sleeveGarmentCm, armCm)
+    ) {
       sleeveFromWristCm = round1(sleeveGarmentCm - armCm);
     }
   }
@@ -81,27 +220,29 @@ export function buildWidgetFitEaseSummaryFromSnapshot(
     }
   }
 
-  let fitToneJa = "バランス（目安）は標準寄り";
-  if (chestEaseCm < -4 || shoulderEaseCm < -3) {
-    fitToneJa = "ややきつめ（目安）";
-  } else if (chestEaseCm > 10 || shoulderEaseCm > 3) {
-    fitToneJa = "ややゆったり（目安）";
-  } else if (chestEaseCm >= -1 && chestEaseCm <= 6 && shoulderEaseCm >= -1 && shoulderEaseCm <= 2) {
-    fitToneJa = "バランス良い（目安）";
-  }
+  const lowerClause = sleevePhraseForTone(bandSleeve(sleeveFromWristCm));
+  const fitToneJa = lowerClause ? `${lowerClause}（目安）` : "";
 
-  const linesJa = [
-    `肩のゆとり（目安） ${fmtSignedCm(shoulderEaseCm)}`,
-    `胸まわりのゆとり（目安） ${fmtSignedCm(chestEaseCm)}`,
-    `袖 手首から約 ${fmtSignedCm(sleeveFromWristCm)}`,
-    `裾 股から約 ${fmtSignedCm(hemFromCrotchCm)}`,
-  ];
+  const linesJa: string[] = [];
+  if (shoulderEaseCm != null) {
+    linesJa.push(`肩のゆとり（目安） ${fmtSignedCm(shoulderEaseCm)}`);
+  }
+  if (chestEaseCm != null) {
+    linesJa.push(`胸まわりのゆとり（目安） ${fmtSignedCm(chestEaseCm)}`);
+  }
+  if (sleeveFromWristCm != null) {
+    linesJa.push(`手首から約 ${fmtSignedCm(sleeveFromWristCm)}`);
+  }
+  if (hemFromCrotchCm != null) {
+    linesJa.push(`またから約 ${fmtSignedCm(hemFromCrotchCm)}`);
+  }
 
   return {
     shoulderEaseCm,
     chestEaseCm,
     sleeveFromWristCm,
     hemFromCrotchCm,
+    fitChestBandJa,
     fitToneJa,
     linesJa,
   };

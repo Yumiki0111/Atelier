@@ -1,6 +1,7 @@
 "use client";
 
 import React, { type ReactNode } from "react";
+import { resolveSleeveGeomDisplayCm } from "@/lib/fitting-compute/resolveSleeveGeomDisplayCm";
 import type { MeasureOverlayData } from "../lib/types";
 import {
   OFFSET_SLEEVE_NORMAL,
@@ -52,19 +53,14 @@ function SleeveMeasureBlock({
     return null;
   }
   const inputSleeve = g.size.sleeve;
-  const measuredSleeve = g.sleeveMeasuredCm;
   const sleeveGeom = sleeveGeomDebugOverride ?? g.sleeveGeomDebug;
   const rawBefore = sleeveGeomBeforeSleeveFixDebugOverride ?? g.sleeveGeomBeforeSleeveFixDebug;
-  /** メインの「幾何」は canvas 上の path と一致するパイプライン後。rawBefore は袖スケール直前（canvas・同じ px/cm 定義） */
+  /** プライマリは `resolveSleeveGeomDisplayCm`、ミラーは override の幾何を優先 */
   const screenSleeveCm =
-    sleeveGeom != null && Number.isFinite(sleeveGeom.cm)
-      ? sleeveGeom.cm
-      : measuredSleeve != null && Number.isFinite(measuredSleeve)
-        ? measuredSleeve
-        : rawBefore != null && Number.isFinite(rawBefore.cm)
-          ? rawBefore.cm
-          : inputSleeve;
-  const screenSleeveLabel = Number.isFinite(screenSleeveCm) ? screenSleeveCm.toFixed(1) : "—";
+    sleeveGeomDebugOverride != null
+      ? resolveSleeveGeomDisplayCm({ ...g, sleeveGeomDebug: sleeveGeomDebugOverride })
+      : resolveSleeveGeomDisplayCm(g);
+  const screenSleeveLabel = screenSleeveCm != null ? screenSleeveCm.toFixed(1) : "—";
   /** 設計時（補正前）とパイプライン後がずれるときだけ追加行を出す */
   const rawVsPipelineDiffLabel =
     rawBefore != null &&

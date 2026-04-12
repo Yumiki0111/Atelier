@@ -36,7 +36,7 @@ export async function GET(
 
     const { data: product, error } = await supabaseAdmin
       .from("products")
-      .select("garment_spec")
+      .select("garment_spec, category")
       .eq("id", productId)
       .eq("shop_id", auth.shopId)
       .single();
@@ -67,6 +67,8 @@ export async function GET(
         customGarmentData: sized,
         heightCm,
         weightKg,
+        fitChestBandCategory: (product as { category?: string | null }).category ?? null,
+        currentSizeLabel: size,
       });
     } catch (computeErr) {
       const msg = computeErr instanceof Error ? computeErr.message : String(computeErr);
@@ -85,6 +87,8 @@ export async function GET(
       garmentPathStrokeDasharrays: snap.garmentPathStrokeDasharrays,
       garmentPathStrokeWidths: snap.garmentPathStrokeWidths,
       garmentPathStrokes: snap.garmentPathStrokes,
+      fitEaseSummary: snap.fitEaseSummary,
+      fitEaseDiagram: snap.fitEaseDiagram,
     });
   } catch (e) {
     console.error("[products/[id]/fit-svg]", e);

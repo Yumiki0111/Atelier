@@ -77,7 +77,6 @@ export function buildGenericSleeveScaleSidePlans(
         effectiveSleevePathIdx: gEff?.sleevePathIdx ?? null,
         effectiveGRange: gEff ? { gLo: gEff.gLo, gHi: gEff.gHi } : null,
         effectiveChainForPx: gEff?.globalChainForMeasure ?? null,
-        effectiveChainForArcTarget: gEff?.globalChainForArcTarget ?? null,
       });
     }
     if (effGeom == null && dbg) {

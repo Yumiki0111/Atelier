@@ -19,6 +19,7 @@ export const productSchema = z.object({
   name: z.string().min(1),
   brand: z.string().optional(),
   category: productCategorySchema.optional(),
+  priceYen: z.union([z.number().int().nonnegative(), z.null()]).optional(),
   thumbnailUrl: z
     .union([z.string().url(), z.literal("")])
     .optional(), // URL形式であることを検証、空文字列も許可

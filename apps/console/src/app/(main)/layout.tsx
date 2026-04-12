@@ -3,9 +3,9 @@
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/sidebar/Sidebar";
+import { ConsoleMainColumn } from "@/components/shell/ConsoleMainColumn";
 import { ProductSelectionProvider } from "@/contexts/ProductSelectionContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { cn } from "@/lib/utils";
 
 export default function MainLayout({
   children,
@@ -29,8 +29,8 @@ export default function MainLayout({
   // 認証状態を確認中は何も表示しない
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-50">
-        <p className="text-gray-500">読み込み中...</p>
+      <div className="flex h-screen items-center justify-center bg-background">
+        <p className="text-sm text-muted-foreground">読み込み中...</p>
       </div>
     );
   }
@@ -47,16 +47,7 @@ export default function MainLayout({
     <ProductSelectionProvider>
       <div className="flex h-screen overflow-hidden">
         <Sidebar />
-        <main
-          className={cn(
-            "flex-1 bg-gray-50 p-6",
-            isDevelopment
-              ? "flex min-h-0 flex-col overflow-hidden overscroll-none"
-              : "overflow-y-auto"
-          )}
-        >
-          {children}
-        </main>
+        <ConsoleMainColumn developmentMode={isDevelopment}>{children}</ConsoleMainColumn>
       </div>
     </ProductSelectionProvider>
   );

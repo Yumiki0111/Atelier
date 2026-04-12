@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Key, Globe, Copy, CheckCircle, Eye, EyeOff, AlertCircle, X } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Key, Globe, Copy, CheckCircle, Eye, EyeOff, X } from "lucide-react";
 import { toast } from "sonner";
 import { authenticatedFetch } from "@/lib/auth/api-client";
 
@@ -153,9 +153,8 @@ export function WidgetSettings({ shopId }: WidgetSettingsProps) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Key className="h-5 w-5" />Widget 設定</CardTitle>
-          <CardDescription>公開APIキーとドメイン設定</CardDescription>
         </CardHeader>
-        <CardContent><p className="text-sm text-gray-500">読み込み中...</p></CardContent>
+        <CardContent><p className="text-sm text-muted-foreground">読み込み中...</p></CardContent>
       </Card>
     );
   }
@@ -165,18 +164,9 @@ export function WidgetSettings({ shopId }: WidgetSettingsProps) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Key className="h-5 w-5" />Widget 設定</CardTitle>
-          <CardDescription>公開APIキーとドメイン設定</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-            <div className="flex items-start gap-2">
-              <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5" />
-              <div className="text-sm text-yellow-800">
-                <p className="font-medium mb-1">Widget キーが見つかりません</p>
-                <p>管理者に連絡して、Widget キーを発行してもらってください。</p>
-              </div>
-            </div>
-          </div>
+          <p className="text-sm text-muted-foreground">Widget キーが見つかりません</p>
         </CardContent>
       </Card>
     );
@@ -186,32 +176,30 @@ export function WidgetSettings({ shopId }: WidgetSettingsProps) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><Key className="h-5 w-5" />Widget 設定</CardTitle>
-        <CardDescription>公開APIキーとドメイン設定</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Public Key */}
         <div className="space-y-2">
-          <Label className="text-sm text-gray-600">Public Key（クライアント用）</Label>
+          <Label className="text-sm text-muted-foreground">Public Key（クライアント用）</Label>
           <div className="flex gap-2">
             <Input
               value={showPublicKey ? widgetKeys.public_key : "pub_live_••••••••••••••••"}
               readOnly
-              className="font-mono text-sm bg-gray-50"
+              className="font-mono text-sm bg-muted/40"
             />
             <Button variant="outline" size="icon" onClick={() => setShowPublicKey(!showPublicKey)}>
               {showPublicKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </Button>
             <Button variant="outline" size="icon" onClick={() => copyToClipboard(widgetKeys.public_key, "public_key")}>
-              {copiedField === "public_key" ? <CheckCircle className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+              {copiedField === "public_key" ? <CheckCircle className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>
-          <p className="text-xs text-gray-500">このキーをウェブサイトに埋め込んで、Widget APIを使用します</p>
         </div>
 
         {/* Allowed Domains */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label className="text-sm text-gray-600 flex items-center gap-2">
+            <Label className="flex items-center gap-2 text-sm text-muted-foreground">
               <Globe className="h-4 w-4" />許可ドメイン
             </Label>
             {!isEditingDomains ? (
@@ -238,12 +226,12 @@ export function WidgetSettings({ shopId }: WidgetSettingsProps) {
           {isEditingDomains ? (
             <div className="space-y-2">
               {domainList.length > 0 && (
-                <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-gray-50 min-h-[60px]">
+                <div className="flex min-h-[60px] flex-wrap gap-2 rounded-md bg-secondary/50 p-3">
                   {domainList.map((domain) => (
-                    <div key={domain} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 text-blue-800 rounded-md text-sm font-mono">
-                      <Globe className="h-3.5 w-3.5" />
+                    <div key={domain} className="flex items-center gap-1.5 rounded-md bg-muted/50 px-3 py-1.5 font-mono text-sm text-foreground">
+                      <Globe className="h-3.5 w-3.5 text-muted-foreground" />
                       <span>{domain}</span>
-                      <button type="button" onClick={() => handleRemoveDomain(domain)} className="ml-1 hover:bg-blue-200 rounded-full p-0.5 transition-colors" disabled={isUpdating}>
+                      <button type="button" onClick={() => handleRemoveDomain(domain)} className="ml-1 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" disabled={isUpdating}>
                         <X className="h-3.5 w-3.5" />
                       </button>
                     </div>
@@ -251,7 +239,7 @@ export function WidgetSettings({ shopId }: WidgetSettingsProps) {
                 </div>
               )}
               <div className="relative">
-                <Globe className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Globe className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   type="text"
                   placeholder="example.com と入力して Enter またはカンマ（,）で確定"
@@ -264,13 +252,10 @@ export function WidgetSettings({ shopId }: WidgetSettingsProps) {
                   disabled={isUpdating}
                 />
               </div>
-              <p className="text-xs text-gray-500">
-                Enter キーまたはカンマ（,）でドメインを確定します。複数のドメインを一度に追加できます。
-              </p>
             </div>
           ) : (
             <>
-              <div className="p-3 bg-gray-50 border rounded-md">
+              <div className="rounded-md bg-muted/40 p-3">
                 {domainList && domainList.length > 0 ? (
                   <ul className="space-y-1">
                     {domainList.map((domain: string, index: number) => (
@@ -278,34 +263,19 @@ export function WidgetSettings({ shopId }: WidgetSettingsProps) {
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-gray-500">ドメインが設定されていません</p>
+                  <p className="text-sm text-muted-foreground">ドメインが設定されていません</p>
                 )}
               </div>
-              <p className="text-xs text-gray-500">これらのドメインからのみ Widget API を使用できます</p>
             </>
           )}
         </div>
 
         {/* Status */}
         <div className="space-y-2">
-          <Label className="text-sm text-gray-600">ステータス</Label>
+          <Label className="text-sm text-muted-foreground">ステータス</Label>
           <div className="flex items-center gap-2">
-            <div className={`h-2 w-2 rounded-full ${widgetKeys.enabled ? "bg-green-500" : "bg-gray-300"}`} />
+            <div className={`h-2 w-2 rounded-full ${widgetKeys.enabled ? "bg-primary" : "bg-muted-foreground/30"}`} />
             <span className="text-sm">{widgetKeys.enabled ? "有効" : "無効"}</span>
-          </div>
-        </div>
-
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-          <div className="flex items-start gap-2">
-            <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-            <div className="text-sm text-blue-800">
-              <p className="font-medium mb-1">Widget API の使い方:</p>
-              <p>
-                <code className="bg-blue-100 px-1 rounded text-xs">
-                  GET /api/public/widget-config?publicKey={"{PUBLIC_KEY}"}&externalProductId={"{PRODUCT_ID}"}
-                </code>
-              </p>
-            </div>
           </div>
         </div>
       </CardContent>

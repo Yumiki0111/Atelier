@@ -1,4 +1,10 @@
-import { weightKgFromBodyVal } from "@Atelier/shared";
+import {
+  interpolateAddToCartUrlTemplate,
+  resolveAddToCartNavigationHref,
+  weightKgFromBodyVal,
+  WIDGET_DESIGN_INTERFACE_BG_DEFAULT,
+  normalizeWidgetCtaAccentColor,
+} from "@Atelier/shared";
 import type { WidgetConfig, WidgetColorSwatch } from "./types";
 import { WIDGET_LOG_PREFIX } from "./embed-data";
 import { isDevelopmentMode, getApiBaseUrl } from "./widget-utils";
@@ -10,26 +16,184 @@ function widgetEventMeta(params: WidgetParams): Record<string, unknown> | undefi
 }
 import { mountFitLookLogoLoadingAnimation } from "./widget-fitlook-logo";
 
-const ACCENT_DEFAULT = "#3d3835";
+function tryNavigateAddToCart(params: WidgetParams, size: string, colorId: string): boolean {
+  const template = params.addToCartUrlTemplate?.trim();
+  if (!template) return false;
+  const productId = String(params.externalProductId || params.productId || "");
+  const interpolated = interpolateAddToCartUrlTemplate(template, {
+    productId,
+    size,
+    colorId,
+  });
+  const href = resolveAddToCartNavigationHref(
+    interpolated,
+    typeof window !== "undefined" ? window.location.origin : null
+  );
+  if (!href) return false;
+  try {
+    window.location.assign(href);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 
 /** コンソール `WidgetPreviewChrome` の `PREVIEW_SURFACE_BG` と同じ（グレー帯で上下が透けないようにする） */
-const SURFACE_BG = "#fafafa";
+const SURFACE_BG = WIDGET_DESIGN_INTERFACE_BG_DEFAULT;
 
 /** 体型スライダー初期（`weightKgFromBodyVal` と @Atelier/shared のプレビューと同じ） */
 const DEFAULT_FIT_BODY_VAL = 25;
 
 function injectStyles() {
-  if (document.getElementById("fitlook-bs-styles")) return;
-  const s = document.createElement("style");
-  s.id = "fitlook-bs-styles";
+  let s = document.getElementById("fitlook-bs-styles") as HTMLStyleElement | null;
+  if (!s) {
+    s = document.createElement("style");
+    s.id = "fitlook-bs-styles";
+    document.head.appendChild(s);
+  }
+  /** 初回以降も常に上書き（古い CSS が残ると PC レイアウトが効かない） */
   s.textContent = `
     @keyframes fitlook-fade-in  { from{opacity:0} to{opacity:1} }
     [data-fitlook-modal] *, [data-atelier-modal] * {
       box-sizing: border-box;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
+    /** 試着モーダル外枠（モバイル: 全面。PC は JS が data-fitlook-desktop-panel を付与） */
+    .fitlook-modal-overlay-shell {
+      position: fixed !important;
+      inset: 0 !important;
+      z-index: 10000 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+      background: transparent !important;
+      opacity: 0;
+      animation: fitlook-fade-in 0.22s ease-out forwards;
+    }
+    .fitlook-modal-overlay-shell[data-fitlook-desktop-panel="1"] {
+      align-items: flex-end !important;
+      justify-content: flex-end !important;
+      padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+        max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)) !important;
+      background: rgba(15, 23, 42, 0.4) !important;
+      backdrop-filter: blur(2px);
+    }
+    /**
+     * 全画面試着: 子に flex:1 を CSS で付与（mountEmbedIframe がインラインで flex:1 を付けると
+     * 一部ブラウザで右下パネル用の flex:0 が負けて全画面になるため、非パネル時はここで統一する）
+     */
+    .fitlook-modal-overlay-shell:not([data-fitlook-desktop-panel="1"]) > [data-fitlook-content-area="true"] {
+      flex: 1 1 0% !important;
+      width: 100% !important;
+      height: 100% !important;
+      min-height: 0 !important;
+    }
+    .fitlook-modal-overlay-shell[data-fitlook-desktop-panel="1"] > [data-fitlook-content-area="true"] {
+      width: min(420px, calc(100vw - 32px)) !important;
+      height: min(85vh, 760px) !important;
+      max-height: min(85vh, 760px) !important;
+      flex: 0 0 auto !important;
+      min-height: 0 !important;
+      border-radius: 16px !important;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.22) !important;
+      overflow: hidden !important;
+    }
   `;
-  document.head.appendChild(s);
+}
+
+/**
+ * ビューポート幅に応じて `data-fitlook-desktop-panel` を切り替え（@media だけに頼らない）。
+ * 再呼び出し時は既存リスナーを外してから付け直す（iframe 差し替え後などに右下パネルが復元される）。
+ */
+/**
+ * 右下パネル用の幅判定。`visualViewport.width` だけを使うと、環境によっては
+ * `innerWidth` より小さい値になり（ズーム・ブラウザ実装差）、PC でも常に 768 未満扱いになる。
+ * 以前の `matchMedia(min-width)` はレイアウト幅に近く、体感と一致しやすかった。
+ */
+function getDesktopPanelWidthPx(): number {
+  if (typeof window === "undefined") return 0;
+  const inner = window.innerWidth;
+  const vvW = window.visualViewport?.width;
+  const vv = vvW != null && vvW > 0 ? vvW : 0;
+  return Math.max(inner, vv);
+}
+
+/**
+ * `attachDesktopOverlayLayoutSync` は `params.desktopPanel === true` のときだけ呼ばれる。
+ * 幅閾値や `(hover: hover)` まで要求すると環境差で常に全面のままになるため、
+ * タッチ主体 UI だけ `(hover: none)` で右下パネルを付けない（iPad 等は全面試着のまま）。
+ */
+function attachDesktopOverlayLayoutSync(overlay: HTMLElement): () => void {
+  const prevDetach = (overlay as unknown as { __fitlookDesktopDetach?: () => void }).__fitlookDesktopDetach;
+  if (prevDetach) prevDetach();
+
+  const apply = () => {
+    const w = getDesktopPanelWidthPx();
+    const hoverNone =
+      typeof window.matchMedia === "function" ? window.matchMedia("(hover: none)").matches : false;
+    const hoverHover =
+      typeof window.matchMedia === "function" ? window.matchMedia("(hover: hover)").matches : null;
+    const pointerFine =
+      typeof window.matchMedia === "function" ? window.matchMedia("(pointer: fine)").matches : null;
+    const usePanel = !hoverNone;
+    if (usePanel) {
+      overlay.setAttribute("data-fitlook-desktop-panel", "1");
+    } else {
+      overlay.removeAttribute("data-fitlook-desktop-panel");
+    }
+    if (typeof window !== "undefined") {
+      (window as unknown as { __FITLOOK_DESKTOP_PANEL_LAST?: Record<string, unknown> }).__FITLOOK_DESKTOP_PANEL_LAST = {
+        w,
+        hoverNone,
+        hoverHover,
+        pointerFine,
+        usePanel,
+        overlayAttr: overlay.getAttribute("data-fitlook-desktop-panel"),
+      };
+    }
+    // #region agent log
+    fetch("http://127.0.0.1:7468/ingest/8ae11b2e-0353-49f9-add8-94485bd038d3", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a81229" },
+      body: JSON.stringify({
+        sessionId: "a81229",
+        hypothesisId: "B-C-D-E",
+        location: "widget-modal.ts:attachDesktopOverlayLayoutSync:apply",
+        message: "desktop panel apply",
+        data: {
+          runId: "post-fix-hover-none-gate",
+          w,
+          innerWidth: typeof window !== "undefined" ? window.innerWidth : null,
+          vvW: typeof window !== "undefined" ? window.visualViewport?.width ?? null : null,
+          hoverNone,
+          hoverHover,
+          pointerFine,
+          usePanel,
+          overlayAttr: overlay.getAttribute("data-fitlook-desktop-panel"),
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+  };
+  apply();
+  const onResize = () => apply();
+  window.addEventListener("resize", onResize);
+  const vv = typeof window !== "undefined" ? window.visualViewport : null;
+  if (vv) {
+    vv.addEventListener("resize", onResize);
+    vv.addEventListener("scroll", onResize);
+  }
+  const detach = () => {
+    window.removeEventListener("resize", onResize);
+    if (vv) {
+      vv.removeEventListener("resize", onResize);
+      vv.removeEventListener("scroll", onResize);
+    }
+  };
+  (overlay as unknown as { __fitlookDesktopDetach?: () => void }).__fitlookDesktopDetach = detach;
+  return detach;
 }
 
 function sortSizeKeys(keys: string[]): string[] {
@@ -39,6 +203,9 @@ function sortSizeKeys(keys: string[]): string[] {
 function closeOverlay(overlay: HTMLElement) {
   const cleanup = (overlay as unknown as { __fitlookCleanup?: { fn: () => void } }).__fitlookCleanup;
   if (cleanup) cleanup.fn();
+  const detachDesktop = (overlay as unknown as { __fitlookDesktopDetach?: () => void }).__fitlookDesktopDetach;
+  if (detachDesktop) detachDesktop();
+  (overlay as unknown as { __fitlookDesktopDetach?: () => void }).__fitlookDesktopDetach = undefined;
   overlay.style.transition = "opacity 0.2s ease-out";
   overlay.style.opacity = "0";
   setTimeout(() => {
@@ -55,6 +222,202 @@ function el<K extends keyof HTMLElementTagNameMap>(
   if (style) node.style.cssText = style;
   if (text !== undefined) node.textContent = text;
   return node;
+}
+
+/** `/api/public/widget-fit-svg` の `fitEaseSummary` と同形 */
+type WidgetFitEaseSummaryJson = {
+  shoulderEaseCm: number | null;
+  chestEaseCm: number | null;
+  sleeveFromWristCm: number | null;
+  hemFromCrotchCm: number | null;
+  fitChestBandJa?: string;
+  fitToneJa: string;
+  linesJa: string[];
+};
+
+function fitEaseToneColors(fitToneJa: string): { bg: string; fg: string } {
+  if (fitToneJa.includes("きつめ")) return { bg: "rgba(255,241,242,0.96)", fg: "#9f1239" };
+  if (fitToneJa.includes("ゆったり")) return { bg: "rgba(240,249,255,0.96)", fg: "#0c4a6e" };
+  if (fitToneJa.includes("バランス良")) return { bg: "rgba(236,253,245,0.96)", fg: "#065f46" };
+  if (fitToneJa.includes("短め")) return { bg: "rgba(255,251,235,0.96)", fg: "#92400e" };
+  if (fitToneJa.includes("長め")) return { bg: "rgba(238,242,255,0.96)", fg: "#312e81" };
+  return { bg: "rgba(241,245,249,0.96)", fg: "#1e293b" };
+}
+
+function fitChestBandColors(band: string): { bg: string; fg: string } {
+  if (band === "小さめなサイズ") return { bg: "rgba(255,241,242,0.96)", fg: "#9f1239" };
+  if (band === "おすすめのサイズ") return { bg: "rgba(236,253,245,0.96)", fg: "#065f46" };
+  if (band === "大きめなサイズ") return { bg: "rgba(240,249,255,0.96)", fg: "#0c4a6e" };
+  return { bg: "rgba(241,245,249,0.96)", fg: "#1e293b" };
+}
+
+function appendWidgetFitEaseSummary(parent: HTMLElement, summary: WidgetFitEaseSummaryJson | undefined): void {
+  if (!summary) return;
+  const band = (summary.fitChestBandJa || "").trim();
+  const tone = (summary.fitToneJa || "").trim();
+  const lines = (summary.linesJa || []).map((l) => String(l).trim()).filter((l) => l.length > 0);
+  if (!band && !tone && lines.length === 0) return;
+
+  const wrap = el(
+    "div",
+    "width:100%;max-width:280px;padding:0 4px 2px;text-align:center;box-sizing:border-box;"
+  );
+  wrap.setAttribute("data-fitlook-fit-ease-summary", "true");
+
+  if (band) {
+    const { bg, fg } = fitChestBandColors(band);
+    const bandBadge = el(
+      "div",
+      `display:inline-block;margin:0 auto 8px;padding:9px 14px;border-radius:8px;font-size:12px;font-weight:800;line-height:1.35;letter-spacing:0.02em;background:${bg};color:${fg};`
+    );
+    bandBadge.textContent = band;
+    wrap.appendChild(bandBadge);
+  }
+
+  if (tone) {
+    const { bg, fg } = fitEaseToneColors(tone);
+    const badge = el(
+      "div",
+      `display:inline-block;margin:0 auto 6px;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:700;line-height:1.35;letter-spacing:0.02em;background:${bg};color:${fg};`
+    );
+    badge.textContent = tone;
+    wrap.appendChild(badge);
+  }
+
+  if (lines.length > 0) {
+    const list = el("div", "text-align:left;font-size:10px;line-height:1.45;color:#334155;");
+    for (const line of lines) {
+      const row = el("div", "padding:1px 0 1px 10px;text-indent:-10px;");
+      row.textContent = `・${line}`;
+      list.appendChild(row);
+    }
+    wrap.appendChild(list);
+  }
+
+  parent.appendChild(wrap);
+}
+
+type WidgetFitEaseDiagramOp =
+  | { kind: "line"; x1: number; y1: number; x2: number; y2: number; stroke: string; strokeWidth: number; dash?: string }
+  | { kind: "filledPoly"; points: string; fill: string }
+  | { kind: "openPolyline"; points: string; stroke: string; strokeWidth: number; dash?: string }
+  | { kind: "rect"; x: number; y: number; w: number; h: number; rx: number; fill: string; stroke: string; strokeWidth: number }
+  | {
+      kind: "text";
+      x: number;
+      y: number;
+      fontSize: number;
+      fill: string;
+      textAnchor: "middle" | "start" | "end";
+      content: string;
+    }
+  | { kind: "circle"; cx: number; cy: number; r: number; fill: string; stroke?: string; strokeWidth?: number; dash?: string };
+
+type WidgetFitEaseDiagramJson = {
+  viewBoxWidth: number;
+  viewBoxHeight: number;
+  ops: WidgetFitEaseDiagramOp[];
+};
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+function appendFitEaseDiagramToSvg(svg: SVGSVGElement, diagram: WidgetFitEaseDiagramJson): void {
+  const g = document.createElementNS(SVG_NS, "g");
+  g.setAttribute("data-fitlook-ease-diagram", "true");
+  g.setAttribute("pointer-events", "none");
+  for (const op of diagram.ops) {
+    if (op.kind === "line") {
+      const ln = document.createElementNS(SVG_NS, "line");
+      ln.setAttribute("x1", String(op.x1));
+      ln.setAttribute("y1", String(op.y1));
+      ln.setAttribute("x2", String(op.x2));
+      ln.setAttribute("y2", String(op.y2));
+      ln.setAttribute("stroke", op.stroke);
+      ln.setAttribute("stroke-width", String(op.strokeWidth));
+      if (op.dash) ln.setAttribute("stroke-dasharray", op.dash);
+      g.appendChild(ln);
+    } else if (op.kind === "filledPoly") {
+      const poly = document.createElementNS(SVG_NS, "polygon");
+      poly.setAttribute("points", op.points);
+      poly.setAttribute("fill", op.fill);
+      g.appendChild(poly);
+    } else if (op.kind === "openPolyline") {
+      const poly = document.createElementNS(SVG_NS, "polyline");
+      poly.setAttribute("points", op.points);
+      poly.setAttribute("fill", "none");
+      poly.setAttribute("stroke", op.stroke);
+      poly.setAttribute("stroke-width", String(op.strokeWidth));
+      if (op.dash) poly.setAttribute("stroke-dasharray", op.dash);
+      poly.setAttribute("stroke-linejoin", "round");
+      poly.setAttribute("stroke-linecap", "round");
+      g.appendChild(poly);
+    } else if (op.kind === "rect") {
+      const r = document.createElementNS(SVG_NS, "rect");
+      r.setAttribute("x", String(op.x));
+      r.setAttribute("y", String(op.y));
+      r.setAttribute("width", String(op.w));
+      r.setAttribute("height", String(op.h));
+      r.setAttribute("rx", String(op.rx));
+      r.setAttribute("fill", op.fill);
+      r.setAttribute("stroke", op.stroke);
+      r.setAttribute("stroke-width", String(op.strokeWidth));
+      g.appendChild(r);
+    } else if (op.kind === "text") {
+      const t = document.createElementNS(SVG_NS, "text");
+      t.setAttribute("x", String(op.x));
+      t.setAttribute("y", String(op.y));
+      t.setAttribute("font-size", String(op.fontSize));
+      t.setAttribute("fill", op.fill);
+      t.setAttribute("text-anchor", op.textAnchor);
+      t.setAttribute("font-family", 'system-ui, -apple-system, "Segoe UI", sans-serif');
+      t.setAttribute("font-weight", "700");
+      t.setAttribute("dominant-baseline", "middle");
+      t.textContent = op.content;
+      g.appendChild(t);
+    } else if (op.kind === "circle") {
+      const c = document.createElementNS(SVG_NS, "circle");
+      c.setAttribute("cx", String(op.cx));
+      c.setAttribute("cy", String(op.cy));
+      c.setAttribute("r", String(op.r));
+      c.setAttribute("fill", op.fill);
+      if (op.stroke != null && op.stroke.length > 0) c.setAttribute("stroke", op.stroke);
+      if (op.strokeWidth != null && op.strokeWidth > 0) c.setAttribute("stroke-width", String(op.strokeWidth));
+      if (op.dash) c.setAttribute("stroke-dasharray", op.dash);
+      g.appendChild(c);
+    }
+  }
+  svg.appendChild(g);
+}
+
+/** 図解ありのときは総評のみ（胸バンド・箇条書きは図内に集約） */
+function appendFitEaseFootnote(parent: HTMLElement, summary: WidgetFitEaseSummaryJson | undefined): void {
+  const band = (summary?.fitChestBandJa || "").trim();
+  const tone = (summary?.fitToneJa || "").trim();
+  if (!band && !tone) return;
+  const wrap = el(
+    "div",
+    "width:100%;max-width:280px;padding:2px 6px 0;text-align:center;box-sizing:border-box;"
+  );
+  wrap.setAttribute("data-fitlook-fit-ease-footnote", "true");
+  if (band) {
+    const bc = fitChestBandColors(band);
+    const bandBadge = el(
+      "div",
+      `display:inline-block;margin:0 auto 4px;padding:5px 9px;border-radius:6px;font-size:8px;font-weight:700;line-height:1.3;letter-spacing:0.01em;background:${bc.bg};color:${bc.fg};`
+    );
+    bandBadge.textContent = band;
+    wrap.appendChild(bandBadge);
+  }
+  if (tone) {
+    const { bg, fg } = fitEaseToneColors(tone);
+    const badge = el(
+      "div",
+      `display:inline-block;margin:0 auto;padding:5px 9px;border-radius:6px;font-size:8px;font-weight:600;line-height:1.3;letter-spacing:0.01em;background:${bg};color:${fg};`
+    );
+    badge.textContent = tone;
+    wrap.appendChild(badge);
+  }
+  parent.appendChild(wrap);
 }
 
 function iconPerson(): SVGSVGElement {
@@ -119,26 +482,26 @@ export function renderModalWithLoading(
   const overlay = document.createElement("div");
   overlay.setAttribute("data-fitlook-modal", "true");
   overlay.setAttribute("data-fitlook-modal-overlay", "true");
-  overlay.style.cssText = `
-    position: fixed !important; inset: 0 !important;
-    background: ${SURFACE_BG} !important;
-    z-index: 10000 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-    opacity: 0; animation: fitlook-fade-in 0.22s ease-out forwards;
-  `;
+  overlay.className = "fitlook-modal-overlay-shell";
 
   const contentArea = document.createElement("div");
   contentArea.setAttribute("data-fitlook-content-area", "true");
+  /** 上下インセットの大きい方で揃え、ノッチ下で「中央より下」に見えるのを防ぐ */
+  const safeBlockPad = "max(8px, env(safe-area-inset-top), env(safe-area-inset-bottom))";
   contentArea.style.cssText =
-    "flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;padding:max(8px, env(safe-area-inset-top)) 12px max(8px, env(safe-area-inset-bottom));box-sizing:border-box;background:" +
+    "flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:visible;padding:" +
+    safeBlockPad +
+    " 12px " +
+    safeBlockPad +
+    ";box-sizing:border-box;background:" +
     SURFACE_BG +
     ";";
 
   const splashWrap = document.createElement("div");
+  /** `public/icon/logo.html` と同様にビューポート中央のみ。過大な padding はロゴ下に空域ができ「二重の表示」に見えるため付けない */
   splashWrap.style.cssText =
-    "flex:1;display:flex;align-items:center;justify-content:center;width:100%;min-height:0;background:" +
+    "flex:1;display:flex;align-items:center;justify-content:center;width:100%;min-height:0;overflow:hidden;box-sizing:border-box;" +
+    "padding:0 12px;background:" +
     SURFACE_BG +
     ";";
   const cancelSplash = mountFitLookLogoLoadingAnimation(splashWrap);
@@ -146,6 +509,25 @@ export function renderModalWithLoading(
 
   overlay.appendChild(contentArea);
   document.body.appendChild(overlay);
+
+  if (_params.desktopPanel === true) {
+    attachDesktopOverlayLayoutSync(overlay);
+  }
+
+  // #region agent log
+  fetch("http://127.0.0.1:7468/ingest/8ae11b2e-0353-49f9-add8-94485bd038d3", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a81229" },
+    body: JSON.stringify({
+      sessionId: "a81229",
+      hypothesisId: "A",
+      location: "widget-modal.ts:renderModalWithLoading:afterAttach",
+      message: "loading overlay desktopPanel",
+      data: { desktopPanelIsTrue: _params.desktopPanel === true, calledAttach: _params.desktopPanel === true },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
 
   const cleanup = { fn: cancelSplash };
   (overlay as unknown as { __fitlookCleanup: typeof cleanup }).__fitlookCleanup = cleanup;
@@ -158,27 +540,34 @@ export function updateModalWithConfig(
   config: WidgetConfig,
   params: WidgetParams,
   overlay: HTMLElement,
-  contentArea: HTMLElement
+  contentArea: HTMLElement,
+  reopenHandler?: () => void,
+  options?: { deferGarmentViewerMs?: number }
 ) {
   if (!overlay || !contentArea) return;
   injectStyles();
 
+  if (params.desktopPanel === true) {
+    attachDesktopOverlayLayoutSync(overlay);
+  }
+
   const prevCleanup = (overlay as unknown as { __fitlookCleanup?: { fn: () => void } }).__fitlookCleanup;
   if (prevCleanup?.fn) prevCleanup.fn();
+
+  const deferGarmentViewerMs = Math.max(0, options?.deferGarmentViewerMs ?? 0);
 
   const ui = config.design;
   const interfaceBg = ui?.interfaceBackgroundColor ?? SURFACE_BG;
   const canvasBg = ui?.canvasBackgroundColor ?? SURFACE_BG;
   const ctaCart = ui?.ctaCartLabel ?? "カートに追加";
   const ctaTryOn = ui?.ctaTryOnLabel ?? "この体型で試着する";
-  const accent = ui?.ctaAccentColor ?? ACCENT_DEFAULT;
+  const accent = normalizeWidgetCtaAccentColor(ui?.ctaAccentColor);
 
   contentArea.innerHTML = "";
   contentArea.style.cssText =
     "flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;position:relative;background:" +
     interfaceBg +
     ";padding:max(8px, env(safe-area-inset-top)) 12px max(8px, env(safe-area-inset-bottom));box-sizing:border-box;";
-  overlay.style.setProperty("background", interfaceBg, "important");
 
   /**
    * 端末枠（黒ベゼル・max-width 制限）:
@@ -288,7 +677,12 @@ export function updateModalWithConfig(
     "border:none;background:transparent;padding:6px 0;font-size:12px;color:#111;cursor:pointer;display:flex;align-items:center;gap:4px;"
   );
   backBtn.textContent = "← 閉じる";
-  backBtn.addEventListener("click", () => closeOverlay(overlay));
+  backBtn.addEventListener("click", () => {
+    closeOverlay(overlay);
+    if (reopenHandler) {
+      queueMicrotask(reopenHandler);
+    }
+  });
   backRow.appendChild(backBtn);
   screenRoot.appendChild(backRow);
 
@@ -394,7 +788,7 @@ export function updateModalWithConfig(
   // ── 試着表示（開発と同じ計算の SVG）または従来のシルエット＋サムネ
   const viewerArea = el(
     "div",
-    `flex:1;min-height:120px;min-width:0;flex-basis:0;position:relative;background:${canvasBg};display:flex;align-items:center;justify-content:center;overflow:visible;padding:16px;box-sizing:border-box;`
+    `flex:1;min-height:120px;min-width:0;flex-basis:0;position:relative;background:${canvasBg};display:flex;align-items:center;justify-content:center;overflow:visible;padding:8px;box-sizing:border-box;`
   );
   viewerArea.setAttribute("data-fitlook-viewer-container", "true");
 
@@ -405,25 +799,61 @@ export function updateModalWithConfig(
    * スマホフレームは見た目の枠であり、計算パイプラインとは無関係。
    * 完全に同じ滑らかさにするには `garment_spec` をクライアントに載せて同じクライアント計算をバンドルする必要がある（別途大きな対応）。
    */
-  function mountFitSvgElement(target: HTMLElement, svg: SVGSVGElement): void {
-    svg.style.opacity = "0";
-    svg.style.transition = "opacity 0.2s ease-out";
-    target.appendChild(svg);
+  /** 体型・服パス → 図解（ポイント・採寸数値）。初回のみ段階フェード、再取得（subtle）時は図解を消さない */
+  function mountFitSvgStaged(
+    parent: HTMLElement,
+    svg: SVGSVGElement,
+    opts: { bodyOnly: boolean; hasDiagram: boolean; instantDiagram?: boolean }
+  ): void {
+    const gBody = svg.querySelector("[data-fitlook-fit-body]");
+    const gGarment = svg.querySelector("[data-fitlook-fit-garment]");
+    const diag = svg.querySelector("[data-fitlook-ease-diagram]");
+    const fadeBodyMs = "0.42s";
+    const instantDiagram = opts.instantDiagram === true;
+
+    if (gBody instanceof SVGGElement) {
+      gBody.style.opacity = "0";
+      gBody.style.transition = `opacity ${fadeBodyMs} ease-out`;
+    }
+    if (!opts.bodyOnly && gGarment instanceof SVGGElement) {
+      gGarment.style.opacity = "0";
+      gGarment.style.transition = `opacity ${fadeBodyMs} ease-out`;
+    }
+    if (opts.hasDiagram && diag instanceof SVGGElement) {
+      if (instantDiagram) {
+        diag.style.opacity = "1";
+      } else {
+        diag.style.opacity = "0";
+        diag.style.transition = "opacity 0.35s ease-out";
+      }
+    }
+
+    parent.appendChild(svg);
+
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        svg.style.opacity = "1";
+        if (gBody instanceof SVGGElement) gBody.style.opacity = "1";
+        if (!opts.bodyOnly && gGarment instanceof SVGGElement) gGarment.style.opacity = "1";
       });
     });
+
+    if (opts.hasDiagram && diag instanceof SVGGElement && !instantDiagram) {
+      window.setTimeout(() => {
+        diag.style.opacity = "1";
+      }, 420);
+    }
   }
 
   async function loadGarmentFitSvgInto(
     target: HTMLElement,
     heightCm: number,
     bodyVal: number,
-    options?: { bodyOnly?: boolean; subtleLoading?: boolean }
+    options?: { bodyOnly?: boolean; subtleLoading?: boolean; stagedEaseAfterBody?: boolean }
   ): Promise<void> {
     const bodyOnly = options?.bodyOnly === true;
     const subtleLoading = options?.subtleLoading === true;
+    /** 体型適用後など、subtle でも図解・脚注を初回と同様に遅延表示する */
+    const stagedEaseAfterBody = options?.stagedEaseAfterBody === true;
     if (!garmentFitAvailable || !params.publicKey) return;
     const ext = params.externalProductId || params.productId;
     if (!ext) return;
@@ -437,6 +867,7 @@ export function updateModalWithConfig(
     const canSubtle =
       subtleLoading &&
       (target.querySelector("svg") != null || target.querySelector("img") != null);
+    const skipEaseStagedDelay = canSubtle && !stagedEaseAfterBody;
 
     target.querySelectorAll("[data-fitlook-fit-loading]").forEach((n) => n.remove());
 
@@ -466,15 +897,22 @@ export function updateModalWithConfig(
         garmentPathStrokeDasharrays?: (string | undefined)[];
         garmentPathStrokeWidths?: (number | undefined)[];
         garmentPathStrokes?: (string | undefined)[];
+        fitEaseSummary?: WidgetFitEaseSummaryJson;
+        fitEaseDiagram?: WidgetFitEaseDiagramJson | null;
       };
       if (stale()) return;
       target.innerHTML = "";
+      const column = el(
+        "div",
+        "display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:100%;max-width:100%;max-height:100%;min-height:0;"
+      );
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       svg.setAttribute("viewBox", `0 0 ${data.viewBoxWidth} ${data.viewBoxHeight}`);
       svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
       svg.style.cssText =
-        "width:100%;max-width:300px;height:auto;max-height:100%;display:block;margin:0 auto;";
+        "width:100%;max-width:100%;height:auto;max-height:100%;display:block;margin:0 auto;";
       const gBody = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      gBody.setAttribute("data-fitlook-fit-body", "true");
       gBody.setAttribute("fill", "none");
       gBody.setAttribute("stroke", "#bbb");
       gBody.setAttribute("stroke-width", "4");
@@ -486,6 +924,7 @@ export function updateModalWithConfig(
       svg.appendChild(gBody);
       if (!bodyOnly) {
         const gGarment = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        gGarment.setAttribute("data-fitlook-fit-garment", "true");
         gGarment.setAttribute("fill", "none");
         const dashArr = data.garmentPathStrokeDasharrays;
         const widthArr = data.garmentPathStrokeWidths;
@@ -505,8 +944,55 @@ export function updateModalWithConfig(
           gGarment.appendChild(p);
         }
         svg.appendChild(gGarment);
+        const dia = data.fitEaseDiagram;
+        if (dia && Array.isArray(dia.ops) && dia.ops.length > 0) {
+          appendFitEaseDiagramToSvg(svg, dia);
+        }
       }
-      mountFitSvgElement(target, svg);
+      const hasDiagram = Boolean(
+        !bodyOnly && data.fitEaseDiagram && Array.isArray(data.fitEaseDiagram.ops) && data.fitEaseDiagram.ops.length > 0
+      );
+      /** 初回・体型適用後は体型・服→図解→文言。サイズ変更の subtle のみ図解を即表示 */
+      mountFitSvgStaged(column, svg, {
+        bodyOnly,
+        hasDiagram,
+        instantDiagram: skipEaseStagedDelay && hasDiagram,
+      });
+      if (!bodyOnly) {
+        const dia = data.fitEaseDiagram;
+        if (dia && Array.isArray(dia.ops) && dia.ops.length > 0) {
+          if (skipEaseStagedDelay) {
+            appendFitEaseFootnote(column, data.fitEaseSummary);
+          } else {
+            const footWrap = el(
+              "div",
+              "width:100%;max-width:100%;opacity:0;transition:opacity 0.35s ease-out;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;"
+            );
+            appendFitEaseFootnote(footWrap, data.fitEaseSummary);
+            if (footWrap.childNodes.length > 0) {
+              column.appendChild(footWrap);
+              window.setTimeout(() => {
+                footWrap.style.opacity = "1";
+              }, 540);
+            }
+          }
+        } else if (skipEaseStagedDelay) {
+          appendWidgetFitEaseSummary(column, data.fitEaseSummary);
+        } else {
+          const sumWrap = el(
+            "div",
+            "width:100%;max-width:100%;opacity:0;transition:opacity 0.35s ease-out;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;"
+          );
+          appendWidgetFitEaseSummary(sumWrap, data.fitEaseSummary);
+          if (sumWrap.childNodes.length > 0) {
+            column.appendChild(sumWrap);
+            window.setTimeout(() => {
+              sumWrap.style.opacity = "1";
+            }, 480);
+          }
+        }
+      }
+      target.appendChild(column);
     } catch {
       if (stale()) return;
       if (canSubtle) {
@@ -528,14 +1014,21 @@ export function updateModalWithConfig(
     }
   }
 
-  async function loadGarmentFitSvg(opts?: { subtle?: boolean }): Promise<void> {
+  async function loadGarmentFitSvg(opts?: { subtle?: boolean; stagedEaseAfterBody?: boolean }): Promise<void> {
     return loadGarmentFitSvgInto(viewerArea, fitHeightCm, fitBodyVal, {
       subtleLoading: opts?.subtle === true,
+      stagedEaseAfterBody: opts?.stagedEaseAfterBody === true,
     });
   }
 
   if (garmentFitAvailable) {
-    void loadGarmentFitSvg();
+    if (deferGarmentViewerMs > 0) {
+      window.setTimeout(() => {
+        void loadGarmentFitSvg();
+      }, deferGarmentViewerMs);
+    } else {
+      void loadGarmentFitSvg();
+    }
   } else if (thumbnailUrl) {
     garmentImg = document.createElement("img");
     garmentImg.src = thumbnailUrl;
@@ -692,6 +1185,7 @@ export function updateModalWithConfig(
     } catch {
       /* ignore */
     }
+    tryNavigateAddToCart(params, currentSize, selectedColorId);
   });
   cartWrap.appendChild(cartBtn);
   screenRoot.appendChild(cartWrap);
@@ -859,7 +1353,7 @@ export function updateModalWithConfig(
         }).catch(() => {});
       }
       if (garmentFitAvailable) {
-        void loadGarmentFitSvg({ subtle: true });
+        void loadGarmentFitSvg({ subtle: true, stagedEaseAfterBody: true });
       }
       closeBodyAdjustOverlay();
     });
@@ -883,21 +1377,61 @@ export function updateModalWithConfig(
 export function mountEmbedIframe(
   overlay: HTMLElement,
   contentArea: HTMLElement,
-  params: WidgetParams
+  params: WidgetParams,
+  reopenHandler?: () => void,
+  options?: { surfaceBackgroundColor?: string }
 ): void {
+  const surfaceBg = options?.surfaceBackgroundColor?.trim() || "#fafafa";
+  injectStyles();
   const splashCleanup = (overlay as unknown as { __fitlookCleanup?: { fn: () => void } }).__fitlookCleanup;
   if (splashCleanup?.fn) splashCleanup.fn();
 
+  // #region agent log
+  fetch("http://127.0.0.1:7468/ingest/8ae11b2e-0353-49f9-add8-94485bd038d3", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a81229" },
+    body: JSON.stringify({
+      sessionId: "a81229",
+      hypothesisId: "A",
+      location: "widget-modal.ts:mountEmbedIframe:entry",
+      message: "mountEmbedIframe desktopPanel branch",
+      data: { desktopPanelIsTrue: params.desktopPanel === true },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
+
+  if (params.desktopPanel === true) {
+    attachDesktopOverlayLayoutSync(overlay);
+  }
+
   contentArea.innerHTML = "";
-  contentArea.style.cssText =
-    "flex:1;min-height:0;position:relative;width:100%;height:100%;padding:0;margin:0;overflow:hidden;background:#fafafa;";
-  overlay.style.setProperty("background", "#fafafa", "important");
+  /**
+   * `data-fitlook-desktop-panel="1"` のときはインラインで flex:1 を付けない（付けると列フレックスで子が伸び切り全画面になる）。
+   * 幅・パネル化は injectStyles の !important に任せる。
+   */
+  if (params.desktopPanel === true) {
+    contentArea.style.cssText =
+      "box-sizing:border-box;display:block;position:relative;padding:0;margin:0;overflow:hidden;background:" +
+      surfaceBg +
+      ";min-height:0;";
+  } else {
+    contentArea.style.cssText =
+      "flex:1;min-height:0;position:relative;width:100%;height:100%;padding:0;margin:0;overflow:hidden;background:" +
+      surfaceBg +
+      ";";
+  }
 
   const apiBase = getApiBaseUrl() || (typeof window !== "undefined" ? window.location.origin : "");
   const pk = encodeURIComponent(params.publicKey || "");
   const ext = encodeURIComponent(params.externalProductId || params.productId || "");
   const iframe = document.createElement("iframe");
-  iframe.src = `${apiBase}/embed/widget-fit?publicKey=${pk}&externalProductId=${ext}`;
+  let iframeSrc = `${apiBase}/embed/widget-fit?publicKey=${pk}&externalProductId=${ext}`;
+  const cartTpl = params.addToCartUrlTemplate?.trim();
+  if (cartTpl) {
+    iframeSrc += `&addToCartUrl=${encodeURIComponent(cartTpl)}`;
+  }
+  iframe.src = iframeSrc;
   iframe.setAttribute("title", "FIT&LOOK 試着");
   iframe.style.cssText =
     "position:absolute;left:0;top:0;width:100%;height:100%;border:none;display:block;";
@@ -908,6 +1442,9 @@ export function mountEmbedIframe(
     if (e.data?.type !== "fitlook-embed-close") return;
     window.removeEventListener("message", onMsg);
     closeOverlay(overlay);
+    if (reopenHandler) {
+      queueMicrotask(reopenHandler);
+    }
   };
   window.addEventListener("message", onMsg);
 
@@ -916,6 +1453,10 @@ export function mountEmbedIframe(
       window.removeEventListener("message", onMsg);
     },
   };
+
+  if (params.desktopPanel === true) {
+    requestAnimationFrame(() => attachDesktopOverlayLayoutSync(overlay));
+  }
 }
 
 export function showErrorInModal(
@@ -937,7 +1478,6 @@ export function showErrorInModal(
     padding-top: max(24px, env(safe-area-inset-top));
     padding-bottom: max(24px, env(safe-area-inset-bottom));
   `;
-  overlay.style.setProperty("background", SURFACE_BG, "important");
   const div = document.createElement("div");
   div.style.cssText = "color:#dc2626;font-size:15px;line-height:1.5;white-space:pre-line;";
   div.textContent = errorMessage;

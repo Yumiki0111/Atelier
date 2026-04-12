@@ -9,8 +9,6 @@ import type { CustomGarmentData, GenericVertexPlotHighlight } from "../lib/types
 /** 連結頂点 # の文字（密な頂点でも重なりにくいよう小さめ） */
 export const FONT_INDEX_GARMENT = 14;
 export const FONT_INDEX_GARMENT_HIGHLIGHT = 16;
-export const FONT_INDEX_GARMENT_SHOULDER = 18;
-export const FONT_INDEX_SHOULDER_BADGE = 16;
 
 export function indexLabelStrokeWidth(fontSize: number): number {
   return Math.max(1, Math.round(fontSize * 0.09));

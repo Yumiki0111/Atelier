@@ -7,17 +7,55 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import Image from "next/image";
 import { ArrowLeft, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  WIDGET_DESIGN_CANVAS_BG_DEFAULT,
+  WIDGET_DESIGN_CTA_ACCENT_DEFAULT,
+} from "@Atelier/shared";
+import {
+  buildPreviewChromeTheme,
+  type PreviewChromeTheme,
+} from "@/lib/previewChromeTheme";
 
-export const PREVIEW_ACCENT = "#3d3835";
+export const PREVIEW_ACCENT = WIDGET_DESIGN_CTA_ACCENT_DEFAULT;
 
 /** 試着プレビュー全体の下地（描画キャンパス・ヘッダー下・フォン画面内を同じ色に） */
-export const PREVIEW_SURFACE_BG = "#fafafa";
+export const PREVIEW_SURFACE_BG = WIDGET_DESIGN_CANVAS_BG_DEFAULT;
+
+const DEFAULT_PREVIEW_CHROME_THEME = buildPreviewChromeTheme(
+  PREVIEW_SURFACE_BG,
+  PREVIEW_SURFACE_BG
+);
+
+const PreviewChromeThemeContext = createContext<PreviewChromeTheme>(DEFAULT_PREVIEW_CHROME_THEME);
+
+export function PreviewChromeThemeProvider({
+  interfaceBackgroundColor,
+  canvasBackgroundColor,
+  children,
+}: {
+  interfaceBackgroundColor: string;
+  canvasBackgroundColor: string;
+  children: ReactNode;
+}) {
+  const value = useMemo(
+    () => buildPreviewChromeTheme(interfaceBackgroundColor, canvasBackgroundColor),
+    [interfaceBackgroundColor, canvasBackgroundColor]
+  );
+  return (
+    <PreviewChromeThemeContext.Provider value={value}>{children}</PreviewChromeThemeContext.Provider>
+  );
+}
+
+export function usePreviewChromeTheme(): PreviewChromeTheme {
+  return useContext(PreviewChromeThemeContext);
+}
 
 /** `default` = コンソールのプレビュー（コンパクト）。`embed` = ウィジェット iframe 用（タップしやすい） */
 export type PreviewChromeUiScale = "default" | "embed";
@@ -50,21 +88,25 @@ export function PreviewBackRow({
 }) {
   const scale = usePreviewChromeScale();
   const isEmbed = scale === "embed";
+  const theme = usePreviewChromeTheme();
+  const fg = theme.interface.fg;
   return (
     <div className="shrink-0 px-3 pb-1 pt-[max(10px,env(safe-area-inset-top))]">
       <button
         type="button"
         onClick={onClick}
         className={cn(
-          "flex cursor-pointer items-center border-none bg-transparent pl-0 pr-1 text-[#111]",
+          "flex cursor-pointer items-center border-none bg-transparent pl-0 pr-1",
           isEmbed
             ? "min-h-[44px] gap-1.5 py-2 text-[14px]"
             : "gap-1 py-1.5 text-[12px]"
         )}
+        style={{ color: fg }}
       >
         <ArrowLeft
           className={cn("shrink-0", isEmbed ? "h-[18px] w-[18px]" : "h-3.5 w-3.5")}
           strokeWidth={isEmbed ? 1.75 : 1.5}
+          color={fg}
           aria-hidden
         />
         {label}
@@ -87,6 +129,8 @@ export function PreviewProductRow({
 }) {
   const scale = usePreviewChromeScale();
   const isEmbed = scale === "embed";
+  const theme = usePreviewChromeTheme();
+  const { fg, mutedFg, border, surfaceSubtle } = theme.interface;
   return (
     <div
       className={cn(
@@ -101,11 +145,8 @@ export function PreviewProductRow({
         )}
       >
         <div
-          className={cn(
-            "shrink-0 overflow-hidden rounded-full border border-[#e5e7eb] bg-[#f3f4f6]",
-            isEmbed ? "h-10 w-10" : "h-8 w-8"
-          )}
-          style={{ borderRadius: "50%" }}
+          className={cn("shrink-0 overflow-hidden rounded-full border", isEmbed ? "h-10 w-10" : "h-8 w-8")}
+          style={{ borderRadius: "50%", borderColor: border, backgroundColor: surfaceSubtle }}
         >
           {thumbnailUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -113,9 +154,10 @@ export function PreviewProductRow({
           ) : (
             <div
               className={cn(
-                "flex h-full w-full items-center justify-center text-[#9ca3af]",
+                "flex h-full w-full items-center justify-center",
                 isEmbed ? "text-[9px]" : "text-[7px]"
               )}
+              style={{ color: mutedFg }}
             >
               IMG
             </div>
@@ -124,13 +166,18 @@ export function PreviewProductRow({
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <div
             className={cn(
-              "break-words font-normal text-[#111]",
+              "min-w-0 truncate font-normal",
               isEmbed ? "text-[11px] leading-snug" : "text-[9px] leading-tight"
             )}
+            style={{ color: fg }}
+            title={productName}
           >
             {productName}
           </div>
-          <div className={cn("font-normal text-[#111]", isEmbed ? "text-[10px]" : "text-[8px]")}>
+          <div
+            className={cn("font-normal", isEmbed ? "text-[10px]" : "text-[8px]")}
+            style={{ color: fg }}
+          >
             {priceDisplay}
           </div>
         </div>
@@ -144,16 +191,23 @@ export function PreviewBodyChangeButton({ onClick }: { onClick: () => void }) {
   const scale = usePreviewChromeScale();
   const isEmbed = scale === "embed";
   const imgPx = isEmbed ? 16 : 12;
+  const theme = usePreviewChromeTheme();
+  const { fg, border, chipIdleBg } = theme.interface;
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        "flex shrink-0 cursor-pointer items-center whitespace-nowrap rounded-full border border-[#111] bg-white font-semibold text-[#111]",
+        "flex shrink-0 cursor-pointer items-center whitespace-nowrap rounded-full border font-semibold",
         isEmbed
           ? "min-h-[40px] gap-1 px-2.5 py-1.5 text-[11px] leading-tight"
           : "h-8 gap-[3px] px-[7px] py-0 text-[9px] leading-none"
       )}
+      style={{
+        borderColor: border,
+        backgroundColor: chipIdleBg,
+        color: fg,
+      }}
     >
       <span
         className={cn(
@@ -190,6 +244,8 @@ export function PreviewColorSwatchRow({
 }) {
   const scale = usePreviewChromeScale();
   const isEmbed = scale === "embed";
+  const theme = usePreviewChromeTheme();
+  const idleBorder = theme.interface.border;
   return (
     <div
       className={cn(
@@ -210,7 +266,7 @@ export function PreviewColorSwatchRow({
           style={{
             background: sw.hex,
             border:
-              sw.id === selectedId ? `3px solid ${accentColor}` : "1px solid #ccc",
+              sw.id === selectedId ? `3px solid ${accentColor}` : `1px solid ${idleBorder}`,
           }}
         />
       ))}
@@ -232,7 +288,7 @@ export function PreviewViewerShell({
 }) {
   return (
     <div
-      className="relative flex min-h-0 flex-1 basis-0 flex-col overflow-visible px-4 pb-4 pt-4"
+      className="relative flex min-h-0 flex-1 basis-0 flex-col overflow-visible px-2 pb-2 pt-2"
       style={{ backgroundColor: backgroundColor ?? PREVIEW_SURFACE_BG }}
       data-fitlook-viewer-container
     >
@@ -272,6 +328,7 @@ export function PreviewSizeCarousel({
 }) {
   const scale = usePreviewChromeScale();
   const isEmbed = scale === "embed";
+  const cv = usePreviewChromeTheme().canvas;
   const slice = sizeKeys.slice(windowStart, windowStart + PREVIEW_SIZE_CAROUSEL_WINDOW);
   const idx = sizeKeys.indexOf(currentSize);
   const canPrev = idx > 0;
@@ -326,9 +383,10 @@ export function PreviewSizeCarousel({
           type="button"
           aria-label="前のサイズ"
           className={cn(
-            "m-0 flex shrink-0 items-center justify-center rounded-full border-none bg-transparent p-0 leading-none text-[#111] disabled:pointer-events-none disabled:opacity-35",
+            "m-0 flex shrink-0 items-center justify-center rounded-full border-none bg-transparent p-0 leading-none disabled:pointer-events-none disabled:opacity-35",
             isEmbed ? "text-[26px]" : "text-[20px]"
           )}
+          style={{ color: cv.fg }}
           disabled={!canPrev}
           onClick={() => {
             if (!canPrev || idx <= 0) return;
@@ -369,7 +427,11 @@ export function PreviewSizeCarousel({
                   style={
                     isSel
                       ? { background: accentColor, color: "#fff", border: "none" }
-                      : { background: "#fff", color: "#111", border: "1px solid #111" }
+                      : {
+                          background: cv.chipIdleBg,
+                          color: cv.chipIdleFg,
+                          border: `1px solid ${cv.chipIdleBorder}`,
+                        }
                   }
                 >
                   {sz}
@@ -382,9 +444,10 @@ export function PreviewSizeCarousel({
           type="button"
           aria-label="次のサイズ"
           className={cn(
-            "m-0 flex shrink-0 items-center justify-center rounded-full border-none bg-transparent p-0 leading-none text-[#111] disabled:pointer-events-none disabled:opacity-35",
+            "m-0 flex shrink-0 items-center justify-center rounded-full border-none bg-transparent p-0 leading-none disabled:pointer-events-none disabled:opacity-35",
             isEmbed ? "text-[26px]" : "text-[20px]"
           )}
+          style={{ color: cv.fg }}
           disabled={!canNext}
           onClick={() => {
             if (!canNext || idx < 0) return;
@@ -417,6 +480,7 @@ export function PreviewFitParamSliders({
 }) {
   const scale = usePreviewChromeScale();
   const isEmbed = scale === "embed";
+  const cv = usePreviewChromeTheme().canvas;
 
   const [heightLocal, setHeightLocal] = useState(heightCm);
   const [bodyLocal, setBodyLocal] = useState(bodyVal);
@@ -529,9 +593,10 @@ export function PreviewFitParamSliders({
       <div>
         <div
           className={cn(
-            "flex justify-between font-normal leading-tight text-[#111]",
+            "flex justify-between font-normal leading-tight",
             isEmbed ? "mb-1.5 text-[11px]" : "mb-1 text-[9px]"
           )}
+          style={{ color: cv.fg }}
         >
           <span>身長</span>
           <span>
@@ -553,9 +618,10 @@ export function PreviewFitParamSliders({
       <div>
         <div
           className={cn(
-            "font-normal leading-tight text-[#111]",
+            "font-normal leading-tight",
             isEmbed ? "mb-1.5 text-[11px]" : "mb-1 text-[9px]"
           )}
+          style={{ color: cv.fg }}
         >
           シルエット
         </div>

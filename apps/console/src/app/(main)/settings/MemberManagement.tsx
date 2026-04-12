@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, AlertCircle, Crown, User as UserIcon, Trash2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Users, Crown, User as UserIcon, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { authenticatedFetch } from "@/lib/auth/api-client";
 import {
@@ -133,10 +133,9 @@ export function MemberManagement({ currentUserId, userRole }: MemberManagementPr
             <Users className="h-5 w-5" />
             メンバー管理
           </CardTitle>
-          <CardDescription>ショップメンバーの権限管理と削除</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-500">読み込み中...</p>
+          <p className="text-sm text-muted-foreground">読み込み中...</p>
         </CardContent>
       </Card>
     );
@@ -149,14 +148,9 @@ export function MemberManagement({ currentUserId, userRole }: MemberManagementPr
           <Users className="h-5 w-5" />
           メンバー一覧
         </CardTitle>
-        <CardDescription>
-          {isOwner
-            ? "ショップメンバーの権限管理と削除"
-            : "ショップメンバーの一覧（閲覧のみ）"}
-        </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="border rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -170,7 +164,7 @@ export function MemberManagement({ currentUserId, userRole }: MemberManagementPr
             <TableBody>
               {members.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-gray-500">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     メンバーが見つかりません
                   </TableCell>
                 </TableRow>
@@ -180,18 +174,18 @@ export function MemberManagement({ currentUserId, userRole }: MemberManagementPr
                     <TableCell className="font-medium">
                       {member.email}
                       {member.id === currentUserId && (
-                        <span className="ml-2 text-xs text-gray-500">(あなた)</span>
+                        <span className="ml-2 text-xs text-muted-foreground">(あなた)</span>
                       )}
                     </TableCell>
                     <TableCell>{member.name || "-"}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {member.id === currentUserId ? (
-                          <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 rounded text-sm">
+                          <div className="flex items-center gap-1.5 rounded-md bg-muted/60 px-2 py-1 text-sm">
                             {member.role === "owner" ? (
-                              <><Crown className="h-3.5 w-3.5 text-yellow-600" /><span>オーナー</span></>
+                              <><Crown className="h-3.5 w-3.5 text-primary" /><span>オーナー</span></>
                             ) : (
-                              <><UserIcon className="h-3.5 w-3.5 text-blue-600" /><span>メンバー</span></>
+                              <><UserIcon className="h-3.5 w-3.5 text-muted-foreground" /><span>メンバー</span></>
                             )}
                           </div>
                         ) : isOwner ? (
@@ -206,22 +200,22 @@ export function MemberManagement({ currentUserId, userRole }: MemberManagementPr
                             <SelectContent>
                               <SelectItem value="owner">
                                 <div className="flex items-center gap-1.5">
-                                  <Crown className="h-3.5 w-3.5 text-yellow-600" /><span>オーナー</span>
+                                  <Crown className="h-3.5 w-3.5 text-primary" /><span>オーナー</span>
                                 </div>
                               </SelectItem>
                               <SelectItem value="member">
                                 <div className="flex items-center gap-1.5">
-                                  <UserIcon className="h-3.5 w-3.5 text-blue-600" /><span>メンバー</span>
+                                  <UserIcon className="h-3.5 w-3.5 text-muted-foreground" /><span>メンバー</span>
                                 </div>
                               </SelectItem>
                             </SelectContent>
                           </Select>
                         ) : (
-                          <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-50 rounded text-sm">
+                          <div className="flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-1 text-sm">
                             {member.role === "owner" ? (
-                              <><Crown className="h-3.5 w-3.5 text-yellow-600" /><span>オーナー</span></>
+                              <><Crown className="h-3.5 w-3.5 text-primary" /><span>オーナー</span></>
                             ) : (
-                              <><UserIcon className="h-3.5 w-3.5 text-blue-600" /><span>メンバー</span></>
+                              <><UserIcon className="h-3.5 w-3.5 text-muted-foreground" /><span>メンバー</span></>
                             )}
                           </div>
                         )}
@@ -248,22 +242,7 @@ export function MemberManagement({ currentUserId, userRole }: MemberManagementPr
               )}
             </TableBody>
           </Table>
-        </div>
-
-        <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
-          <div className="flex items-start gap-2">
-            <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-            <div className="text-sm text-amber-800">
-              <p className="font-medium mb-1">注意事項:</p>
-              <ul className="space-y-1 list-disc list-inside">
-                <li>オーナーは全ての機能にアクセスできます</li>
-                <li>メンバーは基本的な機能のみ使用できます</li>
-                <li>削除されたメンバーはログインできなくなります</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </CardContent>
+        </div></CardContent>
     </Card>
   );
 }

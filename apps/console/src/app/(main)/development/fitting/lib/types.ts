@@ -25,7 +25,6 @@ export interface CustomGarmentData {
    * 汎用（genericSymmetricTop）。
    * - 袖 Y スケール対象 path は `sleeveMeasureVertexStart`〜`End` が収まる単一 path のみ（コードは path を差し替えない）。
    * - `sleeveMeasureVertexChain` がある場合、各 # はその path 上に無ければならない（跨ぎは無効）。
-   * - `sleeveMeasureArcTargetChain` は任意で、指定時のみ袖丈ソルバの弧長目標がそのサブチェーンになる（赤線は `sleeveMeasureVertexChain` のまま）。
    * - 着丈・袖丈の連結 # で軽量グレーディング（design 縦スケール）→ 通常プレース。
    * - `applied` と 4 連結区間はデータ互換・API 用。
    */
@@ -57,12 +56,6 @@ export interface CustomGarmentData {
      * 指定時は各 # が上記 min/max と同じ path 上に無ければならない（跨 path は無効）。
      */
     sleeveMeasureVertexChain?: number[];
-    /**
-     * 袖丈 **cm 合わせ・ソルバ** の弧長にだけ使う連結 #（順序付き）。未指定時は `sleeveMeasureVertexChain` と同じ。
-     * 赤線の表示チェーンを長くしつつ、目標弧長は短いサブチェーンにしたいとき（例: カフ折れを除く）に指定する。
-     * 各 # は `sleeveMeasureVertex*` と同じ袖 path 上に無ければならない。
-     */
-    sleeveMeasureArcTargetChain?: number[];
     /**
      * 下袖（袖下）の連結頂点範囲。袖丈採寸と同じ単一 path 上にあるとき、胴端・ジャンクションを固定したうえで内点を再配置する（`tryLowerSleeveFollowArgs` が非 null のときのみ）。
      * **1 辺だけ**より、袖下に沿って **複数頂点** を含めると形状がなめらかになりやすい。
@@ -111,10 +104,6 @@ export interface CustomGarmentData {
     sleeveMirrorMeasureVertexEnd?: number;
     sleeveMirrorMeasureVertexChain?: number[];
     /**
-     * ミラー袖の {@link sleeveMeasureArcTargetChain} と同じ意味（プライマリと独立）。
-     */
-    sleeveMirrorMeasureArcTargetChain?: number[];
-    /**
      * **推奨**: 袖丈 cm を合わせるときに伸縮する **袖口側の隣接1辺**（グローバル # のペア）。
      * 未指定時は採寸終端の Y が大きい方＋その隣へフォールバックし、path 向きによっては見た目の袖口とずれる。
      * 同一袖 path 上で隣接していること。
@@ -148,6 +137,10 @@ export interface CustomGarmentData {
      * ワンタッチで切り替えられる。ブローゾンの 3/4/5 に相当。
      */
     sizePresets?: { label: string; length: number; sleeve: number }[];
+    /**
+     * Widget fit: two global vertex # on garment plot. Band uses (warped chord cm) − (model waist reference chord cm).
+     */
+    fitCompareVertexGlobalPair?: [number, number];
   };
 
   /**
@@ -290,12 +283,6 @@ export interface SizeMeasure {
   sleeve: number;
 }
 
-export interface FitResult {
-  chestDiff: number;
-  hemDiff: number;
-  estChest: number;
-}
-
 export interface JacketTransform {
   bSHL_slv: [number, number];
   bSHR_slv: [number, number];
@@ -321,12 +308,11 @@ export interface AffineMatrix {
 
 export type PointTransform = (x: number, y: number) => [number, number];
 
-/** 肩の位置の判定・表示用（FittingCanvas のプロット表示） */
+/** Garment plot vertices and overlay helpers for FittingCanvas. */
 export interface ShoulderDebug {
   bodyShoulderContour: [number, number][];
   garmentShoulderContour: [number, number][];
   garmentShoulderPoints: [number, number][];
-  shoulderPointIndex: number | null;
   garmentType: GarmentType;
   /** 袖丈: チェーンの弧長（px）と換算 cm */
   sleevePathLengthDebug?: { px: number; cm: number };

@@ -3,7 +3,6 @@ import { JACKET_SIZES, JK, REF_WEIGHT_KG } from "@/app/(main)/development/fittin
 import type { JacketSize, MeasureOverlayData, ShoulderDebug } from "@/app/(main)/development/fitting/lib/types";
 import { getPathPoints } from "@/app/(main)/development/fitting/lib/pathUtils";
 import { buildJacketPath } from "@/app/(main)/development/fitting/lib/jacketUtils";
-import { JACKET_SHOULDER_INDEX } from "@/app/(main)/development/fitting/lib/fittingContourUtils";
 
 export function computeJacketGarmentBranch(input: {
   height: number;
@@ -47,8 +46,6 @@ export function computeJacketGarmentBranch(input: {
     bodyShoulderContour,
     garmentShoulderContour: [place(JK.sh_lx, JK.sh_y), place(JK.sh_rx, JK.sh_y)],
     garmentShoulderPoints: jacketOutlinePts,
-    shoulderPointIndex:
-      jacketOutlinePts.length > JACKET_SHOULDER_INDEX ? JACKET_SHOULDER_INDEX : null,
     garmentType: "jacket",
   };
   return { jacketFill: fill, jacketDetail: detail, shoulderDebug, garmentOverlay };

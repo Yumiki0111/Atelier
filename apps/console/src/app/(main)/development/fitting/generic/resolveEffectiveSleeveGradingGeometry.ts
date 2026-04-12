@@ -208,28 +208,9 @@ export type EffectiveSleeveGradingGeometry = {
   gHi: number;
   /** 袖丈ポリライン計測（弧長）。オーバーレイ・表示は主にこちら。未指定なら gLo/gHi の 2 点のみ */
   globalChainForMeasure?: number[];
-  /**
-   * cm 合わせ・袖丈ソルバが使う弧長チェーン。未指定時は `globalChainForMeasure` と同じ。
-   */
-  globalChainForArcTarget?: number[];
   /** 互換用。常に false（コードは袖 path を差し替えない） */
   remappedFromSymmetryGuide: boolean;
 };
-
-function attachArcTargetChainIfValid(
-  pathDs: string[],
-  base: EffectiveSleeveGradingGeometry,
-  arcTargetGt: number[] | undefined
-): EffectiveSleeveGradingGeometry {
-  if (arcTargetGt == null || arcTargetGt.length < 2) return base;
-  const deduped = dedupeGlobalChainPreserveOrder(arcTargetGt.map((g) => Math.trunc(g)));
-  if (deduped.length < 2) return base;
-  for (const g of deduped) {
-    const pi = pathIndexForGlobalVertex(pathDs, g);
-    if (pi == null || pi !== base.sleevePathIdx) return base;
-  }
-  return { ...base, globalChainForArcTarget: deduped };
-}
 
 /**
  * 始点〜終点の min/max が path を跨ぐが、連結チェーンの全 # が同一 path に乗るときの救済。
@@ -331,7 +312,7 @@ export function resolveEffectiveSleeveGradingGeometry(
     gt.sleeveMeasureVertexChain
   );
   if (base == null) return null;
-  return attachArcTargetChainIfValid(pathDs, base, gt.sleeveMeasureArcTargetChain);
+  return base;
 }
 
 /** ミラー袖（`sleeveMirrorMeasureVertex*`）の単一 path 幾何。 */
@@ -347,7 +328,7 @@ export function resolveEffectiveMirrorSleeveGradingGeometry(
     gt.sleeveMirrorMeasureVertexChain
   );
   if (base == null) return null;
-  return attachArcTargetChainIfValid(pathDs, base, gt.sleeveMirrorMeasureArcTargetChain);
+  return base;
 }
 
 /**

@@ -44,7 +44,6 @@ export function useFittingControlsGenericDraftSync(params: {
   setGenericDraft: Dispatch<SetStateAction<GenericDraft>>;
   measureVertexRangeSectionFocusedRef: MutableRefObject<boolean>;
   flushMeasureVertexDraftToParent: () => void;
-  presetSizeKey: "3" | "4" | "5";
 } {
   const {
     isGenericTopActive,
@@ -220,16 +219,6 @@ export function useFittingControlsGenericDraftSync(params: {
                 Math.max(gt.sleeveMirrorFirstEdgeGlobalPair[0], gt.sleeveMirrorFirstEdgeGlobalPair[1]),
               ])
             : "",
-        sleeveMeasureArcTargetRange: skipMeasureCoalesce
-          ? d.sleeveMeasureArcTargetRange
-          : gt.sleeveMeasureArcTargetChain != null && gt.sleeveMeasureArcTargetChain.length >= 2
-            ? gt.sleeveMeasureArcTargetChain.join(",")
-            : "",
-        sleeveMirrorMeasureArcTargetRange: skipMeasureCoalesce
-          ? d.sleeveMirrorMeasureArcTargetRange
-          : gt.sleeveMirrorMeasureArcTargetChain != null && gt.sleeveMirrorMeasureArcTargetChain.length >= 2
-            ? gt.sleeveMirrorMeasureArcTargetChain.join(",")
-            : "",
         sleeveMeasureVertexStart: sleeveCoalesced.vs,
         sleeveMeasureVertexEnd: sleeveCoalesced.ve,
         sleeveMirrorMeasureVertexStart: sleeveMirrorCoalesced.vs,
@@ -397,25 +386,6 @@ export function useFittingControlsGenericDraftSync(params: {
         touched = true;
       }
     }
-    const arcTargetRaw = d.sleeveMeasureArcTargetRange.trim();
-    const arcTargetList = parseSleeveMeasureVertexList(arcTargetRaw);
-    const arcTargetIncomplete = arcTargetRaw !== "" && arcTargetList == null;
-    const arcTargetValid =
-      arcTargetList != null &&
-      arcTargetList.length >= 2 &&
-      arcTargetList[0] !== arcTargetList[arcTargetList.length - 1];
-    const curArcTarget = gt0.sleeveMeasureArcTargetChain;
-    if (!arcTargetIncomplete) {
-      if (arcTargetValid && arcTargetList) {
-        if (!numberArraysEqual(arcTargetList, curArcTarget)) {
-          merged.sleeveMeasureArcTargetChain = [...arcTargetList];
-          touched = true;
-        }
-      } else if (curArcTarget != null && curArcTarget.length > 0 && synced) {
-        delete merged.sleeveMeasureArcTargetChain;
-        touched = true;
-      }
-    }
     if (!mirrorIncomplete) {
       const nextList = parseSleeveMeasureVertexList(mirrorRaw);
       const chainValid =
@@ -430,25 +400,6 @@ export function useFittingControlsGenericDraftSync(params: {
         }
       } else if (curChain != null && curChain.length > 0 && synced) {
         delete merged.sleeveMirrorMeasureVertexChain;
-        touched = true;
-      }
-    }
-    const arcMirrorRaw = d.sleeveMirrorMeasureArcTargetRange.trim();
-    const arcMirrorList = parseSleeveMeasureVertexList(arcMirrorRaw);
-    const arcMirrorIncomplete = arcMirrorRaw !== "" && arcMirrorList == null;
-    const arcMirrorValid =
-      arcMirrorList != null &&
-      arcMirrorList.length >= 2 &&
-      arcMirrorList[0] !== arcMirrorList[arcMirrorList.length - 1];
-    const curArcMirror = gt0.sleeveMirrorMeasureArcTargetChain;
-    if (!arcMirrorIncomplete) {
-      if (arcMirrorValid && arcMirrorList) {
-        if (!numberArraysEqual(arcMirrorList, curArcMirror)) {
-          merged.sleeveMirrorMeasureArcTargetChain = [...arcMirrorList];
-          touched = true;
-        }
-      } else if (curArcMirror != null && curArcMirror.length > 0 && synced) {
-        delete merged.sleeveMirrorMeasureArcTargetChain;
         touched = true;
       }
     }
@@ -580,8 +531,6 @@ export function useFittingControlsGenericDraftSync(params: {
     genericDraft.lowerSleeveMirrorMeasureRange,
     genericDraft.sleeveFirstEdgeGlobalPairRange,
     genericDraft.sleeveMirrorFirstEdgeGlobalPairRange,
-    genericDraft.sleeveMeasureArcTargetRange,
-    genericDraft.sleeveMirrorMeasureArcTargetRange,
     commitMeasureVertexDraftToParent,
   ]);
 
@@ -669,6 +618,5 @@ export function useFittingControlsGenericDraftSync(params: {
     setGenericDraft,
     measureVertexRangeSectionFocusedRef,
     flushMeasureVertexDraftToParent,
-    presetSizeKey,
   };
 }

@@ -15,8 +15,6 @@ import { sleeveMeasureOverlayNode } from "./fittingCanvasPlotMeasureOverlays";
 import {
   FONT_INDEX_GARMENT,
   FONT_INDEX_GARMENT_HIGHLIGHT,
-  FONT_INDEX_GARMENT_SHOULDER,
-  FONT_INDEX_SHOULDER_BADGE,
   indexLabelOrbitRadius,
   indexLabelRadialOffset,
   indexLabelStrokeWidth,
@@ -250,24 +248,6 @@ export function FittingCanvasPlotOverlay({
       {showGarmentPlot && sd !== null && (
         <g data-overlay="garment-plot">
           <g data-overlay="garment-plot-inner">
-            {sd.shoulderPointIndex != null && (
-              <g>
-                <rect
-                  x={8}
-                  y={4}
-                  width={168}
-                  height={28}
-                  rx={5}
-                  fill="white"
-                  fillOpacity={0.95}
-                  stroke="red"
-                  strokeWidth={1.2}
-                />
-                <text x={14} y={22} fontSize={FONT_INDEX_SHOULDER_BADGE} fill="red" fontFamily="monospace" fontWeight="bold">
-                  肩 #{sd.shoulderPointIndex}
-                </text>
-              </g>
-            )}
             <g
               onPointerLeave={() => {
                 if (garmentVertexPickEnabled) onGarmentVertexHover?.(null);
@@ -275,25 +255,19 @@ export function FittingCanvasPlotOverlay({
             >
             {sd.garmentShoulderPoints.map(([x, y], i) => {
               if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-              const shoulderIdx = sd.shoulderPointIndex;
-              const isShoulder = shoulderIdx != null ? i === shoulderIdx : false;
               const hlRoles = vertexHighlightRoles(i, genericVertexPlotHighlight);
               const isSnapBody =
                 genericVertexPlotHighlight?.lowerSleeveFollowLinkedGlobals?.includes(i) === true;
               const isHl = hlRoles.length > 0;
-              const labelSize = isShoulder
-                ? FONT_INDEX_GARMENT_SHOULDER
-                : isHl
-                  ? FONT_INDEX_GARMENT_HIGHLIGHT
-                  : FONT_INDEX_GARMENT;
-              const r = isShoulder ? 4 : isSnapBody ? 4 : isHl ? 3.5 : 3;
+              const labelSize = isHl ? FONT_INDEX_GARMENT_HIGHLIGHT : FONT_INDEX_GARMENT;
+              const r = isSnapBody ? 4 : isHl ? 3.5 : 3;
               const orbit = indexLabelOrbitRadius(r, labelSize);
               const { ox, oy } = indexLabelRadialOffset(i, orbit);
               const indexStrokeW = indexLabelStrokeWidth(labelSize);
-              const outlineOnly = !isShoulder && !isHl && !isSnapBody;
-              const circleFill = isShoulder ? "red" : isSnapBody ? "#67e8f9" : isHl ? "#4ade80" : "none";
-              const labelFill = isShoulder ? "red" : isSnapBody ? "#0e7490" : isHl ? "#4ade80" : "#334155";
-              const stroke = isShoulder ? "darkred" : isSnapBody ? "#155e75" : isHl ? "#166534" : "#334155";
+              const outlineOnly = !isHl && !isSnapBody;
+              const circleFill = isSnapBody ? "#67e8f9" : isHl ? "#4ade80" : "none";
+              const labelFill = isSnapBody ? "#0e7490" : isHl ? "#4ade80" : "#334155";
+              const stroke = isSnapBody ? "#155e75" : isHl ? "#166534" : "#334155";
               const hlNote = isHl ? ` [${hlRoles.join(" · ")}]` : "";
               return (
                 <g key={`pt-${i}-${x}-${y}`}>
@@ -302,9 +276,9 @@ export function FittingCanvasPlotOverlay({
                     cy={y}
                     r={r}
                     fill={circleFill}
-                    fillOpacity={outlineOnly ? undefined : isShoulder ? 0.95 : isSnapBody ? 0.9 : 0.92}
+                    fillOpacity={outlineOnly ? undefined : isSnapBody ? 0.9 : 0.92}
                     stroke={stroke}
-                    strokeWidth={isShoulder ? 1.2 : isSnapBody ? 1.3 : isHl ? 1.1 : 1.5}
+                    strokeWidth={isSnapBody ? 1.3 : isHl ? 1.1 : 1.5}
                     style={
                       garmentVertexPickEnabled
                         ? {
@@ -323,13 +297,9 @@ export function FittingCanvasPlotOverlay({
                     }}
                   >
                     <title>
-                      {isShoulder
-                        ? `肩基準点 #${i}${hlNote}`
-                        : `服の輪郭 #${i}${hlNote}${
-                            garmentVertexPickEnabled
-                                ? " · r で袖丈連結に追加"
-                                : ""
-                          }`}
+                      {`服の輪郭 #${i}${hlNote}${
+                        garmentVertexPickEnabled ? " · r で袖丈連結に追加" : ""
+                      }`}
                     </title>
                   </circle>
                   <text
@@ -352,6 +322,29 @@ export function FittingCanvasPlotOverlay({
               );
             })}
             </g>
+            {(() => {
+              const pair = customGarmentData?.genericSymmetricTop?.fitCompareVertexGlobalPair;
+              if (garment !== "custom" || !pair || sd == null) return null;
+              const [ga, gb] = pair;
+              const pa = sd.garmentShoulderPoints[ga];
+              const pb = sd.garmentShoulderPoints[gb];
+              if (!pa || !pb) return null;
+              return (
+                <line
+                  x1={pa[0]}
+                  y1={pa[1]}
+                  x2={pb[0]}
+                  y2={pb[1]}
+                  stroke="#d97706"
+                  strokeWidth={2.5}
+                  strokeDasharray="5 4"
+                  pointerEvents="none"
+                  opacity={0.95}
+                >
+                  <title>{`ウィジェット 服 #${ga}–#${gb}`}</title>
+                </line>
+              );
+            })()}
             {(() => {
               if (garment !== "custom" || !customGarmentData || hideSleeveMeasureLine) return null;
               return (

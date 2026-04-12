@@ -14,13 +14,24 @@ import { WidgetDesignInterfacePreview } from "@/features/widget-design/WidgetDes
 import { useProducts } from "@/features/products/useProducts";
 import { useAssets } from "@/features/products/useAssets";
 import { isGarmentSpecRenderable } from "@/lib/widget-fit/applyWidgetSizeToGarment";
+import {
+  WIDGET_DESIGN_CANVAS_BG_DEFAULT,
+  WIDGET_DESIGN_CTA_ACCENT_DEFAULT,
+  WIDGET_DESIGN_INTERFACE_BG_DEFAULT,
+  normalizeWidgetCtaAccentColor,
+} from "@Atelier/shared";
+import { PageHeader } from "@/components/page-header/PageHeader";
 
 const DEFAULTS: WidgetDesignFormState = {
-  interfaceBackgroundColor: "#fafafa",
-  canvasBackgroundColor: "#fafafa",
+  launcherPlacement: "inline",
+  buttonShape: "pill",
+  buttonColor: "#ffffff",
+  buttonText: "自分のサイズで試着",
+  interfaceBackgroundColor: WIDGET_DESIGN_INTERFACE_BG_DEFAULT,
+  canvasBackgroundColor: WIDGET_DESIGN_CANVAS_BG_DEFAULT,
   ctaCartLabel: "カートに追加",
   ctaTryOnLabel: "この体型で試着する",
-  ctaAccentColor: "#3d3835",
+  ctaAccentColor: WIDGET_DESIGN_CTA_ACCENT_DEFAULT,
 };
 
 async function fetchWidgetDesign(): Promise<WidgetDesignFormState> {
@@ -41,11 +52,15 @@ async function fetchWidgetDesign(): Promise<WidgetDesignFormState> {
   }
   const data = await res.json();
   return {
+    launcherPlacement: data.launcherPlacement === "floating" ? "floating" : "inline",
+    buttonShape: data.buttonShape === "circle" ? "circle" : "pill",
+    buttonColor: data.buttonColor ?? DEFAULTS.buttonColor,
+    buttonText: data.buttonText ?? DEFAULTS.buttonText,
     interfaceBackgroundColor: data.interfaceBackgroundColor ?? DEFAULTS.interfaceBackgroundColor,
     canvasBackgroundColor: data.canvasBackgroundColor ?? DEFAULTS.canvasBackgroundColor,
     ctaCartLabel: data.ctaCartLabel ?? DEFAULTS.ctaCartLabel,
     ctaTryOnLabel: data.ctaTryOnLabel ?? DEFAULTS.ctaTryOnLabel,
-    ctaAccentColor: data.ctaAccentColor ?? DEFAULTS.ctaAccentColor,
+    ctaAccentColor: normalizeWidgetCtaAccentColor(data.ctaAccentColor),
   };
 }
 
@@ -84,6 +99,10 @@ export default function WidgetDesignPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          launcherPlacement: form.launcherPlacement,
+          buttonShape: form.buttonShape,
+          buttonColor: form.buttonColor,
+          buttonText: form.buttonText,
           interfaceBackgroundColor: form.interfaceBackgroundColor,
           canvasBackgroundColor: form.canvasBackgroundColor,
           ctaCartLabel: form.ctaCartLabel,
@@ -97,11 +116,15 @@ export default function WidgetDesignPage() {
       }
       const next = await res.json();
       setForm({
+        launcherPlacement: next.launcherPlacement === "floating" ? "floating" : "inline",
+        buttonShape: next.buttonShape === "circle" ? "circle" : "pill",
+        buttonColor: next.buttonColor ?? DEFAULTS.buttonColor,
+        buttonText: next.buttonText ?? DEFAULTS.buttonText,
         interfaceBackgroundColor: next.interfaceBackgroundColor ?? DEFAULTS.interfaceBackgroundColor,
         canvasBackgroundColor: next.canvasBackgroundColor ?? DEFAULTS.canvasBackgroundColor,
         ctaCartLabel: next.ctaCartLabel ?? DEFAULTS.ctaCartLabel,
         ctaTryOnLabel: next.ctaTryOnLabel ?? DEFAULTS.ctaTryOnLabel,
-        ctaAccentColor: next.ctaAccentColor ?? DEFAULTS.ctaAccentColor,
+        ctaAccentColor: normalizeWidgetCtaAccentColor(next.ctaAccentColor),
       });
       await queryClient.invalidateQueries({ queryKey: ["widget-design"] });
       toast.success("保存しました");
@@ -112,9 +135,12 @@ export default function WidgetDesignPage() {
     }
   };
 
+  const pageHeader = <PageHeader title="インターフェース" />;
+
   if (authLoading) {
     return (
-      <div className="space-y-6">
+      <div className="mx-auto w-full max-w-[120rem] space-y-8">
+        {pageHeader}
         <p className="text-sm text-muted-foreground">認証情報を確認しています…</p>
       </div>
     );
@@ -122,66 +148,60 @@ export default function WidgetDesignPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="space-y-6">
-        <WidgetDesignEmptyState
-          title="ショップにログインしてください"
-          description="インターフェース設定を表示するには認証が必要です。"
-          variant="muted"
-        />
+      <div className="mx-auto w-full max-w-[120rem] space-y-8">
+        {pageHeader}
+        <WidgetDesignEmptyState title="ショップにログインしてください" variant="muted" />
       </div>
     );
   }
 
   if (!hasRealShop) {
     return (
-      <div className="space-y-6">
-        <WidgetDesignEmptyState
-          title="ショップ情報を取得できませんでした"
-          description="アカウントにショップが紐づいていないか、一時的に取得に失敗しました。再読み込みするか、サポートにお問い合わせください。"
-          variant="destructive"
-        />
+      <div className="mx-auto w-full max-w-[120rem] space-y-8">
+        {pageHeader}
+        <WidgetDesignEmptyState title="ショップ情報を取得できませんでした" variant="destructive" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="space-y-6">
-        <WidgetDesignEmptyState
-          title="設定を読み込めませんでした"
-          description={
-            error instanceof Error
-              ? error.message
-              : "しばらくしてから再度お試しください。"
-          }
-          variant="destructive"
-        />
+      <div className="mx-auto w-full max-w-[120rem] space-y-8">
+        {pageHeader}
+        <WidgetDesignEmptyState title="設定を読み込めませんでした" variant="destructive" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:gap-12">
-      <div className="min-w-0 flex-1 space-y-6 lg:max-w-md">
-        <WidgetDesignInterfaceForm
-          form={form}
-          setForm={setForm}
-          saving={saving}
-          onSave={handleSave}
-          isLoading={isLoading}
-        />
+    <div className="mx-auto w-full max-w-[120rem] space-y-8">
+      {pageHeader}
+      <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-10">
+        <div className="min-w-0 w-full shrink-0 lg:max-w-xl">
+          <WidgetDesignInterfaceForm
+            form={form}
+            setForm={setForm}
+            saving={saving}
+            onSave={handleSave}
+            isLoading={isLoading}
+          />
+        </div>
+        <aside className="flex min-w-0 w-full flex-1 flex-col items-center lg:items-stretch xl:sticky xl:top-4 xl:self-start">
+          <WidgetDesignInterfacePreview
+            launcherPlacement={form.launcherPlacement}
+            buttonShape={form.buttonShape}
+            buttonColor={form.buttonColor}
+            buttonText={form.buttonText}
+            interfaceBackgroundColor={form.interfaceBackgroundColor}
+            canvasBackgroundColor={form.canvasBackgroundColor}
+            ctaCartLabel={form.ctaCartLabel}
+            ctaTryOnLabel={form.ctaTryOnLabel}
+            ctaAccentColor={form.ctaAccentColor}
+            sampleProduct={sampleProduct}
+            sampleAssets={sampleAssets}
+          />
+        </aside>
       </div>
-      <aside className="shrink-0 lg:sticky lg:top-6 lg:self-start">
-        <WidgetDesignInterfacePreview
-          interfaceBackgroundColor={form.interfaceBackgroundColor}
-          canvasBackgroundColor={form.canvasBackgroundColor}
-          ctaCartLabel={form.ctaCartLabel}
-          ctaTryOnLabel={form.ctaTryOnLabel}
-          ctaAccentColor={form.ctaAccentColor}
-          sampleProduct={sampleProduct}
-          sampleAssets={sampleAssets}
-        />
-      </aside>
     </div>
   );
 }

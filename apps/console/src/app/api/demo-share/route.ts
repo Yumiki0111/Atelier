@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     const ext = typeof product.external_product_id === "string" ? product.external_product_id.trim() : "";
     if (!ext) {
       return NextResponse.json(
-        { error: "この商品には external_product_id が未設定です。商品データベースで登録してから発行してください。" },
+        { error: "この商品には external_product_id が未設定です。商品ライブラリで登録してから発行してください。" },
         { status: 400 }
       );
     }

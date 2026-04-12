@@ -15,6 +15,19 @@ API は `SUPABASE_SERVICE_ROLE_KEY` で RLS をバイパスしてアクセスす
 2. `schema-and-rls.sql` の内容を貼り付けて実行する。
 3. 既にテーブルがある場合は `CREATE TABLE IF NOT EXISTS` でスキップされる。カラム不足の場合は手動で `ALTER TABLE` を追加する。
 
+## CLI でマイグレーションをリモートに適用する
+
+前提: [Supabase CLI](https://supabase.com/docs/guides/cli) をインストールし、`supabase login` 済み。
+
+1. リポジトリルートでリンク（初回のみ）: `supabase link --project-ref <project-ref>`（Dashboard → Project Settings → General の **Reference ID**）。
+2. `apps/console/.env.local` に **`SUPABASE_DB_PASSWORD`** を設定する（Dashboard → Project Settings → **Database** → Database password。不明なら Reset）。
+3. リポジトリルートで **`npm run db:push`**。`scripts/supabase-db-push.mjs` が `.env.local` を読み、`supabase db push -p …` を非対話で実行します。
+4. ドライラン: `npm run db:push -- --dry-run`
+
+未適用だと API が `Could not find the table 'public.assets'`や `price_yen` 列エラー（PostgREST の schema cache）を返します。`assets` は `migrations/20260412120000_create_assets.sql`、`price_yen` は `migrations/20260411120000_products_price_yen.sql` などが対象です。
+
+※ `supabase/config.toml` の `[db] major_version` はリモートの Postgres と合わせてください（ずれているとローカル `supabase start` などで不整合が出やすいです）。`db push` は主にマイグレーション SQL のリモート適用です。
+
 ## ログインで「Failed to fetch」が出る場合
 
 1. **Supabase Auth に届いていない**

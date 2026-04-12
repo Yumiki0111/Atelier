@@ -4,7 +4,13 @@ import { useCallback } from "react";
 import { WidgetStyleProductPreview } from "@/features/preview/WidgetStyleProductPreview";
 import type { PublicEmbedWidgetFitProps } from "@/lib/widget/getPublicEmbedWidgetFitProps";
 
-export function EmbedWidgetFitClient(props: PublicEmbedWidgetFitProps) {
+type EmbedWidgetFitClientProps = PublicEmbedWidgetFitProps & {
+  /** 親ウィジェットの `data-fitlook-add-to-cart-url` をクエリで引き渡し */
+  addToCartUrl?: string;
+};
+
+export function EmbedWidgetFitClient(props: EmbedWidgetFitClientProps) {
+  const { addToCartUrl = "", ...data } = props;
   const onClose = useCallback(() => {
     try {
       window.parent.postMessage({ type: "fitlook-embed-close" }, "*");
@@ -16,20 +22,23 @@ export function EmbedWidgetFitClient(props: PublicEmbedWidgetFitProps) {
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
       <WidgetStyleProductPreview
-        productId={props.productId}
-        productName={props.productName}
-        thumbnailUrl={props.thumbnailUrl}
-        priceDisplay={props.priceDisplay}
-        sizeKeys={props.sizeKeys}
-        initialSize={props.initialSize}
-        garmentFitAvailable={props.garmentFitAvailable}
-        customGarmentData={props.customGarmentData}
+        productId={data.productId}
+        productCategory={data.productCategory}
+        externalProductId={data.externalProductId}
+        addToCartUrlTemplate={addToCartUrl}
+        productName={data.productName}
+        thumbnailUrl={data.thumbnailUrl}
+        priceDisplay={data.priceDisplay}
+        sizeKeys={data.sizeKeys}
+        initialSize={data.initialSize}
+        garmentFitAvailable={data.garmentFitAvailable}
+        customGarmentData={data.customGarmentData}
         onClose={onClose}
-        interfaceBackgroundColor={props.interfaceBackgroundColor}
-        canvasBackgroundColor={props.canvasBackgroundColor}
-        ctaCartLabel={props.ctaCartLabel}
-        ctaTryOnLabel={props.ctaTryOnLabel}
-        ctaAccentColor={props.ctaAccentColor}
+        interfaceBackgroundColor={data.interfaceBackgroundColor}
+        canvasBackgroundColor={data.canvasBackgroundColor}
+        ctaCartLabel={data.ctaCartLabel}
+        ctaTryOnLabel={data.ctaTryOnLabel}
+        ctaAccentColor={data.ctaAccentColor}
         embedPublicWidget
       />
     </div>

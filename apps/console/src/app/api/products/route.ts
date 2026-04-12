@@ -5,6 +5,10 @@ import { createProductSchema } from "@Atelier/shared";
 import { ZodError } from "zod";
 import { stripGarmentSpecForStorage } from "@/lib/products/stripGarmentSpecForStorage";
 import { validateGarmentSpecForProduction } from "@/lib/products/validateGarmentSpecForProduction";
+import {
+  isPostgrestSchemaCacheError,
+  POSTGREST_SCHEMA_DRIFT_MESSAGE_JA,
+} from "@/lib/supabase/postgrestSchemaErrors";
 
 // GET /api/products - List products
 export async function GET(request: NextRequest) {
@@ -87,6 +91,7 @@ export async function GET(request: NextRequest) {
         name: p.name,
         brand: p.brand,
         category: p.category,
+        priceYen: p.price_yen ?? undefined,
         thumbnailUrl: p.thumbnail_url,
         garmentSpec: p.garment_spec ?? undefined,
         assetSizes,
@@ -156,6 +161,7 @@ export async function POST(request: NextRequest) {
         name: validated.name,
         brand: validated.brand || null,
         category: validated.category || null,
+        price_yen: validated.priceYen ?? null,
         thumbnail_url: validated.thumbnailUrl || null,
         ...(garmentSpecStored != null ? { garment_spec: garmentSpecStored } : {}),
       })
@@ -164,6 +170,16 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error("Error creating product:", error);
+      if (isPostgrestSchemaCacheError(error.message)) {
+        return NextResponse.json(
+          {
+            error: "Database schema error",
+            message: POSTGREST_SCHEMA_DRIFT_MESSAGE_JA,
+            details: error.message,
+          },
+          { status: 500 }
+        );
+      }
       return NextResponse.json(
         {
           error: "Failed to create product",
@@ -182,6 +198,7 @@ export async function POST(request: NextRequest) {
       name: data.name,
       brand: data.brand,
       category: data.category,
+      priceYen: data.price_yen ?? undefined,
       sku: data.sku,
       handle: data.handle,
       url: data.url,

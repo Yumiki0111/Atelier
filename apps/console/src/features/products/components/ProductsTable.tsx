@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import type { Product, ProductSize } from "@Atelier/shared";
+import { formatPriceYenForDisplay } from "@Atelier/shared";
 import {
   Table,
   TableBody,
@@ -11,7 +12,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ProductAddDialog } from "./ProductAddDialog";
 import { ProductEditDialog } from "./ProductEditDialog";
 import { AssetManagementDialog } from "./AssetManagementDialog";
 import { ProductImportCsvDialog } from "./ProductImportCsvDialog";
@@ -112,7 +112,6 @@ export function ProductsTable({
         </div>
         <div className="flex gap-2">
           <ProductImportCsvDialog />
-          <ProductAddDialog />
         </div>
       </div>
 
@@ -141,6 +140,7 @@ export function ProductsTable({
               <TableHead className="w-[calc((100%-3rem)/4)]">画像</TableHead>
               <TableHead className="w-[calc((100%-3rem)/4)]">商品名</TableHead>
               <TableHead className="w-[calc((100%-3rem)/4)]">外部商品ID</TableHead>
+              <TableHead className="w-28 shrink-0 text-right">金額（円）</TableHead>
               <TableHead className="w-[calc((100%-3rem)/4)]">操作</TableHead>
             </TableRow>
           </TableHeader>
@@ -226,11 +226,21 @@ export function ProductsTable({
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className={`font-medium py-2 ${isSelected ? "bg-blue-50" : ""}`}>{product.name}</TableCell>
+                    <TableCell
+                      className={`min-w-0 py-2 font-medium ${isSelected ? "bg-blue-50" : ""}`}
+                      title={product.name}
+                    >
+                      <span className="block truncate">{product.name}</span>
+                    </TableCell>
                     <TableCell className={`py-2 ${isSelected ? "bg-blue-50" : ""} font-mono text-xs`}>
                       {product.externalProductId || (
                         <span className="text-gray-400 italic">未設定</span>
                       )}
+                    </TableCell>
+                    <TableCell
+                      className={`py-2 text-right tabular-nums text-sm ${isSelected ? "bg-blue-50" : ""}`}
+                    >
+                      {formatPriceYenForDisplay(product.priceYen)}
                     </TableCell>
                     <TableCell
                       className={`py-2 ${isSelected ? "bg-blue-50" : ""}`}

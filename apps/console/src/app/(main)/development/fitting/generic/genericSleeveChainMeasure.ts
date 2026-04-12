@@ -102,7 +102,7 @@ export function measureGenericTopSleeveCmFromPath(
     if (eff) {
       gLo = eff.gLo;
       gHi = eff.gHi;
-      chain = eff.globalChainForArcTarget ?? eff.globalChainForMeasure ?? chain;
+      chain = eff.globalChainForMeasure ?? chain;
     }
   }
   const px = sleeveVerticalPxFromGlobalVertices(pathDs, gLo, gHi, chain, customPoints);
@@ -135,7 +135,7 @@ export function measureOriginalSleeveCmFromDesignPaths(
     if (eff) {
       gLo = eff.gLo;
       gHi = eff.gHi;
-      chain = eff.globalChainForArcTarget ?? eff.globalChainForMeasure ?? chain;
+      chain = eff.globalChainForMeasure ?? chain;
     }
   }
   const px = sleeveVerticalPxFromGlobalVertices(pathDs, gLo, gHi, chain);

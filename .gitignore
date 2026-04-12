@@ -26,6 +26,12 @@ apps/console/public/widget.js
 .DS_Store
 *.pem
 
+# Cursor (agent debug logs should never be versioned)
+.cursor/debug*.log
+
+# Widget package build output (generated; console prebuild rebuilds + copies)
+packages/widget/dist/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

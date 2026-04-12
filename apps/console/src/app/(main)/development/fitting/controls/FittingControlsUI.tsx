@@ -16,7 +16,7 @@ export function DevPanelSection({
   return (
     <section className={cn("space-y-1.5", className)}>
       <div className="px-0.5">
-        <h2 className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{title}</h2>
+        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
       </div>
       <div className="pt-0.5">{children}</div>
     </section>
@@ -38,7 +38,7 @@ export function PanelSwitchRow({
   return (
     <div className="flex items-center justify-between gap-3 py-2.5">
       <label htmlFor={id} className="min-w-0 flex-1 cursor-pointer">
-        <span className="block text-[12px] font-medium leading-snug text-slate-700">{label}</span>
+        <span className="block text-xs font-medium leading-snug text-foreground">{label}</span>
       </label>
       <Switch
         id={id}

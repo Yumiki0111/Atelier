@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAuthenticatedUser } from "@/lib/auth/middleware";
 import { createClient } from "@supabase/supabase-js";
+import {
+  isPostgrestSchemaCacheError,
+  POSTGREST_SCHEMA_DRIFT_MESSAGE_JA,
+} from "@/lib/supabase/postgrestSchemaErrors";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -43,6 +47,16 @@ export async function GET(request: NextRequest) {
 
     if (userError || !userData) {
       console.error("[profile API] Error fetching user profile:", userError);
+      if (isPostgrestSchemaCacheError(userError?.message)) {
+        return NextResponse.json(
+          {
+            error: "Database schema error",
+            message: POSTGREST_SCHEMA_DRIFT_MESSAGE_JA,
+            details: userError?.message,
+          },
+          { status: 500 }
+        );
+      }
       return NextResponse.json(
         { error: "Failed to fetch profile", details: userError?.message },
         { status: 500 }
@@ -174,6 +188,16 @@ export async function PATCH(request: NextRequest) {
 
     if (userError) {
       console.error("Error updating user profile:", userError);
+      if (isPostgrestSchemaCacheError(userError.message)) {
+        return NextResponse.json(
+          {
+            error: "Database schema error",
+            message: POSTGREST_SCHEMA_DRIFT_MESSAGE_JA,
+            details: userError.message,
+          },
+          { status: 500 }
+        );
+      }
       return NextResponse.json(
         { error: "Failed to update profile" },
         { status: 500 }

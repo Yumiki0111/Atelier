@@ -73,7 +73,7 @@ function mirrorSleeveMeasureLabel(gt: NonNullable<CustomGarmentData["genericSymm
   }
   const chain = gt.sleeveMirrorMeasureVertexChain;
   if (chain != null && chain.length >= 2) {
-    return `あり（チェーン ${chain.length} 頂点・オーバーレイ採寸）`;
+    return `あり（チェーン ${chain.length} 点・弧長）`;
   }
   return "あり（端点ペア・オーバーレイ採寸）";
 }
@@ -114,20 +114,8 @@ function primarySleeveMeasureLabel(gt: NonNullable<CustomGarmentData["genericSym
     return "なし";
   }
   const chain = gt.sleeveMeasureVertexChain;
-  const arcT = gt.sleeveMeasureArcTargetChain;
-  const hasArcDiff =
-    arcT != null &&
-    arcT.length >= 2 &&
-    (chain == null ||
-      chain.length !== arcT.length ||
-      chain.some((v, i) => v !== arcT[i]));
   if (chain != null && chain.length >= 2) {
-    return hasArcDiff
-      ? `あり（表示 ${chain.length} 頂点・目標弧長 ${arcT!.length}）`
-      : `あり（チェーン ${chain.length} 頂点・弧長）`;
-  }
-  if (hasArcDiff) {
-    return `あり（端点＋目標弧長 ${arcT!.length} 頂点）`;
+    return `あり（チェーン ${chain.length} 点・弧長）`;
   }
   return "あり（端点ペア・弧長）";
 }

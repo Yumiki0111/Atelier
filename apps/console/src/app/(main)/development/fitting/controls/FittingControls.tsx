@@ -7,10 +7,8 @@ import type {
   ShirtSize,
   JacketSize,
   CustomGarmentData,
-  ShoulderDebug,
   GenericVertexPlotHighlight,
 } from "../lib/types";
-import { calcFitFromSize, jacketFitLabel, shirtFitLabel } from "../lib/fitCalc";
 import { measureSleeveLengthFromPath, vertexRangeToCoveringPathRange } from "../lib/pathUtils";
 import { appendSleeveMeasureVertexWithR, parseLineRangeInput, parseSleeveMeasureVertexInput } from "../generic";
 import { FittingControlsCustomPanels } from "./FittingControlsCustomPanels";
@@ -33,8 +31,6 @@ interface FittingControlsProps {
   showRigAngleDiagram: boolean;
   rigBodyEnabled: boolean;
   rigGarmentEnabled: boolean;
-  /** キャンバス計算の肩デバッグ（カスタム服の連結頂点インデックス表示用） */
-  shoulderDebug: ShoulderDebug | null;
   onHeightChange: (v: number) => void;
   onWeightChange: (v: number) => void;
   onGarmentChange: (g: GarmentType) => void;
@@ -70,7 +66,6 @@ export function FittingControls({
   showRigAngleDiagram,
   rigBodyEnabled,
   rigGarmentEnabled,
-  shoulderDebug,
   onHeightChange,
   onWeightChange,
   onGarmentChange,
@@ -97,7 +92,6 @@ export function FittingControls({
     setGenericDraft,
     measureVertexRangeSectionFocusedRef,
     flushMeasureVertexDraftToParent,
-    presetSizeKey,
   } = useFittingControlsGenericDraftSync({
       isGenericTopActive,
       customGarmentData,
@@ -132,21 +126,18 @@ export function FittingControls({
     return () => window.removeEventListener("keydown", onKey);
   }, [showPlotCoords, hoveredGarmentVertexIndex, isGenericTopActive, setGenericDraft]);
 
-  const fit = calcFitFromSize(height, weight, customGarmentData?.size ?? null);
-  const fitLabel =
-    garment === "shirt" ? shirtFitLabel(fit.chestDiff) : jacketFitLabel(fit.chestDiff);
   const sizeSpec = customGarmentData?.size ?? null;
 
   return (
     <div
       className={cn(
-        "flex min-h-0 max-h-full w-[min(17rem,100%)] shrink-0 flex-col gap-4 overflow-y-auto py-1 text-[12px]",
+        "flex min-h-0 max-h-full w-[min(17rem,100%)] shrink-0 flex-col gap-4 overflow-y-auto py-1 text-xs",
         className
       )}
     >
-      <header className="shrink-0 border-b border-slate-200/80 pb-2">
-        <h1 className="text-sm font-bold tracking-tight text-slate-900">フィット検証</h1>
-        <p className="mt-0.5 text-[10px] leading-snug text-slate-500">
+      <header className="shrink-0 border-b border-border pb-2">
+        <h2 className="text-sm font-semibold tracking-tight text-foreground">フィット検証</h2>
+        <p className="mt-1 text-xs leading-snug text-muted-foreground">
           参照 SVG を読み込み、採寸は数値入力・パス一覧で商品に合わせてください。
         </p>
       </header>
@@ -154,9 +145,9 @@ export function FittingControls({
       <DevPanelSection title="体型">
         <div className="space-y-3">
           <div>
-            <label className="flex items-baseline justify-between text-[11px] text-slate-600">
+            <label className="flex items-baseline justify-between text-[11px] text-muted-foreground">
               <span>身長</span>
-              <span className="font-semibold tabular-nums text-slate-900">{height} cm</span>
+              <span className="font-semibold tabular-nums text-foreground">{height} cm</span>
             </label>
             <input
               type="range"
@@ -165,13 +156,13 @@ export function FittingControls({
               value={height}
               step={1}
               onChange={(e) => onHeightChange(+e.target.value)}
-              className="mt-1.5 h-2 w-full cursor-pointer accent-sky-600"
+              className="mt-1.5 h-2 w-full cursor-pointer accent-foreground"
             />
           </div>
           <div>
-            <label className="flex items-baseline justify-between text-[11px] text-slate-600">
+            <label className="flex items-baseline justify-between text-[11px] text-muted-foreground">
               <span>体重</span>
-              <span className="font-semibold tabular-nums text-slate-900">{weight} kg</span>
+              <span className="font-semibold tabular-nums text-foreground">{weight} kg</span>
             </label>
             <input
               type="range"
@@ -180,7 +171,7 @@ export function FittingControls({
               value={weight}
               step={1}
               onChange={(e) => onWeightChange(+e.target.value)}
-              className="mt-1.5 h-2 w-full cursor-pointer accent-slate-600"
+              className="mt-1.5 h-2 w-full cursor-pointer accent-muted-foreground"
             />
           </div>
         </div>
@@ -188,21 +179,20 @@ export function FittingControls({
 
       <FittingControlsSvgUploadSection
         hasUploadedGenericSvg={hasUploadedGenericSvg}
-        presetSizeKey={presetSizeKey}
         onGarmentChange={onGarmentChange}
         onCustomGarmentApply={onCustomGarmentApply}
       />
 
       <DevPanelSection title="採寸・フィット">
-        <div className="text-[11px] leading-snug text-slate-600">
+        <div className="text-[11px] leading-snug text-muted-foreground">
         {sizeSpec && (
           <>
-            <b className="text-gray-800">
+            <b className="text-foreground">
               {hasUploadedGenericSvg ? "カスタム SVG の採寸" : "採寸（入力値）"}
             </b>
             <table className="my-0.5 w-full border-collapse text-[11px]">
               <tbody>
-                <tr className="text-gray-400">
+                <tr className="text-muted-foreground/80">
                   <td>着丈(A)</td>
                   <td>肩幅(B)</td>
                   <td>身幅(C)</td>
@@ -247,56 +237,15 @@ export function FittingControls({
               </tbody>
             </table>
             {garment === "custom" && (sizeSpec.length < 40 || sizeSpec.length > 95) && (
-              <p className="mt-1 text-[10px] text-amber-700">
+              <p className="mt-1 text-[10px] text-destructive">
                 着丈が通常範囲外です。採寸表の列順（着丈・肩幅・身幅・袖丈）を確認してください。
               </p>
             )}
-            <div className="h-2 shrink-0" aria-hidden />
-            <span className="text-gray-400">推定胸囲</span> <b>{fit.estChest}cm</b>
-            <br />
-            <span className="text-gray-400">胸のゆとり（身幅×2−推定胸囲）</span>{" "}
-            <b
-              className={
-                fitLabel === "tight"
-                  ? "text-red-600"
-                  : fitLabel === "ok"
-                    ? "text-green-600"
-                    : "text-blue-600"
-              }
-            >
-              約 {fit.chestDiff > 0 ? "+" : ""}
-              {Math.round(fit.chestDiff * 10) / 10}cm
-            </b>
-            {garment === "custom" && (
-              <>
-                <br />
-                <span className="text-gray-400">着丈差分</span>{" "}
-                <b>
-                  {fit.hemDiff > 0 ? "+" : ""}
-                  {fit.hemDiff}cm
-                </b>
-              </>
-            )}
-            <div
-              className={cn(
-                "mt-3 rounded-md px-2 py-2 text-center text-[11px] font-bold",
-                fitLabel === "tight" && "bg-red-50 text-red-700",
-                fitLabel === "ok" && "bg-emerald-50 text-emerald-800",
-                fitLabel === "loose" && "bg-sky-50 text-sky-800"
-              )}
-            >
-              {fitLabel === "tight" && "きつめ"}
-              {fitLabel === "ok" && "ちょうどいい"}
-              {fitLabel === "loose" && "ゆったり"}
-            </div>
-            <p className="mt-2 rounded-md bg-slate-800 px-2 py-1.5 text-[10px] leading-snug text-slate-100">
-              数値は推定です。素材の伸縮性により、実際の着用感と異なる場合があります。
-            </p>
           </>
         )}
         {!sizeSpec && (
-          <p className="text-[11px] leading-snug text-slate-500">
-            採寸（着丈・肩・身幅・袖）を入力すると、胸のゆとりとざっくりした体感を表示します。
+          <p className="text-[11px] leading-snug text-muted-foreground">
+            採寸（着丈・肩・身幅・袖）を入力すると、上表に反映されます。
           </p>
         )}
         </div>
@@ -324,12 +273,12 @@ export function FittingControls({
         />
       ) : null}
 
-      <details className="group rounded-lg border border-slate-200/80 bg-slate-50/40 [&_summary::-webkit-details-marker]:hidden">
-        <summary className="cursor-pointer list-none px-2 py-2 text-[11px] font-semibold text-slate-600 hover:bg-slate-100/60">
-          <span className="mr-1 inline-block text-slate-400 transition-transform group-open:rotate-90">▶</span>
+      <details className="group rounded-lg border border-border bg-muted/40 [&_summary::-webkit-details-marker]:hidden">
+        <summary className="cursor-pointer list-none px-2 py-2 text-[11px] font-semibold text-foreground hover:bg-muted/60">
+          <span className="mr-1 inline-block text-muted-foreground transition-transform group-open:rotate-90">▶</span>
           表示・オーバーレイ・リグ（開発用）
         </summary>
-        <div className="border-t border-slate-200/60 px-2 pb-2 pt-1">
+        <div className="border-t border-border px-2 pb-2 pt-1">
           <div className="flex flex-col gap-0.5">
             <PanelSwitchRow
               id="dev-fit-show-garment"
@@ -374,12 +323,12 @@ export function FittingControls({
               onToggle={onToggleRigGarment}
             />
           </div>
-          <p className="mt-2 text-[10px] leading-snug text-slate-400">
+          <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
             コンソール:{" "}
-            <code className="rounded bg-slate-100 px-0.5 font-mono text-[9px]">DEBUG_FITTING_MEASURE</code>
+            <code className="rounded bg-muted px-0.5 font-mono text-[9px] text-foreground">DEBUG_FITTING_MEASURE</code>
             （開発ビルドのみ。本番ではログ出力なし）/{" "}
-            <code className="rounded bg-slate-100 px-0.5 font-mono text-[9px]">DEBUG_FITTING_CANVAS</code> /{" "}
-            <code className="rounded bg-slate-100 px-0.5 font-mono text-[9px]">DEBUG_RIG_ARM</code>
+            <code className="rounded bg-muted px-0.5 font-mono text-[9px] text-foreground">DEBUG_FITTING_CANVAS</code> /{" "}
+            <code className="rounded bg-muted px-0.5 font-mono text-[9px] text-foreground">DEBUG_RIG_ARM</code>
           </p>
         </div>
       </details>

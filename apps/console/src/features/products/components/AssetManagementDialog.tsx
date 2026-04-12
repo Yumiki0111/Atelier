@@ -54,7 +54,9 @@ export function AssetManagementDialog({
       </DialogTrigger>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>3Dアセット管理 - {productName}</DialogTitle>
+          <DialogTitle className="pr-8" title={`3Dアセット管理 - ${productName}`}>
+            <span className="line-clamp-1">3Dアセット管理 - {productName}</span>
+          </DialogTitle>
           <DialogDescription>
             商品の3Dモデル（GLBファイル）をサイズ別に管理します
           </DialogDescription>

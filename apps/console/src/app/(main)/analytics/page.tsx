@@ -12,7 +12,8 @@ import {
   YAxis,
 } from "recharts";
 import { useAnalytics, type TimeRange } from "@/features/analytics/useAnalytics";
-import { Card, CardContent } from "@/components/ui/card";
+import { PageHeader } from "@/components/page-header/PageHeader";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 const RANGE_OPTIONS: { value: TimeRange; label: string }[] = [
@@ -27,37 +28,42 @@ function pct(n: number | null): string {
   return `${(n * 100).toFixed(1)}%`;
 }
 
+/** Global Card is borderless; analytics panels need visible grouping. */
+const analyticsPanelClass = cn(
+  "rounded-xl border border-border bg-card text-card-foreground shadow-sm"
+);
+
 export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState<TimeRange>("30d");
   const { data, isLoading, isError, error } = useAnalytics(timeRange);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">アナリティクス</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <label htmlFor="analytics-range" className="text-sm text-muted-foreground">
-            期間
-          </label>
-          <select
-            id="analytics-range"
-            value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value as TimeRange)}
-            className={cn(
-              "rounded-md border border-input bg-background px-3 py-2 text-sm",
-              "shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            )}
-          >
-            {RANGE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+    <div className="mx-auto w-full max-w-7xl space-y-10">
+      <PageHeader
+        title="アナリティクス"
+        actions={
+          <div className="flex items-center gap-2">
+            <label htmlFor="analytics-range" className="text-sm text-muted-foreground">
+              期間
+            </label>
+            <select
+              id="analytics-range"
+              value={timeRange}
+              onChange={(e) => setTimeRange(e.target.value as TimeRange)}
+              className={cn(
+                "h-10 rounded-md border border-input bg-background px-3 text-sm",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              )}
+            >
+              {RANGE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        }
+      />
 
       {isLoading && (
         <p className="text-sm text-muted-foreground">読み込み中…</p>
@@ -69,19 +75,39 @@ export default function AnalyticsPage() {
       )}
 
       {data && (
-        <>
-          <p className="text-sm text-muted-foreground">
-            <span className="text-foreground/80">期間合計</span>
-            <span className="mx-2 text-border">·</span>
-            <span>試着開封 {data.totals.widgetOpens.toLocaleString("ja-JP")}</span>
-            <span className="mx-2 text-border">·</span>
-            <span>カート {data.totals.addToCart.toLocaleString("ja-JP")}</span>
-            <span className="mx-2 text-border">·</span>
-            <span>開封→カート {pct(data.rates.openToCartRate)}</span>
-          </p>
+        <div className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Card className={analyticsPanelClass}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">試着開封</CardTitle>
+                <p className="pt-1 text-xl font-semibold tabular-nums text-foreground">
+                  {data.totals.widgetOpens.toLocaleString("ja-JP")}
+                </p>
+              </CardHeader>
+            </Card>
+            <Card className={analyticsPanelClass}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">カート追加</CardTitle>
+                <p className="pt-1 text-xl font-semibold tabular-nums text-foreground">
+                  {data.totals.addToCart.toLocaleString("ja-JP")}
+                </p>
+              </CardHeader>
+            </Card>
+            <Card className={analyticsPanelClass}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">開封→カート</CardTitle>
+                <p className="pt-1 text-xl font-semibold tabular-nums text-foreground">
+                  {pct(data.rates.openToCartRate)}
+                </p>
+              </CardHeader>
+            </Card>
+          </div>
 
-          <Card>
-            <CardContent className="h-[min(420px,70vh)] w-full min-h-[280px] pt-6">
+          <Card className={analyticsPanelClass}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold">日別の推移</CardTitle>
+            </CardHeader>
+            <CardContent className="h-[min(420px,70vh)] w-full min-h-[280px] px-4 pb-4 pt-0 sm:px-6">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data.series} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -98,7 +124,7 @@ export default function AnalyticsPage() {
                     type="monotone"
                     dataKey="widgetOpens"
                     name="試着開封"
-                    stroke="#6366f1"
+                    stroke="var(--primary)"
                     strokeWidth={2}
                     dot={{ r: 3 }}
                     activeDot={{ r: 5 }}
@@ -107,7 +133,7 @@ export default function AnalyticsPage() {
                     type="monotone"
                     dataKey="addToCart"
                     name="カート追加"
-                    stroke="#22c55e"
+                    stroke="var(--chart-2)"
                     strokeWidth={2}
                     dot={{ r: 3 }}
                     activeDot={{ r: 5 }}
@@ -116,7 +142,7 @@ export default function AnalyticsPage() {
                     type="monotone"
                     dataKey="cubeClicks"
                     name="ボタンクリック"
-                    stroke="#94a3b8"
+                    stroke="var(--muted-foreground)"
                     strokeWidth={2}
                     dot={{ r: 3 }}
                     activeDot={{ r: 5 }}
@@ -125,7 +151,7 @@ export default function AnalyticsPage() {
               </ResponsiveContainer>
             </CardContent>
           </Card>
-        </>
+        </div>
       )}
     </div>
   );

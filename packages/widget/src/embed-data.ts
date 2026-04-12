@@ -30,6 +30,30 @@ export function isPhoneFrameDisabledFromAttr(value: string | null | undefined): 
   return value?.trim().toLowerCase() === "false";
 }
 
+/** `data-fitlook-desktop-panel="true"` … 右下パネル用のオプトイン（`isDesktopPanelFromAttr` と同じ真偽ルール） */
+export function isDesktopPanelFromAttr(value: string | null | undefined): boolean {
+  if (value == null) return false;
+  const v = value.trim().toLowerCase();
+  if (v === "false" || v === "0" || v === "no" || v === "off") return false;
+  return v === "true" || v === "1" || v === "yes" || v === "on" || v === "";
+}
+
+/**
+ * 埋め込みページの URL クエリで右下パネルを有効化（`widget.js` を読むページの `location`）。
+ * 例: `https://shop.example/pdp?fitlook-desktop-panel=true`（iframe 内の `/embed/widget-fit` ではなく親ページ側）
+ */
+export function isDesktopPanelFromLocationSearch(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const q = new URLSearchParams(window.location.search);
+    const v =
+      q.get("fitlook-desktop-panel") ?? q.get("atelier-desktop-panel");
+    return isDesktopPanelFromAttr(v);
+  } catch {
+    return false;
+  }
+}
+
 /** ウィジェットを初期化するホスト要素（新・旧 data 属性） */
 export const WIDGET_HOST_SELECTOR = [
   "[data-fitlook-public-key]",

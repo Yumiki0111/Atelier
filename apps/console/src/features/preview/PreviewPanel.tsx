@@ -3,6 +3,7 @@
 import { useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { Product, ProductSize } from "@Atelier/shared";
+import { formatPriceYenForDisplay } from "@Atelier/shared";
 import { useAuth } from "@/contexts/AuthContext";
 import { authenticatedFetch } from "@/lib/auth/api-client";
 import { useProductSelection } from "@/contexts/ProductSelectionContext";
@@ -75,7 +76,9 @@ export function PreviewPanel({ selectedProduct, selectedSize }: PreviewPanelProp
             previewContainerRef={previewContainerRef}
             selectedAsset={null}
             borderRef={borderRef}
-            screenContentBackgroundColor={widgetUi?.interfaceBackgroundColor}
+            screenContentBackgroundColor={
+              widgetUi?.interfaceBackgroundColor ?? widgetUi?.canvasBackgroundColor
+            }
           >
             <div
               ref={previewContainerRef}
@@ -87,9 +90,10 @@ export function PreviewPanel({ selectedProduct, selectedSize }: PreviewPanelProp
             >
               <WidgetStyleProductPreview
                 productId={selectedProduct.id}
+                productCategory={selectedProduct.category ?? null}
                 productName={selectedProduct.name}
                 thumbnailUrl={selectedProduct.thumbnailUrl}
-                priceDisplay="—"
+                priceDisplay={formatPriceYenForDisplay(selectedProduct.priceYen)}
                 sizeKeys={sizeKeys}
                 initialSize={initialSize}
                 garmentFitAvailable={garmentFitAvailable}

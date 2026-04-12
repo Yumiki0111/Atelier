@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  WIDGET_DESIGN_CANVAS_BG_DEFAULT,
+  WIDGET_DESIGN_INTERFACE_BG_DEFAULT,
+  normalizeWidgetCtaAccentColor,
+} from "@Atelier/shared";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { setCorsHeaders, handleCorsOptions, validatePublicKeyAndDomain } from "@/lib/api/cors";
 
@@ -55,11 +60,13 @@ export async function GET(request: NextRequest) {
         shape: data.button_shape === "circle" ? "circle" : "pill", // circle or pill
         imageUrl: data.button_image_url || undefined,
       },
-      interfaceBackgroundColor: data.interface_background_color ?? "#fafafa",
-      canvasBackgroundColor: data.canvas_background_color ?? "#fafafa",
+      interfaceBackgroundColor:
+        data.interface_background_color ?? WIDGET_DESIGN_INTERFACE_BG_DEFAULT,
+      canvasBackgroundColor: data.canvas_background_color ?? WIDGET_DESIGN_CANVAS_BG_DEFAULT,
       ctaCartLabel: data.cta_cart_label ?? "カートに追加",
       ctaTryOnLabel: data.cta_try_on_label ?? "この体型で試着する",
-      ctaAccentColor: data.cta_accent_color ?? "#3d3835",
+      ctaAccentColor: normalizeWidgetCtaAccentColor(data.cta_accent_color),
+      launcherPlacement: data.launcher_placement === "floating" ? "floating" : "inline",
     };
 
     const response = NextResponse.json(design);

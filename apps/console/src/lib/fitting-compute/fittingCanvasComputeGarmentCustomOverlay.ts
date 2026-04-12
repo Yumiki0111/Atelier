@@ -1,10 +1,3 @@
-import {
-  indexOfClosest,
-  onePointOnGarmentOutline,
-  outerCollarPoints,
-  shoulderContourFromPath,
-  shoulderPointOnLine,
-} from "@/app/(main)/development/fitting/lib/fittingContourUtils";
 import { resolveGenericScalableSpec } from "@/app/(main)/development/fitting/generic";
 import { hasDistinctVertexPair } from "@/app/(main)/development/fitting/generic/genericMeasureOnlyShared";
 import { resolveEffectiveSleeveGradingGeometry } from "@/app/(main)/development/fitting/generic/resolveEffectiveSleeveGradingGeometry";
@@ -140,24 +133,6 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
     const { lengthTopY, scale } = canvasYGradeScale;
     customContour = applyYScaleToCanvasPoints(customContour, lengthTopY, scale);
   }
-  const customShoulderIdx = (() => {
-    const band = 15;
-    const customRaw = shoulderContourFromPath(
-      customGarmentData.pathDs,
-      shoulderSeamY - band,
-      shoulderSeamY + band,
-      false
-    );
-    const customOuter = outerCollarPoints(customRaw, refShoulderLx, refShoulderRx);
-    const pt =
-      shoulderPointOnLine(
-        customAllOutline,
-        shoulderSeamY,
-        (refShoulderLx + refShoulderRx) / 2
-      ) ??
-      onePointOnGarmentOutline(customOuter, customRaw, refShoulderLx, refShoulderRx);
-    return indexOfClosest(customAllOutline, pt);
-  })();
   const centerXGarment = (refShoulderLx + refShoulderRx) / 2;
   const shoulderBandY0 = shoulderSeamY;
   const shoulderBandY1 = shoulderSeamY + 28;
@@ -446,7 +421,6 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
     bodyShoulderContour,
     garmentShoulderContour: customContour,
     garmentShoulderPoints: customPoints,
-    shoulderPointIndex: customShoulderIdx,
     garmentType: "custom",
     ...(sleevePlotRangeForDebug ? { sleeveMeasurePlotRange: sleevePlotRangeForDebug } : {}),
     ...(sleevePlotRangeRightForDebug ? { sleeveMeasurePlotRangeRight: sleevePlotRangeRightForDebug } : {}),

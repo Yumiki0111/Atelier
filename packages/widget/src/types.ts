@@ -17,6 +17,8 @@ export interface WidgetDesignConfig {
   ctaTryOnLabel?: string;
   /** カート／体型確定ボタン・サイズ選択・スライダー等のアクセント色 */
   ctaAccentColor?: string;
+  /** `inline` = size-row embed; `floating` = fixed bottom-right */
+  launcherPlacement?: "floating" | "inline";
 }
 
 /** カラー切替用。API の asset.colors を返したときのみウィジェットに色 UI を表示する */

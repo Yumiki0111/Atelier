@@ -1,5 +1,5 @@
 import { fetchWidgetConfig, fetchWidgetDesign, sendEvent, type WidgetParams } from "./widget-api";
-import { FITLOOK_LOGO_SPLASH_DURATION_MS } from "./widget-fitlook-logo";
+import { waitForFitLookSplashHold } from "./widget-fitlook-logo";
 import {
   renderCube,
   applyDesignToButton,
@@ -19,6 +19,8 @@ import {
   isInlinePlacement,
   isOverlayModeFromAttr,
   isPhoneFrameDisabledFromAttr,
+  isDesktopPanelFromAttr,
+  isDesktopPanelFromLocationSearch,
 } from "./embed-data";
 import type { WidgetDesignConfig } from "./types";
 
@@ -82,6 +84,10 @@ export function initWidget() {
     const initialSize = readEmbedAttr(element, "initial-size");
     const overlay = isOverlayModeFromAttr(readEmbedAttr(element, "overlay"));
     const phoneFrameDisabled = isPhoneFrameDisabledFromAttr(readEmbedAttr(element, "phone-frame"));
+    const desktopPanel =
+      isDesktopPanelFromAttr(readEmbedAttr(element, "desktop-panel")) ||
+      isDesktopPanelFromLocationSearch();
+    const addToCartUrlTemplate = readEmbedAttr(element, "add-to-cart-url");
 
     if (!publicKey && !shopId) {
       console.warn(`${WIDGET_LOG_PREFIX} public-key or shop-id is required`);
@@ -135,7 +141,31 @@ export function initWidget() {
         overlay: overlay ? true : null,
         /** オーバーレイは常に全幅モーダル（属性が効かない環境でも枠を出さない） */
         phoneFrame: phoneFrameDisabled || overlay ? false : null,
+        desktopPanel: desktopPanel ? true : null,
+        addToCartUrlTemplate: addToCartUrlTemplate?.trim() ? addToCartUrlTemplate : null,
       };
+
+      if (typeof window !== "undefined") {
+        (window as unknown as { __FITLOOK_WIDGET_DESKTOP_PANEL?: boolean | null }).__FITLOOK_WIDGET_DESKTOP_PANEL =
+          params.desktopPanel;
+      }
+      // #region agent log
+      fetch("http://127.0.0.1:7468/ingest/8ae11b2e-0353-49f9-add8-94485bd038d3", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a81229" },
+        body: JSON.stringify({
+          sessionId: "a81229",
+          hypothesisId: "A",
+          location: "widget.ts:initWidget:params",
+          message: "desktopPanel init",
+          data: {
+            desktopAttrRaw: readEmbedAttr(element, "desktop-panel"),
+            desktopPanelResolved: params.desktopPanel === true,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
 
       const pid = productId || externalProductId || `widget-${Date.now()}-${Math.random()}`;
       const safePid = String(pid).replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -203,6 +233,14 @@ export function initWidget() {
         showDefaultButton(containerId, designRoot);
         trySendCubeView(params.shopId || "");
       }
+
+      const autoOpen = readEmbedAttr(element, "auto-open")?.trim().toLowerCase() === "true";
+      if (autoOpen) {
+        params.reopenAfterModalClose = true;
+        queueMicrotask(() => {
+          void handleCubeClick(shadowRoot, params);
+        });
+      }
     } catch (error) {
       console.error(`${WIDGET_LOG_PREFIX} Failed to initialize widget ${index + 1}:`, error);
     }
@@ -210,14 +248,6 @@ export function initWidget() {
 
   // すべてのボタンの位置を再計算（初期化後）
   updateButtonPositions();
-}
-
-/** ロゴ立ち上げ SVG が一周するまで待つ（API が先に返ってもスプラッシュを切らない） */
-function waitForFitLookSplashElapsed(splashStartMs: number): Promise<void> {
-  const elapsed = Date.now() - splashStartMs;
-  const remaining = FITLOOK_LOGO_SPLASH_DURATION_MS - elapsed;
-  if (remaining <= 0) return Promise.resolve();
-  return new Promise((resolve) => setTimeout(resolve, remaining));
 }
 
 async function handleCubeClick(shadowRoot: ShadowRoot, params: WidgetParams) {
@@ -238,10 +268,19 @@ async function handleCubeClick(shadowRoot: ShadowRoot, params: WidgetParams) {
   const { overlay, contentArea } = renderModalWithLoading(shadowRoot, params);
   const splashStartMs = Date.now();
 
-  // バックグラウンドで設定を取得
+  const reopenHandler = params.reopenAfterModalClose
+    ? () => {
+        void handleCubeClick(shadowRoot, params);
+      }
+    : undefined;
+
   try {
-    const config = await fetchWidgetConfig(params);
-    await waitForFitLookSplashElapsed(splashStartMs);
+    const configPromise = fetchWidgetConfig(params);
+    await waitForFitLookSplashHold(contentArea, splashStartMs);
+    const config = await configPromise;
+
+    const splashCleanup = (overlay as unknown as { __fitlookCleanup?: { fn: () => void } }).__fitlookCleanup;
+    if (splashCleanup?.fn) splashCleanup.fn();
 
     const resolvedShopId = params.shopId || config.shopId || "";
     const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -256,9 +295,15 @@ async function handleCubeClick(shadowRoot: ShadowRoot, params: WidgetParams) {
     }
 
     if (config.enabled && config.asset?.garmentFitAvailable) {
-      mountEmbedIframe(overlay, contentArea, params);
+      const surfaceBg = config.design?.interfaceBackgroundColor ?? "#fafafa";
+      mountEmbedIframe(overlay, contentArea, params, reopenHandler, {
+        surfaceBackgroundColor: surfaceBg,
+      });
     } else if (config.enabled) {
-      updateModalWithConfig(shadowRoot, config, params, overlay, contentArea);
+      /** スプラッシュ側で落下終了＋1.5s ホールド済みのため、ここでは追加遅延しない */
+      updateModalWithConfig(shadowRoot, config, params, overlay, contentArea, reopenHandler, {
+        deferGarmentViewerMs: 0,
+      });
     } else {
       const errorDetails = config.error || "不明なエラー";
       showErrorInModal(shadowRoot, `この商品の試着は現在利用できません。\n\nエラー: ${errorDetails}`, overlay, contentArea);
@@ -266,7 +311,7 @@ async function handleCubeClick(shadowRoot: ShadowRoot, params: WidgetParams) {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error(`${WIDGET_LOG_PREFIX} Error in handleCubeClick:`, errorMessage);
-    await waitForFitLookSplashElapsed(splashStartMs);
+    await waitForFitLookSplashHold(contentArea, splashStartMs);
     showErrorInModal(shadowRoot, `試着画面の読み込みに失敗しました。\n\nエラー: ${errorMessage}`, overlay, contentArea);
   }
 }

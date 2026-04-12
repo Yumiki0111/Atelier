@@ -12,6 +12,8 @@ export interface Product {
   name: string;
   brand?: string;
   category?: ProductCategory;
+  /** 販売金額（円の整数）。税込／税抜は店舗運用に任せる */
+  priceYen?: number | null;
   thumbnailUrl?: string;
   /** 開発フィットから登録した SVG＋採寸・グレーディング（リグ・デバッグ除く） */
   garmentSpec?: unknown;

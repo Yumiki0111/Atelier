@@ -24,9 +24,6 @@ export type GenericDraft = {
   sleeveFirstEdgeGlobalPairRange: string;
   /** ミラー袖側の `sleeveFirstEdgeGlobalPairRange` と同じ */
   sleeveMirrorFirstEdgeGlobalPairRange: string;
-  /** 袖丈の目標弧長だけを短いチェーンにしたいとき（カンマ列。例 37,38,39） */
-  sleeveMeasureArcTargetRange: string;
-  sleeveMirrorMeasureArcTargetRange: string;
   sleeveMeasureVertexStart?: number;
   sleeveMeasureVertexEnd?: number;
   sleeveMirrorMeasureVertexStart?: number;
@@ -52,8 +49,6 @@ export function emptyGenericDraft(): GenericDraft {
     lowerSleeveMirrorMeasureRange: "",
     sleeveFirstEdgeGlobalPairRange: "",
     sleeveMirrorFirstEdgeGlobalPairRange: "",
-    sleeveMeasureArcTargetRange: "",
-    sleeveMirrorMeasureArcTargetRange: "",
   };
 }
 

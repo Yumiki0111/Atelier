@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
 
     const { data: product, error: productError } = await supabaseAdmin
       .from("products")
-      .select("id, garment_spec")
+      .select("id, garment_spec, category")
       .eq("shop_id", shopId)
       .eq("external_product_id", externalProductId)
       .single();
@@ -82,6 +82,8 @@ export async function GET(request: NextRequest) {
       customGarmentData: sized,
       heightCm,
       weightKg,
+      fitChestBandCategory: (product as { category?: string | null }).category ?? null,
+      currentSizeLabel: size,
     });
 
     const response = NextResponse.json({
@@ -92,6 +94,8 @@ export async function GET(request: NextRequest) {
       garmentPathStrokeDasharrays: snap.garmentPathStrokeDasharrays,
       garmentPathStrokeWidths: snap.garmentPathStrokeWidths,
       garmentPathStrokes: snap.garmentPathStrokes,
+      fitEaseSummary: snap.fitEaseSummary,
+      fitEaseDiagram: snap.fitEaseDiagram,
     });
     return setCorsHeaders(response, request);
   } catch (e) {

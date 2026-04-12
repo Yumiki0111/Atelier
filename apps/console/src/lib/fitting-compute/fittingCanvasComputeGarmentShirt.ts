@@ -6,13 +6,7 @@ import { shirtLandmarks } from "@/app/(main)/development/fitting/lib/shirtConfig
 import { buildShirtPath, buildShirtPathFromSizeMeasure } from "@/app/(main)/development/fitting/lib/shirtUtils";
 import type { MeasureOverlayData, ShirtSize, ShoulderDebug, SizeMeasure } from "@/app/(main)/development/fitting/lib/types";
 import { getAllPathPoints } from "@/app/(main)/development/fitting/lib/fittingContourUtils";
-import {
-  indexOfClosest,
-  onePointOnGarmentOutline,
-  outerCollarPoints,
-  shoulderContourFromPath,
-  shoulderPointOnLine,
-} from "@/app/(main)/development/fitting/lib/fittingContourUtils";
+import { outerCollarPoints, shoulderContourFromPath } from "@/app/(main)/development/fitting/lib/fittingContourUtils";
 import { smoothStep } from "./fittingCanvasRigArmDebug";
 
 export function computeShirtGarmentBranch(input: {
@@ -81,10 +75,6 @@ export function computeShirtGarmentBranch(input: {
         })()
       : shirtAllOutline.map(([x, y]) => placement.place(x, y));
   const shirtCenterX = (lm.shoulderLx + lm.shoulderRx) / 2;
-  const shirtShoulderPt =
-    shoulderPointOnLine(shirtAllOutline, shoulderSeamY, shirtCenterX) ??
-    onePointOnGarmentOutline(shirtOuter, shirtRaw, lm.shoulderLx, lm.shoulderRx);
-  const shirtShoulderIdx = indexOfClosest(shirtAllOutline, shirtShoulderPt);
   const shirtShoulderBandY1 = shoulderSeamY + 28;
   const shirtShoulderBand = shirtAllOutline.filter((p) => p[1] >= shoulderSeamY && p[1] <= shirtShoulderBandY1);
   const shirtVisualLx =
@@ -128,7 +118,6 @@ export function computeShirtGarmentBranch(input: {
     bodyShoulderContour,
     garmentShoulderContour: shirtContour,
     garmentShoulderPoints: shirtPoints,
-    shoulderPointIndex: shirtShoulderIdx,
     garmentType: "shirt",
   };
   return { shirtPathD, shoulderDebug, garmentOverlay };

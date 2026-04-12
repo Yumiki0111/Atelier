@@ -10,18 +10,27 @@ import { getPreviewSizeKeys } from "@/features/preview/previewProductSizeKeys";
 import {
   PreviewAccentCtaButton,
   PreviewBackRow,
+  PreviewChromeThemeProvider,
   PreviewProductRow,
   PreviewViewerShell,
 } from "@/features/preview/WidgetPreviewChrome";
+import { WidgetLauncherPreviewMock } from "@/features/widget-design/WidgetLauncherPreviewMock";
 
 const SAMPLE_NAME = "サンプル商品";
 const SAMPLE_PRICE = "¥ —";
 
+/** Phone mockup chrome height (width matches `max-w-[310.5px]`). */
+const PREVIEW_FRAME_H = 672;
+
 /**
- * インターフェース設定の右カラム（見た目のみ）。
- * 表示文言は常にサンプル。体型ラインの計算に試着可能な商品が1件あればその spec を内部利用する（服パス・サイズ行は出さない）。
+ * Widget design preview column (appearance only).
+ * Copy is always sample text. Uses one fittable product spec internally when available.
  */
 export function WidgetDesignInterfacePreview({
+  launcherPlacement,
+  buttonShape,
+  buttonColor,
+  buttonText,
   interfaceBackgroundColor,
   canvasBackgroundColor,
   ctaCartLabel,
@@ -30,6 +39,10 @@ export function WidgetDesignInterfacePreview({
   sampleProduct,
   sampleAssets,
 }: {
+  launcherPlacement: "floating" | "inline";
+  buttonShape: "circle" | "pill";
+  buttonColor: string;
+  buttonText: string;
   interfaceBackgroundColor: string;
   canvasBackgroundColor: string;
   ctaCartLabel: string;
@@ -57,73 +70,108 @@ export function WidgetDesignInterfacePreview({
   const noop = () => {};
 
   return (
-    <div className="flex w-full flex-col gap-6 xl:w-[min(100%,340px)]">
-      <div
-        className="mx-auto flex justify-center"
-        style={{ width: "310.5px", height: "672px", flexShrink: 0 }}
-      >
-        <PhoneFrame
-          previewContainerRef={previewContainerRef}
-          borderRef={borderRef}
-          selectedAsset={null}
-          screenContentBackgroundColor={interfaceBackgroundColor}
-        >
+    <div className="mx-auto w-full max-w-[310.5px]">
+      <div className="overflow-hidden">
+        <div className="flex items-center justify-between gap-2 border-b border-border/40 bg-background pb-2.5 pt-1">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            プレビュー（上・店頭／下・試着画面）
+          </span>
+          <span className="h-2 w-2 shrink-0 rounded-full bg-primary/80" aria-hidden />
+        </div>
+        <div className="flex flex-col items-stretch gap-4 pb-3 pt-3 sm:pb-4">
+          <div>
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              店頭のみ（スニペット）
+            </p>
+            <WidgetLauncherPreviewMock
+              placement={launcherPlacement}
+              shape={buttonShape}
+              color={buttonColor}
+              label={buttonText}
+            />
+          </div>
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            試着ウィジェット内（起動後の画面）
+          </p>
           <div
-            ref={previewContainerRef}
-            className="absolute inset-0 z-10 flex min-h-0 min-w-0 flex-col overflow-hidden"
-            style={{
-              paddingTop: "5.2%",
-              boxSizing: "border-box",
-            }}
+            className="flex w-full shrink-0 justify-center"
+            style={{ height: PREVIEW_FRAME_H }}
           >
-            {canShowFit && sampleProduct ? (
-              <WidgetStyleProductPreview
-                productId={sampleProduct.id}
-                productName={SAMPLE_NAME}
-                thumbnailUrl={null}
-                priceDisplay={SAMPLE_PRICE}
-                sizeKeys={sizeKeys.length > 0 ? sizeKeys : ["M"]}
-                initialSize={initialSize}
-                garmentFitAvailable
-                customGarmentData={sampleProduct.garmentSpec as CustomGarmentData}
-                onClose={noop}
-                interfaceBackgroundColor={interfaceBackgroundColor}
-                canvasBackgroundColor={canvasBackgroundColor}
-                ctaCartLabel={ctaCartLabel}
-                ctaTryOnLabel={ctaTryOnLabel}
-                ctaAccentColor={ctaAccentColor}
-                bodyAdjustEnabled={false}
-                sizeCarouselEnabled={false}
-                garmentPathsInViewer={false}
-              />
-            ) : (
+            <PhoneFrame
+              previewContainerRef={previewContainerRef}
+              borderRef={borderRef}
+              selectedAsset={null}
+              screenContentBackgroundColor={interfaceBackgroundColor}
+            >
               <div
-                className="relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden"
+                ref={previewContainerRef}
+                className="absolute inset-0 z-10 flex min-h-0 min-w-0 flex-col overflow-hidden"
                 style={{
-                  fontFamily:
-                    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                  backgroundColor: interfaceBackgroundColor,
+                  paddingTop: "5.2%",
+                  boxSizing: "border-box",
                 }}
               >
-                <PreviewBackRow onClick={noop} />
-                <PreviewProductRow
-                  productName={SAMPLE_NAME}
-                  priceDisplay={SAMPLE_PRICE}
-                  thumbnailUrl={null}
-                />
-                <PreviewViewerShell backgroundColor={canvasBackgroundColor}>
-                  <div className="h-full min-h-0 w-full flex-1" aria-hidden />
-                </PreviewViewerShell>
-                <PreviewAccentCtaButton
-                  variant="cart"
-                  label={ctaCartLabel}
-                  accentColor={ctaAccentColor}
-                  onClick={noop}
-                />
+                {canShowFit && sampleProduct ? (
+                  <WidgetStyleProductPreview
+                    productId={sampleProduct.id}
+                    productCategory={sampleProduct.category ?? null}
+                    productName={SAMPLE_NAME}
+                    thumbnailUrl={null}
+                    priceDisplay={SAMPLE_PRICE}
+                    sizeKeys={sizeKeys.length > 0 ? sizeKeys : ["M"]}
+                    initialSize={initialSize}
+                    garmentFitAvailable
+                    customGarmentData={sampleProduct.garmentSpec as CustomGarmentData}
+                    onClose={noop}
+                    interfaceBackgroundColor={interfaceBackgroundColor}
+                    canvasBackgroundColor={canvasBackgroundColor}
+                    ctaCartLabel={ctaCartLabel}
+                    ctaTryOnLabel={ctaTryOnLabel}
+                    ctaAccentColor={ctaAccentColor}
+                    bodyAdjustEnabled={false}
+                    sizeCarouselEnabled={false}
+                    garmentPathsInViewer={false}
+                  />
+                ) : (
+                  <PreviewChromeThemeProvider
+                    interfaceBackgroundColor={interfaceBackgroundColor}
+                    canvasBackgroundColor={canvasBackgroundColor}
+                  >
+                    <div
+                      className="relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden"
+                      style={{
+                        fontFamily:
+                          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                        backgroundColor: canvasBackgroundColor,
+                      }}
+                    >
+                      <div
+                        className="flex shrink-0 flex-col"
+                        style={{ backgroundColor: interfaceBackgroundColor }}
+                      >
+                        <PreviewBackRow onClick={noop} />
+                        <PreviewProductRow
+                          productName={SAMPLE_NAME}
+                          priceDisplay={SAMPLE_PRICE}
+                          thumbnailUrl={null}
+                        />
+                      </div>
+                      <PreviewViewerShell backgroundColor={canvasBackgroundColor}>
+                        <div className="h-full min-h-0 w-full flex-1" aria-hidden />
+                      </PreviewViewerShell>
+                      <PreviewAccentCtaButton
+                        variant="cart"
+                        label={ctaCartLabel}
+                        accentColor={ctaAccentColor}
+                        onClick={noop}
+                      />
+                    </div>
+                  </PreviewChromeThemeProvider>
+                )}
               </div>
-            )}
+            </PhoneFrame>
           </div>
-        </PhoneFrame>
+        </div>
       </div>
     </div>
   );

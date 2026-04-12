@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CustomGarmentData, JacketSize, ShirtSize, SizeMeasure } from "../lib/types";
 import { cn } from "@/lib/utils";
 import { DevPanelSection } from "./FittingControlsUI";
@@ -12,6 +12,7 @@ import {
 } from "../generic";
 import { compareGenericSizePresetRow } from "../generic/genericDevDefaults";
 import { logDevFitPipelineAfterSizePresetChange } from "@/lib/fitting-compute/fittingCanvasDevSizePresetDebug";
+import { totalPathVertices } from "@/app/(main)/development/fitting/svgPath/globalVertexIndex";
 
 /**
  * 初回プリセットで「入力着丈＝ベースライン」になりスケール 1 固定になるのを避ける。
@@ -72,6 +73,49 @@ export function FittingControlsCustomPanels({
   const [presetLength, setPresetLength] = useState("");
   const [presetSleeve, setPresetSleeve] = useState("");
   const presetLabelRef = useRef<HTMLInputElement>(null);
+
+  const storedFitPair = customGarmentData.genericSymmetricTop?.fitCompareVertexGlobalPair;
+  const [fitCompareA, setFitCompareA] = useState("");
+  const [fitCompareB, setFitCompareB] = useState("");
+  useEffect(() => {
+    if (storedFitPair) {
+      setFitCompareA(String(storedFitPair[0]));
+      setFitCompareB(String(storedFitPair[1]));
+    } else {
+      setFitCompareA("");
+      setFitCompareB("");
+    }
+  }, [storedFitPair?.[0], storedFitPair?.[1]]);
+
+  const applyFitComparePair = () => {
+    const gt = customGarmentData.genericSymmetricTop;
+    if (customGarmentData.presetId !== "genericSymmetricTop" || gt == null) return;
+    const a = Number.parseInt(fitCompareA.trim(), 10);
+    const b = Number.parseInt(fitCompareB.trim(), 10);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return;
+    const n = totalPathVertices(customGarmentData.pathDs);
+    if (a < 0 || b < 0 || a >= n || b >= n || a === b) return;
+    onCustomGarmentApply({
+      ...customGarmentData,
+      genericSymmetricTop: {
+        ...gt,
+        fitCompareVertexGlobalPair: [a, b],
+      },
+    });
+  };
+
+  const clearFitComparePair = () => {
+    const gt = customGarmentData.genericSymmetricTop;
+    if (customGarmentData.presetId !== "genericSymmetricTop" || gt == null) return;
+    const nextGt = { ...gt };
+    delete nextGt.fitCompareVertexGlobalPair;
+    onCustomGarmentApply({
+      ...customGarmentData,
+      genericSymmetricTop: nextGt,
+    });
+    setFitCompareA("");
+    setFitCompareB("");
+  };
 
   const sizePresets = customGarmentData.genericSymmetricTop?.sizePresets ?? [];
   const isGenericTop = customGarmentData.presetId === "genericSymmetricTop";
@@ -216,27 +260,27 @@ export function FittingControlsCustomPanels({
       {isGenericTop && (
         <DevPanelSection title="サイズプリセット">
           {measureGradingReady && (
-            <p className="mt-2 text-[10px] leading-snug text-slate-600">
+            <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
               軽量グレーディング有効（build 時の胴／袖スケール。ベースライン＋採寸区間が揃った軸のみ）。
               初回プリセット追加時は、着丈ベースラインを紫・ランドマーク推定から取り、入力との差で胴が伸縮します。
               {canvasSleeveSnapEligible ? (
-                <span className="mt-2 block text-slate-500">
+                <span className="mt-2 block text-muted-foreground">
                   キャンバス袖スナップ（着丈メッシュ後）も採寸頂点により有効。
                 </span>
               ) : (
-                <span className="mt-2 block text-amber-800/90">
+                <span className="mt-2 block text-destructive">
                   袖のキャンバス補正はプライマリ／ミラー袖の採寸頂点が必要です。
                 </span>
               )}
             </p>
           )}
           {!measureGradingReady && canvasSleeveSnapEligible && (
-            <p className="mt-2 text-[10px] leading-snug text-sky-900">
+            <p className="mt-2 text-[10px] leading-snug text-foreground">
               ベースライン未設定のため build 時グレードは限定的ですが、採寸頂点がありキャンバス上で袖丈を入力値へ寄せることがあります。
             </p>
           )}
           {!measureGradingReady && !canvasSleeveSnapEligible && (
-            <p className="mt-2 text-[10px] leading-snug text-amber-700">
+            <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
               連結頂点だけでは形は変えません。下のプリセットで着丈・袖丈を選ぶと、区間に合わせて軽量グレーディングが有効になります。
             </p>
           )}
@@ -256,8 +300,8 @@ export function FittingControlsCustomPanels({
                       className={cn(
                         "flex-1 rounded-lg px-3 py-2 text-left text-[11px] font-bold transition-colors",
                         isActive
-                          ? "bg-sky-700 text-white"
-                          : "bg-slate-100/90 text-slate-700 hover:bg-slate-200/80"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
                       )}
                     >
                       <span className="font-mono">{preset.label}</span>
@@ -268,7 +312,7 @@ export function FittingControlsCustomPanels({
                     <button
                       type="button"
                       onClick={() => deletePreset(preset)}
-                      className="shrink-0 rounded-md px-2 py-1.5 text-[10px] text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                      className="shrink-0 rounded-md px-2 py-1.5 text-[10px] text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
                       aria-label={`${preset.label}を削除`}
                     >
                       ×
@@ -278,19 +322,19 @@ export function FittingControlsCustomPanels({
               })}
             </div>
           )}
-          <div className="mt-2 rounded-md bg-slate-100/80 p-2">
-            <p className="mb-1.5 text-[9px] font-semibold text-slate-500">新規プリセット追加</p>
+          <div className="mt-2 rounded-md bg-muted/60 p-2">
+            <p className="mb-1.5 text-[9px] font-semibold text-muted-foreground">新規プリセット追加</p>
             <div className="grid gap-2 sm:grid-cols-3">
               <input
                 ref={presetLabelRef}
-                className="w-full rounded-md bg-white px-2 py-1.5 font-mono text-[11px] outline-none ring-0 focus:ring-2 focus:ring-sky-400/30"
+                className="w-full rounded-md border border-input bg-background px-2 py-1.5 font-mono text-[11px] outline-none ring-0 focus-visible:ring-2 focus-visible:ring-ring"
                 placeholder={`${String.fromCharCode(65 + sizePresets.length)}（名前）`}
                 value={presetLabel}
                 onChange={(e) => setPresetLabel(e.target.value)}
                 maxLength={8}
               />
               <input
-                className="w-full rounded-md bg-white px-2 py-1.5 font-mono text-[11px] outline-none ring-0 focus:ring-2 focus:ring-sky-400/30"
+                className="w-full rounded-md border border-input bg-background px-2 py-1.5 font-mono text-[11px] outline-none ring-0 focus-visible:ring-2 focus-visible:ring-ring"
                 inputMode="decimal"
                 placeholder="着丈"
                 value={presetLength}
@@ -298,7 +342,7 @@ export function FittingControlsCustomPanels({
                 onKeyDown={(e) => { if (e.key === "Enter") addPreset(); }}
               />
               <input
-                className="w-full rounded-md bg-white px-2 py-1.5 font-mono text-[11px] outline-none ring-0 focus:ring-2 focus:ring-sky-400/30"
+                className="w-full rounded-md border border-input bg-background px-2 py-1.5 font-mono text-[11px] outline-none ring-0 focus-visible:ring-2 focus-visible:ring-ring"
                 inputMode="decimal"
                 placeholder="袖丈"
                 value={presetSleeve}
@@ -313,13 +357,56 @@ export function FittingControlsCustomPanels({
                   "rounded-lg px-3 py-1.5 text-[11px] font-bold transition-colors sm:col-span-1",
                   parseCmLocal(presetLength) != null &&
                     parseCmLocal(presetSleeve) != null
-                    ? "bg-emerald-600 text-white hover:bg-emerald-500"
-                    : "cursor-not-allowed bg-slate-200 text-slate-500"
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "cursor-not-allowed bg-muted text-muted-foreground"
                 )}
               >
                 追加
               </button>
             </div>
+          </div>
+        </DevPanelSection>
+      )}
+      {isGenericTop && (
+        <DevPanelSection title="ウィジェット体型（服 # 2点）">
+          <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
+            服プロットの連結 # を2つ指定。ワープ後の2点間の長さ（cm）と、くびれ参照弦（モデルプロットの紫・体重で変わる）を比べて小さめ／おすすめ／大きめを出します。未指定時は身幅×2と弦の差にフォールバックします。
+          </p>
+          <div className="mt-2 flex flex-wrap items-end gap-2">
+            <label className="flex flex-col gap-0.5 text-[9px] font-semibold text-muted-foreground">
+              左 #
+              <input
+                className="w-20 rounded-md border border-input bg-background px-2 py-1.5 font-mono text-[11px] outline-none ring-0 focus-visible:ring-2 focus-visible:ring-ring"
+                inputMode="numeric"
+                value={fitCompareA}
+                onChange={(e) => setFitCompareA(e.target.value)}
+                placeholder="例 120"
+              />
+            </label>
+            <label className="flex flex-col gap-0.5 text-[9px] font-semibold text-muted-foreground">
+              右 #
+              <input
+                className="w-20 rounded-md border border-input bg-background px-2 py-1.5 font-mono text-[11px] outline-none ring-0 focus-visible:ring-2 focus-visible:ring-ring"
+                inputMode="numeric"
+                value={fitCompareB}
+                onChange={(e) => setFitCompareB(e.target.value)}
+                placeholder="例 350"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={applyFitComparePair}
+              className="rounded-lg bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground hover:bg-primary/90"
+            >
+              保存
+            </button>
+            <button
+              type="button"
+              onClick={clearFitComparePair}
+              className="rounded-lg border border-input bg-background px-2.5 py-1.5 text-[10px] text-muted-foreground hover:bg-muted"
+            >
+              クリア
+            </button>
           </div>
         </DevPanelSection>
       )}

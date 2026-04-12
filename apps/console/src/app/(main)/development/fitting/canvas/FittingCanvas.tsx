@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type {
   GarmentType,
   ShirtSize,
@@ -37,8 +37,6 @@ export interface FittingCanvasProps {
   rigBodyEnabled?: boolean;
   /** アップロード SVG 内の「服のリグ（debugRigPathDs）」を描画する */
   rigGarmentEnabled?: boolean;
-  /** 左パネルで肩インデックスを表示・編集するため */
-  onShoulderDebugChange?: (debug: ShoulderDebug | null) => void;
   /** 汎用フィット入力中の連結頂点範囲（服プロットを緑で強調） */
   genericVertexPlotHighlight?: GenericVertexPlotHighlight | null;
   /** 汎用トップの role 指定用: 服の path クリック */
@@ -70,7 +68,6 @@ export function FittingCanvas({
   showRigAngleDiagram = false,
   rigBodyEnabled = false,
   rigGarmentEnabled = false,
-  onShoulderDebugChange,
   genericVertexPlotHighlight = null,
   onCustomPathClick,
   onGarmentVertexHover,
@@ -115,10 +112,6 @@ export function FittingCanvas({
     rigBodyEnabled,
     genericVertexPlotHighlight,
   });
-
-  useEffect(() => {
-    onShoulderDebugChange?.(shoulderDebug);
-  }, [shoulderDebug, onShoulderDebugChange]);
 
   const [showCanvasDebugHud] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -176,7 +169,7 @@ export function FittingCanvas({
   }
 
   return (
-    <div className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white">
+    <div className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-background">
       {debugLines.length > 0 && showCanvasDebugHud ? (
         <div
           aria-hidden
@@ -197,12 +190,12 @@ export function FittingCanvas({
           {debugLines.join("\n")}
         </div>
       ) : null}
-      <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4">
-        <div className="flex h-full w-full max-h-full max-w-[300px] items-center justify-center">
+      <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-2">
+        <div className="flex h-full w-full max-h-full max-w-full items-center justify-center">
           <svg
             viewBox={`0 0 1505 ${viewBoxHeight}`}
             preserveAspectRatio="xMidYMid meet"
-            className="h-auto max-h-full w-full max-w-[300px] overflow-visible"
+            className="h-auto max-h-full w-full max-w-full overflow-visible"
             xmlns="http://www.w3.org/2000/svg"
           >
         <g fill="none" stroke="#bbb" strokeWidth={4} aria-hidden>

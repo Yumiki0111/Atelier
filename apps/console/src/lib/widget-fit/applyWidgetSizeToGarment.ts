@@ -11,10 +11,22 @@ export function applyWidgetSizeToCustomGarmentData(
   if (presets && presets.length > 0) {
     const match = presets.find((p) => p.label === selectedSize);
     if (match) {
+      const prevLen = data.size.length;
+      const nextLen = match.length;
+      let chest = data.size.chest;
+      let shoulder = data.size.shoulder;
+      // プリセットには身幅・肩幅が無いので着丈比でグレード（`chestDiff` と「小さめ〜大きめ」がサイズで変わるようにする）
+      if (prevLen > 0.01 && Number.isFinite(chest) && Number.isFinite(shoulder)) {
+        const f = nextLen / prevLen;
+        chest = Math.round(chest * f * 10) / 10;
+        shoulder = Math.round(shoulder * f * 10) / 10;
+      }
       data.size = {
         ...data.size,
-        length: match.length,
+        length: nextLen,
         sleeve: match.sleeve,
+        chest,
+        shoulder,
       };
     }
   }

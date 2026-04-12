@@ -68,14 +68,8 @@ export function ShareDemoLinkSection() {
   if (!shopId) return null;
 
   return (
-    <div className="space-y-4 rounded-lg border border-stone-200 bg-stone-50/80 p-4">
-      <div>
-        <h2 className="text-lg font-semibold text-stone-900">営業用・共有デモリンク</h2>
-        <p className="mt-1 text-sm text-stone-600">
-          メールやチャットで送る<strong>公開専用の URL</strong>を発行します。開くと<strong>管理画面（コンソール）ではなく</strong>、
-          スマホ向けの試着デモだけが表示されます。
-        </p>
-      </div>
+    <div className="space-y-4">
+      <h2 className="text-base font-semibold tracking-tight text-foreground">共有リンク</h2>
 
       <div className="space-y-2">
         <Label htmlFor="share-product">商品</Label>
@@ -93,9 +87,11 @@ export function ShareDemoLinkSection() {
           <SelectContent>
             <SelectItem value="none">選択してください</SelectItem>
             {products.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
-                {p.name}
-                {p.externalProductId ? "" : "（外部ID未設定・発行不可）"}
+              <SelectItem key={p.id} value={p.id} title={p.name}>
+                <span className="line-clamp-1 block min-w-0 text-left">
+                  {p.name}
+                  {p.externalProductId ? "" : "（外部ID未設定・発行不可）"}
+                </span>
               </SelectItem>
             ))}
           </SelectContent>
@@ -107,9 +103,9 @@ export function ShareDemoLinkSection() {
       </Button>
 
       {issuedUrl && (
-        <div className="space-y-2 rounded-md border border-stone-200 bg-white p-3">
+        <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <Label className="text-xs text-stone-500">共有 URL</Label>
+            <Label className="text-xs text-muted-foreground">共有 URL</Label>
             <a
               href={issuedUrl}
               target="_blank"
@@ -124,14 +120,10 @@ export function ShareDemoLinkSection() {
               {copied ? "コピー済み" : "コピー"}
             </Button>
           </div>
-          <p className="break-all font-mono text-xs text-stone-800">{issuedUrl}</p>
+          <p className="break-all font-mono text-xs text-foreground">{issuedUrl}</p>
         </div>
       )}
 
-      <p className="text-xs text-stone-500">
-        デモページのホスト（例: <code className="rounded bg-stone-100 px-1">あなたのドメイン</code>
-        ）を Widget キーの<strong>許可ドメイン</strong>に含めてください。未登録だと試着 API が 403 になります。
-      </p>
     </div>
   );
 }

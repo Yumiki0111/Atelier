@@ -29,6 +29,7 @@ import {
   parseGarmentSizePresets,
   type GarmentSizePresetRow,
 } from "@/lib/products/parseGarmentSizePresets";
+import { CircularImageCropDialog } from "@/features/products/components/CircularImageCropDialog";
 
 const productFormSchema = createProductSchema.extend({
   // Form-specific fields can be added here if needed
@@ -54,7 +55,10 @@ export function ProductEditDialog({
   const { data: assets } = useAssets(productId);
   const { shopId } = useAuth();
   const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
+  const [cropOpen, setCropOpen] = useState(false);
+  const [thumbnailCropFile, setThumbnailCropFile] = useState<File | null>(null);
   const [presetDrafts, setPresetDrafts] = useState<GarmentSizePresetRow[]>([]);
+  const [priceYenInput, setPriceYenInput] = useState("");
 
   const canEditMeasures = useMemo(
     () => canEditGarmentSizePresets(product?.garmentSpec),
@@ -106,6 +110,11 @@ export function ProductEditDialog({
       setValue("brand", product.brand || "");
       setValue("category", product.category ?? undefined);
       setValue("thumbnailUrl", product.thumbnailUrl || "");
+      setPriceYenInput(
+        product.priceYen != null && Number.isFinite(product.priceYen)
+          ? String(product.priceYen)
+          : ""
+      );
     }
   }, [product, setValue, open]);
 
@@ -157,6 +166,9 @@ export function ProductEditDialog({
     onOpenChange(newOpen);
     if (!newOpen) {
       reset();
+      setPriceYenInput("");
+      setCropOpen(false);
+      setThumbnailCropFile(null);
     }
   };
 
@@ -164,6 +176,19 @@ export function ProductEditDialog({
     if (!product) return;
     try {
       // 一覧 UI と同じ項目のみ編集。ブランド・カテゴリは一覧に無いため既存値を維持
+      const priceTrim = priceYenInput.replace(/,/g, "").trim();
+      let priceYen: number | null;
+      if (priceTrim === "") {
+        priceYen = null;
+      } else {
+        const n = Math.round(Number(priceTrim));
+        if (!Number.isFinite(n) || n < 0) {
+          toast.error("金額は0以上の整数（円）で入力してください");
+          return;
+        }
+        priceYen = n;
+      }
+
       const cleanedData = {
         name: data.name,
         externalProductId:
@@ -174,6 +199,7 @@ export function ProductEditDialog({
         category: product.category ?? undefined,
         thumbnailUrl:
           data.thumbnailUrl && data.thumbnailUrl.trim() !== "" ? data.thumbnailUrl : undefined,
+        priceYen,
       };
 
       const sanitizedPresets = presetDrafts
@@ -227,7 +253,7 @@ export function ProductEditDialog({
         <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4">
           <DialogTitle>商品を編集</DialogTitle>
           <DialogDescription>
-            画像・商品名・外部商品ID、および開発フィットのサイズ寸法（着丈・袖）を編集できます。
+            画像・商品名・外部商品ID・金額、および開発フィットのサイズ寸法（着丈・袖）を編集できます。
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto space-y-4 min-w-0 px-6 pb-6">
@@ -244,7 +270,8 @@ export function ProductEditDialog({
                   const file = e.target.files?.[0];
                   e.target.value = "";
                   if (file) {
-                    void handleFileUpload(file);
+                    setThumbnailCropFile(file);
+                    setCropOpen(true);
                   }
                 }}
               />
@@ -262,21 +289,21 @@ export function ProductEditDialog({
                 {uploadingThumbnail ? "アップロード中..." : "画像をアップロード"}
               </Button>
               <p className="text-xs text-muted-foreground">
-                商品ライブラリと同様に、角ばった枠内に収まる形で表示されます。
+                開発の商品登録と同じ手順で、トリミング後にアップロードされます。一覧では円形に表示されます。
               </p>
             </div>
             {thumbnailUrl ? (
               <div className="relative mt-2 w-full max-w-[200px]">
                 <div
                   className={cn(
-                    "flex aspect-square w-full items-center justify-center overflow-hidden rounded-md border border-black/5 bg-stone-100 p-0"
+                    "flex aspect-square w-full items-center justify-center overflow-hidden rounded-full border border-black/5 bg-stone-100 p-0"
                   )}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={thumbnailUrl}
                     alt="サムネイルプレビュー"
-                    className="h-full w-full min-h-0 min-w-0 rounded-none object-cover object-center"
+                    className="h-full w-full min-h-0 min-w-0 rounded-none object-cover object-top"
                   />
                 </div>
                 <button
@@ -289,7 +316,7 @@ export function ProductEditDialog({
                 </button>
               </div>
             ) : (
-              <div className="mt-2 flex aspect-square w-full max-w-[200px] items-center justify-center rounded-md border border-dashed border-gray-200 bg-gray-50 text-xs text-gray-400">
+              <div className="mt-2 flex aspect-square w-full max-w-[200px] items-center justify-center rounded-full border border-dashed border-gray-200 bg-gray-50 text-xs text-gray-400">
                 画像なし
               </div>
             )}
@@ -324,6 +351,20 @@ export function ProductEditDialog({
             {errors.externalProductId && (
               <p className="text-sm text-red-500">{errors.externalProductId.message}</p>
             )}
+          </div>
+
+          <div className="space-y-2 min-w-0">
+            <Label htmlFor="priceYen">金額（円・任意）</Label>
+            <Input
+              id="priceYen"
+              inputMode="numeric"
+              value={priceYenInput}
+              onChange={(e) => setPriceYenInput(e.target.value)}
+              placeholder="未入力でクリア"
+              className="w-full"
+              autoComplete="off"
+            />
+            <p className="text-xs text-gray-500">空にして更新すると金額を削除します。</p>
           </div>
 
           <div className="rounded-md border border-gray-200 bg-stone-50/90 p-3">
@@ -478,6 +519,18 @@ export function ProductEditDialog({
       </DialogContent>
     </Dialog>
     )}
+    <CircularImageCropDialog
+      open={cropOpen}
+      onOpenChange={(next) => {
+        setCropOpen(next);
+        if (!next) setThumbnailCropFile(null);
+      }}
+      file={thumbnailCropFile}
+      onConfirm={(blob, fileName) => {
+        void handleFileUpload(new File([blob], fileName, { type: "image/png" }));
+        setThumbnailCropFile(null);
+      }}
+    />
     </>
   );
 }

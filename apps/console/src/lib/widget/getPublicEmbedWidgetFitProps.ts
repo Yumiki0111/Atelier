@@ -2,9 +2,14 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { isGarmentSpecRenderable } from "@/lib/widget-fit/applyWidgetSizeToGarment";
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
 import { resolveWidgetFitSizeKeysOrder } from "@/lib/widget/resolveWidgetFitSizeKeysOrder";
+import { formatPriceYenForDisplay, normalizeWidgetCtaAccentColor } from "@Atelier/shared";
 
 export type PublicEmbedWidgetFitProps = {
   productId: string;
+  /** `products.category`（試着の胸ゆとりしきい値に使用） */
+  productCategory?: string | null;
+  /** カート URL テンプレ `{{productId}}` 用（店舗の外部商品 ID） */
+  externalProductId: string;
   productName: string;
   thumbnailUrl: string | null;
   priceDisplay: string;
@@ -42,7 +47,7 @@ export async function getPublicEmbedWidgetFitProps(
 
   const { data: product, error: productError } = await supabaseAdmin
     .from("products")
-    .select("id, name, category, thumbnail_url, garment_spec")
+    .select("id, name, category, thumbnail_url, garment_spec, external_product_id, price_yen")
     .eq("shop_id", shopId)
     .eq("external_product_id", externalProductId)
     .single();
@@ -115,15 +120,17 @@ export async function getPublicEmbedWidgetFitProps(
         canvasBackgroundColor: designData.canvas_background_color ?? "#fafafa",
         ctaCartLabel: designData.cta_cart_label ?? "カートに追加",
         ctaTryOnLabel: designData.cta_try_on_label ?? "この体型で試着する",
-        ctaAccentColor: designData.cta_accent_color ?? "#3d3835",
+        ctaAccentColor: normalizeWidgetCtaAccentColor(designData.cta_accent_color),
       }
     : undefined;
 
   return {
     productId: product.id,
+    productCategory: category ?? null,
+    externalProductId: (product.external_product_id as string | null) ?? externalProductId,
     productName: product.name,
     thumbnailUrl: product.thumbnail_url ?? null,
-    priceDisplay: "—",
+    priceDisplay: formatPriceYenForDisplay(product.price_yen as number | null | undefined),
     sizeKeys,
     initialSize,
     garmentFitAvailable: true,

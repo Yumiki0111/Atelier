@@ -18,6 +18,21 @@ export interface WidgetParams {
   overlay?: boolean | null;
   /** `false` のとき試着モーダルを端末枠（黒ベゼル・max-width 制限）なしの全幅 UI にする（デモページ向け） */
   phoneFrame?: boolean | null;
+  /**
+   * `data-fitlook-desktop-panel="true"` または親ページ URL の `?fitlook-desktop-panel=true` … 右下パネル用オプトイン。
+   * 未指定・false のときは EC 本番同様、常に全画面の試着 UI。
+   */
+  desktopPanel?: boolean | null;
+  /**
+   * `data-fitlook-add-to-cart-url` — `{{productId}}` `{{size}}` `{{colorId}}` 等で置換し、クリック時に `location` 遷移する。
+   * ショップ側 JS なしでカート URL だけ埋め込みたい場合に使う。
+   */
+  addToCartUrlTemplate?: string | null;
+  /**
+   * `data-fitlook-auto-open` 等で初回を自動起動したときに付与。
+   * 試着モーダルを閉じたあと（embed の「商品に戻る」／2D の「閉じる」）に再度スプラッシュ付きで開く。
+   */
+  reopenAfterModalClose?: boolean | null;
 }
 
 /** 開発環境用のモックウィジェット設定を生成（2Dウィジェット用・サイズキーのみ利用） */

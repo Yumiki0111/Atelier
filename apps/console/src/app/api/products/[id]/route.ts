@@ -5,6 +5,10 @@ import { updateProductSchema } from "@Atelier/shared";
 import { ZodError } from "zod";
 import { stripGarmentSpecForStorage } from "@/lib/products/stripGarmentSpecForStorage";
 import { validateGarmentSpecForProduction } from "@/lib/products/validateGarmentSpecForProduction";
+import {
+  isPostgrestSchemaCacheError,
+  POSTGREST_SCHEMA_DRIFT_MESSAGE_JA,
+} from "@/lib/supabase/postgrestSchemaErrors";
 
 // GET /api/products/:id - Get product by ID
 export async function GET(
@@ -58,6 +62,7 @@ export async function GET(
       name: data.name,
       brand: data.brand,
       category: data.category,
+      priceYen: data.price_yen ?? undefined,
       thumbnailUrl: data.thumbnail_url,
       garmentSpec: data.garment_spec ?? undefined,
       createdAt: data.created_at,
@@ -110,6 +115,9 @@ export async function PATCH(
     if (validated.externalProductId !== undefined) updateData.external_product_id = validated.externalProductId || null;
     if (validated.brand !== undefined) updateData.brand = validated.brand || null;
     if (validated.category !== undefined) updateData.category = validated.category || null;
+    if (validated.priceYen !== undefined) {
+      updateData.price_yen = validated.priceYen;
+    }
     if (validated.thumbnailUrl !== undefined) {
       // 空文字列の場合はnullに変換
       updateData.thumbnail_url = validated.thumbnailUrl === "" ? null : validated.thumbnailUrl;
@@ -147,13 +155,13 @@ export async function PATCH(
       }
       console.error("[PATCH /api/products/:id] Database error:", error.message, error.code);
       
-      // カラムが存在しない場合のエラーを検出
-      if (error.message?.includes("column") && error.message?.includes("does not exist")) {
+      // カラム未適用（マイグレーション未実行）や schema cache 不整合
+      if (isPostgrestSchemaCacheError(error.message)) {
         return NextResponse.json(
-          { 
+          {
             error: "Database schema error",
-            message: "データベースのスキーマが最新ではありません。マイグレーションを実行してください。",
-            details: error.message
+            message: POSTGREST_SCHEMA_DRIFT_MESSAGE_JA,
+            details: error.message,
           },
           { status: 500 }
         );
@@ -176,6 +184,7 @@ export async function PATCH(
       name: data.name,
       brand: data.brand,
       category: data.category,
+      priceYen: data.price_yen ?? undefined,
       thumbnailUrl: data.thumbnail_url,
       garmentSpec: data.garment_spec ?? undefined,
       createdAt: data.created_at,
