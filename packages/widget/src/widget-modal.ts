@@ -489,7 +489,7 @@ export function renderModalWithLoading(
   /** 上下インセットの大きい方で揃え、ノッチ下で「中央より下」に見えるのを防ぐ */
   const safeBlockPad = "max(8px, env(safe-area-inset-top), env(safe-area-inset-bottom))";
   contentArea.style.cssText =
-    "flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:visible;padding:" +
+    "position:relative;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:visible;padding:" +
     safeBlockPad +
     " 12px " +
     safeBlockPad +
@@ -498,12 +498,13 @@ export function renderModalWithLoading(
     ";";
 
   const splashWrap = document.createElement("div");
-  /** `public/icon/logo.html` と同様にビューポート中央のみ。過大な padding はロゴ下に空域ができ「二重の表示」に見えるため付けない */
+  splashWrap.setAttribute("data-fitlook-splash-wrap", "true");
+  /** 試着 iframe を下層に差し込むため全面オーバーレイ（`appendEmbedIframeBehindSplash` と併用） */
   splashWrap.style.cssText =
-    "flex:1;display:flex;align-items:center;justify-content:center;width:100%;min-height:0;overflow:hidden;box-sizing:border-box;" +
+    "position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;width:100%;min-height:0;overflow:hidden;box-sizing:border-box;" +
     "padding:0 12px;background:" +
     SURFACE_BG +
-    ";";
+    ";pointer-events:auto;";
   const cancelSplash = mountFitLookLogoLoadingAnimation(splashWrap);
   contentArea.appendChild(splashWrap);
 
@@ -1368,6 +1369,80 @@ export function updateModalWithConfig(
   if (isDevelopmentMode()) {
     console.log(`${WIDGET_LOG_PREFIX} 2D view ready`, { productName, sizes: sizeKeys });
   }
+}
+
+/** 親のスプラッシュ終了後に iframe 内へ送り、試着の段階フェード（図解・脚注）を開始する */
+export const FITLOOK_SPLASH_FINISHED_MESSAGE = "fitlook-splash-finished";
+
+/**
+ * スプラッシュ表示中に試着 iframe を下層へ差し込む（上層は `data-fitlook-splash-wrap`）。
+ * 呼び出し側でスプラッシュ除去後に `postMessage({ type: FITLOOK_SPLASH_FINISHED_MESSAGE })` すること。
+ */
+export function appendEmbedIframeBehindSplash(
+  overlay: HTMLElement,
+  contentArea: HTMLElement,
+  params: WidgetParams,
+  reopenHandler?: () => void,
+  options?: { surfaceBackgroundColor?: string }
+): HTMLIFrameElement {
+  const surfaceBg = options?.surfaceBackgroundColor?.trim() || "#fafafa";
+  injectStyles();
+
+  const prevCleanup = (overlay as unknown as { __fitlookCleanup?: { fn: () => void } }).__fitlookCleanup;
+  const apiBase = getApiBaseUrl() || (typeof window !== "undefined" ? window.location.origin : "");
+  const pk = encodeURIComponent(params.publicKey || "");
+  const ext = encodeURIComponent(params.externalProductId || params.productId || "");
+  const iframe = document.createElement("iframe");
+  let iframeSrc = `${apiBase}/embed/widget-fit?publicKey=${pk}&externalProductId=${ext}&deferStagedReveal=1`;
+  const cartTpl = params.addToCartUrlTemplate?.trim();
+  if (cartTpl) {
+    iframeSrc += `&addToCartUrl=${encodeURIComponent(cartTpl)}`;
+  }
+  iframe.src = iframeSrc;
+  iframe.setAttribute("title", "FIT&LOOK 試着");
+  iframe.setAttribute("data-fitlook-widget-fit-iframe", "true");
+  iframe.style.cssText =
+    "position:absolute;left:0;top:0;width:100%;height:100%;border:none;display:block;z-index:1;";
+
+  if (params.desktopPanel === true) {
+    contentArea.style.cssText =
+      "box-sizing:border-box;display:block;position:relative;padding:0;margin:0;overflow:hidden;background:" +
+      surfaceBg +
+      ";min-height:0;";
+  } else {
+    contentArea.style.position = "relative";
+    contentArea.style.backgroundColor = surfaceBg;
+  }
+
+  const splashWrap = contentArea.querySelector("[data-fitlook-splash-wrap]");
+  if (splashWrap) {
+    contentArea.insertBefore(iframe, splashWrap);
+  } else {
+    contentArea.insertBefore(iframe, contentArea.firstChild);
+  }
+
+  const onMsg = (e: MessageEvent) => {
+    if (e.data?.type !== "fitlook-embed-close") return;
+    window.removeEventListener("message", onMsg);
+    closeOverlay(overlay);
+    if (reopenHandler) {
+      queueMicrotask(reopenHandler);
+    }
+  };
+  window.addEventListener("message", onMsg);
+
+  (overlay as unknown as { __fitlookCleanup: { fn: () => void } }).__fitlookCleanup = {
+    fn: () => {
+      prevCleanup?.fn?.();
+      window.removeEventListener("message", onMsg);
+    },
+  };
+
+  if (params.desktopPanel === true) {
+    requestAnimationFrame(() => attachDesktopOverlayLayoutSync(overlay));
+  }
+
+  return iframe;
 }
 
 /**

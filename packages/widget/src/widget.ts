@@ -8,7 +8,8 @@ import {
   updateModalWithConfig,
   showErrorInModal,
   updateButtonPositions,
-  mountEmbedIframe,
+  appendEmbedIframeBehindSplash,
+  FITLOOK_SPLASH_FINISHED_MESSAGE,
 } from "./widget-render";
 import {
   readEmbedAttr,
@@ -276,11 +277,36 @@ async function handleCubeClick(shadowRoot: ShadowRoot, params: WidgetParams) {
 
   try {
     const configPromise = fetchWidgetConfig(params);
-    await waitForFitLookSplashHold(contentArea, splashStartMs);
+    const splashHoldPromise = waitForFitLookSplashHold(contentArea, splashStartMs);
+
     const config = await configPromise;
+    const surfaceBg = config.design?.interfaceBackgroundColor ?? "#fafafa";
+
+    let garmentIframe: HTMLIFrameElement | null = null;
+    if (config.enabled && config.asset?.garmentFitAvailable) {
+      garmentIframe = appendEmbedIframeBehindSplash(overlay, contentArea, params, reopenHandler, {
+        surfaceBackgroundColor: surfaceBg,
+      });
+    }
+
+    await splashHoldPromise;
 
     const splashCleanup = (overlay as unknown as { __fitlookCleanup?: { fn: () => void } }).__fitlookCleanup;
     if (splashCleanup?.fn) splashCleanup.fn();
+
+    contentArea.querySelector("[data-fitlook-splash-wrap]")?.remove();
+
+    if (garmentIframe) {
+      const notifySplashFinished = () => {
+        try {
+          garmentIframe.contentWindow?.postMessage({ type: FITLOOK_SPLASH_FINISHED_MESSAGE }, "*");
+        } catch {
+          /* ignore */
+        }
+      };
+      notifySplashFinished();
+      garmentIframe.addEventListener("load", notifySplashFinished, { once: true });
+    }
 
     const resolvedShopId = params.shopId || config.shopId || "";
     const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -294,19 +320,16 @@ async function handleCubeClick(shadowRoot: ShadowRoot, params: WidgetParams) {
       }).catch(() => {});
     }
 
-    if (config.enabled && config.asset?.garmentFitAvailable) {
-      const surfaceBg = config.design?.interfaceBackgroundColor ?? "#fafafa";
-      mountEmbedIframe(overlay, contentArea, params, reopenHandler, {
-        surfaceBackgroundColor: surfaceBg,
-      });
-    } else if (config.enabled) {
-      /** スプラッシュ側で落下終了＋1.5s ホールド済みのため、ここでは追加遅延しない */
-      updateModalWithConfig(shadowRoot, config, params, overlay, contentArea, reopenHandler, {
-        deferGarmentViewerMs: 0,
-      });
-    } else {
-      const errorDetails = config.error || "不明なエラー";
-      showErrorInModal(shadowRoot, `この商品の試着は現在利用できません。\n\nエラー: ${errorDetails}`, overlay, contentArea);
+    if (!(config.enabled && config.asset?.garmentFitAvailable)) {
+      if (config.enabled) {
+        /** スプラッシュ側で落下終了＋1.5s ホールド済みのため、ここでは追加遅延しない */
+        updateModalWithConfig(shadowRoot, config, params, overlay, contentArea, reopenHandler, {
+          deferGarmentViewerMs: 0,
+        });
+      } else {
+        const errorDetails = config.error || "不明なエラー";
+        showErrorInModal(shadowRoot, `この商品の試着は現在利用できません。\n\nエラー: ${errorDetails}`, overlay, contentArea);
+      }
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";

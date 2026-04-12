@@ -209,14 +209,33 @@ const PREVIEW_JACKET_SIZE: JacketSize = "4";
 /** 開発ページよりやや長め（smootherStep 併用で立ち上がりを緩める） */
 const PREVIEW_SIZE_ANIM_MS = 480;
 
+type FitSvgStageOptions = {
+  /**
+   * 親のロゴスプラッシュ中は試着 SVG を stage 0（非表示）に固定しタイマーを止める。
+   * 解除後は初回と同じ 0→体型・服→図解→脚注の段階表示を最初から行う。
+   */
+  embedSplashSuspended?: boolean;
+};
+
 /**
  * 試着 SVG: 体型・服 → 図解（ポイント・採寸数値）→ 下段テキストの順でフェード。
  * ウィジェット `widget-modal.ts` の `mountFitSvgStaged` とタイミングを揃える。
  * 依存は「初回だけ段階表示したい軸」に限定し、サイズ・身長・体重の更新では再フェードしない。
  */
-function useFitSvgStage(hasDiagram: boolean, deps: DependencyList): 0 | 1 | 2 | 3 {
+function useFitSvgStage(
+  hasDiagram: boolean,
+  deps: DependencyList,
+  options?: FitSvgStageOptions
+): 0 | 1 | 2 | 3 {
+  const suspended = options?.embedSplashSuspended === true;
   const [stage, setStage] = useState<0 | 1 | 2 | 3>(0);
+
   useLayoutEffect(() => {
+    if (suspended) {
+      setStage(0);
+      return;
+    }
+
     setStage(0);
     const id = requestAnimationFrame(() => {
       requestAnimationFrame(() => setStage(1));
@@ -234,7 +253,7 @@ function useFitSvgStage(hasDiagram: boolean, deps: DependencyList): 0 | 1 | 2 | 
       if (t2 !== undefined) clearTimeout(t2);
       if (t3 !== undefined) clearTimeout(t3);
     };
-  }, deps);
+  }, [...deps, suspended, hasDiagram]);
   return stage;
 }
 
@@ -276,6 +295,7 @@ export function PreviewFittingCanvasSvg({
   bodyOnly = false,
   bodySheetHeightScale = false,
   fitEaseRevealNonce = 0,
+  embedSplashSuspended = false,
 }: {
   fitHeightCm: number;
   fitBodyVal: number;
@@ -291,6 +311,8 @@ export function PreviewFittingCanvasSvg({
   bodySheetHeightScale?: boolean;
   /** 増やすたびに図解・胸バンド文言の段階表示をやり直す（体型適用など） */
   fitEaseRevealNonce?: number;
+  /** 親ウィジェットのスプラッシュ中は図解・脚注の段階表示を保留 */
+  embedSplashSuspended?: boolean;
 }) {
   const { bodyStroke, garmentStroke } = usePreviewChromeTheme().canvas;
   const sizedTarget = useMemo(
@@ -426,7 +448,9 @@ export function PreviewFittingCanvasSvg({
     setEaseRevealDone(false);
     setEaseRevealKey((k) => k + 1);
   }, [customGarmentData, fitEaseRevealNonce]);
-  const fitSvgStage = useFitSvgStage(hasEaseDiagram, [bodyOnly, hasEaseDiagram, easeRevealKey]);
+  const fitSvgStage = useFitSvgStage(hasEaseDiagram, [bodyOnly, hasEaseDiagram, easeRevealKey], {
+    embedSplashSuspended: embedSplashSuspended === true,
+  });
   useEffect(() => {
     if (easeRevealDone) return;
     if (fitSvgStage >= 3) setEaseRevealDone(true);
@@ -569,6 +593,8 @@ export type WidgetStyleProductPreviewProps = {
    * `customGarmentData` あり時はプレビューと同一のクライアント試着（滑らか）。
    */
   embedPublicWidget?: boolean;
+  /** 親のロゴスプラッシュ中は図解・脚注の段階表示を保留（`deferStagedReveal=1` の埋め込み用） */
+  embedSplashSuspended?: boolean;
 };
 
 export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps) {
@@ -594,6 +620,7 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
     sizeCarouselEnabled = true,
     garmentPathsInViewer = true,
     embedPublicWidget = false,
+    embedSplashSuspended = false,
   } = props;
 
   const interfaceBg = interfaceBackgroundColor ?? PREVIEW_SURFACE_BG;
@@ -710,10 +737,13 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
     setEmbedEaseRevealDone(false);
     setEmbedEaseRevealKey((k) => k + 1);
   }, [productId, garmentPathsInViewer, fitEaseRevealNonce]);
-  const fitSvgStageEmbed = useFitSvgStage(hasEaseDiagramEmbed, [
+  const fitSvgStageEmbed = useFitSvgStage(
     hasEaseDiagramEmbed,
-    embedEaseRevealKey,
-  ]);
+    [hasEaseDiagramEmbed, embedEaseRevealKey],
+    {
+      embedSplashSuspended: embedPublicWidget && embedSplashSuspended === true,
+    }
+  );
   useEffect(() => {
     if (embedEaseRevealDone) return;
     if (!fitData) return;
@@ -1103,6 +1133,7 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
                   fitChestBandCategory={productCategory}
                   bodyOnly={!garmentPathsInViewer}
                   fitEaseRevealNonce={fitEaseRevealNonce}
+                  embedSplashSuspended={embedPublicWidget && embedSplashSuspended}
                 />
               </div>
             ) : authLoading || fitLoading ? (
