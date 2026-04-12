@@ -98,6 +98,7 @@ export type ResolveWidgetFitChestBandOrdinalInput = {
 /**
  * - おすすめサイズより小さい → 小さめなサイズ、大きい → 大きめなサイズ（`WIDGET_FIT_CHEST_BAND_JA`）。
  * - **1 段小さい**でも胸がきつくなければ「おすすめのサイズ」に寄せるが、幾何ゆとりが「大きめ」または14cm 超の ok なら表より上と矛盾するので「大きめなサイズ」。
+ * - **1 段大きい**でも胸ゆとりが幾何上「ok」なら「おすすめのサイズ」に寄せる（細身で推奨が一段小さいときの誤「大きめ」防止）。
  * - **高身長（180cm 以上）かつ最大サイズ**も同様、胸ゆとりが大きいときは「おすすめ」にしない。
  * - 胸ゆとりとサイズの関係が強く矛盾する場合はバッジなし（数値行のみ）。
  */
@@ -145,6 +146,11 @@ export function resolveWidgetFitChestBandJaOrdinal(
     return { bandJa: WIDGET_FIT_CHEST_BAND_JA.tight };
   }
   if (delta > 0) {
+    const easeBandUp = hasE ? widgetChestEaseBand(e, easeMode) : null;
+    const oneStepUpOk = hasE && delta === 1 && easeBandUp === "ok";
+    if (oneStepUpOk) {
+      return { bandJa: WIDGET_FIT_CHEST_BAND_JA.ok };
+    }
     const tallMaxSizeOk =
       curIdx >= n - 1 &&
       heightCm >= HEIGHT_SOFT_MAX_SIZE_BAND_CM &&
