@@ -11,7 +11,8 @@ function DatabaseLayoutContent({
 }: {
   children: React.ReactNode;
 }) {
-  const { isPreviewOpen, selectedProduct, selectedSize } = useProductSelection();
+  const { selectedProduct, selectedSize } = useProductSelection();
+  const previewVisible = Boolean(selectedProduct);
 
   return (
     <div className="flex h-screen w-full min-w-0 overflow-hidden bg-background">
@@ -20,10 +21,10 @@ function DatabaseLayoutContent({
         <ConsoleMainColumn>{children}</ConsoleMainColumn>
       </div>
       <aside
-        aria-hidden={!isPreviewOpen}
+        aria-hidden={!previewVisible}
         className={cn(
           "flex h-full shrink-0 flex-col overflow-hidden border-border bg-background transition-[width] duration-300 ease-in-out",
-          isPreviewOpen ? "w-[400px] border-l shadow-lg" : "w-0 border-0 shadow-none"
+          previewVisible ? "w-[400px] border-l border-[#EEEEEE] shadow-none" : "w-0 border-0 shadow-none"
         )}
       >
         <div className="flex h-full w-[400px] min-w-[400px] shrink-0 flex-col overflow-hidden">

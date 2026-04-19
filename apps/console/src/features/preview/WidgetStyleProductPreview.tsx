@@ -45,6 +45,7 @@ import {
   loadPreviewFit,
   savePreviewFit,
 } from "@/lib/previewFitStorage";
+import { sendWidgetAnalyticsEvent } from "@/lib/widget/sendWidgetAnalyticsEvent";
 import {
   PreviewAccentCtaButton,
   PreviewBackRow,
@@ -595,6 +596,10 @@ export type WidgetStyleProductPreviewProps = {
   embedPublicWidget?: boolean;
   /** 親のロゴスプラッシュ中は図解・脚注の段階表示を保留（`deferStagedReveal=1` の埋め込み用） */
   embedSplashSuspended?: boolean;
+  /** 埋め込み時のみ。`events.shop_id` 用 */
+  shopId?: string;
+  /** 埋め込みアナリティクスで `meta.eventSource` に載せる（例: `preview_link`） */
+  eventSource?: string;
 };
 
 export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps) {
@@ -621,7 +626,49 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
     garmentPathsInViewer = true,
     embedPublicWidget = false,
     embedSplashSuspended = false,
+    shopId: embedShopId,
+    eventSource: embedEventSource,
   } = props;
+
+  const embedAnalyticsMeta = useMemo(() => {
+    const m: Record<string, unknown> = { placement: "embed" };
+    if (embedEventSource) m.eventSource = embedEventSource;
+    return m;
+  }, [embedEventSource]);
+
+  /** 親スプラッシュの postMessage が届かない環境でもアナリティクス用に widget_open を送る */
+  const [embedSplashFallback, setEmbedSplashFallback] = useState(false);
+  useEffect(() => {
+    if (!embedPublicWidget || !embedSplashSuspended) {
+      setEmbedSplashFallback(false);
+      return;
+    }
+    const t = window.setTimeout(() => setEmbedSplashFallback(true), 6500);
+    return () => window.clearTimeout(t);
+  }, [embedPublicWidget, embedSplashSuspended]);
+
+  const widgetOpenLoggedKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!embedPublicWidget || !embedShopId || !productId || !garmentFitAvailable) return;
+    if (embedSplashSuspended && !embedSplashFallback) return;
+    const key = `${embedShopId}:${productId}`;
+    if (widgetOpenLoggedKeyRef.current === key) return;
+    widgetOpenLoggedKeyRef.current = key;
+    void sendWidgetAnalyticsEvent({
+      shopId: embedShopId,
+      productId,
+      type: "widget_open",
+      meta: embedAnalyticsMeta,
+    });
+  }, [
+    embedPublicWidget,
+    embedShopId,
+    productId,
+    garmentFitAvailable,
+    embedSplashSuspended,
+    embedSplashFallback,
+    embedAnalyticsMeta,
+  ]);
 
   const interfaceBg = interfaceBackgroundColor ?? PREVIEW_SURFACE_BG;
   const canvasBg = canvasBackgroundColor ?? PREVIEW_SURFACE_BG;
@@ -668,9 +715,38 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
     }
   }, [initialSize, sizeKeys]);
 
+  const handleSelectSizeForAnalytics = useCallback(
+    (sz: string) => {
+      setCurrentSize((prev) => {
+        if (embedPublicWidget && embedShopId && sz !== prev) {
+          void sendWidgetAnalyticsEvent({
+            shopId: embedShopId,
+            productId,
+            type: "size_change",
+            meta: { size: sz, ...embedAnalyticsMeta },
+          });
+        }
+        return sz;
+      });
+    },
+    [embedPublicWidget, embedShopId, productId, embedAnalyticsMeta]
+  );
+
   const handleAddToCartClick = useCallback(() => {
     const template = addToCartUrlTemplate?.trim();
     if (!template) return;
+    if (embedPublicWidget && embedShopId) {
+      void sendWidgetAnalyticsEvent({
+        shopId: embedShopId,
+        productId,
+        type: "add_to_cart_click",
+        meta: {
+          size: currentSize,
+          colorId: selectedColorId,
+          ...embedAnalyticsMeta,
+        },
+      });
+    }
     const pid = (externalProductId ?? productId) || "";
     const interpolated = interpolateAddToCartUrlTemplate(template, {
       productId: pid,
@@ -695,11 +771,13 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
     }
   }, [
     addToCartUrlTemplate,
-    externalProductId,
-    productId,
+    embedPublicWidget,
+    embedShopId,
+    embedAnalyticsMeta,
     currentSize,
     selectedColorId,
-    embedPublicWidget,
+    externalProductId,
+    productId,
     embedReferrerOrigin,
   ]);
 
@@ -1250,7 +1328,7 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
           sizeKeys={sizeKeys}
           currentSize={currentSize}
           windowStart={windowStart}
-          onSelectSize={setCurrentSize}
+          onSelectSize={handleSelectSizeForAnalytics}
           accentColor={accent}
         />
       ) : null}
@@ -1375,6 +1453,18 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
             accentColor={accent}
             onClick={() => {
               void (async () => {
+                if (embedPublicWidget && embedShopId) {
+                  void sendWidgetAnalyticsEvent({
+                    shopId: embedShopId,
+                    productId,
+                    type: "height_change",
+                    meta: {
+                      heightCm: bodyDraftHeight,
+                      bodyVal: bodyDraftVal,
+                      ...embedAnalyticsMeta,
+                    },
+                  });
+                }
                 setFitHeightCm(bodyDraftHeight);
                 setFitBodyVal(bodyDraftVal);
                 savePreviewFit({ heightCm: bodyDraftHeight, bodyVal: bodyDraftVal });

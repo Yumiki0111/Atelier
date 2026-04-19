@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConsoleSectionPanel } from "@/components/console/ConsoleSectionPanel";
 import { Key, Globe, Copy, CheckCircle, Eye, EyeOff, X } from "lucide-react";
 import { toast } from "sonner";
 import { authenticatedFetch } from "@/lib/auth/api-client";
@@ -150,34 +150,35 @@ export function WidgetSettings({ shopId }: WidgetSettingsProps) {
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Key className="h-5 w-5" />Widget 設定</CardTitle>
-        </CardHeader>
-        <CardContent><p className="text-sm text-muted-foreground">読み込み中...</p></CardContent>
-      </Card>
+      <ConsoleSectionPanel
+        title="埋め込みキーとドメイン"
+        description="公開用キーと、ウィジェットを表示してよいドメインを管理します。"
+        icon={Key}
+      >
+        <p className="text-sm text-muted-foreground">読み込み中...</p>
+      </ConsoleSectionPanel>
     );
   }
 
   if (!widgetKeys) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Key className="h-5 w-5" />Widget 設定</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">Widget キーが見つかりません</p>
-        </CardContent>
-      </Card>
+      <ConsoleSectionPanel
+        title="埋め込みキーとドメイン"
+        description="公開用キーと、ウィジェットを表示してよいドメインを管理します。"
+        icon={Key}
+      >
+        <p className="text-sm text-muted-foreground">Widget キーが見つかりません</p>
+      </ConsoleSectionPanel>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2"><Key className="h-5 w-5" />Widget 設定</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <ConsoleSectionPanel
+      title="埋め込みキーとドメイン"
+      description="公開用キーと、ウィジェットを表示してよいドメインを管理します。"
+      icon={Key}
+    >
+      <div className="space-y-4">
         {/* Public Key */}
         <div className="space-y-2">
           <Label className="text-sm text-muted-foreground">Public Key（クライアント用）</Label>
@@ -278,7 +279,7 @@ export function WidgetSettings({ shopId }: WidgetSettingsProps) {
             <span className="text-sm">{widgetKeys.enabled ? "有効" : "無効"}</span>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </ConsoleSectionPanel>
   );
 }

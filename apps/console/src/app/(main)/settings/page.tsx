@@ -5,11 +5,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserPlus, Mail, Shield, X } from "lucide-react";
 import { toast } from "sonner";
 import { authenticatedFetch } from "@/lib/auth/api-client";
 import { PageHeader } from "@/components/page-header/PageHeader";
+import { ConsoleSectionPanel } from "@/components/console/ConsoleSectionPanel";
+import { consolePageShellClass } from "@/lib/console-ui";
 import { MemberManagement } from "./MemberManagement";
 import { WidgetSettings } from "./WidgetSettings";
 
@@ -18,7 +19,7 @@ export default function SettingsPage() {
   const [emailInput, setEmailInput] = useState("");
   const [emailList, setEmailList] = useState<string[]>([]);
   const [isInviting, setIsInviting] = useState(false);
-  
+
   const isOwner = userRole === "owner";
 
   const isValidEmail = (email: string): boolean => {
@@ -31,12 +32,18 @@ export default function SettingsPage() {
     const trimmedEmail = emailInput.trim();
     if (!trimmedEmail) return;
 
-    const emails = trimmedEmail.split(",").map(e => e.trim()).filter(e => e.length > 0);
+    const emails = trimmedEmail.split(",").map((e) => e.trim()).filter((e) => e.length > 0);
 
     for (const email of emails) {
-      if (!isValidEmail(email)) { toast.error(`無効なメールアドレス: ${email}`); continue; }
+      if (!isValidEmail(email)) {
+        toast.error(`無効なメールアドレス: ${email}`);
+        continue;
+      }
       const normalizedEmail = email.toLowerCase();
-      if (emailList.includes(normalizedEmail)) { toast.error(`既に追加済み: ${email}`); continue; }
+      if (emailList.includes(normalizedEmail)) {
+        toast.error(`既に追加済み: ${email}`);
+        continue;
+      }
       setEmailList((prev) => [...prev, normalizedEmail]);
     }
 
@@ -49,14 +56,14 @@ export default function SettingsPage() {
 
   const handleInviteMembers = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (emailList.length === 0) {
       toast.error("メールアドレスを追加してください");
       return;
     }
 
     setIsInviting(true);
-    
+
     try {
       const response = await authenticatedFetch("/api/admin/invite-member", {
         method: "POST",
@@ -70,7 +77,7 @@ export default function SettingsPage() {
       }
 
       const data = await response.json();
-      
+
       if (data.results) {
         const { success, failed, skipped } = data.results;
         if (success.length > 0) toast.success(`${success.length}件の招待を送信しました`);
@@ -96,52 +103,51 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[120rem] space-y-8">
+    <div className={consolePageShellClass}>
       <PageHeader title="アカウント設定" />
 
-      {/* アカウント情報 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            アカウント情報
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label className="text-sm text-muted-foreground">メールアドレス</Label>
-              <p className="text-sm font-medium mt-1">{user?.email || "-"}</p>
-            </div>
-            <div>
-              <Label className="text-sm text-muted-foreground">ショップID</Label>
-              <p className="text-sm font-mono mt-1">{shopId || "-"}</p>
-            </div>
+      <ConsoleSectionPanel
+        title="アカウント情報"
+        description="ログイン中のアカウントと、このショップの識別子です。"
+        icon={Shield}
+      >
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <Label className="text-sm text-muted-foreground">メールアドレス</Label>
+            <p className="mt-1 text-sm font-medium">{user?.email || "—"}</p>
           </div>
-        </CardContent>
-      </Card>
+          <div>
+            <Label className="text-sm text-muted-foreground">ショップID</Label>
+            <p className="mt-1 font-mono text-sm font-medium">{shopId || "—"}</p>
+          </div>
+        </div>
+      </ConsoleSectionPanel>
 
-      {/* メンバー招待（Owner のみ） */}
       {isOwner && (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5" />
-            メンバー招待
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+        <ConsoleSectionPanel
+          title="メンバー招待"
+          description="ショップに参加してもらうメールアドレスを追加し、一括で招待メールを送ります。"
+          icon={UserPlus}
+        >
           <form onSubmit={handleInviteMembers} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="memberEmails">招待するメールアドレス</Label>
-              
+
               {emailList.length > 0 && (
-                <div className="flex min-h-[60px] flex-wrap gap-2 rounded-md bg-secondary/50 p-3">
+                <div className="flex min-h-[60px] flex-wrap gap-2 rounded-md border border-[#EEEEEE] bg-muted/30 p-3">
                   {emailList.map((email) => (
-                      <div key={email} className="flex items-center gap-1.5 rounded-md bg-muted/50 px-3 py-1.5 text-sm text-foreground">
+                    <div
+                      key={email}
+                      className="flex items-center gap-1.5 rounded-md bg-background px-3 py-1.5 text-sm text-foreground shadow-sm"
+                    >
                       <Mail className="h-3.5 w-3.5 text-muted-foreground" />
                       <span>{email}</span>
-                        <button type="button" onClick={() => handleRemoveEmail(email)} className="ml-1 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" disabled={isInviting}>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveEmail(email)}
+                        className="ml-1 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        disabled={isInviting}
+                      >
                         <X className="h-3.5 w-3.5" />
                       </button>
                     </div>
@@ -158,25 +164,29 @@ export default function SettingsPage() {
                   value={emailInput}
                   onChange={(e) => setEmailInput(e.target.value)}
                   onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === ",") { e.preventDefault(); handleAddEmail(e); }
+                    if (e.key === "Enter" || e.key === ",") {
+                      e.preventDefault();
+                      handleAddEmail(e);
+                    }
                   }}
                   className="pl-9"
                   disabled={isInviting}
                 />
               </div>
-                <Button type="submit" disabled={isInviting || emailList.length === 0} className="w-full">
+              <Button
+                type="submit"
+                disabled={isInviting || emailList.length === 0}
+                className="w-full"
+              >
                 {isInviting ? "送信中..." : `${emailList.length}件の招待を送信`}
               </Button>
             </div>
           </form>
-        </CardContent>
-      </Card>
+        </ConsoleSectionPanel>
       )}
 
-      {/* メンバー管理 */}
       <MemberManagement currentUserId={user?.id || ""} userRole={userRole} />
 
-      {/* Widget 設定（Owner のみ） */}
       {isOwner && <WidgetSettings shopId={shopId} />}
     </div>
   );

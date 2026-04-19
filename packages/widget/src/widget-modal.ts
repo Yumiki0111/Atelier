@@ -9,10 +9,13 @@ import type { WidgetConfig, WidgetColorSwatch } from "./types";
 import { WIDGET_LOG_PREFIX } from "./embed-data";
 import { isDevelopmentMode, getApiBaseUrl } from "./widget-utils";
 import { sendEvent, type WidgetParams } from "./widget-api";
+import { emitDebugLog } from "./widget-debug-log";
 
 function widgetEventMeta(params: WidgetParams): Record<string, unknown> | undefined {
-  if (!params.placement) return undefined;
-  return { placement: params.placement };
+  const meta: Record<string, unknown> = {};
+  if (params.placement) meta.placement = params.placement;
+  if (params.eventSource) meta.eventSource = params.eventSource;
+  return Object.keys(meta).length ? meta : undefined;
 }
 import { mountFitLookLogoLoadingAnimation } from "./widget-fitlook-logo";
 
@@ -119,10 +122,16 @@ function getDesktopPanelWidthPx(): number {
   return Math.max(inner, vv);
 }
 
+/** これ未満は常に全画面試着（スマホ） */
+const DESKTOP_PANEL_MIN_WIDTH_PX = 768;
+
 /**
  * `attachDesktopOverlayLayoutSync` は `params.desktopPanel === true` のときだけ呼ばれる。
- * 幅閾値や `(hover: hover)` まで要求すると環境差で常に全面のままになるため、
- * タッチ主体 UI だけ `(hover: none)` で右下パネルを付けない（iPad 等は全面試着のまま）。
+ * - 幅が狭い → 常に全画面
+ * - 幅は十分だがタッチ主体（hover も pointer もマウスっぽくない）→ iPad 等は全画面のまま
+ * - 幅十分 + (`hover: hover` または `pointer: fine`) → PC 想定で右下パネル
+ *
+ * 以前は `!hoverNone` のみだったため、タッチ優先と報告される PC でも常に全画面になっていた。
  */
 function attachDesktopOverlayLayoutSync(overlay: HTMLElement): () => void {
   const prevDetach = (overlay as unknown as { __fitlookDesktopDetach?: () => void }).__fitlookDesktopDetach;
@@ -136,15 +145,50 @@ function attachDesktopOverlayLayoutSync(overlay: HTMLElement): () => void {
       typeof window.matchMedia === "function" ? window.matchMedia("(hover: hover)").matches : null;
     const pointerFine =
       typeof window.matchMedia === "function" ? window.matchMedia("(pointer: fine)").matches : null;
-    const usePanel = !hoverNone;
+    const wideEnough = w >= DESKTOP_PANEL_MIN_WIDTH_PX;
+    const inputSuggestsMouse =
+      hoverHover === true || pointerFine === true;
+    /** オーバーレイ生成時に付与（document 検索より確実）。共有ページのホスト属性と併用 */
+    const previewLinkSharePage =
+      overlay.getAttribute("data-fitlook-preview-link-host") === "1" ||
+      (typeof document !== "undefined" &&
+        Boolean(
+          document.querySelector('[data-fitlook-event-source="preview_link"]') ||
+            document.querySelector('[data-atelier-event-source="preview_link"]')
+        ));
+    const usePanel =
+      wideEnough && (inputSuggestsMouse || previewLinkSharePage);
     if (usePanel) {
       overlay.setAttribute("data-fitlook-desktop-panel", "1");
     } else {
       overlay.removeAttribute("data-fitlook-desktop-panel");
     }
+    // #region agent log
+    emitDebugLog({
+      sessionId: "673bd6",
+      runId: "debug-desktop-panel",
+      hypothesisId: "C",
+      location: "widget-modal.ts:attachDesktopOverlayLayoutSync:apply",
+      message: "desktop panel decision",
+      data: {
+        w,
+        wideEnough,
+        inputSuggestsMouse,
+        previewLinkSharePage,
+        hoverNone,
+        hoverHover,
+        pointerFine,
+        usePanel,
+        overlayAttr: overlay.getAttribute("data-fitlook-desktop-panel"),
+      },
+    });
+    // #endregion
     if (typeof window !== "undefined") {
       (window as unknown as { __FITLOOK_DESKTOP_PANEL_LAST?: Record<string, unknown> }).__FITLOOK_DESKTOP_PANEL_LAST = {
         w,
+        wideEnough,
+        inputSuggestsMouse,
+        previewLinkSharePage,
         hoverNone,
         hoverHover,
         pointerFine,
@@ -162,8 +206,11 @@ function attachDesktopOverlayLayoutSync(overlay: HTMLElement): () => void {
         location: "widget-modal.ts:attachDesktopOverlayLayoutSync:apply",
         message: "desktop panel apply",
         data: {
-          runId: "post-fix-hover-none-gate",
+          runId: "post-fix-preview-link-panel",
           w,
+          wideEnough,
+          inputSuggestsMouse,
+          previewLinkSharePage,
           innerWidth: typeof window !== "undefined" ? window.innerWidth : null,
           vvW: typeof window !== "undefined" ? window.visualViewport?.width ?? null : null,
           hoverNone,
@@ -483,6 +530,9 @@ export function renderModalWithLoading(
   overlay.setAttribute("data-fitlook-modal", "true");
   overlay.setAttribute("data-fitlook-modal-overlay", "true");
   overlay.className = "fitlook-modal-overlay-shell";
+  if (_params.eventSource === "preview_link") {
+    overlay.setAttribute("data-fitlook-preview-link-host", "1");
+  }
 
   const contentArea = document.createElement("div");
   contentArea.setAttribute("data-fitlook-content-area", "true");
@@ -516,6 +566,18 @@ export function renderModalWithLoading(
   }
 
   // #region agent log
+  emitDebugLog({
+    sessionId: "673bd6",
+    runId: "debug-desktop-panel",
+    hypothesisId: "B",
+    location: "widget-modal.ts:renderModalWithLoading",
+    message: "modal loading attach branch",
+    data: {
+      desktopPanelIsTrue: _params.desktopPanel === true,
+      calledAttach: _params.desktopPanel === true,
+      overlayAttrAfter: overlay.getAttribute("data-fitlook-desktop-panel"),
+    },
+  });
   fetch("http://127.0.0.1:7468/ingest/8ae11b2e-0353-49f9-add8-94485bd038d3", {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a81229" },
@@ -1398,6 +1460,9 @@ export function appendEmbedIframeBehindSplash(
   if (cartTpl) {
     iframeSrc += `&addToCartUrl=${encodeURIComponent(cartTpl)}`;
   }
+  if (params.eventSource) {
+    iframeSrc += `&eventSource=${encodeURIComponent(params.eventSource)}`;
+  }
   iframe.src = iframeSrc;
   iframe.setAttribute("title", "FIT&LOOK 試着");
   iframe.setAttribute("data-fitlook-widget-fit-iframe", "true");
@@ -1441,6 +1506,21 @@ export function appendEmbedIframeBehindSplash(
   if (params.desktopPanel === true) {
     requestAnimationFrame(() => attachDesktopOverlayLayoutSync(overlay));
   }
+
+  // #region agent log
+  emitDebugLog({
+    sessionId: "673bd6",
+    runId: "debug-desktop-panel",
+    hypothesisId: "E",
+    location: "widget-modal.ts:appendEmbedIframeBehindSplash:end",
+    message: "embed iframe branch",
+    data: {
+      desktopPanel: params.desktopPanel === true,
+      scheduledRafAttach: params.desktopPanel === true,
+      overlayAttr: overlay.getAttribute("data-fitlook-desktop-panel"),
+    },
+  });
+  // #endregion
 
   return iframe;
 }
@@ -1505,6 +1585,9 @@ export function mountEmbedIframe(
   const cartTpl = params.addToCartUrlTemplate?.trim();
   if (cartTpl) {
     iframeSrc += `&addToCartUrl=${encodeURIComponent(cartTpl)}`;
+  }
+  if (params.eventSource) {
+    iframeSrc += `&eventSource=${encodeURIComponent(params.eventSource)}`;
   }
   iframe.src = iframeSrc;
   iframe.setAttribute("title", "FIT&LOOK 試着");

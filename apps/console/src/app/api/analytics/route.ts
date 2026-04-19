@@ -5,6 +5,13 @@ import type { AnalyticsResponse, AnalyticsSeriesRow } from "@/features/analytics
 
 type TimeRange = "24h" | "7d" | "30d" | "90d";
 
+const PREVIEW_LINK_EVENT_SOURCE = "preview_link";
+
+function isPreviewLinkMeta(meta: unknown): boolean {
+  if (!meta || typeof meta !== "object") return false;
+  return (meta as { eventSource?: unknown }).eventSource === PREVIEW_LINK_EVENT_SOURCE;
+}
+
 function getTimeRangeDates(timeRange: TimeRange): { startDate: Date; endDate: Date } {
   const endDate = new Date();
   const startDate = new Date();
@@ -27,64 +34,67 @@ function getTimeRangeDates(timeRange: TimeRange): { startDate: Date; endDate: Da
   return { startDate, endDate };
 }
 
-function generateDateRange(startDate: Date, endDate: Date): Date[] {
-  const dates: Date[] = [];
-  const start = new Date(startDate);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(endDate);
-  end.setHours(0, 0, 0, 0);
+/** DB の timestamptz と同じく UTC 日付でキー化（ローカル日付ループと混ぜない） */
+function utcCalendarDayKey(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
 
-  const current = new Date(start);
-  while (current <= end) {
-    dates.push(new Date(current));
-    current.setDate(current.getDate() + 1);
+/** UTC 暦で from〜to の各日のキー（両端含む） */
+function enumerateUtcDayKeysInclusive(from: Date, to: Date): string[] {
+  const keys: string[] = [];
+  let t = Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate());
+  const end = Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), to.getUTCDate());
+  const dayMs = 86400000;
+  for (; t <= end; t += dayMs) {
+    keys.push(new Date(t).toISOString().slice(0, 10));
   }
+  return keys;
+}
 
-  return dates;
+function emptyRowFromUtcKey(dateKey: string): AnalyticsSeriesRow {
+  const [y, m, d] = dateKey.split("-").map((x) => parseInt(x, 10));
+  const date = new Date(y!, m! - 1, d!);
+  return emptyRow(date);
 }
 
 function emptyRow(date: Date): AnalyticsSeriesRow {
   return {
     date: date.toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" }),
     fullDate: date.toLocaleDateString("ja-JP"),
-    cubeViews: 0,
-    cubeClicks: 0,
     widgetOpens: 0,
-    addToCart: 0,
+    bodyTryOnApplies: 0,
     sizeChanges: 0,
-    heightChanges: 0,
+    addToCart: 0,
+    previewLinkWidgetOpens: 0,
+    previewLinkBodyTryOnApplies: 0,
+    previewLinkSizeChanges: 0,
+    previewLinkAddToCart: 0,
   };
 }
 
 function sumTotals(series: AnalyticsSeriesRow[]) {
   return series.reduce(
     (acc, row) => ({
-      cubeViews: acc.cubeViews + row.cubeViews,
-      cubeClicks: acc.cubeClicks + row.cubeClicks,
       widgetOpens: acc.widgetOpens + row.widgetOpens,
-      addToCart: acc.addToCart + row.addToCart,
+      bodyTryOnApplies: acc.bodyTryOnApplies + row.bodyTryOnApplies,
       sizeChanges: acc.sizeChanges + row.sizeChanges,
-      heightChanges: acc.heightChanges + row.heightChanges,
+      addToCart: acc.addToCart + row.addToCart,
+      previewLinkWidgetOpens: acc.previewLinkWidgetOpens + row.previewLinkWidgetOpens,
+      previewLinkBodyTryOnApplies: acc.previewLinkBodyTryOnApplies + row.previewLinkBodyTryOnApplies,
+      previewLinkSizeChanges: acc.previewLinkSizeChanges + row.previewLinkSizeChanges,
+      previewLinkAddToCart: acc.previewLinkAddToCart + row.previewLinkAddToCart,
     }),
     {
-      cubeViews: 0,
-      cubeClicks: 0,
       widgetOpens: 0,
-      addToCart: 0,
+      bodyTryOnApplies: 0,
       sizeChanges: 0,
-      heightChanges: 0,
+      addToCart: 0,
+      previewLinkWidgetOpens: 0,
+      previewLinkBodyTryOnApplies: 0,
+      previewLinkSizeChanges: 0,
+      previewLinkAddToCart: 0,
     }
   );
-}
-
-function computeRates(totals: AnalyticsResponse["totals"]): AnalyticsResponse["rates"] {
-  const clickThroughRate =
-    totals.cubeViews > 0 ? totals.cubeClicks / totals.cubeViews : null;
-  const clickToOpenRate =
-    totals.cubeClicks > 0 ? totals.widgetOpens / totals.cubeClicks : null;
-  const openToCartRate =
-    totals.widgetOpens > 0 ? totals.addToCart / totals.widgetOpens : null;
-  return { clickThroughRate, clickToOpenRate, openToCartRate };
 }
 
 export async function GET(request: NextRequest) {
@@ -106,7 +116,7 @@ export async function GET(request: NextRequest) {
 
     const { data: events, error: eventsError } = await supabaseAdmin
       .from("events")
-      .select("type, created_at, product_id")
+      .select("type, created_at, product_id, meta")
       .eq("shop_id", shopId)
       .gte("created_at", startDate.toISOString())
       .lte("created_at", endDate.toISOString())
@@ -128,51 +138,53 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const dateRange = generateDateRange(startDate, endDate);
+    const utcDayKeys = enumerateUtcDayKeysInclusive(startDate, endDate);
     const dailyData = new Map<string, AnalyticsSeriesRow>();
 
-    dateRange.forEach((date) => {
-      const dateKey = date.toISOString().split("T")[0]!;
-      dailyData.set(dateKey, emptyRow(date));
+    utcDayKeys.forEach((dateKey) => {
+      dailyData.set(dateKey, emptyRowFromUtcKey(dateKey));
     });
 
     eventsRows.forEach((event) => {
       const eventDate = new Date(event.created_at as string);
-      const dateKey = eventDate.toISOString().split("T")[0]!;
-      const dayData = dailyData.get(dateKey);
+      const dateKey = utcCalendarDayKey(eventDate);
+      let dayData = dailyData.get(dateKey);
+      if (!dayData) {
+        dayData = emptyRowFromUtcKey(dateKey);
+        dailyData.set(dateKey, dayData);
+      }
 
-      if (!dayData) return;
+      const pl = isPreviewLinkMeta(event.meta);
 
       switch (event.type) {
-        case "cube_view":
-          dayData.cubeViews += 1;
-          break;
-        case "cube_click":
-          dayData.cubeClicks += 1;
-          break;
         case "widget_open":
           dayData.widgetOpens += 1;
+          if (pl) dayData.previewLinkWidgetOpens += 1;
+          break;
+        case "height_change":
+          dayData.bodyTryOnApplies += 1;
+          if (pl) dayData.previewLinkBodyTryOnApplies += 1;
+          break;
+        case "size_change":
+          dayData.sizeChanges += 1;
+          if (pl) dayData.previewLinkSizeChanges += 1;
           break;
         case "add_to_cart_click":
         case "add_to_cart":
           dayData.addToCart += 1;
-          break;
-        case "size_change":
-          dayData.sizeChanges += 1;
-          break;
-        case "height_change":
-          dayData.heightChanges += 1;
+          if (pl) dayData.previewLinkAddToCart += 1;
           break;
         default:
           break;
       }
     });
 
-    const series = Array.from(dailyData.values());
+    const series = Array.from(dailyData.entries())
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([, row]) => row);
     const totals = sumTotals(series);
-    const rates = computeRates(totals);
 
-    const payload: AnalyticsResponse = { series, totals, rates };
+    const payload: AnalyticsResponse = { series, totals };
     return NextResponse.json(payload);
   } catch (error) {
     console.error("Error in analytics API:", error);

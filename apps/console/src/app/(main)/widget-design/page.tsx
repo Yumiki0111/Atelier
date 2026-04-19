@@ -21,6 +21,8 @@ import {
   normalizeWidgetCtaAccentColor,
 } from "@Atelier/shared";
 import { PageHeader } from "@/components/page-header/PageHeader";
+import { consolePageShellClass, consolePanelClass } from "@/lib/console-ui";
+import { cn } from "@/lib/utils";
 
 const DEFAULTS: WidgetDesignFormState = {
   launcherPlacement: "inline",
@@ -139,7 +141,7 @@ export default function WidgetDesignPage() {
 
   if (authLoading) {
     return (
-      <div className="mx-auto w-full max-w-[120rem] space-y-8">
+      <div className={consolePageShellClass}>
         {pageHeader}
         <p className="text-sm text-muted-foreground">認証情報を確認しています…</p>
       </div>
@@ -148,7 +150,7 @@ export default function WidgetDesignPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="mx-auto w-full max-w-[120rem] space-y-8">
+      <div className={consolePageShellClass}>
         {pageHeader}
         <WidgetDesignEmptyState title="ショップにログインしてください" variant="muted" />
       </div>
@@ -157,7 +159,7 @@ export default function WidgetDesignPage() {
 
   if (!hasRealShop) {
     return (
-      <div className="mx-auto w-full max-w-[120rem] space-y-8">
+      <div className={consolePageShellClass}>
         {pageHeader}
         <WidgetDesignEmptyState title="ショップ情報を取得できませんでした" variant="destructive" />
       </div>
@@ -166,7 +168,7 @@ export default function WidgetDesignPage() {
 
   if (error) {
     return (
-      <div className="mx-auto w-full max-w-[120rem] space-y-8">
+      <div className={consolePageShellClass}>
         {pageHeader}
         <WidgetDesignEmptyState title="設定を読み込めませんでした" variant="destructive" />
       </div>
@@ -174,19 +176,44 @@ export default function WidgetDesignPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[120rem] space-y-8">
+    <div className={consolePageShellClass}>
       {pageHeader}
-      <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-10">
-        <div className="min-w-0 w-full shrink-0 lg:max-w-xl">
-          <WidgetDesignInterfaceForm
-            form={form}
-            setForm={setForm}
-            saving={saving}
-            onSave={handleSave}
-            isLoading={isLoading}
-          />
+      <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-8">
+        <div
+          className={cn(
+            consolePanelClass,
+            "min-w-0 w-full shrink-0 overflow-hidden lg:max-w-xl"
+          )}
+        >
+          <div className="border-b border-[#EEEEEE] bg-[#FAFAFA] px-5 py-4 sm:px-6">
+            <h2 className="text-sm font-semibold text-foreground">設定</h2>
+            <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+              店頭の起動ボタンと、試着ウィジェット内の色・文言をまとめて変更します。
+            </p>
+          </div>
+          <div className="min-w-0 px-0">
+            <WidgetDesignInterfaceForm
+              form={form}
+              setForm={setForm}
+              saving={saving}
+              onSave={handleSave}
+              isLoading={isLoading}
+            />
+          </div>
         </div>
-        <aside className="flex min-w-0 w-full flex-1 flex-col items-center lg:items-stretch xl:sticky xl:top-4 xl:self-start">
+        <aside
+          className={cn(
+            consolePanelClass,
+            "flex min-w-0 w-full flex-1 flex-col items-center overflow-hidden lg:items-stretch xl:sticky xl:top-4 xl:self-start"
+          )}
+        >
+          <div className="w-full border-b border-[#EEEEEE] bg-[#FAFAFA] px-5 py-4 text-left sm:px-6">
+            <h2 className="text-sm font-semibold text-foreground">プレビュー</h2>
+            <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+              保存前の見え方の目安です。実際の店舗テーマとは異なる場合があります。
+            </p>
+          </div>
+          <div className="flex w-full min-w-0 flex-1 flex-col items-center px-3 py-4 sm:px-5">
           <WidgetDesignInterfacePreview
             launcherPlacement={form.launcherPlacement}
             buttonShape={form.buttonShape}
@@ -200,6 +227,7 @@ export default function WidgetDesignPage() {
             sampleProduct={sampleProduct}
             sampleAssets={sampleAssets}
           />
+          </div>
         </aside>
       </div>
     </div>

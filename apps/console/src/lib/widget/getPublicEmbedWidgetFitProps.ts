@@ -5,6 +5,8 @@ import { resolveWidgetFitSizeKeysOrder } from "@/lib/widget/resolveWidgetFitSize
 import { formatPriceYenForDisplay, normalizeWidgetCtaAccentColor } from "@Atelier/shared";
 
 export type PublicEmbedWidgetFitProps = {
+  /** `events.shop_id` 用（埋め込みからのアナリティクス送信） */
+  shopId: string;
   productId: string;
   /** `products.category`（試着の胸ゆとりしきい値に使用） */
   productCategory?: string | null;
@@ -125,6 +127,7 @@ export async function getPublicEmbedWidgetFitProps(
     : undefined;
 
   return {
+    shopId,
     productId: product.id,
     productCategory: category ?? null,
     externalProductId: (product.external_product_id as string | null) ?? externalProductId,

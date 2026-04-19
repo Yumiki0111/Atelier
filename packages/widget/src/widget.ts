@@ -11,6 +11,7 @@ import {
   appendEmbedIframeBehindSplash,
   FITLOOK_SPLASH_FINISHED_MESSAGE,
 } from "./widget-render";
+import { emitDebugLog } from "./widget-debug-log";
 import {
   readEmbedAttr,
   WIDGET_HOST_SELECTOR,
@@ -30,6 +31,7 @@ function widgetEventMeta(params: WidgetParams): Record<string, unknown> | undefi
   if (params.placement) meta.placement = params.placement;
   if (params.initialSize) meta.initialSize = params.initialSize;
   if (params.overlay) meta.overlay = true;
+  if (params.eventSource) meta.eventSource = params.eventSource;
   return Object.keys(meta).length ? meta : undefined;
 }
 
@@ -89,6 +91,9 @@ export function initWidget() {
       isDesktopPanelFromAttr(readEmbedAttr(element, "desktop-panel")) ||
       isDesktopPanelFromLocationSearch();
     const addToCartUrlTemplate = readEmbedAttr(element, "add-to-cart-url");
+    const eventSourceRaw = readEmbedAttr(element, "event-source");
+    const eventSource =
+      eventSourceRaw?.trim().toLowerCase() === "preview_link" ? "preview_link" : null;
 
     if (!publicKey && !shopId) {
       console.warn(`${WIDGET_LOG_PREFIX} public-key or shop-id is required`);
@@ -144,6 +149,7 @@ export function initWidget() {
         phoneFrame: phoneFrameDisabled || overlay ? false : null,
         desktopPanel: desktopPanel ? true : null,
         addToCartUrlTemplate: addToCartUrlTemplate?.trim() ? addToCartUrlTemplate : null,
+        eventSource,
       };
 
       if (typeof window !== "undefined") {
@@ -151,6 +157,20 @@ export function initWidget() {
           params.desktopPanel;
       }
       // #region agent log
+      emitDebugLog({
+        sessionId: "673bd6",
+        runId: "debug-desktop-panel",
+        hypothesisId: "A",
+        location: "widget.ts:initWidget:params",
+        message: "initWidget params desktopPanel",
+        data: {
+          desktopPanel: params.desktopPanel === true,
+          overlay: params.overlay === true,
+          placement: params.placement ?? null,
+          desktopAttrRaw: readEmbedAttr(element, "desktop-panel"),
+          fromUrl: typeof window !== "undefined" ? window.location.search : null,
+        },
+      });
       fetch("http://127.0.0.1:7468/ingest/8ae11b2e-0353-49f9-add8-94485bd038d3", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a81229" },
@@ -295,6 +315,25 @@ async function handleCubeClick(shadowRoot: ShadowRoot, params: WidgetParams) {
     if (splashCleanup?.fn) splashCleanup.fn();
 
     contentArea.querySelector("[data-fitlook-splash-wrap]")?.remove();
+
+    // #region agent log
+    emitDebugLog({
+      sessionId: "673bd6",
+      runId: "debug-desktop-panel",
+      hypothesisId: "D",
+      location: "widget.ts:handleCubeClick:afterSplashRemove",
+      message: "after splash remove",
+      data: {
+        garmentIframe: garmentIframe != null,
+        desktopPanel: params.desktopPanel === true,
+        overlayAttr: overlay.getAttribute("data-fitlook-desktop-panel"),
+        winLast: (typeof window !== "undefined"
+          ? (window as unknown as { __FITLOOK_DESKTOP_PANEL_LAST?: Record<string, unknown> })
+              .__FITLOOK_DESKTOP_PANEL_LAST
+          : null) as Record<string, unknown> | null,
+      },
+    });
+    // #endregion
 
     if (garmentIframe) {
       const notifySplashFinished = () => {

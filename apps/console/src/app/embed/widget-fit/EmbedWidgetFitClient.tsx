@@ -13,10 +13,12 @@ type EmbedWidgetFitClientProps = PublicEmbedWidgetFitProps & {
   addToCartUrl?: string;
   /** 親のロゴスプラッシュが終わるまで図解・脚注の段階表示を保留 */
   deferStagedReveal?: boolean;
+  /** アナリティクス `meta.eventSource`（例: preview_link） */
+  eventSource?: string;
 };
 
 export function EmbedWidgetFitClient(props: EmbedWidgetFitClientProps) {
-  const { addToCartUrl = "", deferStagedReveal = false, ...data } = props;
+  const { addToCartUrl = "", deferStagedReveal = false, eventSource, ...data } = props;
   const [splashDone, setSplashDone] = useState(!deferStagedReveal);
   const handoffStartedRef = useRef(false);
 
@@ -55,6 +57,8 @@ export function EmbedWidgetFitClient(props: EmbedWidgetFitClientProps) {
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
       <WidgetStyleProductPreview
+        shopId={data.shopId}
+        eventSource={eventSource}
         productId={data.productId}
         productCategory={data.productCategory}
         externalProductId={data.externalProductId}

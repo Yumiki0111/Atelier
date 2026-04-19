@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConsoleSectionPanel } from "@/components/console/ConsoleSectionPanel";
 import { Users, Crown, User as UserIcon, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { authenticatedFetch } from "@/lib/auth/api-client";
@@ -127,38 +127,35 @@ export function MemberManagement({ currentUserId, userRole }: MemberManagementPr
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            メンバー管理
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">読み込み中...</p>
-        </CardContent>
-      </Card>
+      <ConsoleSectionPanel
+        title="メンバー一覧"
+        description="ショップに参加しているメンバーの権限を確認・変更します。"
+        icon={Users}
+      >
+        <p className="text-sm text-muted-foreground">読み込み中...</p>
+      </ConsoleSectionPanel>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Users className="h-5 w-5" />
-          メンバー一覧
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
+    <ConsoleSectionPanel
+      title="メンバー一覧"
+      description="ショップに参加しているメンバーの権限を確認・変更します。"
+      icon={Users}
+    >
+      <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>メールアドレス</TableHead>
-                <TableHead>名前</TableHead>
-                <TableHead>権限</TableHead>
-                <TableHead>参加日</TableHead>
-                <TableHead className="text-right">操作</TableHead>
+              <TableRow className="border-b border-[#EEEEEE] hover:bg-transparent">
+                <TableHead className="bg-[#F9F9F9] text-xs font-medium text-muted-foreground">
+                  メールアドレス
+                </TableHead>
+                <TableHead className="bg-[#F9F9F9] text-xs font-medium text-muted-foreground">名前</TableHead>
+                <TableHead className="bg-[#F9F9F9] text-xs font-medium text-muted-foreground">権限</TableHead>
+                <TableHead className="bg-[#F9F9F9] text-xs font-medium text-muted-foreground">参加日</TableHead>
+                <TableHead className="bg-[#F9F9F9] text-right text-xs font-medium text-muted-foreground">
+                  操作
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -170,7 +167,7 @@ export function MemberManagement({ currentUserId, userRole }: MemberManagementPr
                 </TableRow>
               ) : (
                 members.map((member) => (
-                  <TableRow key={member.id}>
+                  <TableRow key={member.id} className="border-b border-[#EEEEEE]">
                     <TableCell className="font-medium">
                       {member.email}
                       {member.id === currentUserId && (
@@ -242,7 +239,7 @@ export function MemberManagement({ currentUserId, userRole }: MemberManagementPr
               )}
             </TableBody>
           </Table>
-        </div></CardContent>
-    </Card>
+        </div>
+    </ConsoleSectionPanel>
   );
 }

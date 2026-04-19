@@ -43,25 +43,20 @@ export function getApiBaseUrl(): string {
         if (src.startsWith('http://') || src.startsWith('https://')) {
           return `${url.protocol}//${url.host}`;
         } else {
-          // 相対パスの場合、現在のオリジンを使用（開発環境ではlocalhost:3000を想定）
-          // 開発環境の判定: localhost:3001などで動いている場合はlocalhost:3000を返す
-          if (window.location.hostname === 'localhost' && window.location.port !== '3000') {
-            return `http://localhost:3000`;
-          }
+          // 相対パス: 常に現在のページオリジン（Next が 3001 等でも /api/events が届くようにする）
           return window.location.origin;
         }
       } catch (e) {
-        // URL解析に失敗した場合は開発環境のフォールバックを使用
-        if (window.location.hostname === 'localhost' && window.location.port !== '3000') {
-          return `http://localhost:3000`;
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          return window.location.origin;
         }
       }
     }
   }
   
-  // 4. フォールバック: 開発環境ではlocalhost:3000、それ以外は現在のオリジンを使用
-  if (window.location.hostname === 'localhost' && window.location.port !== '3000') {
-    return `http://localhost:3000`;
+  // 4. フォールバック
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return window.location.origin;
   }
   const protocol = window.location.protocol;
   const host = window.location.host;

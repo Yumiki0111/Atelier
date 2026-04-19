@@ -33,7 +33,7 @@ interface PreviewPanelProps {
 
 export function PreviewPanel({ selectedProduct, selectedSize }: PreviewPanelProps) {
   const { shopId } = useAuth();
-  const { togglePreview } = useProductSelection();
+  const { clearProductSelection } = useProductSelection();
   const { data: assets = [] } = useAssets(selectedProduct?.id);
   const { data: widgetUi } = useQuery({
     queryKey: ["widget-design", shopId],
@@ -66,6 +66,7 @@ export function PreviewPanel({ selectedProduct, selectedSize }: PreviewPanelProp
     <div className="flex h-screen w-[400px] overflow-hidden bg-white">
       <div className="flex h-full w-full items-center justify-center overflow-hidden bg-white">
         <div
+          className="rounded-[2.75rem] shadow-[0_12px_48px_rgba(0,0,0,0.1)]"
           style={{
             width: "310.5px",
             height: "672px",
@@ -100,7 +101,7 @@ export function PreviewPanel({ selectedProduct, selectedSize }: PreviewPanelProp
                 customGarmentData={
                   garmentFitAvailable ? (selectedProduct.garmentSpec as CustomGarmentData) : null
                 }
-                onClose={togglePreview}
+                onClose={clearProductSelection}
                 interfaceBackgroundColor={widgetUi?.interfaceBackgroundColor}
                 canvasBackgroundColor={widgetUi?.canvasBackgroundColor}
                 ctaCartLabel={widgetUi?.ctaCartLabel}

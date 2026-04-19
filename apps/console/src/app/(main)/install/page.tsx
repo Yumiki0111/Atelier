@@ -1,11 +1,12 @@
 "use client";
 
-import { LinkIssuancePanel } from "@/features/install/LinkIssuancePanel";
 import { PageHeader } from "@/components/page-header/PageHeader";
+import { LinkIssuancePanel } from "@/features/install/LinkIssuancePanel";
+import { consolePageShellClass } from "@/lib/console-ui";
 
 export default function InstallPage() {
   return (
-    <div className="mx-auto w-full max-w-[120rem] space-y-8">
+    <div className={consolePageShellClass}>
       <PageHeader title="埋め込みスニペット" />
       <LinkIssuancePanel />
     </div>

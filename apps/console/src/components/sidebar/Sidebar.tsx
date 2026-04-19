@@ -5,12 +5,12 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   BarChart3,
+  Bookmark,
   Braces,
   ChevronLeft,
   ChevronRight,
   LogOut,
   Palette,
-  Shirt,
   SquareCode,
   UserCog,
 } from "lucide-react";
@@ -31,7 +31,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
   {
     label: "データ & 公開",
     items: [
-      { href: "/database/products", label: "商品ライブラリ", icon: Shirt },
+      { href: "/database/products", label: "商品ライブラリ", icon: Bookmark },
       { href: "/widget-design", label: "インターフェース", icon: Palette },
       { href: "/analytics", label: "アナリティクス", icon: BarChart3 },
       { href: "/install", label: "埋め込みスニペット", icon: SquareCode },
@@ -60,13 +60,13 @@ export function Sidebar() {
   return (
     <div
       className={cn(
-        "flex h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-300",
+        "flex h-screen shrink-0 flex-col border-r border-[#EEEEEE] bg-sidebar shadow-none transition-[width] duration-300",
         isCollapsed ? "w-16" : "w-60"
       )}
     >
       <div
         className={cn(
-          "flex h-14 shrink-0 items-center transition-all",
+          "flex h-[3.75rem] shrink-0 items-center transition-all",
           isCollapsed ? "justify-center px-2" : "justify-between px-4"
         )}
       >
@@ -98,16 +98,22 @@ export function Sidebar() {
       </div>
 
       <div
+        className="shrink-0 border-b border-[#EEEEEE]"
+        role="presentation"
+        aria-hidden
+      />
+
+      <div
         className={cn(
           "shrink-0",
-          isCollapsed ? "px-2 pb-2 pt-2" : "px-3 pb-3 pt-2"
+          isCollapsed ? "px-2 pb-2 pt-3" : "px-3 pb-3 pt-3"
         )}
       >
         <button
           type="button"
           onClick={() => setLinkModalOpen(true)}
           className={cn(
-            "flex items-center rounded-lg bg-zinc-950 text-zinc-50 shadow-sm transition-colors hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
+            "flex items-center rounded-lg bg-zinc-950 text-zinc-50 shadow-none transition-colors hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
             isCollapsed
               ? "mx-auto aspect-square h-10 w-10 shrink-0 justify-center p-0"
               : "w-full gap-2.5 px-3 py-2.5 text-sm font-medium"
@@ -140,18 +146,13 @@ export function Sidebar() {
 
       <nav
         className={cn(
-          "flex-1 space-y-4 overflow-y-auto py-3",
+          "flex-1 space-y-4 overflow-y-auto py-4",
           isCollapsed ? "px-2" : "px-3"
         )}
       >
         {navGroups.map((group) => (
           <div key={group.label}>
-            {!isCollapsed ? (
-              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/90">
-                {group.label}
-              </p>
-            ) : null}
-            <ul className="space-y-0.5">
+            <ul className="space-y-1">
               {group.items.map((item) => {
                 const isActive = isRouteActive(pathname, item.href);
                 const Icon = item.icon;
@@ -160,17 +161,18 @@ export function Sidebar() {
                     <Link
                       href={item.href}
                       className={cn(
-                        "group flex items-center overflow-hidden rounded-xl py-2 text-sm font-medium transition-colors",
+                        "group flex items-center overflow-hidden rounded-xl py-3 text-sm font-medium transition-colors",
                         isCollapsed ? "justify-center px-2" : "gap-3 px-3",
-                        !isActive && "text-sidebar-foreground hover:bg-sidebar-accent/80",
-                        isActive && "bg-primary/[0.08] font-semibold text-sidebar-primary"
+                        !isActive &&
+                          "text-muted-foreground hover:bg-black/[0.03] hover:text-foreground",
+                        isActive && "bg-[#FFF0ED] font-semibold text-[#FF6B35]"
                       )}
                       title={isCollapsed ? item.label : undefined}
                     >
                       <Icon
                         className={cn(
-                          "h-[1.125rem] w-[1.125rem] shrink-0 stroke-[1.65] transition-[color,opacity]",
-                          isActive ? "text-sidebar-primary" : "text-sidebar-foreground/90"
+                          "h-[1.125rem] w-[1.125rem] shrink-0 stroke-[1.35] transition-[color,opacity]",
+                          isActive ? "text-[#FF6B35]" : "text-muted-foreground/85"
                         )}
                         aria-hidden
                       />
@@ -193,15 +195,10 @@ export function Sidebar() {
 
       <div
         className={cn(
-          "space-y-0.5 py-3",
+          "mt-auto space-y-1 border-t border-[#EEEEEE] py-4",
           isCollapsed ? "px-2" : "px-3"
         )}
       >
-        {!isCollapsed ? (
-          <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/90">
-            アカウント
-          </p>
-        ) : null}
         {bottomItems.map((item) => {
           const Icon = item.icon;
           const isLogout = item.logout === true;
@@ -210,17 +207,17 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "group flex items-center overflow-hidden rounded-xl py-2 text-sm font-medium transition-colors",
+                "group flex items-center overflow-hidden rounded-xl py-3 text-sm font-medium transition-colors",
                 isCollapsed ? "justify-center px-2" : "gap-3 px-3"
               )}
               title={isCollapsed ? item.label : undefined}
             >
               <Icon
                 className={cn(
-                  "h-[1.125rem] w-[1.125rem] shrink-0 stroke-[1.65] transition-colors",
+                  "h-[1.125rem] w-[1.125rem] shrink-0 stroke-[1.35] transition-colors",
                   isLogout
                     ? "text-rose-500/85 group-hover:text-rose-700"
-                    : "text-sidebar-foreground/90"
+                    : "text-muted-foreground/85"
                 )}
                 aria-hidden
               />
@@ -230,7 +227,7 @@ export function Sidebar() {
                   isCollapsed ? "w-0 opacity-0" : "opacity-100",
                   isLogout
                     ? "text-rose-600/90 group-hover:text-rose-800"
-                    : "text-sidebar-foreground"
+                    : "text-muted-foreground"
                 )}
               >
                 {item.label}

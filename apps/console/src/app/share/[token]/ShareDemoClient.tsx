@@ -31,6 +31,7 @@ export function ShareDemoClient({
           className="absolute inset-0 z-10"
           data-fitlook-public-key={publicKey}
           data-fitlook-external-product-id={externalProductId}
+          data-fitlook-event-source="preview_link"
           data-fitlook-placement="inline"
           data-fitlook-overlay="true"
           data-fitlook-phone-frame="false"

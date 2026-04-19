@@ -33,6 +33,10 @@ export interface WidgetParams {
    * 試着モーダルを閉じたあと（embed の「商品に戻る」／2D の「閉じる」）に再度スプラッシュ付きで開く。
    */
   reopenAfterModalClose?: boolean | null;
+  /**
+   * `data-fitlook-event-source="preview_link"` など。アナリティクスでプレビューリンク経由を識別する。
+   */
+  eventSource?: string | null;
 }
 
 /** 開発環境用のモックウィジェット設定を生成（2Dウィジェット用・サイズキーのみ利用） */

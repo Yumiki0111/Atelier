@@ -73,10 +73,10 @@ export function WidgetDesignInterfaceForm({
     <div className="w-full min-w-0">
       <div className={cn("overflow-hidden")}>
         {isLoading ? (
-          <p className="py-4 text-sm text-muted-foreground">読み込み中…</p>
+            <p className="px-5 py-4 text-sm text-muted-foreground sm:px-6">読み込み中…</p>
         ) : (
           <>
-            <section className="border-b border-border/40 px-0 py-4 sm:py-5">
+            <section className="border-b border-[#EEEEEE] px-5 py-4 sm:px-6 sm:py-5">
               <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                 店頭サイト・起動ボタン
               </h2>
@@ -169,7 +169,7 @@ export function WidgetDesignInterfaceForm({
               </div>
             </section>
 
-            <section className="border-b border-border/40 px-0 py-4 sm:py-5">
+            <section className="border-b border-[#EEEEEE] px-5 py-4 sm:px-6 sm:py-5">
               <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                 試着ウィジェット内・配色
               </h2>
@@ -200,7 +200,7 @@ export function WidgetDesignInterfaceForm({
               </div>
             </section>
 
-            <section className="px-0 py-4 sm:py-5">
+            <section className="px-5 py-4 sm:px-6 sm:py-5">
               <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                 試着ウィジェット内・ボタン文言
               </h2>
@@ -233,7 +233,7 @@ export function WidgetDesignInterfaceForm({
               </div>
             </section>
 
-            <div className="flex flex-col items-stretch gap-2 border-t border-border/40 bg-background px-0 py-4 sm:flex-row sm:items-center sm:justify-end">
+            <div className="flex flex-col items-stretch gap-2 border-t border-[#EEEEEE] bg-[#FAFAFA] px-5 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6">
               <Button type="button" className="w-full sm:w-auto" onClick={onSave} disabled={saving}>
                 {saving ? "保存中…" : "変更を保存"}
               </Button>
@@ -255,7 +255,7 @@ export function WidgetDesignEmptyState({
   return (
     <div
       className={cn(
-        "border-b border-border/40 py-3",
+        "border-b border-[#EEEEEE] py-3",
         variant === "destructive" && "border-destructive/25"
       )}
     >

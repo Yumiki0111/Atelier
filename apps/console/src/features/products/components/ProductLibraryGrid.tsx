@@ -4,6 +4,8 @@ import { useCallback, useMemo, useState } from "react";
 import type { Product } from "@Atelier/shared";
 import Link from "next/link";
 import { Loader2, Package, Pencil, Trash2, Trash } from "lucide-react";
+import { PageHeader } from "@/components/page-header/PageHeader";
+import { ConsoleSearchField } from "@/components/console/ConsoleSearchField";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -29,6 +31,18 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ProductEditDialog } from "./ProductEditDialog";
 import { isGarmentSpecRenderable } from "@/lib/widget-fit/applyWidgetSizeToGarment";
+import {
+  consoleAccentCheckboxClassName,
+  consoleControlSelectTriggerClass,
+  consolePageShellClass,
+  consolePanelClass,
+  consolePrimaryCtaButtonClass,
+  consoleTableBodyRowClass,
+  consoleTableFixedClass,
+  consoleTableHeadCellClass,
+  consoleTableHeaderRowClass,
+  consoleTableRowCellBgClass,
+} from "@/lib/console-ui";
 
 const EditIcon = Pencil;
 
@@ -38,13 +52,9 @@ function isProductPreviewable(product: Product): boolean {
   return isGarmentSpecRenderable(product.garmentSpec);
 }
 
-/** 商品ライブラリのチェック（primary #E86F4C と統一） */
-const libraryCheckboxClassName =
-  "border-primary/50 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:border-primary/55 dark:data-[state=checked]:border-primary dark:data-[state=checked]:bg-primary";
-
 function formatPriceYen(yen: number | null | undefined): string {
   if (yen == null) return "—";
-  return `¥${yen.toLocaleString("ja-JP")}`;
+  return `¥ ${yen.toLocaleString("ja-JP")}`;
 }
 
 type SortKey =
@@ -113,11 +123,38 @@ export function ProductLibraryGrid() {
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
   const [sortKey, setSortKey] = useState<SortKey>("created_desc");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
   const sortedProducts = useMemo(() => {
     if (!products?.length) return [];
     return sortProducts(products, sortKey);
   }, [products, sortKey]);
+
+  const categoryOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of products ?? []) {
+      const c = p.category?.trim();
+      if (c) set.add(c);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "ja"));
+  }, [products]);
+
+  const filteredProducts = useMemo(() => {
+    let list = sortedProducts;
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      list = list.filter((p) => {
+        const name = (p.name || "").toLowerCase();
+        const cat = (p.category || "").toLowerCase();
+        return name.includes(q) || cat.includes(q);
+      });
+    }
+    if (categoryFilter !== "all") {
+      list = list.filter((p) => (p.category ?? "").trim() === categoryFilter);
+    }
+    return list;
+  }, [sortedProducts, searchQuery, categoryFilter]);
 
   const handleDelete = useCallback(
     async (productId: string) => {
@@ -148,17 +185,20 @@ export function ProductLibraryGrid() {
       toast.error("削除する商品を選択してください");
       return;
     }
-    const count = selectedRowIds.size;
-    if (!confirm(`選択した${count}件の商品を削除してもよろしいですか？\nこの操作は取り消せません。`)) {
+    if (
+      !confirm(
+        "選択した商品を一括削除してもよろしいですか？\nこの操作は取り消せません。"
+      )
+    ) {
       return;
     }
     try {
       const productIds = Array.from(selectedRowIds);
-      const result = await bulkDeleteProducts.mutateAsync(productIds);
+      await bulkDeleteProducts.mutateAsync(productIds);
       if (selectedProduct && productIds.includes(selectedProduct.id)) {
         clearProductSelection();
       }
-      toast.success(`${result.deletedCount}件の商品を削除しました`);
+      toast.success("一括削除しました");
       setSelectedRowIds(new Set());
     } catch (err) {
       console.error("Failed to bulk delete products:", err);
@@ -178,49 +218,37 @@ export function ProductLibraryGrid() {
     });
   }, []);
 
-  /** 同じ行をもう一度タップでプレビューを閉じる */
+  /** 同じ行をもう一度タップで選択解除（右プレビューを閉じる） */
   const handleRowPreviewToggle = useCallback(
     (product: Product) => {
       if (!isProductPreviewable(product)) return;
 
-      if (selectedProduct?.id === product.id && isPreviewOpen) {
-        togglePreview();
+      if (selectedProduct?.id === product.id) {
+        clearProductSelection();
         return;
       }
 
-      if (selectedProduct?.id !== product.id) {
-        selectProduct(product, "M");
-      }
+      selectProduct(product, "M");
       if (!isPreviewOpen) {
         togglePreview();
       }
     },
-    [selectedProduct?.id, isPreviewOpen, selectProduct, togglePreview]
+    [selectedProduct?.id, isPreviewOpen, selectProduct, togglePreview, clearProductSelection]
   );
 
   const total = products?.length ?? 0;
-  const allSelected = sortedProducts.length > 0 && selectedRowIds.size === sortedProducts.length;
-  const someSelected = selectedRowIds.size > 0 && !allSelected;
+  const allSelected =
+    filteredProducts.length > 0 && filteredProducts.every((p) => selectedRowIds.has(p.id));
+  const someSelected =
+    selectedRowIds.size > 0 &&
+    filteredProducts.some((p) => selectedRowIds.has(p.id)) &&
+    !allSelected;
 
   const showToolbar = Boolean(shopId && !isLoading && !isError && total > 0);
 
   return (
-    <div className="w-full space-y-6">
-      <header className="min-w-0 space-y-1">
-        <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-          <h1 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-            商品ライブラリ
-          </h1>
-          {!isLoading ? (
-            <span className="text-sm tabular-nums text-muted-foreground">{total} 件</span>
-          ) : (
-            <span className="text-sm text-muted-foreground">…</span>
-          )}
-        </div>
-        <p className="text-xs text-muted-foreground">
-          並び替えと一括削除は、下の表のすぐ上の「一覧の操作」にあります（一括削除はチェック選択時のみ表示）。
-        </p>
-      </header>
+    <div className={consolePageShellClass}>
+      <PageHeader title="商品ライブラリ" />
 
       {!shopId && (
         <p className="text-sm text-muted-foreground">ショップ情報を読み込み中です…</p>
@@ -245,126 +273,157 @@ export function ProductLibraryGrid() {
         </div>
       )}
       {shopId && !isLoading && !isError && total > 0 && (
-        <div className="w-full min-w-0 overflow-hidden rounded-lg border border-border/60 bg-background shadow-sm">
-          {showToolbar && (
-            <div
-              className="border-b border-border/60 bg-muted/25 px-3 py-3 sm:px-4"
-              aria-live="polite"
-            >
-              <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
-                <span className="text-xs font-medium text-muted-foreground">
-                  一覧の操作
-                </span>
-                <div className="flex w-full min-w-0 flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-2">
-                  {selectedRowIds.size > 0 && (
-                    <Button
-                      type="button"
-                      className="h-10 w-full shrink-0 gap-2 border-0 bg-primary text-primary-foreground hover:brightness-95 focus-visible:ring-2 focus-visible:ring-primary/50 sm:w-auto"
-                      disabled={bulkDeleteProducts.isPending}
-                      onClick={() => void handleBulkDelete()}
-                    >
-                      <Trash className="h-4 w-4" aria-hidden />
-                      {bulkDeleteProducts.isPending
-                        ? "削除中…"
-                        : `${selectedRowIds.size}件を削除`}
-                    </Button>
-                  )}
-                  <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2 sm:min-w-[12rem] sm:max-w-[min(100%,14rem)] sm:flex-none">
-                    <label
-                      htmlFor="product-library-sort"
-                      className="shrink-0 text-sm text-muted-foreground"
-                    >
-                      並び替え
-                    </label>
-                    <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
-                      <SelectTrigger className="h-10 w-full" id="product-library-sort">
-                        <SelectValue placeholder="並び替え" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="created_desc">作成日（新しい順）</SelectItem>
-                        <SelectItem value="created_asc">作成日（古い順）</SelectItem>
-                        <SelectItem value="name_asc">商品名（あいうえお順）</SelectItem>
-                        <SelectItem value="name_desc">商品名（逆順）</SelectItem>
-                        <SelectItem value="price_asc">価格（安い順）</SelectItem>
-                        <SelectItem value="price_desc">価格（高い順）</SelectItem>
-                        <SelectItem value="category_asc">カテゴリ順</SelectItem>
-                        <SelectItem value="external_asc">外部ID順</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
+        <div className="w-full min-w-0 space-y-3">
+          <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:gap-3">
+            <ConsoleSearchField
+              wrapperClassName="flex-1"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="商品を検索"
+              aria-label="商品を検索"
+            />
+            <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+              <SelectTrigger
+                className={cn(
+                  consoleControlSelectTriggerClass,
+                  "min-w-[11rem] text-sm lg:w-[min(100%,13rem)] lg:shrink-0"
+                )}
+                id="product-library-sort"
+                aria-label="並び替え"
+              >
+                <SelectValue placeholder="並び替え" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="created_desc">作成日（新しい順）</SelectItem>
+                <SelectItem value="created_asc">作成日（古い順）</SelectItem>
+                <SelectItem value="name_asc">商品名（あいうえお順）</SelectItem>
+                <SelectItem value="name_desc">商品名（逆順）</SelectItem>
+                <SelectItem value="price_asc">価格（安い順）</SelectItem>
+                <SelectItem value="price_desc">価格（高い順）</SelectItem>
+                <SelectItem value="category_asc">カテゴリ順</SelectItem>
+                <SelectItem value="external_asc">外部ID順</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger
+                className={cn(
+                  consoleControlSelectTriggerClass,
+                  "min-w-[10.5rem] lg:w-[min(100%,12rem)] lg:shrink-0"
+                )}
+                aria-label="カテゴリで絞り込み"
+              >
+                <SelectValue placeholder="カテゴリ" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">すべてのカテゴリ</SelectItem>
+                {categoryOptions.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {showToolbar && selectedRowIds.size > 0 && (
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                className={consolePrimaryCtaButtonClass}
+                disabled={bulkDeleteProducts.isPending}
+                aria-label="選択した商品を一括削除"
+                onClick={() => void handleBulkDelete()}
+              >
+                <Trash className="h-4 w-4" aria-hidden />
+                {bulkDeleteProducts.isPending ? "削除中…" : "一括削除"}
+              </Button>
             </div>
           )}
-          <Table className="min-w-[48rem] table-fixed border-0 text-sm">
+
+          <div className={consolePanelClass}>
+          <Table className={consoleTableFixedClass}>
             <colgroup>
-              {/* チェック列・画像列の幅を固定。sticky は画像列と重なるため使わない */}
-              <col className="w-[3.25rem]" />
-              <col className="w-[4.5rem]" />
-              <col span={5} />
+              <col className="w-12" />
+              <col className="w-[3.75rem]" />
+              <col />
+              <col className="min-w-[6.5rem] w-[18%]" />
+              <col className="w-[6.5rem]" />
+              <col className="w-[5.5rem]" />
             </colgroup>
             <TableHeader>
-              <TableRow className="whitespace-nowrap border-border/50 hover:bg-transparent">
-                <TableHead scope="col" className="box-border bg-background pl-3 pr-2 align-middle">
+              <TableRow className={consoleTableHeaderRowClass}>
+                <TableHead
+                  scope="col"
+                  className={cn(
+                    consoleTableHeadCellClass,
+                    "box-border py-3 pl-4 pr-2 align-middle"
+                  )}
+                >
                   <span className="sr-only">選択</span>
                   <Checkbox
-                    className={libraryCheckboxClassName}
+                    className={consoleAccentCheckboxClassName}
                     checked={allSelected ? true : someSelected ? "indeterminate" : false}
                     onCheckedChange={(checked) => {
                       if (checked === true) {
-                        setSelectedRowIds(new Set(sortedProducts.map((p) => p.id)));
+                        setSelectedRowIds(new Set(filteredProducts.map((p) => p.id)));
                       } else {
                         setSelectedRowIds(new Set());
                       }
                     }}
-                    aria-label="すべて選択"
+                    aria-label="表示中の商品をすべて選択"
                   />
                 </TableHead>
-                <TableHead scope="col" className="pl-0 pr-6 font-medium text-muted-foreground">
+                <TableHead
+                  scope="col"
+                  className={cn(consoleTableHeadCellClass, "py-3 pl-0 pr-3")}
+                >
                   画像
                 </TableHead>
-                <TableHead className="w-[28%] min-w-[11rem] px-6 font-medium text-muted-foreground">
+                <TableHead className={cn(consoleTableHeadCellClass, "px-4 py-3")}>
                   商品名
                 </TableHead>
-                <TableHead className="hidden w-[22%] px-6 font-medium text-muted-foreground md:table-cell">
+                <TableHead className={cn(consoleTableHeadCellClass, "px-4 py-3")}>
                   カテゴリ
                 </TableHead>
-                <TableHead className="hidden w-[14%] px-6 font-medium text-muted-foreground lg:table-cell">
-                  外部ID
-                </TableHead>
-                <TableHead className="w-[7rem] px-6 text-left font-medium text-muted-foreground">
+                <TableHead className={cn(consoleTableHeadCellClass, "px-4 py-3")}>
                   価格
                 </TableHead>
                 <TableHead
                   scope="col"
-                  className="w-[8.5rem] pl-6 pr-0 text-left font-medium text-muted-foreground"
+                  className={cn(consoleTableHeadCellClass, "py-3 pl-3 pr-4 text-right")}
                 >
                   <span className="sr-only">操作</span>
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedProducts.map((product) => {
+              {filteredProducts.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={6}
+                    className="h-28 text-center text-sm text-muted-foreground"
+                  >
+                    条件に一致する商品がありません
+                  </TableCell>
+                </TableRow>
+              ) : null}
+              {filteredProducts.map((product) => {
                 const displayName = product.name?.trim() || "（名称未設定）";
                 const categoryLine = product.category?.trim() || "—";
-                const extId = product.externalProductId?.trim() || "—";
                 const previewSelected = selectedProduct?.id === product.id;
                 const bulkSelected = selectedRowIds.has(product.id);
                 const previewable = isProductPreviewable(product);
                 // tr だけに背景を付けると td（特に sticky）と塗りがズレるため、全セルに同一の背景を付ける
-                const cellBg = bulkSelected
-                  ? "bg-primary/10 dark:bg-primary/15 group-hover:bg-primary/[0.14] dark:group-hover:bg-primary/25"
-                  : previewSelected
-                    ? "bg-primary/[0.08] group-hover:bg-primary/[0.12]"
-                    : previewable
-                      ? "bg-background group-hover:bg-muted/25"
-                      : "bg-background";
+                const cellBg = consoleTableRowCellBgClass({
+                  bulkSelected,
+                  previewSelected,
+                  previewable,
+                });
                 return (
                   <TableRow
                     key={product.id}
                     className={cn(
-                      "whitespace-nowrap border-border/40 transition-colors hover:bg-transparent",
-                      (bulkSelected || previewable) && "group",
+                      consoleTableBodyRowClass,
                       previewable && "cursor-pointer",
                       !previewable && !bulkSelected && "cursor-default"
                     )}
@@ -377,20 +436,19 @@ export function ProductLibraryGrid() {
                   >
                     <TableCell
                       className={cn(
-                        "box-border border-l-2 border-l-transparent py-3.5 pl-3 pr-2 align-middle",
-                        bulkSelected && "border-l-primary",
+                        "box-border py-4 pl-4 pr-2 align-middle",
                         cellBg
                       )}
                       onClick={(e) => e.stopPropagation()}
                     >
                       <Checkbox
-                        className={libraryCheckboxClassName}
+                        className={consoleAccentCheckboxClassName}
                         checked={bulkSelected}
                         onCheckedChange={() => toggleRowSelection(product.id)}
                         aria-label={`${displayName}を選択`}
                       />
                     </TableCell>
-                    <TableCell className={cn("py-3.5 pl-0 pr-6 align-middle", cellBg)}>
+                    <TableCell className={cn("py-4 pl-0 pr-3 align-middle", cellBg)}>
                       {product.thumbnailUrl ? (
                         <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-muted/50">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -408,7 +466,7 @@ export function ProductLibraryGrid() {
                     </TableCell>
                     <TableCell
                       className={cn(
-                        "max-w-0 overflow-hidden text-ellipsis px-6 py-3.5 align-middle font-medium",
+                        "max-w-0 overflow-hidden text-ellipsis px-4 py-4 align-middle text-sm font-medium text-foreground",
                         cellBg
                       )}
                       title={displayName}
@@ -417,7 +475,7 @@ export function ProductLibraryGrid() {
                     </TableCell>
                     <TableCell
                       className={cn(
-                        "hidden max-w-0 overflow-hidden text-ellipsis px-6 py-3.5 align-middle text-muted-foreground md:table-cell",
+                        "max-w-0 overflow-hidden text-ellipsis px-4 py-4 align-middle text-sm text-muted-foreground",
                         cellBg
                       )}
                       title={categoryLine === "—" ? undefined : categoryLine}
@@ -426,16 +484,7 @@ export function ProductLibraryGrid() {
                     </TableCell>
                     <TableCell
                       className={cn(
-                        "hidden max-w-0 overflow-hidden text-ellipsis px-6 py-3.5 align-middle font-mono text-xs text-muted-foreground lg:table-cell",
-                        cellBg
-                      )}
-                      title={extId === "—" ? undefined : extId}
-                    >
-                      {extId}
-                    </TableCell>
-                    <TableCell
-                      className={cn(
-                        "overflow-hidden text-ellipsis px-6 py-3.5 text-left align-middle tabular-nums",
+                        "overflow-hidden text-ellipsis px-4 py-4 text-left align-middle text-sm tabular-nums text-foreground",
                         cellBg
                       )}
                     >
@@ -448,31 +497,31 @@ export function ProductLibraryGrid() {
                       </span>
                     </TableCell>
                     <TableCell
-                      className={cn("py-3.5 pl-6 pr-0 text-left align-middle", cellBg)}
+                      className={cn("py-4 pl-3 pr-4 text-right align-middle", cellBg)}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <div className="flex justify-start gap-1">
+                      <div className="flex justify-end gap-0.5">
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:bg-transparent hover:text-foreground"
+                          className="h-8 w-8 text-muted-foreground/90 hover:bg-transparent hover:text-foreground"
                           title="編集"
                           onClick={() => setEditingProductId(product.id)}
                         >
-                          <EditIcon className="h-4 w-4" aria-hidden />
+                          <EditIcon className="h-4 w-4 stroke-[1.25]" aria-hidden />
                           <span className="sr-only">編集</span>
                         </Button>
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:bg-transparent hover:text-destructive"
+                          className="h-8 w-8 text-muted-foreground/90 hover:bg-transparent hover:text-destructive"
                           title="削除"
                           disabled={deleteProduct.isPending}
                           onClick={() => void handleDelete(product.id)}
                         >
-                          <Trash2 className="h-4 w-4" aria-hidden />
+                          <Trash2 className="h-4 w-4 stroke-[1.25]" aria-hidden />
                           <span className="sr-only">削除</span>
                         </Button>
                       </div>
@@ -482,6 +531,7 @@ export function ProductLibraryGrid() {
               })}
             </TableBody>
           </Table>
+          </div>
         </div>
       )}
 
