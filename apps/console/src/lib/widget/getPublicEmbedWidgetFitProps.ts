@@ -60,51 +60,7 @@ export async function getPublicEmbedWidgetFitProps(
   const garmentFitAvailable = isGarmentSpecRenderable(product.garment_spec);
   if (!garmentFitAvailable) return null;
 
-  const { data: allAssets, error: assetsError } = await supabaseAdmin
-    .from("assets")
-    .select("size, glb_url, model_url, version, is_active, product_id")
-    .eq("shop_id", shopId)
-    .eq("product_id", product.id)
-    .eq("is_active", true)
-    .order("size", { ascending: true })
-    .order("version", { ascending: false });
-
-  const assetsWithCategory = (assetsError ? [] : allAssets ?? []).map((asset) => ({
-    ...asset,
-    category,
-  }));
-
-  const assetsBySizeAndCategory = new Map<
-    string,
-    Map<string, { glbUrl?: string; modelUrl?: string; version: number; isActive: boolean; category?: string }>
-  >();
-
-  for (const asset of assetsWithCategory) {
-    const size = asset.size;
-    const categoryKey = asset.category || "default";
-    if (!assetsBySizeAndCategory.has(size)) {
-      assetsBySizeAndCategory.set(size, new Map());
-    }
-    const categoryMap = assetsBySizeAndCategory.get(size)!;
-    const existing = categoryMap.get(categoryKey);
-    if (asset.is_active !== false) {
-      const modelUrl = asset.model_url || asset.glb_url;
-      if (modelUrl) {
-        if (!existing || asset.version > existing.version) {
-          categoryMap.set(categoryKey, {
-            glbUrl: asset.glb_url || undefined,
-            modelUrl: asset.model_url || undefined,
-            version: asset.version,
-            isActive: true,
-            category,
-          });
-        }
-      }
-    }
-  }
-
-  const assetKeys = Array.from(assetsBySizeAndCategory.keys());
-  const sizeKeys = resolveWidgetFitSizeKeysOrder(assetKeys, product.garment_spec);
+  const sizeKeys = resolveWidgetFitSizeKeysOrder([], product.garment_spec);
   const defaultSize =
     sizeKeys.includes("M") ? "M" : sizeKeys.length > 0 ? sizeKeys[0] : undefined;
 

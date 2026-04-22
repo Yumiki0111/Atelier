@@ -44,8 +44,6 @@ export const assetSchema = z.object({
   id: z.string().uuid(),
   productId: z.string().uuid(),
   size: productSizeSchema, // 柔軟な形式
-  glbUrl: z.string().url().optional(), // 後方互換性のため残す
-  modelUrl: z.string().url().optional(), // GLBとFBXの両方をサポート
   thumbnailUrl: z.string().url().optional(),
   version: z.number().int().positive().default(1),
   isActive: z.boolean().optional().default(true),
@@ -60,30 +58,15 @@ export const createAssetSchemaBase = assetSchema.omit({
   updatedAt: true,
 });
 
-// 作成時用スキーマ（refinement付き）
-export const createAssetSchema = createAssetSchemaBase.refine(
-  (data) => data.modelUrl || data.glbUrl,
-  { message: "modelUrl or glbUrl is required" }
-);
+// 作成時用スキーマ
+export const createAssetSchema = createAssetSchemaBase;
 
-// 更新時用スキーマ（refinementなしのベースから.partial()を適用）
+// 更新時用スキーマ
 export const updateAssetSchema = createAssetSchemaBase
   .partial()
   .omit({
     productId: true, // productIdは更新対象外
-  })
-  .refine(
-    (data) => {
-      // 更新時は、modelUrlまたはglbUrlが提供されている場合のみ検証
-      // 両方がundefinedの場合は既存の値が保持されるため、検証をスキップ
-      if (data.modelUrl === undefined && data.glbUrl === undefined) {
-        return true; // 既存の値が保持される
-      }
-      // どちらかが提供されている場合は、有効なURLである必要がある
-      return data.modelUrl || data.glbUrl;
-    },
-    { message: "modelUrl or glbUrl must be provided if updating" }
-  );
+  });
 
 export const eventTypeSchema = z.enum([
   "cube_view",
@@ -118,12 +101,10 @@ export const widgetConfigSchema = z.object({
       defaultSize: z.string().min(1), // 柔軟なサイズ形式
       sizes: z.record(
         z.string().min(1), // 柔軟なサイズ形式
-        z.object({
-          glbUrl: z.string().url().optional(), // 後方互換性のため残す
-          modelUrl: z.string().url().optional(), // GLBとFBXの両方をサポート
-        }).refine(
-          (data) => data.modelUrl || data.glbUrl,
-          { message: "modelUrl or glbUrl is required" }
+        z.array(
+          z.object({
+            category: productCategorySchema.optional(),
+          })
         )
       ),
     })

@@ -66,10 +66,10 @@ async function testWidgetConfigAPI() {
       if (data.enabled && data.asset) {
         console.log(`\n✅ 有効: はい`);
         console.log(`デフォルトサイズ: ${data.asset.defaultSize}`);
-        console.log(`サイズ別GLB URL:`);
+        console.log(`サイズキー:`);
         if (data.asset.sizes) {
-          Object.entries(data.asset.sizes).forEach(([size, sizeData]: [string, any]) => {
-            console.log(`  ${size}: ${sizeData.glbUrl}`);
+          Object.entries(data.asset.sizes).forEach(([size, rows]: [string, unknown]) => {
+            console.log(`  ${size}:`, JSON.stringify(rows));
           });
         }
       } else {

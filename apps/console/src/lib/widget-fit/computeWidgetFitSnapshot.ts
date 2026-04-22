@@ -24,7 +24,7 @@ export async function computeWidgetFitSnapshot(params: {
   weightKg: number;
   /** `products.category` など。未指定時はジャケット基準のしきい値 */
   fitChestBandCategory?: string | null;
-  /** 試着中のサイズラベル（身長アンカー用）。API はクエリの `size` を渡す */
+  /** 試着中のサイズ（一般論の推奨段と比較） */
   currentSizeLabel?: string | null;
 }): Promise<{
   viewBoxHeight: number;
@@ -70,20 +70,18 @@ export async function computeWidgetFitSnapshot(params: {
   const fitChestBandMode = resolveWidgetFitChestBandMode(params.fitChestBandCategory);
   const presetLabels = orderedSizeLabelsFromCustomGarment(params.customGarmentData);
   const currentSizeLabel =
-    params.currentSizeLabel?.trim() ||
-    (presetLabels.length > 0 ? presetLabels[0] : "") ||
-    null;
-  const bandOrdinalKeys =
+    params.currentSizeLabel?.trim() || (presetLabels.length > 0 ? presetLabels[0]! : null);
+  const bandKeys =
     currentSizeLabel != null && currentSizeLabel.length > 0
       ? resolveOrderedSizeKeysForBand(presetLabels, [], currentSizeLabel)
       : null;
   const fitEaseSummary = buildWidgetFitEaseSummaryFromSnapshot(snap, params.weightKg, {
     fitChestBandMode,
     customGarmentData: params.customGarmentData,
-    heightCm: bandOrdinalKeys != null ? params.heightCm : undefined,
-    orderedSizeKeys: bandOrdinalKeys ?? undefined,
+    heightCm: bandKeys != null ? params.heightCm : undefined,
+    orderedSizeKeys: bandKeys ?? undefined,
     currentSize:
-      bandOrdinalKeys != null && currentSizeLabel != null && currentSizeLabel.length > 0
+      bandKeys != null && currentSizeLabel != null && currentSizeLabel.length > 0
         ? currentSizeLabel
         : undefined,
   });

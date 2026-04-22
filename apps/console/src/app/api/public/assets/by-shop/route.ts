@@ -11,7 +11,7 @@ import { setCorsHeaders, handleCorsOptions, validatePublicKeyAndDomain } from "@
  * - excludeProductId: 除外する商品ID（任意、external_product_id）
  * 
  * レスポンス:
- * - { categories: { [category: string]: Array<{ id, productId, productName, size, modelUrl, thumbnailUrl, category }> } }
+ * - { categories: { [category: string]: Array<{ id, productId, productName, size, thumbnailUrl, category }> } }
  */
 export async function OPTIONS(request: NextRequest) {
   return handleCorsOptions(request);
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
     // 全商品のアセットを一括取得
     let query = supabaseAdmin
       .from("assets")
-      .select("id, product_id, size, glb_url, model_url, thumbnail_url, version, is_active")
+      .select("id, product_id, size, thumbnail_url, version, is_active")
       .eq("shop_id", shopId)
       .eq("is_active", true)
       .order("version", { ascending: false });
@@ -102,7 +102,6 @@ export async function GET(request: NextRequest) {
       externalProductId: string;
       productName: string;
       size: string;
-      modelUrl: string;
       thumbnailUrl: string | null;
       category: string;
     }>> = {};
@@ -111,8 +110,8 @@ export async function GET(request: NextRequest) {
       const product = productMap.get(asset.product_id);
       if (!product) continue;
 
-      const modelUrl = asset.model_url || asset.glb_url;
-      if (!modelUrl) continue;
+      const thumb = asset.thumbnail_url || product.thumbnailUrl;
+      if (!thumb) continue;
 
       // 同じ商品・サイズの重複を排除（最新バージョンのみ）
       const key = `${asset.product_id}-${asset.size}`;
@@ -130,8 +129,7 @@ export async function GET(request: NextRequest) {
         externalProductId: product.externalProductId,
         productName: product.name,
         size: asset.size,
-        modelUrl,
-        thumbnailUrl: asset.thumbnail_url || product.thumbnailUrl || null,
+        thumbnailUrl: thumb || null,
         category,
       });
     }

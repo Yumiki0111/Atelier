@@ -75,7 +75,6 @@ export function PreviewPanel({ selectedProduct, selectedSize }: PreviewPanelProp
         >
           <PhoneFrame
             previewContainerRef={previewContainerRef}
-            selectedAsset={null}
             borderRef={borderRef}
             screenContentBackgroundColor={
               widgetUi?.interfaceBackgroundColor ?? widgetUi?.canvasBackgroundColor

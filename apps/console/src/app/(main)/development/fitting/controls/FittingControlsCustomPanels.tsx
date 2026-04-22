@@ -370,7 +370,7 @@ export function FittingControlsCustomPanels({
       {isGenericTop && (
         <DevPanelSection title="ウィジェット体型（服 # 2点）">
           <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
-            服プロットの連結 # を2つ指定。ワープ後の2点間の長さ（cm）と、くびれ参照弦（モデルプロットの紫・体重で変わる）を比べて小さめ／おすすめ／大きめを出します。未指定時は身幅×2と弦の差にフォールバックします。
+            服プロットの連結 # を2つ指定。ワープ後の2点間の長さ（cm）と、くびれ参照弦（モデルプロットの紫・体重で変わる）を比べて小さめ／おすすめ／ゆったりを出します。未指定時は身幅×2と弦の差にフォールバックします。
           </p>
           <div className="mt-2 flex flex-wrap items-end gap-2">
             <label className="flex flex-col gap-0.5 text-[9px] font-semibold text-muted-foreground">

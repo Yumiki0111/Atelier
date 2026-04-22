@@ -18,7 +18,7 @@ export interface Product {
   /** 開発フィットから登録した SVG＋採寸・グレーディング（リグ・デバッグ除く） */
   garmentSpec?: unknown;
   /**
-   * GET /api/products の一覧レスポンスでのみ付与。アクティブ 3D アセットのサイズラベル（重複なし・ソート済み）。
+   * GET /api/products の一覧レスポンスでのみ付与。アクティブな assets 行のサイズラベル（重複なし・ソート済み）。
    */
   assetSizes?: string[];
   createdAt: string;
@@ -29,8 +29,6 @@ export interface Asset {
   id: string;
   productId: string;
   size: ProductSize; // 柔軟な形式（商品のsizeTypeIdに応じて異なる）
-  glbUrl?: string; // 後方互換性のため残す
-  modelUrl?: string; // GLBとFBXの両方をサポート（優先的に使用）
   thumbnailUrl?: string;
   version: number;
   isActive?: boolean; // アクティブなアセットかどうか（最新バージョンのみtrue推奨）

@@ -7,7 +7,7 @@ import {
   bodyIndentReferenceChordLengthCm,
   garmentFitCompareSpanCm,
 } from "@/lib/widget-fit/bodyPlotReferenceMeasures";
-import { resolveWidgetFitChestBandJaOrdinal } from "@/lib/widget-fit/widgetFitChestBandOrdinal";
+import { resolveWidgetFitChestBandJaFromBodyHeuristic } from "@/lib/widget-fit/widgetFitChestBandOrdinal";
 
 /** 基準体型（170/60）相当の参考肩幅 cm。`constants` のボディ肩 px と整合 */
 const REF_BODY_SHOULDER_WIDTH_CM = 47;
@@ -76,11 +76,10 @@ export function buildWidgetFitEaseSummaryFromSnapshot(
   opts?: {
     fitChestBandMode?: "shirt" | "jacket";
     customGarmentData?: CustomGarmentData | null;
-    /** 身長（cm）。`orderedSizeKeys` + `currentSize` と組み合わせて推奨サイズ帯を決める */
+    /** 身長（cm）。`orderedSizeKeys` + `currentSize` と併用して一般論の推奨段を出す */
     heightCm?: number;
-    /** 小→大のサイズラベル列（通常は sizePresets の順） */
+    /** 小→大 */
     orderedSizeKeys?: string[];
-    /** 現在選択中のサイズラベル */
     currentSize?: string;
   }
 ): WidgetFitEaseSummaryJson {
@@ -101,7 +100,7 @@ export function buildWidgetFitEaseSummaryFromSnapshot(
 
   const bppc = g.bodyPxPerCm;
   let chestRaw: number;
-  /** 胸バンド用の幾何ゆとり（cm）。序数ロジックの矛盾検出にも使う */
+  /** 胸バンド用の幾何ゆとり（cm）。2 頂点間の服スパン − 胴体参照弦、または身幅比フォールバック。 */
   let chestEaseForBand: number | null = null;
   const chordCm =
     bppc != null && bppc > 0 ? bodyIndentReferenceChordLengthCm(snap, bppc) : null;
@@ -142,26 +141,25 @@ export function buildWidgetFitEaseSummaryFromSnapshot(
     chestEaseForBand = null;
   }
 
+  /** バッジ: 身長＋体重の推奨段 vs 現在段（一般論）を優先。列が揃わないときだけ幾何。 */
   let fitChestBandJa = "";
-  const heightCm = opts?.heightCm;
-  const orderedSizeKeys = opts?.orderedSizeKeys;
-  const currentSize = opts?.currentSize?.trim();
+  const hBand = opts?.heightCm;
+  const ordKeys = opts?.orderedSizeKeys;
+  const cur = opts?.currentSize?.trim();
   if (
-    heightCm != null &&
-    Number.isFinite(heightCm) &&
-    orderedSizeKeys != null &&
-    orderedSizeKeys.length > 0 &&
-    currentSize != null &&
-    currentSize.length > 0 &&
-    orderedSizeKeys.includes(currentSize)
+    hBand != null &&
+    Number.isFinite(hBand) &&
+    ordKeys != null &&
+    ordKeys.length > 0 &&
+    cur != null &&
+    cur.length > 0 &&
+    ordKeys.includes(cur)
   ) {
-    fitChestBandJa = resolveWidgetFitChestBandJaOrdinal({
-      heightCm,
+    fitChestBandJa = resolveWidgetFitChestBandJaFromBodyHeuristic({
+      heightCm: hBand,
       weightKg,
-      orderedSizeKeys,
-      currentSize,
-      chestEaseCm: chestEaseForBand,
-      fitChestBandMode: mode,
+      orderedSizeKeys: ordKeys,
+      currentSize: cur,
     }).bandJa;
   } else if (chestEaseForBand != null && Number.isFinite(chestEaseForBand)) {
     fitChestBandJa = widgetFitChestBandJaFromDiff(chestEaseForBand, mode);

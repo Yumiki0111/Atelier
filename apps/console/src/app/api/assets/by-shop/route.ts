@@ -10,7 +10,7 @@ import { getAuthenticatedUser } from "@/lib/auth/middleware";
  * - excludeProductId: 除外する商品ID（任意）
  * 
  * レスポンス:
- * - { categories: { [category: string]: Array<{ id, productId, productName, size, modelUrl, thumbnailUrl, category }> } }
+ * - { categories: { [category: string]: Array<{ id, productId, productName, size, thumbnailUrl, category }> } }
  */
 export async function GET(request: NextRequest) {
   try {
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     // 全商品のアセットを一括取得
     let query = supabaseAdmin
       .from("assets")
-      .select("id, product_id, size, glb_url, model_url, thumbnail_url, version, is_active")
+      .select("id, product_id, size, thumbnail_url, version, is_active")
       .eq("shop_id", auth.shopId)
       .order("version", { ascending: false });
 
@@ -72,7 +72,6 @@ export async function GET(request: NextRequest) {
       productId: string;
       productName: string;
       size: string;
-      modelUrl: string;
       thumbnailUrl: string | null;
       category: string;
     }>> = {};
@@ -82,8 +81,8 @@ export async function GET(request: NextRequest) {
       if (!product) continue;
       if (asset.is_active === false) continue;
 
-      const modelUrl = asset.model_url || asset.glb_url;
-      if (!modelUrl) continue;
+      const thumb = asset.thumbnail_url || product.thumbnailUrl;
+      if (!thumb) continue;
 
       // 同じ商品・サイズの重複を排除（最新バージョンのみ）
       const key = `${asset.product_id}-${asset.size}`;
@@ -100,8 +99,7 @@ export async function GET(request: NextRequest) {
         productId: asset.product_id,
         productName: product.name,
         size: asset.size,
-        modelUrl,
-        thumbnailUrl: asset.thumbnail_url || product.thumbnailUrl || null,
+        thumbnailUrl: thumb || null,
         category,
       });
     }

@@ -36,7 +36,7 @@ export interface WidgetConfig {
   asset?: {
     defaultSize: string; // 柔軟なサイズ形式（"S", "M", "L", "1", "2", "3", "28", "30"など）
     /** サイズキー一覧（2Dウィジェットではグレーディング表示のみに使用） */
-    sizes: Record<string, { glbUrl?: string; modelUrl?: string; category?: string }[]>;
+    sizes: Record<string, { category?: string }[]>;
     productName?: string;
     thumbnailUrl?: string;
     /** 例: "¥ 110,000 tax in" */

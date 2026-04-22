@@ -46,7 +46,7 @@ import {
 
 const EditIcon = Pencil;
 
-/** アクティブな 3D アセットまたは着せ替え用 garmentSpec があるときだけプレビュー可能 */
+/** アクティブなアセット行または garmentSpec があるときだけプレビュー可能 */
 function isProductPreviewable(product: Product): boolean {
   if ((product.assetSizes?.length ?? 0) > 0) return true;
   return isGarmentSpecRenderable(product.garmentSpec);

@@ -18,28 +18,6 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // 静的ファイル（3Dモデルなど）にCORSヘッダーを追加
-        source: "/3d/:path*",
-        headers: [
-          {
-            key: "Access-Control-Allow-Origin",
-            value: "*", // 開発環境では全てのオリジンを許可
-          },
-          {
-            key: "Access-Control-Allow-Methods",
-            value: "GET, OPTIONS",
-          },
-          {
-            key: "Access-Control-Allow-Headers",
-            value: "Content-Type",
-          },
-          {
-            key: "Content-Type",
-            value: "model/gltf-binary", // GLBファイル用のContent-Type
-          },
-        ],
-      },
-      {
         // ウィジェットファイルにCORSヘッダーを追加
         source: "/widget.js",
         headers: [

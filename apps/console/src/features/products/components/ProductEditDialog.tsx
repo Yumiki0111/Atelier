@@ -489,7 +489,7 @@ export function ProductEditDialog({
                     : "mt-2"
                 )}
               >
-                3Dモデル（GLB 等）のサイズ: {assetSizeLabelsOnly.join(", ")}
+                サイズ別アセット: {assetSizeLabelsOnly.join(", ")}
               </p>
             )}
             {!isLoading &&
@@ -498,7 +498,7 @@ export function ProductEditDialog({
               presetReadOnly.length === 0 &&
               assetSizeLabelsOnly.length === 0 && (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  開発タブのサイズプリセット・採寸、または 3D アセットを登録するとここに表示されます。
+                  開発タブのサイズプリセット・採寸、またはサイズ別アセットを登録するとここに表示されます。
                 </p>
               )}
           </div>

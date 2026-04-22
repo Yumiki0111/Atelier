@@ -15,7 +15,7 @@ export function applyWidgetSizeToCustomGarmentData(
       const nextLen = match.length;
       let chest = data.size.chest;
       let shoulder = data.size.shoulder;
-      // プリセットには身幅・肩幅が無いので着丈比でグレード（`chestDiff` と「小さめ〜大きめ」がサイズで変わるようにする）
+      // プリセットには身幅・肩幅が無いので着丈比でグレード（`chestDiff` と「小さめ〜ゆったり」がサイズで変わるようにする）
       if (prevLen > 0.01 && Number.isFinite(chest) && Number.isFinite(shoulder)) {
         const f = nextLen / prevLen;
         chest = Math.round(chest * f * 10) / 10;

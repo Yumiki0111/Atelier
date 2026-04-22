@@ -100,7 +100,6 @@ export function WidgetDesignInterfacePreview({
             <PhoneFrame
               previewContainerRef={previewContainerRef}
               borderRef={borderRef}
-              selectedAsset={null}
               screenContentBackgroundColor={interfaceBackgroundColor}
             >
               <div

@@ -29,7 +29,6 @@ function SleeveMeasureBlock({
   sleeveGeomBeforeSleeveFixDebugOverride,
   redLineIsEditPreviewOverride,
   sleeveMeasureDefinitionDebug,
-  mismatchWarning,
 }: {
   g: GarmentG;
   sleeveStart: [number, number];
@@ -44,8 +43,6 @@ function SleeveMeasureBlock({
   redLineIsEditPreviewOverride?: boolean;
   /** プライマリのみ DEBUG 時 */
   sleeveMeasureDefinitionDebug?: GarmentG["sleeveMeasureDefinitionDebug"];
-  /** プライマリのみ: 入力袖丈と幾何弧長の不一致 */
-  mismatchWarning?: string;
 }): ReactNode {
   const [sx, sy] = sleeveStart;
   const [ex, ey] = sleeveEnd;
@@ -152,20 +149,6 @@ function SleeveMeasureBlock({
       <line x1={ex} y1={ey} x2={slEnd[0]} y2={slEnd[1]} stroke={strokeColor} strokeWidth={2} opacity={0.7} />
       <line x1={slStart[0]} y1={slStart[1]} x2={slEnd[0]} y2={slEnd[1]} stroke={strokeColor} strokeWidth={2} strokeDasharray="6 4" />
       <path d={drawArrowDown(slEnd[0], slEnd[1])} fill={strokeColor} stroke={fillColor} strokeWidth={2} />
-      {sideLabel === "プライマリ袖" && mismatchWarning != null ? (
-        <text
-          x={slMidX + labelOffset}
-          y={slMidY - 56}
-          fontSize={11}
-          fontWeight={700}
-          fill="#d97706"
-          fontFamily="ui-sans-serif, system-ui, sans-serif"
-          textAnchor="middle"
-        >
-          <title>入力袖丈とチェーン弧長の差が大きいときの注意</title>
-          {mismatchWarning}
-        </text>
-      ) : null}
       {rawVsPipelineDiffLabel != null && line2Y != null && line3Y != null ? (
         <>
           <text x={slMidX + labelOffset} y={line1Y} fontSize={14} fontWeight="bold" fill={fillColor} fontFamily="sans-serif" dominantBaseline="middle">
@@ -296,7 +279,6 @@ export function FittingCanvasMeasureOverlayGarmentSleeve({ g }: { g: GarmentG })
         sleevePathPoints={g.sleevePathPoints}
         sideLabel="プライマリ袖"
         sleeveMeasureDefinitionDebug={g.sleeveMeasureDefinitionDebug}
-        mismatchWarning={g.sleeveMeasureMismatchWarning}
       />
       {hasMirror ? (
         <SleeveMeasureBlock

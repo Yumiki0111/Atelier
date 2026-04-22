@@ -21,6 +21,8 @@ export type AnalyticsPreviewLinkMetrics = {
 export type AnalyticsSeriesRow = {
   date: string;
   fullDate: string;
+  /** 「今日（0時〜）」の1時間単位のとき、バケット開始時刻（ISO 8601） */
+  bucketStart?: string;
 } & AnalyticsCoreMetrics &
   AnalyticsPreviewLinkMetrics;
 

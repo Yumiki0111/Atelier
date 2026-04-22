@@ -18,17 +18,12 @@ export function ConsoleMainColumn({
   developmentMode = false,
 }: ConsoleMainColumnProps) {
   return (
-    <div
-      className={cn(
-        "flex min-h-0 min-w-0 flex-1 flex-col bg-background",
-        developmentMode && "overflow-hidden"
-      )}
-    >
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
       <div
         className={cn(
           "min-h-0 flex-1 overflow-y-auto bg-background",
           developmentMode
-            ? "flex min-h-0 flex-col overflow-hidden overscroll-none px-4 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-6"
+            ? "flex min-h-0 flex-col px-4 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-6"
             : ["min-w-0", mainColumnPadding]
         )}
       >

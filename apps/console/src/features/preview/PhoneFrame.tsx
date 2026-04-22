@@ -5,10 +5,6 @@ import { PREVIEW_SURFACE_BG } from "./WidgetPreviewChrome";
 
 interface PhoneFrameProps {
   previewContainerRef: React.RefObject<HTMLDivElement | null>;
-  selectedAsset: {
-    modelUrl?: string;
-    glbUrl?: string;
-  } | null | undefined;
   onFrameBoundsChange?: (bounds: { left: number; top: number; width: number; height: number }) => void;
   borderRef?: React.RefObject<HTMLDivElement | null>;
   children?: React.ReactNode;
@@ -20,7 +16,6 @@ export const PhoneFrame = forwardRef<HTMLDivElement, PhoneFrameProps>(
   (
     {
       previewContainerRef,
-      selectedAsset,
       onFrameBoundsChange,
       borderRef: externalBorderRef,
       children,

@@ -486,6 +486,7 @@ export function computeCustomGarmentBranch(
 
   const { garmentOverlay, shoulderDebug } = assembleCustomGarmentOverlayAndShoulderDebug({
     customGarmentData,
+    resolvedPathDsForSleeveMeasure: customPathDs,
     customPoints,
     customAllOutline,
     bodyShoulderContour,

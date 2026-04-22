@@ -315,6 +315,118 @@ export function resolveEffectiveSleeveGradingGeometry(
   return base;
 }
 
+/** 採寸オーバーレイ: 袖Yスケールが無効なときの細かい理由（# ごとの path インデックス） */
+export type SleeveYScaleInactiveExplain = {
+  headline: string;
+  bullets: string[];
+};
+
+function dedupeChainForExplain(chain: number[]): number[] {
+  const seen = new Set<number>();
+  const out: number[] = [];
+  for (const raw of chain) {
+    const g = Math.trunc(raw);
+    if (!Number.isFinite(g) || g < 0 || seen.has(g)) continue;
+    seen.add(g);
+    out.push(g);
+  }
+  return out;
+}
+
+/**
+ * `resolveEffectiveSleeveGradingGeometry` が null のとき、単一 path に収まらない理由を人間向けに分解する。
+ * `pathDs` はパイプライン後の最終結合列（`fittingCanvasCompute` の `customPathDs`）と揃えること。
+ */
+export function explainSleeveYScaleInactive(
+  pathDs: string[],
+  gt: NonNullable<CustomGarmentData["genericSymmetricTop"]>
+): SleeveYScaleInactiveExplain | null {
+  if (resolveEffectiveSleeveGradingGeometry(pathDs, {} as CustomLandmarks, gt) != null) {
+    return null;
+  }
+  const s = gt.sleeveMeasureVertexStart;
+  const e = gt.sleeveMeasureVertexEnd;
+  if (!hasDistinctVertexPair(s, e)) {
+    return {
+      headline: "袖Y無効 · 措定端点",
+      bullets: ["sleeveMeasureVertexStart / End が未設定または同一です。"],
+    };
+  }
+  const rawLo = Math.min(Math.trunc(s!), Math.trunc(e!));
+  const rawHi = Math.max(Math.trunc(s!), Math.trunc(e!));
+  const cover = vertexRangeToCoveringPathRange(pathDs, rawLo, rawHi);
+  if (!cover) {
+    return {
+      headline: "袖Y無効 · # 範囲外",
+      bullets: [`#${rawLo}〜#${rawHi} が連結頂点の範囲外です（全 path 合算の # 総数を確認）。`],
+    };
+  }
+
+  const piLo = pathIndexForGlobalVertex(pathDs, rawLo);
+  const piHi = pathIndexForGlobalVertex(pathDs, rawHi);
+  const chainDedup = gt.sleeveMeasureVertexChain != null ? dedupeChainForExplain(gt.sleeveMeasureVertexChain) : [];
+
+  const bullets: string[] = [];
+  bullets.push(
+    `端点: #${rawLo}→path[${piLo ?? "?"}] · #${rawHi}→path[${piHi ?? "?"}] · 区間カバー path[${cover.from}]〜path[${cover.to}]`
+  );
+
+  if (cover.from !== cover.to) {
+    bullets.push(
+      "min/max # の区間が複数ストロークに跨いでいます。袖Yは単一 path 上の区間（または同一 path 上の連結列）が必要です。"
+    );
+    if (chainDedup.length >= 2) {
+      const per = chainDedup.map((g) => {
+        const p = pathIndexForGlobalVertex(pathDs, g);
+        return `#${g}→P${p ?? "?"}`;
+      });
+      bullets.push(`連結列 (${per.join(" · ")})`);
+      const paths = new Set(
+        chainDedup.map((g) => pathIndexForGlobalVertex(pathDs, g)).filter((p): p is number => p != null)
+      );
+      if (paths.size <= 1) {
+        bullets.push(
+          "連結列は同一 path 上ですが、端点 min/max の跨ぎ救済（連結列の min/max で単一 path に収まる）が成立していません。列の順序・重複・欠番を確認してください。"
+        );
+      } else {
+        bullets.push("連結列の # が複数 path にまたがっています。すべて同一ストローク上に揃えてください。");
+      }
+    } else {
+      bullets.push(
+        "sleeveMeasureVertexChain に 2 点以上の # を入れると、端点が跨いでも同一 path 上の列で救済できる場合があります。"
+      );
+    }
+  } else {
+    const pSingle = cover.from;
+    bullets.push(`端点はともに path[${pSingle}] 上です。`);
+    if (chainDedup.length >= 2) {
+      const bad = chainDedup.filter((g) => pathIndexForGlobalVertex(pathDs, g) !== pSingle);
+      const per = chainDedup.map((g) => {
+        const p = pathIndexForGlobalVertex(pathDs, g);
+        return `#${g}→P${p ?? "?"}`;
+      });
+      bullets.push(`連結列 (${per.join(" · ")})`);
+      if (bad.length > 0) {
+        bullets.push(
+          `path[${pSingle}] 以外に乗っている #: ${bad.map((g) => `#${g}`).join(", ")} → 袖Yは無効です。`
+        );
+      } else {
+        bullets.push(
+          "連結列は path 上一致ですが、内部判定で無効です（# の順序・範囲・重複を確認）。"
+        );
+      }
+    } else {
+      bullets.push("連結列が無い／短いとき、端点区間のみで判定します。");
+    }
+  }
+
+  const maxBullets = 8;
+  return {
+    headline: "袖Yスケール無効 · 診断",
+    bullets: bullets.slice(0, maxBullets),
+  };
+}
+
 /** ミラー袖（`sleeveMirrorMeasureVertex*`）の単一 path 幾何。 */
 export function resolveEffectiveMirrorSleeveGradingGeometry(
   pathDs: string[],

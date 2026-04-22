@@ -415,6 +415,8 @@ export interface MeasureOverlayData {
      * 汎用トップ: 採寸が単一 path に収まらず袖Yスケールが走らない。幾何は設計のまま・入力は目標として扱う。
      */
     sleeveMeasureYScaleInactive?: boolean;
+    /** 袖Y無効時: # ごとの path インデックスなどの細かい診断（最終 canvas pathDs 基準） */
+    sleeveYScaleInactiveExplain?: { headline: string; bullets: string[] };
     /** 袖: グレード袖丈の px/cm（表示用。赤線は選択チェーンの実座標） */
     sleeveGeomDebug?: { px: number; cm: number };
     /** 袖丈 canvas スケール補正前（applyGenericSleeveScaleAfterLengthMesh 適用前）の同チェーン縦スパン。補正量が大きいと着丈同様に歪みを示す */

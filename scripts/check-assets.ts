@@ -1,5 +1,5 @@
 /**
- * 商品のアセット（GLBファイル）を確認するスクリプト
+ * 商品のサイズ別アセット行を確認するスクリプト
  */
 
 import { readFileSync } from "fs";
@@ -66,7 +66,7 @@ async function checkAssets() {
     
     const { data: assets, error: assetsError } = await supabase
       .from("assets")
-      .select("id, size, glb_url, version, is_active, created_at")
+      .select("id, size, thumbnail_url, version, is_active, created_at")
       .eq("product_id", product.id)
       .order("size", { ascending: true })
       .order("version", { ascending: false });
@@ -77,12 +77,12 @@ async function checkAssets() {
     }
 
     if (!assets || assets.length === 0) {
-      console.log(`  ⚠️  アセット: なし（GLBファイルがアップロードされていません）`);
+      console.log(`  ⚠️  アセット: なし`);
     } else {
       console.log(`  ✅ アセット数: ${assets.length}`);
       assets.forEach((asset) => {
         console.log(`    - サイズ: ${asset.size}, バージョン: ${asset.version}, アクティブ: ${asset.is_active ? "はい" : "いいえ"}`);
-        console.log(`      GLB URL: ${asset.glb_url}`);
+        console.log(`      サムネ URL: ${asset.thumbnail_url ?? "—"}`);
       });
     }
   }

@@ -8,15 +8,12 @@ import { formatPriceYenForDisplay, normalizeWidgetCtaAccentColor } from "@Atelie
 
 /**
  * Widget Config 公開API
- * 
- * pubkey + external_product_id から最新の3DモデルURLを返す
- * 
- * クエリパラメータ:
+ *
+ * pubkey + external_product_id からサイズ・サムネ・2D 試着可否などを返す
+ *
+ * クエリ:
  * - publicKey: widget_keys.public_key（必須）
  * - externalProductId: products.external_product_id（必須）
- * 
- * レスポンス:
- * - { enabled: true, asset: { defaultSize: "M", sizes: { "S": { glbUrl: "..." }, "M": { glbUrl: "..." }, "L": { glbUrl: "..." } } } } または { enabled: false }
  */
 
 // OPTIONS リクエスト（プリフライト）を処理
@@ -70,7 +67,7 @@ export async function GET(request: NextRequest) {
     // 並びは GET /api/assets と同様（version で最新を優先）。created_at は環境によって列が無く PostgREST が失敗することがあるため使わない
     const { data: allAssets, error: assetsError } = await supabaseAdmin
       .from("assets")
-      .select("size, glb_url, model_url, version, is_active, product_id")
+      .select("size, version, is_active, product_id")
       .eq("shop_id", shopId)
       .eq("product_id", product.id)
       .eq("is_active", true)
@@ -101,60 +98,44 @@ export async function GET(request: NextRequest) {
       return setCorsHeaders(response, request);
     }
 
-    // サイズごと、カテゴリーごとに最新バージョンのアセットを取得（GLB がある場合）
-    const assetsBySizeAndCategory = new Map<string, Map<string, { glbUrl?: string; modelUrl?: string; version: number; isActive: boolean; category?: string }>>();
-    
+    // サイズごと、カテゴリーごとに最新バージョンのアセットを取得
+    const assetsBySizeAndCategory = new Map<
+      string,
+      Map<string, { version: number; category?: string }>
+    >();
+
     for (const asset of assetsWithCategory) {
       const size = asset.size;
       const categoryKey = asset.category || "default";
-      
+
       if (!assetsBySizeAndCategory.has(size)) {
         assetsBySizeAndCategory.set(size, new Map());
       }
       const categoryMap = assetsBySizeAndCategory.get(size)!;
-      
+
       const existing = categoryMap.get(categoryKey);
-      
-      // is_active: true のアセットのみを処理（既にフィルタ済みだが念のため）
+
       if (asset.is_active !== false) {
-        // model_urlまたはglb_urlが存在するアセットのみを処理
-        const modelUrl = asset.model_url || asset.glb_url;
-        if (modelUrl) {
-          if (
-            !existing ||
-            asset.version > existing.version
-          ) {
-            categoryMap.set(categoryKey, {
-              glbUrl: asset.glb_url || undefined,
-              modelUrl: asset.model_url || undefined,
-              version: asset.version,
-              isActive: true,
-              category,
-            });
-          }
+        if (!existing || asset.version > existing.version) {
+          categoryMap.set(categoryKey, {
+            version: asset.version,
+            category,
+          });
         }
       }
     }
 
-    // サイズごとのアセットリストを構築（GLB がある場合）。無い場合は garment_spec のプリセットから
-    let sizes: Record<string, { glbUrl?: string; modelUrl?: string; category?: string }[]> = {};
+    let sizes: Record<string, { category?: string }[]> = {};
     let defaultSize: string | undefined;
 
     if (assetsBySizeAndCategory.size > 0) {
       for (const [size, categoryMap] of assetsBySizeAndCategory.entries()) {
-        const assets: { glbUrl?: string; modelUrl?: string; category?: string }[] = [];
-        for (const [, asset] of categoryMap.entries()) {
-          const modelUrl = asset.modelUrl || asset.glbUrl;
-          if (modelUrl) {
-            assets.push({
-              glbUrl: asset.glbUrl || undefined,
-              modelUrl: asset.modelUrl || undefined,
-              category: asset.category,
-            });
-          }
+        const assetList: { category?: string }[] = [];
+        for (const [, a] of categoryMap.entries()) {
+          assetList.push({ category: a.category });
         }
-        if (assets.length > 0) {
-          sizes[size] = assets;
+        if (assetList.length > 0) {
+          sizes[size] = assetList;
         }
 
         if (!defaultSize || size === "M") {
@@ -188,7 +169,7 @@ export async function GET(request: NextRequest) {
           .map((p) => String(p.label).trim())
           .filter(Boolean)
       );
-      const next: Record<string, { glbUrl?: string; modelUrl?: string; category?: string }[]> = {};
+      const next: Record<string, { category?: string }[]> = {};
       for (const k of ordered) {
         const existing = sizes[k];
         if (existing != null && existing.length > 0) {
@@ -253,9 +234,9 @@ export async function GET(request: NextRequest) {
       sizesKeys: Object.keys(sizes),
       sizesCount: Object.values(sizes).reduce((sum, arr) => sum + arr.length, 0),
       sizes: Object.fromEntries(
-        Object.entries(sizes).map(([size, assets]) => [
+        Object.entries(sizes).map(([size, assetRows]) => [
           size,
-          assets.map(a => ({ hasModelUrl: !!a.modelUrl, hasGlbUrl: !!a.glbUrl, category: a.category }))
+          assetRows.map((a) => ({ category: a.category })),
         ])
       ),
     }, null, 2));

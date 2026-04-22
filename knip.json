@@ -1,0 +1,28 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreDependencies": [
+    "swiper",
+    "lightningcss",
+    "tailwindcss",
+    "tw-animate-css"
+  ],
+  "exclude": [
+    "exports",
+    "types",
+    "enumMembers",
+    "nsExports",
+    "nsTypes",
+    "duplicates",
+    "namespaceMembers"
+  ],
+  "workspaces": {
+    ".": {
+      "entry": [
+        "eslint.config.mjs",
+        "playwright.config.ts",
+        "scripts/**/*.{js,ts,mjs}"
+      ],
+      "project": "scripts/**/*.{js,ts,mjs}"
+    }
+  }
+}

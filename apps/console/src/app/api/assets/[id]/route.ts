@@ -84,9 +84,7 @@ export async function GET(
       id: assetData.id,
       productId: assetData.product_id,
       size: assetData.size,
-      glbUrl: assetData.glb_url, // 後方互換性のため残す
-      modelUrl: assetData.model_url || assetData.glb_url, // model_urlを優先、なければglb_urlを使用
-      thumbnailUrl: assetData.thumbnail_url,
+      thumbnailUrl: assetData.thumbnail_url ?? undefined,
       version: assetData.version,
       isActive: assetData.is_active ?? true,
       createdAt: assetData.created_at,
@@ -205,13 +203,6 @@ export async function PATCH(
     // 更新データを構築
     const updateData: Record<string, unknown> = {};
     if (validated.size !== undefined) updateData.size = validated.size;
-    if (validated.glbUrl !== undefined) {
-      updateData.glb_url = validated.glbUrl === "" ? null : validated.glbUrl;
-    }
-    if (validated.modelUrl !== undefined) {
-      // modelUrlを優先的に使用
-      updateData.model_url = validated.modelUrl === "" ? null : validated.modelUrl;
-    }
     if (validated.thumbnailUrl !== undefined) {
       updateData.thumbnail_url = validated.thumbnailUrl === "" ? null : validated.thumbnailUrl;
     }
@@ -244,9 +235,7 @@ export async function PATCH(
       id: data.id,
       productId: data.product_id,
       size: data.size,
-      glbUrl: data.glb_url, // 後方互換性のため残す
-      modelUrl: data.model_url || data.glb_url, // model_urlを優先、なければglb_urlを使用
-      thumbnailUrl: data.thumbnail_url,
+      thumbnailUrl: data.thumbnail_url ?? undefined,
       version: data.version,
       isActive: data.is_active ?? true,
       createdAt: data.created_at,

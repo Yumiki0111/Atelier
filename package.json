@@ -19,11 +19,16 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
     "svg:split-subpaths": "node scripts/split-svg-subpaths.mjs",
-    "db:push": "node scripts/supabase-db-push.mjs"
+    "db:push": "node scripts/supabase-db-push.mjs",
+    "knip": "knip --no-config-hints --max-issues 50"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.0",
+    "@supabase/supabase-js": "^2.47.10",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.4",
     "dotenv": "^17.2.3",
+    "knip": "^6.4.1",
     "lightningcss": "^1.27.0",
     "playwright": "^1.58.0",
     "typescript": "^5"

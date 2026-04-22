@@ -6,7 +6,7 @@
 export const WIDGET_FIT_CHEST_BAND_JA = {
   tight: "小さめなサイズ",
   ok: "おすすめのサイズ",
-  loose: "大きめなサイズ",
+  loose: "ゆったりなサイズ",
 } as const;
 
 export type WidgetFitChestBandJaLabel =
@@ -43,8 +43,8 @@ export function resolveWidgetFitChestBandMode(category: string | null | undefine
 }
 
 /**
- * 身長×サイズ列が使えないときのフォールバック（幾何のみ）。
- * メインは `widgetFitChestBandOrdinal` の序数ロジック。
+ * 服スパン − 胴体参照弦（cm）を帯に分類。バッジは通常は身長×サイズの一般論（`widgetFitChestBandOrdinal`）、
+ * サイズ列が取れないときのフォールバックに使う。
  */
 export function widgetChestEaseBand(easeCm: number, mode: "shirt" | "jacket"): "tight" | "ok" | "loose" {
   const tightBelow = 3;

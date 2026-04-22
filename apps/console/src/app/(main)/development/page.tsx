@@ -170,7 +170,7 @@ export default function DevelopmentPage() {
   }, [animFromSize, animToSize, animFromCustom, animToCustom]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden overscroll-none">
+    <div className="flex min-h-full flex-col pb-6">
       <div className="flex shrink-0 flex-col gap-4">
         <PageHeader title="開発" />
         <p className="max-w-2xl text-xs leading-relaxed text-muted-foreground">
@@ -188,15 +188,15 @@ export default function DevelopmentPage() {
           />
         </ConsoleSectionPanel>
       </div>
-      <div className="mt-3 flex min-h-0 flex-1 flex-col gap-3 overflow-hidden border-t border-[#EEEEEE] bg-background pt-4 lg:gap-4 lg:pt-5">
+      <div className="mt-3 flex flex-col gap-3 border-t border-[#EEEEEE] bg-background pt-4 lg:gap-4 lg:pt-5">
         <div className="shrink-0">
           <h2 className="text-sm font-semibold text-foreground">フィット調整</h2>
           <p className="mt-1 max-w-xl text-[11px] leading-relaxed text-muted-foreground">
             体型・キャンバス・サイズを変えて試着を確認します。
           </p>
         </div>
-        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden lg:flex-row lg:items-stretch lg:gap-4">
-        <div className="relative flex h-full min-h-0 min-h-[min(55dvh,520px)] flex-1 flex-col overflow-hidden lg:order-2 lg:min-h-0">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-4">
+        <div className="relative z-0 w-full min-w-0 flex-1 overflow-hidden bg-background lg:sticky lg:top-4 lg:z-10 lg:self-start lg:overflow-visible lg:order-2">
           <FittingCanvas
             height={height}
             weight={weight}

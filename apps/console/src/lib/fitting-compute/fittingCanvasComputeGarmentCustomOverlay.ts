@@ -1,6 +1,9 @@
 import { resolveGenericScalableSpec } from "@/app/(main)/development/fitting/generic";
 import { hasDistinctVertexPair } from "@/app/(main)/development/fitting/generic/genericMeasureOnlyShared";
-import { resolveEffectiveSleeveGradingGeometry } from "@/app/(main)/development/fitting/generic/resolveEffectiveSleeveGradingGeometry";
+import {
+  explainSleeveYScaleInactive,
+  resolveEffectiveSleeveGradingGeometry,
+} from "@/app/(main)/development/fitting/generic/resolveEffectiveSleeveGradingGeometry";
 import { applyYScaleToCanvasPoints } from "./fittingCanvasCustomGarmentGradeLength";
 import { isDebugFittingMeasureEnabled } from "./fittingCanvasDebugFlags";
 import {
@@ -68,6 +71,11 @@ export type CustomGarmentOverlayAssemblyInput = {
   /** デバッグ: 紫着丈＋baseline 適格でも縦メッシュをかけなかった理由 */
   lengthMeshSkipReason?: string;
   animatingCustomSizeBlend?: boolean;
+  /**
+   * 袖措定の単一 path 判定に使う pathDs（着丈メッシュ・袖パイプライン後の最終列）。
+   * 未指定時は `customGarmentData.pathDs`（設計時）となり、canvas 上の # とずれることがある。
+   */
+  resolvedPathDsForSleeveMeasure?: string[];
 };
 
 /**
@@ -102,6 +110,7 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
     lengthMeshSkipReason,
     animatingCustomSizeBlend,
     sleeveMeasureDefinitionDebug,
+    resolvedPathDsForSleeveMeasure,
   } = input;
 
   const sleevePxPerCmForOverlay = sleevePxPerCmForMeasure ?? bodyPxPerCm;
@@ -155,17 +164,22 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
   /** キャンバス側 `buildTopPlacement` と同一の袖 px/cm。袖丈はチェーン弧長を sleevePxPerCmForOverlay で cm 化。 */
   const scalableSpec = scalableSpecForCustomGarment(customGarmentData);
   const gtSym = customGarmentData.genericSymmetricTop;
+  const pathDsForSleeveMeasure = resolvedPathDsForSleeveMeasure ?? customGarmentData.pathDs;
   const effPrimarySleeve =
     customGarmentData.presetId === "genericSymmetricTop" &&
     gtSym != null &&
     hasDistinctVertexPair(gtSym.sleeveMeasureVertexStart, gtSym.sleeveMeasureVertexEnd)
-      ? resolveEffectiveSleeveGradingGeometry(customGarmentData.pathDs, c, gtSym)
+      ? resolveEffectiveSleeveGradingGeometry(pathDsForSleeveMeasure, c, gtSym)
       : null;
   const sleeveMeasureYScaleInactive =
     customGarmentData.presetId === "genericSymmetricTop" &&
     gtSym != null &&
     hasDistinctVertexPair(gtSym.sleeveMeasureVertexStart, gtSym.sleeveMeasureVertexEnd) &&
     effPrimarySleeve === null;
+  const sleeveYScaleInactiveExplain =
+    sleeveMeasureYScaleInactive && gtSym != null
+      ? explainSleeveYScaleInactive(pathDsForSleeveMeasure, gtSym)
+      : undefined;
   const primarySleeve = computePrimarySleeveOverlayDraft({
     customPoints,
     customGarmentData,
@@ -319,7 +333,8 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
     const d = Math.abs(geomCm - inputCm);
     if (d > SLEEVE_GEOM_INPUT_MISMATCH_CM) {
       if (effPrimarySleeve == null) {
-        sleeveMeasureMismatchWarning = `袖Yスケールが効いていません（採寸が単一pathに収まらない／チェーンが別pathを跨ぐ）。入力は目標、表示の弧長は設計ジオメトリのままです。チェーンの#を同一ストローク上に揃えてください。`;
+        sleeveMeasureMismatchWarning =
+          "袖Y未適用: 措定が単一 path に収まりません（入力＝目標・弧長＝設計）。キャンバス上の診断行で #→path を確認。";
       } else {
         sleeveMeasureMismatchWarning = `入力袖丈 ${inputCm.toFixed(1)}cm と幾何弧長 ${geomCm.toFixed(1)}cm が ${d.toFixed(1)}cm ずれています（チェーン・px/cm を確認）`;
       }
@@ -357,6 +372,7 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
     ...(sleeveGeomMeasureKind != null ? { sleeveGeomMeasureKind } : {}),
     ...(sleeveMeasureMismatchWarning != null ? { sleeveMeasureMismatchWarning } : {}),
     ...(sleeveMeasureYScaleInactive ? { sleeveMeasureYScaleInactive: true } : {}),
+    ...(sleeveYScaleInactiveExplain != null ? { sleeveYScaleInactiveExplain: sleeveYScaleInactiveExplain } : {}),
     ...(showSleeveMeasureDefOnOverlay && sleeveMeasureDefinitionDebug != null
       ? { sleeveMeasureDefinitionDebug }
       : {}),

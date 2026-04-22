@@ -13,6 +13,7 @@ import { useFittingCanvasData } from "./useFittingCanvasData";
 import { shouldSuppressGarmentPathRender } from "../lib/pathUtils";
 import { FittingCanvasPlotOverlay } from "./FittingCanvasPlotOverlay";
 import { FittingCanvasMeasureOverlay } from "./FittingCanvasMeasureOverlay";
+import { FittingCanvasSleeveDebugPanel } from "./FittingCanvasSleeveDebugPanel";
 import { FittingCanvasRigAngleDiagram } from "./FittingCanvasRigAngleDiagram";
 
 export interface FittingCanvasProps {
@@ -75,7 +76,8 @@ export function FittingCanvas({
   garmentVertexLinkPickActive = false,
   onGarmentVertexLinkToggle,
 }: FittingCanvasProps) {
-  const modelCenterX = 752.5;
+  const viewBoxWidth = 1505;
+  const modelCenterX = viewBoxWidth / 2;
   const {
     bodyPaths,
     rigLineWarpedPaths,
@@ -169,7 +171,7 @@ export function FittingCanvas({
   }
 
   return (
-    <div className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-background">
+    <div className="relative flex w-full flex-col overflow-hidden bg-background">
       {debugLines.length > 0 && showCanvasDebugHud ? (
         <div
           aria-hidden
@@ -190,12 +192,15 @@ export function FittingCanvas({
           {debugLines.join("\n")}
         </div>
       ) : null}
-      <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-2">
-        <div className="flex h-full w-full max-h-full max-w-full items-center justify-center">
+      <div className="flex w-full justify-center px-1 py-0.5 sm:px-2 sm:py-1">
+        <div
+          className="mx-auto w-full max-w-[min(100%,min(760px,90vw))] max-h-[min(78dvh,800px)]"
+          style={{ aspectRatio: `${viewBoxWidth} / ${viewBoxHeight}` }}
+        >
           <svg
-            viewBox={`0 0 1505 ${viewBoxHeight}`}
+            viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
             preserveAspectRatio="xMidYMid meet"
-            className="h-auto max-h-full w-full max-w-full overflow-visible"
+            className="block h-full w-full overflow-visible"
             xmlns="http://www.w3.org/2000/svg"
           >
         <g fill="none" stroke="#bbb" strokeWidth={4} aria-hidden>
@@ -306,9 +311,10 @@ export function FittingCanvas({
           measureOverlay={measureOverlay}
           height={height}
         />
-        </svg>
+          </svg>
         </div>
       </div>
+      <FittingCanvasSleeveDebugPanel show={showMeasureOverlay} garment={measureOverlay.garment} />
     </div>
   );
 }
