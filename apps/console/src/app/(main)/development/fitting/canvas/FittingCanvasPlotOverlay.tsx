@@ -15,6 +15,8 @@ import { sleeveMeasureOverlayNode } from "./fittingCanvasPlotMeasureOverlays";
 import {
   FONT_INDEX_GARMENT,
   FONT_INDEX_GARMENT_HIGHLIGHT,
+  FONT_INDEX_GARMENT_PLOT,
+  FONT_INDEX_GARMENT_PLOT_HIGHLIGHT,
   indexLabelOrbitRadius,
   indexLabelRadialOffset,
   indexLabelStrokeWidth,
@@ -259,8 +261,8 @@ export function FittingCanvasPlotOverlay({
               const isSnapBody =
                 genericVertexPlotHighlight?.lowerSleeveFollowLinkedGlobals?.includes(i) === true;
               const isHl = hlRoles.length > 0;
-              const labelSize = isHl ? FONT_INDEX_GARMENT_HIGHLIGHT : FONT_INDEX_GARMENT;
-              const r = isSnapBody ? 4 : isHl ? 3.5 : 3;
+              const labelSize = isHl ? FONT_INDEX_GARMENT_PLOT_HIGHLIGHT : FONT_INDEX_GARMENT_PLOT;
+              const r = isSnapBody ? 6.5 : isHl ? 5.5 : 5;
               const orbit = indexLabelOrbitRadius(r, labelSize);
               const { ox, oy } = indexLabelRadialOffset(i, orbit);
               const indexStrokeW = indexLabelStrokeWidth(labelSize);

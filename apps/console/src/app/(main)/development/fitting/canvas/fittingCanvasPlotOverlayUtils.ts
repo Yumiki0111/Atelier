@@ -10,6 +10,13 @@ import type { CustomGarmentData, GenericVertexPlotHighlight } from "../lib/types
 export const FONT_INDEX_GARMENT = 14;
 export const FONT_INDEX_GARMENT_HIGHLIGHT = 16;
 
+/**
+ * 服プロット（`garmentShoulderPoints`）の `#` ラベル。
+ * viewBox 高さが ~3k–4k px と大きいため、`meet` 表示では画面ピクセルに強く縮む。読めるよう user space でも大きめに取る。
+ */
+export const FONT_INDEX_GARMENT_PLOT = 40;
+export const FONT_INDEX_GARMENT_PLOT_HIGHLIGHT = 46;
+
 export function indexLabelStrokeWidth(fontSize: number): number {
   return Math.max(1, Math.round(fontSize * 0.09));
 }

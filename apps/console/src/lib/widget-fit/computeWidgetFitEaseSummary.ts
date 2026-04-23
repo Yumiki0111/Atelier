@@ -37,23 +37,6 @@ function isLongSleeveStyleSleeveMeasure(sleeveGarmentCm: number, armCm: number):
   return sleeveGarmentCm >= armCm * 0.62;
 }
 
-type SleeveFitBand = "short" | "mid" | "long";
-
-function bandSleeve(cm: number | null): SleeveFitBand | null {
-  if (cm == null || !Number.isFinite(cm)) return null;
-  if (cm < -2) return "short";
-  if (cm > 4) return "long";
-  return "mid";
-}
-
-/** Sleeve clause for `fitToneJa` (hem is not part of the tone copy). */
-function sleevePhraseForTone(b: SleeveFitBand | null): string | null {
-  if (b == null) return null;
-  if (b === "short") return "袖はやや短め";
-  if (b === "long") return "袖はやや長め";
-  return "袖は標準寄り";
-}
-
 export type WidgetFitEaseSummaryJson = {
   shoulderEaseCm: number | null;
   chestEaseCm: number | null;
@@ -218,9 +201,6 @@ export function buildWidgetFitEaseSummaryFromSnapshot(
     }
   }
 
-  const lowerClause = sleevePhraseForTone(bandSleeve(sleeveFromWristCm));
-  const fitToneJa = lowerClause ? `${lowerClause}（目安）` : "";
-
   const linesJa: string[] = [];
   if (shoulderEaseCm != null) {
     linesJa.push(`肩のゆとり（目安） ${fmtSignedCm(shoulderEaseCm)}`);
@@ -241,7 +221,7 @@ export function buildWidgetFitEaseSummaryFromSnapshot(
     sleeveFromWristCm,
     hemFromCrotchCm,
     fitChestBandJa,
-    fitToneJa,
+    fitToneJa: "",
     linesJa,
   };
 }
