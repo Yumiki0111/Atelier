@@ -9,6 +9,7 @@ import type { WidgetFitEaseDiagramJson } from "@/lib/widget-fit/buildWidgetFitEa
 import { resolveWidgetFitChestBandMode } from "@/app/(main)/development/fitting/lib/fitCalc";
 import { buildWidgetFitEaseSummaryFromSnapshot } from "@/lib/widget-fit/computeWidgetFitEaseSummary";
 import type { WidgetFitEaseSummaryJson } from "@/lib/widget-fit/computeWidgetFitEaseSummary";
+import { resolveWidgetFitSizeKeysOrder } from "@/lib/widget/resolveWidgetFitSizeKeysOrder";
 import {
   orderedSizeLabelsFromCustomGarment,
   resolveOrderedSizeKeysForBand,
@@ -26,6 +27,11 @@ export async function computeWidgetFitSnapshot(params: {
   fitChestBandCategory?: string | null;
   /** 試着中のサイズ（一般論の推奨段と比較） */
   currentSizeLabel?: string | null;
+  /**
+   * DB アセット等のサイズ列（小→大）。未指定時は `garment_spec` のプリセットのみから復元。
+   * 空 `[]` を渡していた経路では胸バッジが幾何フォールバックになり、サイズを変えても常に「おすすめ」になりやすい。
+   */
+  orderedSizeKeysFromCatalog?: string[] | null;
 }): Promise<{
   viewBoxHeight: number;
   bodyPaths: string[];
@@ -73,9 +79,12 @@ export async function computeWidgetFitSnapshot(params: {
   const presetLabels = orderedSizeLabelsFromCustomGarment(params.customGarmentData);
   const currentSizeLabel =
     params.currentSizeLabel?.trim() || (presetLabels.length > 0 ? presetLabels[0]! : null);
+  const catalogOrder =
+    params.orderedSizeKeysFromCatalog ??
+    resolveWidgetFitSizeKeysOrder([], params.customGarmentData);
   const bandKeys =
     currentSizeLabel != null && currentSizeLabel.length > 0
-      ? resolveOrderedSizeKeysForBand(presetLabels, [], currentSizeLabel)
+      ? resolveOrderedSizeKeysForBand(presetLabels, catalogOrder, currentSizeLabel)
       : null;
   const fitEaseSummary = buildWidgetFitEaseSummaryFromSnapshot(snap, params.weightKg, {
     fitChestBandMode,

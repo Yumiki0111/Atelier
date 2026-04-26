@@ -10,7 +10,11 @@ import type {
   GenericVertexPlotHighlight,
   PlotIndexLabelDensity,
 } from "../lib/types";
-import { getBodyIndentWaistGlobalIndices, type BodyModelVariant } from "../lib/bodyModelVariant";
+import {
+  getBodyIndentWaistGlobalIndices,
+  getRigArmTiltHeightCm,
+  type BodyModelVariant,
+} from "../lib/bodyModelVariant";
 import { useFittingCanvasData } from "./useFittingCanvasData";
 import { shouldSuppressGarmentPathRender } from "../lib/pathUtils";
 import { FittingCanvasPlotOverlay } from "./FittingCanvasPlotOverlay";
@@ -188,9 +192,18 @@ export function FittingCanvas({
     debugLines.push(`中心差: ${centerDeltaPx >= 0 ? "+" : ""}${centerDeltaPx.toFixed(1)}px`);
   }
 
+  const canvasDebugHudLines = showCanvasDebugHud
+    ? bodyModelVariant === "lineArtVerification"
+      ? [
+          `検証ボディ: 腕チルト参照身長 ${getRigArmTiltHeightCm(bodyModelVariant, height)}cm（実${height}cm・170固定＝線画腕角）`,
+          ...debugLines,
+        ]
+      : debugLines
+    : [];
+
   return (
     <div className="relative flex w-full flex-col overflow-hidden bg-background">
-      {debugLines.length > 0 && showCanvasDebugHud ? (
+      {canvasDebugHudLines.length > 0 ? (
         <div
           aria-hidden
           style={{
@@ -207,7 +220,7 @@ export function FittingCanvas({
             lineHeight: "1.1",
           }}
         >
-          {debugLines.join("\n")}
+          {canvasDebugHudLines.join("\n")}
         </div>
       ) : null}
       <div className="flex w-full justify-center px-1 py-0.5 sm:px-2 sm:py-1">

@@ -6,6 +6,7 @@ import {
   isGarmentSpecRenderable,
 } from "@/lib/widget-fit/applyWidgetSizeToGarment";
 import { validateGarmentSpecForProduction } from "@/lib/products/validateGarmentSpecForProduction";
+import { resolveWidgetFitSizeKeysOrder } from "@/lib/widget/resolveWidgetFitSizeKeysOrder";
 import { computeWidgetFitSnapshot } from "@/lib/widget-fit/computeWidgetFitSnapshot";
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
 
@@ -61,6 +62,19 @@ export async function GET(
     const base = raw as CustomGarmentData;
     const sized = applyWidgetSizeToCustomGarmentData(base, size);
 
+    let catalogOrder = resolveWidgetFitSizeKeysOrder([], base);
+    const { data: assetRows } = await supabaseAdmin
+      .from("assets")
+      .select("size")
+      .eq("product_id", productId)
+      .eq("shop_id", auth.shopId);
+    if (assetRows != null && assetRows.length > 0) {
+      const fromAssets = [
+        ...new Set(assetRows.map((r) => String((r as { size?: unknown }).size ?? "").trim()).filter(Boolean)),
+      ];
+      catalogOrder = resolveWidgetFitSizeKeysOrder(fromAssets, base);
+    }
+
     let snap;
     try {
       snap = await computeWidgetFitSnapshot({
@@ -69,6 +83,7 @@ export async function GET(
         weightKg,
         fitChestBandCategory: (product as { category?: string | null }).category ?? null,
         currentSizeLabel: size,
+        orderedSizeKeysFromCatalog: catalogOrder,
       });
     } catch (computeErr) {
       const msg = computeErr instanceof Error ? computeErr.message : String(computeErr);

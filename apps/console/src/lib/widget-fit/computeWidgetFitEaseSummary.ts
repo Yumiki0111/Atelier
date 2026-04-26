@@ -124,7 +124,7 @@ export function buildWidgetFitEaseSummaryFromSnapshot(
     chestEaseForBand = null;
   }
 
-  /** バッジ: 身長＋体重の推奨段 vs 現在段（一般論）を優先。列が揃わないときだけ幾何。 */
+  /** バッジ: 身長＋体重の推奨段 vs 現在段（一般論）を優先。列が揃わないときだけ幾何。検証用ボディは推奨の出し方のみ別。 */
   let fitChestBandJa = "";
   const hBand = opts?.heightCm;
   const ordKeys = opts?.orderedSizeKeys;
@@ -143,6 +143,7 @@ export function buildWidgetFitEaseSummaryFromSnapshot(
       weightKg,
       orderedSizeKeys: ordKeys,
       currentSize: cur,
+      bodyModelVariant: opts?.customGarmentData?.bodyModelVariant,
     }).bandJa;
   } else if (chestEaseForBand != null && Number.isFinite(chestEaseForBand)) {
     fitChestBandJa = widgetFitChestBandJaFromDiff(chestEaseForBand, mode);

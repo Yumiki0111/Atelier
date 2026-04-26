@@ -462,9 +462,9 @@ export function FittingControls({
             />
           </div>
           <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
-            「検証ボディ」ON 時: 胴くびれは連結 # 左 362・右 148 の帯で体重ワープ／リグ後リリーフ。腕リグは SVG
-            の角度を保つため身長の鉛直寄り補正を掛けません（`getRigArmTiltHeightCm`→170 固定）。テンプレ path／9
-            本リグのみ線画用。viewBox ははみ出し防止で広げます。
+            「検証ボディ」ON 時: 胴くびれ #362/#148 帯・腕チルト 170cm 固定・線画テンプレ／リグ。ゆとりバッジの
+            優先順位は既定ボディと同じ（身長・体重の推奨段ヒューリスティック→幾何フォールバック）。viewBox
+            ははみ出し防止で広げます。
           </p>
           <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
             コンソール:{" "}
