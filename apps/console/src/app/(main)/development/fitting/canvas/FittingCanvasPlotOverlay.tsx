@@ -7,11 +7,7 @@ import type {
   GenericVertexPlotHighlight,
   PlotIndexLabelDensity,
 } from "../lib/types";
-import {
-  BODY_INDENT_WAIST_LEFT_GLOBAL_RANGE,
-  BODY_INDENT_WAIST_RIGHT_GLOBAL_RANGE,
-  BODY_INDENT_WAIST_REFERENCE_CHORD_GLOBAL_INDICES,
-} from "@/lib/fitting-compute/fittingCanvasDebugFlags";
+import type { BodyIndentWaistGlobalIndices } from "../lib/bodyModelVariant";
 import { sleeveMeasureOverlayNode } from "./fittingCanvasPlotMeasureOverlays";
 import {
   FONT_INDEX_GARMENT,
@@ -51,6 +47,8 @@ interface FittingCanvasPlotOverlayProps {
   hideSleeveMeasureLine?: boolean;
   /** 連結 # テキストの間引き（`all` で全表示） */
   plotIndexLabelDensity?: PlotIndexLabelDensity;
+  /** 胴くびれオーバーレイ（既定ボディ / 検証ボディで連結 # が異なる） */
+  bodyIndentWaist: BodyIndentWaistGlobalIndices;
   /** 服プロット: ホバー中の頂点は間引き時も # を出す */
   hoveredGarmentVertexIndex?: number | null;
   /** 非 null 時はこの連結 # だけ円＋（必要なら）ラベルを表示 */
@@ -77,6 +75,7 @@ export function FittingCanvasPlotOverlay({
   onGarmentVertexLinkToggle,
   hideSleeveMeasureLine = false,
   plotIndexLabelDensity = "all",
+  bodyIndentWaist,
   hoveredGarmentVertexIndex = null,
   garmentPlotVertexFilter = null,
 }: FittingCanvasPlotOverlayProps) {
@@ -106,14 +105,14 @@ export function FittingCanvasPlotOverlay({
       if (parts.length < 2) return null;
       return `M ${parts.join(" L ")}`;
     };
-    const leftD = build(BODY_INDENT_WAIST_LEFT_GLOBAL_RANGE[0], BODY_INDENT_WAIST_LEFT_GLOBAL_RANGE[1]);
-    const rightD = build(BODY_INDENT_WAIST_RIGHT_GLOBAL_RANGE[0], BODY_INDENT_WAIST_RIGHT_GLOBAL_RANGE[1]);
+    const leftD = build(bodyIndentWaist.left[0], bodyIndentWaist.left[1]);
+    const rightD = build(bodyIndentWaist.right[0], bodyIndentWaist.right[1]);
     if (leftD == null && rightD == null) return null;
     return { leftD, rightD };
-  }, [bodyOutlinePoints]);
+  }, [bodyOutlinePoints, bodyIndentWaist.left, bodyIndentWaist.right]);
 
   const indentWaistReferenceChord = useMemo(() => {
-    const [a, b] = BODY_INDENT_WAIST_REFERENCE_CHORD_GLOBAL_INDICES;
+    const [a, b] = bodyIndentWaist.referenceChord;
     const pa = bodyOutlinePoints[a];
     const pb = bodyOutlinePoints[b];
     if (!pa || !pb) return null;
@@ -121,7 +120,7 @@ export function FittingCanvasPlotOverlay({
     const [bx, by] = pb;
     if (![ax, ay, bx, by].every(Number.isFinite)) return null;
     return { ax, ay, bx, by, a, b };
-  }, [bodyOutlinePoints]);
+  }, [bodyOutlinePoints, bodyIndentWaist.referenceChord]);
 
   if (!showGarmentPlot && !showBodyPlot) return null;
 
@@ -140,7 +139,7 @@ export function FittingCanvasPlotOverlay({
                   strokeDasharray="6 4"
                   strokeOpacity={0.92}
                 >
-                  <title>{`胴くびれ帯 左 #${BODY_INDENT_WAIST_LEFT_GLOBAL_RANGE[0]}–#${BODY_INDENT_WAIST_LEFT_GLOBAL_RANGE[1]}（bodyWarp と同じ連結 #）`}</title>
+                  <title>{`胴くびれ帯 左 #${bodyIndentWaist.left[0]}–#${bodyIndentWaist.left[1]}（bodyWarp と同じ連結 #）`}</title>
                 </path>
               )}
               {indentWaistGuidePathDs.rightD != null && (
@@ -152,7 +151,7 @@ export function FittingCanvasPlotOverlay({
                   strokeDasharray="6 4"
                   strokeOpacity={0.92}
                 >
-                  <title>{`胴くびれ帯 右 #${BODY_INDENT_WAIST_RIGHT_GLOBAL_RANGE[0]}–#${BODY_INDENT_WAIST_RIGHT_GLOBAL_RANGE[1]}（bodyWarp と同じ連結 #）`}</title>
+                  <title>{`胴くびれ帯 右 #${bodyIndentWaist.right[0]}–#${bodyIndentWaist.right[1]}（bodyWarp と同じ連結 #）`}</title>
                 </path>
               )}
             </g>
@@ -170,7 +169,7 @@ export function FittingCanvasPlotOverlay({
               strokeOpacity={0.95}
               pointerEvents="none"
             >
-              <title>{`胴くびれ参照弦 #${indentWaistReferenceChord.a}–#${indentWaistReferenceChord.b}（補正帯は左 #${BODY_INDENT_WAIST_LEFT_GLOBAL_RANGE[0]}–#${BODY_INDENT_WAIST_LEFT_GLOBAL_RANGE[1]}／右 #${BODY_INDENT_WAIST_RIGHT_GLOBAL_RANGE[0]}–#${BODY_INDENT_WAIST_RIGHT_GLOBAL_RANGE[1]}）`}</title>
+              <title>{`胴くびれ参照弦 #${indentWaistReferenceChord.a}–#${indentWaistReferenceChord.b}（補正帯は左 #${bodyIndentWaist.left[0]}–#${bodyIndentWaist.left[1]}／右 #${bodyIndentWaist.right[0]}–#${bodyIndentWaist.right[1]}）`}</title>
             </line>
           )}
           {bodyOutlinePoints.map(([x, y], i) => {

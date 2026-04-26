@@ -8,9 +8,15 @@ import {
   getDeltaThetas,
   getSkinnedVertex,
   blendDeformedWithIndentWarpRelief,
+  buildIndentWaistPolylines,
 } from "@/app/(main)/development/fitting/lib/bodyUtils";
 import { tPath, getPathPoints, pointAtGlobalVertexIndex } from "@/app/(main)/development/fitting/lib/pathUtils";
-import { getBodyTemplatePaths } from "@/app/(main)/development/fitting/lib/bodyModelVariant";
+import {
+  getBodyIndentWaistDebugVertexIndices,
+  getBodyIndentWaistGlobalIndices,
+  getBodyTemplatePaths,
+  getRigArmTiltHeightCm,
+} from "@/app/(main)/development/fitting/lib/bodyModelVariant";
 import {
   BZ,
   BODY_CX,
@@ -45,10 +51,7 @@ import type { MeasureOverlayData, ShoulderDebug } from "@/app/(main)/development
 import { computeJacketGarmentBranch } from "./fittingCanvasComputeGarmentJacket";
 import { computeShirtGarmentBranch } from "./fittingCanvasComputeGarmentShirt";
 import { computeCustomGarmentBranch } from "./fittingCanvasComputeGarmentCustom";
-import {
-  DEBUG_BODY_VERTEX_GLOBAL_INDICES,
-  isDebugFittingBodyVerticesEnabled,
-} from "./fittingCanvasDebugFlags";
+import { isDebugFittingBodyVerticesEnabled } from "./fittingCanvasDebugFlags";
 
 export type {
   UseFittingCanvasDataParams,
@@ -80,16 +83,17 @@ export function computeFittingCanvasSnapshot(
   }: UseFittingCanvasDataParams & { rigLinePaths: string[] | null }
 ): FittingCanvasSnapshot {
   const bodyPathsTemplate = getBodyTemplatePaths(bodyModelVariant);
-  /** 検証ボディは連結 # が `mv_model` と不一致のため、リグスキン後の胴くびれリリーフのみオフ */
-  const indentReliefForRigSkin = bodyModelVariant !== "lineArtVerification";
-  /**
-   * 検証モデルは SVG 上の腕（リグ path1/2）の向きを保ちたい。
-   * `applyRigArmAngleTiltToWarpedRigPaths` と服側の同系回転は身長基準 170 に固定（= 追加回転なし）。
-   * 脊髄合わせ（`alignRigRefPathsToCurrentSpine`）によるスケールは残るため、身長を大きく動かすと
-   * 鎖骨・脊髄との相対角にごく小さな差は出うる。
-   * カスタム服の布パスは検証・既定とも同一（肩剛体＋脊髄合わせ）。検証のみ胴リリーフオフ・腕チルト REF 固定・線画テンプレ。
-   */
-  const heightForRigArmTilt = bodyModelVariant === "lineArtVerification" ? REF_HEIGHT_CM : height;
+  const indentWaistIdx = getBodyIndentWaistGlobalIndices(bodyModelVariant);
+  const verificationIndentPolylines =
+    bodyModelVariant === "lineArtVerification"
+      ? buildIndentWaistPolylines(bodyPathsTemplate, indentWaistIdx.left, indentWaistIdx.right)
+      : undefined;
+  const warpOptsBody = {
+    heightCm: height,
+    applyArmpitBaseRigRelief: true,
+    ...(verificationIndentPolylines ? { indentWaistPolylines: verificationIndentPolylines } : {}),
+  } as const;
+  const heightForRigArmTilt = getRigArmTiltHeightCm(bodyModelVariant, height);
 
   const { yScale, xScale } = getBodyParams(height, weight, rigLinePaths);
   const zones = getZonesAnchored(yScale);
@@ -100,7 +104,6 @@ export function computeFittingCanvasSnapshot(
   const rightShoulder = rightArmWarped[0];
   const deltaThetas = getDeltaThetas(height, weight);
   const SKIN_MAX_DIST = 150;
-  const warpOptsBody = { heightCm: height, applyArmpitBaseRigRelief: true } as const;
   const warpFn = (x: number, y: number): [number, number] => {
     const w = warp(x, y, yScale, xScale, zones, warpOptsBody);
     const dL = Math.hypot(w[0] - leftShoulder[0], w[1] - leftShoulder[1]);
@@ -251,7 +254,7 @@ export function computeFittingCanvasSnapshot(
     if (rigSkinSegments == null) return warpFn(x, y);
     const warpedOnly = warpPlain(x, y);
     const deformed = deformBodyPointToRig(x, y, rigSkinSegments, warpPlain);
-    return blendDeformedWithIndentWarpRelief(x, y, warpedOnly, deformed, indentReliefForRigSkin);
+    return blendDeformedWithIndentWarpRelief(x, y, warpedOnly, deformed, true, verificationIndentPolylines);
   };
 
   /** 腕山: 体輪郭と同じ `bodyFollowFn`（`warpArmOutline` だけだとリグスキン後のシルエットとズレる） */
@@ -436,7 +439,7 @@ export function computeFittingCanvasSnapshot(
     isDebugFittingBodyVerticesEnabled()
       ? (() => {
           const out: { globalIndex: number; template: [number, number] }[] = [];
-          for (const gi of DEBUG_BODY_VERTEX_GLOBAL_INDICES) {
+          for (const gi of getBodyIndentWaistDebugVertexIndices(bodyModelVariant)) {
             const tpl = pointAtGlobalVertexIndex(bodyPathsTemplate, gi);
             const warped = pointAtGlobalVertexIndex(bodyPaths, gi);
             if (tpl == null || warped == null) continue;
@@ -457,6 +460,7 @@ export function computeFittingCanvasSnapshot(
     rigLineWarpedPaths,
     rigLineWarpedRigViewPaths,
     rigRedLineArmDiagram,
+    indentWaistReferenceChordGlobalIndices: indentWaistIdx.referenceChord,
     viewBoxMinX,
     viewBoxWidth,
     viewBoxHeight,

@@ -115,6 +115,8 @@ export interface FittingCanvasSnapshot {
   rigLineWarpedRigViewPaths: string[];
   /** `rigLineWarpedRigViewPaths` から取った肩・首元の角度図。未ロード時は null */
   rigRedLineArmDiagram: RigRedLineArmDiagram | null;
+  /** 胴くびれ参照弦の連結 #（プロット・ゆとり計算と同一） */
+  indentWaistReferenceChordGlobalIndices: readonly [number, number];
   /** 既定 0。検証ボディで左右にはみ出すとき負値になり得る */
   viewBoxMinX: number;
   /** 既定 1505。検証ボディで横幅を広げる */

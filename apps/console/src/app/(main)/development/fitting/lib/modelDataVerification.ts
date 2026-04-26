@@ -5,9 +5,8 @@
  * （1505/4862 だと X だけ強く縮み、縦とのアスペクトが崩れて横に潰れたように見える。）
  * Y は 2852/6431。
  *
- * 既定の `mv_model`（3391×6431）とは path 本数・連結頂点が異なるため、
- * `bodyModelVariant === "lineArtVerification"` のときは胴くびれリリーフ等の
- * 「連結 # 依存」補正をオフにする（`fittingCanvasCompute` 側）。
+ * 既定の `mv_model` とは連結頂点が異なるため、検証 ON 時は胴くびれ帯を下記連結 # で `warp` に渡す
+ * （`fittingCanvasCompute`／`bodyModelVariant`）。腕リグは SVG 描き起こし角を保つため身長鉛直寄り補正を掛けない。
  */
 import { tPath } from "./pathUtils";
 import { BODY_CX } from "./constants";
@@ -69,3 +68,15 @@ export const BPATHS_VERIFICATION_BODY: string[] = VERIFICATION_BODY_PATH_DS_SRC.
 export const BPATHS_VERIFICATION_RIG_LINES: string[] = VERIFICATION_RIG_LINE_PATH_DS_SRC.map((d) =>
   tPath(d, scaleSrc)
 );
+
+/** 胴くびれ参照弦（連結 #）。線画輪郭上の左右の最窪 */
+export const VERIFICATION_BODY_INDENT_WAIST_REFERENCE_CHORD_GLOBAL_INDICES = [362, 148] as const;
+const _VERIF_INDENT_HALF = 12;
+export const VERIFICATION_BODY_INDENT_WAIST_LEFT_GLOBAL_RANGE = [
+  VERIFICATION_BODY_INDENT_WAIST_REFERENCE_CHORD_GLOBAL_INDICES[0] - _VERIF_INDENT_HALF,
+  VERIFICATION_BODY_INDENT_WAIST_REFERENCE_CHORD_GLOBAL_INDICES[0] + _VERIF_INDENT_HALF,
+] as const;
+export const VERIFICATION_BODY_INDENT_WAIST_RIGHT_GLOBAL_RANGE = [
+  VERIFICATION_BODY_INDENT_WAIST_REFERENCE_CHORD_GLOBAL_INDICES[1] - _VERIF_INDENT_HALF,
+  VERIFICATION_BODY_INDENT_WAIST_REFERENCE_CHORD_GLOBAL_INDICES[1] + _VERIF_INDENT_HALF,
+] as const;

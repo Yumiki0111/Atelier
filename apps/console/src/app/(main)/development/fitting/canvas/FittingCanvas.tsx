@@ -10,7 +10,7 @@ import type {
   GenericVertexPlotHighlight,
   PlotIndexLabelDensity,
 } from "../lib/types";
-import type { BodyModelVariant } from "../lib/bodyModelVariant";
+import { getBodyIndentWaistGlobalIndices, type BodyModelVariant } from "../lib/bodyModelVariant";
 import { useFittingCanvasData } from "./useFittingCanvasData";
 import { shouldSuppressGarmentPathRender } from "../lib/pathUtils";
 import { FittingCanvasPlotOverlay } from "./FittingCanvasPlotOverlay";
@@ -298,6 +298,7 @@ export function FittingCanvas({
           bodyPlotPoints={bodyPlotPoints}
           bodyVertexDebugEntries={bodyVertexDebugEntries}
           bodyOutlinePoints={bodyOutlinePoints}
+          bodyIndentWaist={getBodyIndentWaistGlobalIndices(bodyModelVariant)}
           shoulderDebug={shoulderDebug}
           height={height}
           weight={weight}

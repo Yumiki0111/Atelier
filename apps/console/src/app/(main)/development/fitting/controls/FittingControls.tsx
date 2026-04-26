@@ -462,9 +462,9 @@ export function FittingControls({
             />
           </div>
           <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
-            「検証ボディ」ON 時も既定の体型ワープ・リグ index 契約は同じです。胴くびれの連結 # 依存リリーフだけオフになります。キャンバス高さはワープ後の足元に合わせて伸ばします。            4862
-            系の 9 本リグは服 SVG 分割でも完全一致・端点推定の両方に載せ済みです。体型変更時も身長連動の腕「鉛直寄り」回転は掛けません（SVG
-            の腕角優先。脊髄合わせのわずかな差は残ります）。
+            「検証ボディ」ON 時: 胴くびれは連結 # 左 362・右 148 の帯で体重ワープ／リグ後リリーフ。腕リグは SVG
+            の角度を保つため身長の鉛直寄り補正を掛けません（`getRigArmTiltHeightCm`→170 固定）。テンプレ path／9
+            本リグのみ線画用。viewBox ははみ出し防止で広げます。
           </p>
           <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
             コンソール:{" "}

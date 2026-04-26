@@ -7,7 +7,9 @@ export {
   torsoLateralSpreadFactor,
   torsoXFactor,
   blendDeformedWithIndentWarpRelief,
+  buildIndentWaistPolylines,
   type WarpOptions,
+  type IndentWaistPolylines,
 } from "./bodyWarp";
 export {
   getInterpolatedArmOutline,

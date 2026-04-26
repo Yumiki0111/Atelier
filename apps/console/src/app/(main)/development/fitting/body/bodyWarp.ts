@@ -70,7 +70,7 @@ const ARM_END = BASE_SHOULDER_HALF * 1.05;
 const TORSO_SIDE_RADIAL_ARMPIT_PAD = 40;
 
 /**
- * 胴くびれ補正の対象ポリライン（テンプレ）。左 #207–231 / 右 #420–444。
+ * 胴くびれ補正の対象ポリライン（テンプレ）。既定は左 #207–231 / 右 #420–444。
  */
 function outlineGlobalRangePoints(
   pathDs: string[],
@@ -85,8 +85,24 @@ function outlineGlobalRangePoints(
   return out;
 }
 
-const WAIST_INDENT_LEFT_PTS = outlineGlobalRangePoints(BPATHS_MODEL, BODY_INDENT_WAIST_LEFT_GLOBAL_RANGE);
-const WAIST_INDENT_RIGHT_PTS = outlineGlobalRangePoints(BPATHS_MODEL, BODY_INDENT_WAIST_RIGHT_GLOBAL_RANGE);
+export type IndentWaistPolylines = { left: [number, number][]; right: [number, number][] };
+
+export function buildIndentWaistPolylines(
+  pathDs: string[],
+  leftRange: readonly [number, number],
+  rightRange: readonly [number, number]
+): IndentWaistPolylines {
+  return {
+    left: outlineGlobalRangePoints(pathDs, leftRange),
+    right: outlineGlobalRangePoints(pathDs, rightRange),
+  };
+}
+
+const DEFAULT_INDENT_WAIST_POLYLINES: IndentWaistPolylines = buildIndentWaistPolylines(
+  BPATHS_MODEL,
+  BODY_INDENT_WAIST_LEFT_GLOBAL_RANGE,
+  BODY_INDENT_WAIST_RIGHT_GLOBAL_RANGE
+);
 
 /**
  * リグブレンド・フォールバック幾何の係数（幅ゲインとは別に頭打ちするので 1 台に近づけてよい）
@@ -179,18 +195,23 @@ function indentCorridorWeightFromPolyline(
 }
 
 /**
- * 左 #207–231 / 右 #420–444 の稜線帯に近いほど 1 に近い（直交 quintic × 弧長端テーパー）。
+ * 左右の胴くびれ稜線帯に近いほど 1 に近い（直交 quintic × 弧長端テーパー）。
  */
-function indentWaistCorridorLocalized(templateX: number, templateY: number, absDx: number): number {
+function indentWaistCorridorLocalized(
+  templateX: number,
+  templateY: number,
+  absDx: number,
+  polylines: IndentWaistPolylines
+): number {
   const perpHalf = INDENT_WAIST_CORRIDOR_PERP_HALF;
-  const leftOk = WAIST_INDENT_LEFT_PTS.length >= 2;
-  const rightOk = WAIST_INDENT_RIGHT_PTS.length >= 2;
+  const leftOk = polylines.left.length >= 2;
+  const rightOk = polylines.right.length >= 2;
   let loc = 0;
   if (leftOk) {
-    loc = Math.max(loc, indentCorridorWeightFromPolyline(WAIST_INDENT_LEFT_PTS, templateX, templateY, perpHalf));
+    loc = Math.max(loc, indentCorridorWeightFromPolyline(polylines.left, templateX, templateY, perpHalf));
   }
   if (rightOk) {
-    loc = Math.max(loc, indentCorridorWeightFromPolyline(WAIST_INDENT_RIGHT_PTS, templateX, templateY, perpHalf));
+    loc = Math.max(loc, indentCorridorWeightFromPolyline(polylines.right, templateX, templateY, perpHalf));
   }
   if (loc > 0) return loc;
   /** 左右稜の # が取れているときはここだけに限定。旧 Y+|dx| は腹・別稜まで盛り上げるため使わない */
@@ -208,9 +229,10 @@ function indentWaistWidthScale(
   templateY: number,
   absDx: number,
   xScale: number,
-  applyBaseRigRelief: boolean
+  applyBaseRigRelief: boolean,
+  polylines: IndentWaistPolylines
 ): number {
-  const localized = indentWaistCorridorLocalized(templateX, templateY, absDx);
+  const localized = indentWaistCorridorLocalized(templateX, templateY, absDx, polylines);
   if (localized <= 0) return 1;
   const d = Math.max(0, xScale - 1);
   const weightGain = d > 0 ? INDENT_CHORD_WEIGHT_WIDTH_GAIN * Math.sqrt(d) : 0;
@@ -237,11 +259,13 @@ export function blendDeformedWithIndentWarpRelief(
   templateY: number,
   warped: [number, number],
   deformed: [number, number],
-  enableIndentRelief = true
+  enableIndentRelief = true,
+  indentPolylines?: IndentWaistPolylines
 ): [number, number] {
   if (!enableIndentRelief) return deformed;
   const absDx = Math.abs(templateX - BODY_CX);
-  const loc = indentWaistCorridorLocalized(templateX, templateY, absDx);
+  const pl = indentPolylines ?? DEFAULT_INDENT_WAIST_POLYLINES;
+  const loc = indentWaistCorridorLocalized(templateX, templateY, absDx, pl);
   if (loc <= 0) return deformed;
   const k = Math.min(1, INDENT_RIG_SKIN_BLEND_MAX * loc * INDENT_EFFECT_MULTIPLIER * 0.88);
   return [
@@ -264,6 +288,8 @@ export type WarpOptions = {
    * 服・服用リグの `warp` は false。
    */
   applyArmpitBaseRigRelief?: boolean;
+  /** 省略時は `BPATHS_MODEL`＋既定連結 #。検証ボディはテンプレ path と #362/#148 帯を渡す */
+  indentWaistPolylines?: IndentWaistPolylines;
 };
 
 /** 左腕の外側境界X（ベース座標）。 */
@@ -314,6 +340,7 @@ export function warp(
   opts?: WarpOptions
 ): [number, number] {
   const applyArmpitBase = opts?.applyArmpitBaseRigRelief === true;
+  const indentPl = opts?.indentWaistPolylines ?? DEFAULT_INDENT_WAIST_POLYLINES;
   const dx = x - BODY_CX;
   const absDx = Math.abs(dx);
 
@@ -351,7 +378,7 @@ export function warp(
     const medial = dx < 0 ? x > rawOuter : x < rawOuter;
     if (medial) {
       const xRad0 = BODY_CX + dx * spreadLx;
-      const wScale = indentWaistWidthScale(x, y, absDx, xScale, applyArmpitBase);
+      const wScale = indentWaistWidthScale(x, y, absDx, xScale, applyArmpitBase, indentPl);
       return [applyIndentChordWidth(BODY_CX, xRad0, wScale), newY];
     }
   }
@@ -382,7 +409,7 @@ export function warp(
     xOut = lerp(torsoX, armX, t);
   }
 
-  const wScale = indentWaistWidthScale(x, y, absDx, xScale, applyArmpitBase);
+  const wScale = indentWaistWidthScale(x, y, absDx, xScale, applyArmpitBase, indentPl);
   return [applyIndentChordWidth(BODY_CX, xOut, wScale), newY];
 }
 

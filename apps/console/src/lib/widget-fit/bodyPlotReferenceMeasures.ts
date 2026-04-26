@@ -1,13 +1,12 @@
 import { pointAtGlobalVertexIndex } from "@/app/(main)/development/fitting/lib/pathUtils";
-import { BODY_INDENT_WAIST_REFERENCE_CHORD_GLOBAL_INDICES } from "@/lib/fitting-compute/fittingCanvasDebugFlags";
 import type { FittingCanvasSnapshot } from "@/lib/fitting-compute/fittingCanvasComputeTypes";
 
-/** Length (cm) of the waist-indent reference chord (#218–#431), same indices as the model plot overlay. */
+/** Length (cm) of the waist-indent reference chord (e.g. #218–#431 or verification #362–#148). */
 export function bodyIndentReferenceChordLengthCm(
   snap: FittingCanvasSnapshot,
   bodyPxPerCm: number
 ): number | null {
-  const [ia, ib] = BODY_INDENT_WAIST_REFERENCE_CHORD_GLOBAL_INDICES;
+  const [ia, ib] = snap.indentWaistReferenceChordGlobalIndices;
   const pa = snap.bodyOutlinePoints[ia];
   const pb = snap.bodyOutlinePoints[ib];
   if (!pa || !pb) return null;
