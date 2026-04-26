@@ -1,6 +1,10 @@
 "use client";
 
 import { supabase } from "@/lib/supabase/client";
+import {
+  FITANDLOOK_OPERATOR_SHOP_HEADER,
+  FITANDLOOK_OPERATOR_SHOP_STORAGE_KEY,
+} from "@/lib/auth/operatorShop";
 
 /**
  * 認証付きでAPIを呼び出すヘルパー関数
@@ -23,6 +27,13 @@ export async function authenticatedFetch(
 
   if (session?.access_token) {
     headers.set("Authorization", `Bearer ${session.access_token}`);
+  }
+
+  if (typeof window !== "undefined") {
+    const op = window.localStorage.getItem(FITANDLOOK_OPERATOR_SHOP_STORAGE_KEY)?.trim();
+    if (op) {
+      headers.set(FITANDLOOK_OPERATOR_SHOP_HEADER, op);
+    }
   }
 
   return fetch(url, {

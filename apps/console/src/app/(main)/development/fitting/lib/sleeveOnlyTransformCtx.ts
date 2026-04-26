@@ -139,7 +139,8 @@ export function buildSleeveOnlyCtx(p: SleeveOnlyTransformParams): SleeveOnlyCtx 
     rightArmPts
   );
   const debugFitting = typeof sessionStorage !== "undefined" && sessionStorage.getItem("DEBUG_FITTING") === "1";
-  const scaleSleeve = true;
+  /** 袖丈未入力（0・ノースリーブ等）では採寸 Y スケールをかけない */
+  const scaleSleeve = specSleeveCm > 0;
   const scaleBody = (pathIdx: number) => scalableSpec.bodyPathIndices.includes(pathIdx);
   const {
     seamPathLeft,

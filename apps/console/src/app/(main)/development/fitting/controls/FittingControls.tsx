@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import type {
   GarmentType,
@@ -8,14 +8,21 @@ import type {
   JacketSize,
   CustomGarmentData,
   GenericVertexPlotHighlight,
+  PlotIndexLabelDensity,
 } from "../lib/types";
 import { measureSleeveLengthFromPath, vertexRangeToCoveringPathRange } from "../lib/pathUtils";
-import { appendSleeveMeasureVertexWithR, parseLineRangeInput, parseSleeveMeasureVertexInput } from "../generic";
+import {
+  appendSleeveMeasureVertexWithR,
+  parseIndexSetListInput,
+  parseLineRangeInput,
+  parseSleeveMeasureVertexInput,
+} from "../generic";
 import { FittingControlsCustomPanels } from "./FittingControlsCustomPanels";
 import { FittingControlsPathCatalogPanel } from "./FittingControlsPathCatalogPanel";
 import { FittingControlsSvgUploadSection } from "./FittingControlsSvgUploadSection";
 import { DevPanelSection, PanelSwitchRow } from "./FittingControlsUI";
 import { useFittingControlsGenericDraftSync } from "./useFittingControlsGenericDraftSync";
+import type { BodyModelVariant } from "../lib/bodyModelVariant";
 
 interface FittingControlsProps {
   height: number;
@@ -27,10 +34,13 @@ interface FittingControlsProps {
   showGarment: boolean;
   showMeasureOverlay: boolean;
   showPlotCoords: boolean;
+  /** 服・モデル両方の連結 # テキストの間引き（強調・ホバーは常時） */
+  plotIndexLabelDensity: PlotIndexLabelDensity;
   showBodyPlotCoords: boolean;
   showRigAngleDiagram: boolean;
   rigBodyEnabled: boolean;
   rigGarmentEnabled: boolean;
+  bodyModelVariant: BodyModelVariant;
   onHeightChange: (v: number) => void;
   onWeightChange: (v: number) => void;
   onGarmentChange: (g: GarmentType) => void;
@@ -40,12 +50,19 @@ interface FittingControlsProps {
   onToggleGarment: () => void;
   onToggleMeasureOverlay: () => void;
   onTogglePlotCoords: () => void;
+  onPlotIndexLabelDensityChange: (density: PlotIndexLabelDensity) => void;
+  /** 服プロットの連結 # を列挙（null=全表示） */
+  garmentPlotVertexFilter: number[] | null;
+  onGarmentPlotVertexFilterChange: (indices: number[] | null) => void;
   onToggleBodyPlotCoords: () => void;
   onToggleRigAngleDiagram: () => void;
   onToggleRigBody: () => void;
   onToggleRigGarment: () => void;
+  onBodyModelVariantChange: (v: BodyModelVariant) => void;
   /** 汎用フィットの入力範囲を服プロットで緑表示するため（着丈区間は除く） */
   onGenericVertexPlotHighlightChange?: (highlight: GenericVertexPlotHighlight | null) => void;
+  /** ウィジェット体型（服 # 2点）セクションフォーカス時の弦 2 頂点をキャンバスで緑強調 */
+  onWidgetFitCompareChordHighlightChange?: (pair: [number, number] | null) => void;
   /** 服プロット上でホバー中の連結頂点 #（袖丈 r 入力用） */
   hoveredGarmentVertexIndex?: number | null;
   /** 開発ページレイアウト用（下バー時は w-full など） */
@@ -62,10 +79,12 @@ export function FittingControls({
   showGarment,
   showMeasureOverlay,
   showPlotCoords,
+  plotIndexLabelDensity,
   showBodyPlotCoords,
   showRigAngleDiagram,
   rigBodyEnabled,
   rigGarmentEnabled,
+  bodyModelVariant,
   onHeightChange,
   onWeightChange,
   onGarmentChange,
@@ -75,14 +94,22 @@ export function FittingControls({
   onToggleGarment,
   onToggleMeasureOverlay,
   onTogglePlotCoords,
+  onPlotIndexLabelDensityChange,
+  garmentPlotVertexFilter,
+  onGarmentPlotVertexFilterChange,
   onToggleBodyPlotCoords,
   onToggleRigAngleDiagram,
   onToggleRigBody,
   onToggleRigGarment,
+  onBodyModelVariantChange,
   onGenericVertexPlotHighlightChange,
+  onWidgetFitCompareChordHighlightChange,
   hoveredGarmentVertexIndex = null,
   className,
 }: FittingControlsProps) {
+  const [garmentPlotFilterDraft, setGarmentPlotFilterDraft] = useState("");
+  const [garmentPlotFilterError, setGarmentPlotFilterError] = useState<string | null>(null);
+
   const isGenericTopActive = customGarmentData?.presetId === "genericSymmetricTop";
   const hasUploadedGenericSvg =
     isGenericTopActive && customGarmentData != null && customGarmentData.pathDs.length > 0;
@@ -255,6 +282,7 @@ export function FittingControls({
         <FittingControlsCustomPanels
           customGarmentData={customGarmentData}
           onCustomGarmentApply={onCustomGarmentApply}
+          onWidgetFitCompareChordHighlightChange={onWidgetFitCompareChordHighlightChange}
           height={height}
           weight={weight}
           shirtSize={shirtSize}
@@ -298,6 +326,106 @@ export function FittingControls({
               checked={showPlotCoords}
               onToggle={onTogglePlotCoords}
             />
+            <div className="py-2.5">
+              <div className="mb-1.5 text-xs font-medium leading-snug text-foreground">プロット # の間引き</div>
+              <div className="grid grid-cols-4 gap-1" role="group" aria-label="プロット番号の表示密度">
+                {(
+                  [
+                    { id: "all" as const, label: "すべて" },
+                    { id: "half" as const, label: "1/2" },
+                    { id: "quarter" as const, label: "1/4" },
+                    { id: "eighth" as const, label: "1/8" },
+                  ] as const
+                ).map(({ id, label }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className={cn(
+                      "min-w-0 rounded-md border px-1 py-1.5 text-[9px] font-semibold leading-none transition-colors sm:px-1.5 sm:text-[10px]",
+                      plotIndexLabelDensity === id
+                        ? "border-primary bg-primary/15 text-foreground"
+                        : "border-border bg-background text-muted-foreground hover:bg-muted/50"
+                    )}
+                    onClick={() => onPlotIndexLabelDensityChange(id)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="mt-1 border-t border-border/80 pt-2.5">
+              <div className="mb-1 text-[10px] font-medium leading-snug text-foreground">服 # だけ表示</div>
+              <p className="mb-1.5 text-[9px] leading-snug text-muted-foreground">
+                例: <span className="font-mono text-foreground/90">3</span>、
+                <span className="font-mono text-foreground/90">0,2,5-10</span>
+              </p>
+              <input
+                type="text"
+                value={garmentPlotFilterDraft}
+                onChange={(e) => {
+                  setGarmentPlotFilterDraft(e.target.value);
+                  setGarmentPlotFilterError(null);
+                }}
+                placeholder="連結 # を入力"
+                disabled={!showPlotCoords}
+                className="mb-1.5 w-full rounded border border-border bg-background px-1.5 py-1 font-mono text-[10px] text-foreground placeholder:text-muted-foreground/70 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="服プロットで表示する連結番号"
+              />
+              {garmentPlotFilterError != null ? (
+                <p className="mb-1 text-[9px] text-destructive" role="alert">
+                  {garmentPlotFilterError}
+                </p>
+              ) : null}
+              <div className="flex flex-wrap gap-1">
+                <button
+                  type="button"
+                  disabled={!showPlotCoords}
+                  className={cn(
+                    "rounded-md border px-2 py-1 text-[10px] font-semibold transition-colors",
+                    showPlotCoords
+                      ? "border-primary bg-primary/10 text-foreground hover:bg-primary/20"
+                      : "cursor-not-allowed border-border bg-muted/50 text-muted-foreground"
+                  )}
+                  onClick={() => {
+                    const r = parseIndexSetListInput(garmentPlotFilterDraft);
+                    if (!r.ok) {
+                      setGarmentPlotFilterError(r.error);
+                      return;
+                    }
+                    setGarmentPlotFilterError(null);
+                    onGarmentPlotVertexFilterChange(r.indices.length === 0 ? null : r.indices);
+                  }}
+                >
+                  指定のみ
+                </button>
+                <button
+                  type="button"
+                  disabled={!showPlotCoords}
+                  className={cn(
+                    "rounded-md border px-2 py-1 text-[10px] font-semibold transition-colors",
+                    showPlotCoords
+                      ? "border-border bg-background text-foreground hover:bg-muted/50"
+                      : "cursor-not-allowed border-border bg-muted/50 text-muted-foreground"
+                  )}
+                  onClick={() => {
+                    setGarmentPlotFilterError(null);
+                    setGarmentPlotFilterDraft("");
+                    onGarmentPlotVertexFilterChange(null);
+                  }}
+                >
+                  全表示
+                </button>
+              </div>
+              {showPlotCoords && garmentPlotVertexFilter != null && garmentPlotVertexFilter.length > 0 ? (
+                <p className="mt-1.5 text-[9px] tabular-nums text-muted-foreground">
+                  指定中: {garmentPlotVertexFilter.length} 点（
+                  {garmentPlotVertexFilter.length > 8
+                    ? `${garmentPlotVertexFilter.slice(0, 8).join(",")}…`
+                    : garmentPlotVertexFilter.join(", ")}
+                  ）
+                </p>
+              ) : null}
+            </div>
             <PanelSwitchRow
               id="dev-fit-plot-body"
               label="モデルのプロット"
@@ -317,12 +445,27 @@ export function FittingControls({
               onToggle={onToggleRigBody}
             />
             <PanelSwitchRow
+              id="dev-fit-body-model-verification"
+              label="検証ボディ（線画）"
+              checked={bodyModelVariant === "lineArtVerification"}
+              onToggle={() =>
+                onBodyModelVariantChange(
+                  bodyModelVariant === "lineArtVerification" ? "default" : "lineArtVerification"
+                )
+              }
+            />
+            <PanelSwitchRow
               id="dev-fit-show-rig-garment"
               label="服のリグ"
               checked={rigGarmentEnabled}
               onToggle={onToggleRigGarment}
             />
           </div>
+          <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
+            「検証ボディ」ON 時も既定の体型ワープ・リグ index 契約は同じです。胴くびれの連結 # 依存リリーフだけオフになります。キャンバス高さはワープ後の足元に合わせて伸ばします。            4862
+            系の 9 本リグは服 SVG 分割でも完全一致・端点推定の両方に載せ済みです。体型変更時も身長連動の腕「鉛直寄り」回転は掛けません（SVG
+            の腕角優先。脊髄合わせのわずかな差は残ります）。
+          </p>
           <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
             コンソール:{" "}
             <code className="rounded bg-muted px-0.5 font-mono text-[9px] text-foreground">DEBUG_FITTING_MEASURE</code>

@@ -25,10 +25,13 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   canEditGarmentSizePresets,
+  mergeGarmentSpecBodyModelVariant,
   mergeGarmentSpecSizePresets,
   parseGarmentSizePresets,
   type GarmentSizePresetRow,
 } from "@/lib/products/parseGarmentSizePresets";
+import { isGarmentSpecRenderable } from "@/lib/widget-fit/applyWidgetSizeToGarment";
+import { Checkbox } from "@/components/ui/checkbox";
 import { CircularImageCropDialog } from "@/features/products/components/CircularImageCropDialog";
 
 const productFormSchema = createProductSchema.extend({
@@ -59,9 +62,15 @@ export function ProductEditDialog({
   const [thumbnailCropFile, setThumbnailCropFile] = useState<File | null>(null);
   const [presetDrafts, setPresetDrafts] = useState<GarmentSizePresetRow[]>([]);
   const [priceYenInput, setPriceYenInput] = useState("");
+  const [lineArtVerificationBody, setLineArtVerificationBody] = useState(false);
 
   const canEditMeasures = useMemo(
     () => canEditGarmentSizePresets(product?.garmentSpec),
+    [product?.garmentSpec]
+  );
+
+  const garmentFitRenderable = useMemo(
+    () => isGarmentSpecRenderable(product?.garmentSpec),
     [product?.garmentSpec]
   );
 
@@ -73,6 +82,13 @@ export function ProductEditDialog({
   useEffect(() => {
     if (product && open) {
       setPresetDrafts(parseGarmentSizePresets(product.garmentSpec));
+      const gs = product.garmentSpec;
+      setLineArtVerificationBody(
+        gs != null &&
+          typeof gs === "object" &&
+          !Array.isArray(gs) &&
+          (gs as { bodyModelVariant?: string }).bodyModelVariant === "lineArtVerification"
+      );
     }
   }, [product, open]);
 
@@ -211,18 +227,25 @@ export function ProductEditDialog({
         }))
         .filter((r) => Number.isFinite(r.lengthCm) && Number.isFinite(r.sleeveCm));
 
+      let garmentSpecUpdate: unknown | undefined;
+      if (garmentFitRenderable) {
+        let gs: unknown = product.garmentSpec;
+        if (canEditMeasures) {
+          gs = mergeGarmentSpecSizePresets(gs, sanitizedPresets);
+        }
+        garmentSpecUpdate = mergeGarmentSpecBodyModelVariant(
+          gs,
+          lineArtVerificationBody ? "lineArtVerification" : "default"
+        );
+      } else if (canEditMeasures) {
+        garmentSpecUpdate = mergeGarmentSpecSizePresets(product.garmentSpec, sanitizedPresets);
+      }
+
       await updateProduct.mutateAsync({
         id: productId,
         updates: {
           ...cleanedData,
-          ...(canEditMeasures
-            ? {
-                garmentSpec: mergeGarmentSpecSizePresets(
-                  product.garmentSpec,
-                  sanitizedPresets
-                ),
-              }
-            : {}),
+          ...(garmentSpecUpdate !== undefined ? { garmentSpec: garmentSpecUpdate } : {}),
         },
       });
       reset();
@@ -502,6 +525,25 @@ export function ProductEditDialog({
                 </p>
               )}
           </div>
+
+          {garmentFitRenderable && (
+            <div className="flex items-start gap-3 rounded-md border border-amber-200/80 bg-amber-50/50 p-3">
+              <Checkbox
+                id="product-edit-line-art-body"
+                checked={lineArtVerificationBody}
+                onCheckedChange={(v) => setLineArtVerificationBody(v === true)}
+                className="mt-0.5"
+              />
+              <div className="min-w-0 space-y-1">
+                <Label htmlFor="product-edit-line-art-body" className="text-sm font-medium cursor-pointer">
+                  線画検証ボディで試着する
+                </Label>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  既存の 2D 試着データのまま、開発の「検証ボディ」と同じシルエット・リグで表示します。オフにすると既定ボディ（mv_model 系）に戻ります。
+                </p>
+              </div>
+            </div>
+          )}
 
           <DialogFooter>
             <Button

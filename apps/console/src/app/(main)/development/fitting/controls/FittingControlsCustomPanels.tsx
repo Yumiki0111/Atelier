@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CustomGarmentData, JacketSize, ShirtSize, SizeMeasure } from "../lib/types";
 import { cn } from "@/lib/utils";
 import { DevPanelSection } from "./FittingControlsUI";
@@ -40,6 +40,7 @@ function seedGradingBaselineSleeveCm(
   nextSleeve: number,
   nextSize: SizeMeasure
 ): number {
+  if (nextSleeve <= 0) return 0;
   /** `bodyPxPerCm` は渡さない（分子・分母とも設計 path 系で整合）。キャンバスオーバーレイ用ではない。 */
   const m = measureOriginalSleeveCmFromDesignPaths(pathDs, gt, lm, nextSize);
   if (m != null && Number.isFinite(m.cm) && m.cm > 0.5) return m.cm;
@@ -56,6 +57,7 @@ function parseCmLocal(raw: string): number | undefined {
 export function FittingControlsCustomPanels({
   customGarmentData,
   onCustomGarmentApply,
+  onWidgetFitCompareChordHighlightChange,
   height,
   weight,
   shirtSize,
@@ -63,6 +65,7 @@ export function FittingControlsCustomPanels({
 }: {
   customGarmentData: CustomGarmentData;
   onCustomGarmentApply: (data: CustomGarmentData) => void;
+  onWidgetFitCompareChordHighlightChange?: (pair: [number, number] | null) => void;
   height: number;
   weight: number;
   shirtSize: ShirtSize;
@@ -117,10 +120,62 @@ export function FittingControlsCustomPanels({
     setFitCompareB("");
   };
 
+  const widgetFitSectionRef = useRef<HTMLDivElement>(null);
+  const resolveWidgetFitChordPair = useCallback((): [number, number] | null => {
+    const a = Number.parseInt(fitCompareA.trim(), 10);
+    const b = Number.parseInt(fitCompareB.trim(), 10);
+    const n = totalPathVertices(customGarmentData.pathDs);
+    if (
+      Number.isFinite(a) &&
+      Number.isFinite(b) &&
+      a >= 0 &&
+      b >= 0 &&
+      a < n &&
+      b < n &&
+      a !== b
+    ) {
+      return [a, b];
+    }
+    if (storedFitPair != null) return storedFitPair;
+    return null;
+  }, [fitCompareA, fitCompareB, customGarmentData.pathDs, storedFitPair]);
+
+  useEffect(() => {
+    const cb = onWidgetFitCompareChordHighlightChange;
+    const el = widgetFitSectionRef.current;
+    if (!cb || !el) return;
+    const syncIfFocused = () => {
+      if (typeof document === "undefined") return;
+      const ae = document.activeElement;
+      if (ae != null && el.contains(ae)) cb(resolveWidgetFitChordPair());
+    };
+    const onIn = () => syncIfFocused();
+    const onOut = (e: FocusEvent) => {
+      const next = e.relatedTarget as Node | null;
+      if (next != null && el.contains(next)) return;
+      cb(null);
+    };
+    el.addEventListener("focusin", onIn);
+    el.addEventListener("focusout", onOut);
+    return () => {
+      el.removeEventListener("focusin", onIn);
+      el.removeEventListener("focusout", onOut);
+    };
+  }, [onWidgetFitCompareChordHighlightChange, resolveWidgetFitChordPair]);
+
+  useEffect(() => {
+    const cb = onWidgetFitCompareChordHighlightChange;
+    const el = widgetFitSectionRef.current;
+    if (!cb || !el) return;
+    if (typeof document === "undefined") return;
+    const ae = document.activeElement;
+    if (ae != null && el.contains(ae)) cb(resolveWidgetFitChordPair());
+  }, [resolveWidgetFitChordPair, onWidgetFitCompareChordHighlightChange, fitCompareA, fitCompareB, storedFitPair]);
+
   const sizePresets = customGarmentData.genericSymmetricTop?.sizePresets ?? [];
   const isGenericTop = customGarmentData.presetId === "genericSymmetricTop";
   const gt = customGarmentData.genericSymmetricTop;
-  const measureGradingReady = isGenericTop && genericMeasureOnlyGradingActive(gt);
+  const measureGradingReady = isGenericTop && genericMeasureOnlyGradingActive(gt, customGarmentData.size);
   const canvasSleeveSnapEligible = isGenericTop && genericSymmetricTopCanvasSleeveSnapEligible(gt);
 
   const normalizedSizePresets = useMemo(
@@ -145,6 +200,7 @@ export function FittingControlsCustomPanels({
         !Number.isFinite(gt.gradingBaselineLengthCm) ||
         gt.gradingBaselineLengthCm <= 0);
     const needSlvBaseline =
+      preset.sleeve > 0 &&
       gt != null &&
       (gt.gradingBaselineSleeveCm == null ||
         !Number.isFinite(gt.gradingBaselineSleeveCm) ||
@@ -162,12 +218,12 @@ export function FittingControlsCustomPanels({
         ...(needLenBaseline && gt != null
           ? { gradingBaselineLengthCm: seedGradingBaselineLengthCm(customGarmentData.pathDs, customGarmentData.landmarks, gt, nextSize) }
           : {}),
-        ...(needSlvBaseline && gt != null
+        ...(needSlvBaseline
           ? {
               gradingBaselineSleeveCm: seedGradingBaselineSleeveCm(
                 customGarmentData.pathDs,
                 customGarmentData.landmarks,
-                gt,
+                gt!,
                 prev.sleeve,
                 preset.sleeve,
                 nextSize
@@ -189,8 +245,8 @@ export function FittingControlsCustomPanels({
 
   const addPreset = () => {
     const len = parseCmLocal(presetLength);
-    const slv = parseCmLocal(presetSleeve);
-    if (len == null || slv == null) return;
+    if (len == null) return;
+    const slv = parseCmLocal(presetSleeve) ?? 0;
     const label = presetLabel.trim() || String.fromCharCode(65 + sizePresets.length);
     const next = [...sizePresets, { label, length: len, sleeve: slv }].sort(compareGenericSizePresetRow);
     const prev = customGarmentData.size;
@@ -201,6 +257,7 @@ export function FittingControlsCustomPanels({
         !Number.isFinite(gt.gradingBaselineLengthCm) ||
         gt.gradingBaselineLengthCm <= 0);
     const needSlvBaseline =
+      slv > 0 &&
       gt != null &&
       (gt.gradingBaselineSleeveCm == null ||
         !Number.isFinite(gt.gradingBaselineSleeveCm) ||
@@ -215,12 +272,12 @@ export function FittingControlsCustomPanels({
         ...(needLenBaseline && gt != null
           ? { gradingBaselineLengthCm: seedGradingBaselineLengthCm(customGarmentData.pathDs, customGarmentData.landmarks, gt, nextSize) }
           : {}),
-        ...(needSlvBaseline && gt != null
+        ...(needSlvBaseline
           ? {
               gradingBaselineSleeveCm: seedGradingBaselineSleeveCm(
                 customGarmentData.pathDs,
                 customGarmentData.landmarks,
-                gt,
+                gt!,
                 prev.sleeve,
                 slv,
                 nextSize
@@ -306,7 +363,8 @@ export function FittingControlsCustomPanels({
                     >
                       <span className="font-mono">{preset.label}</span>
                       <span className="ml-2 font-normal text-[10px] opacity-80">
-                        着丈 {preset.length}cm / 袖丈 {preset.sleeve}cm
+                        着丈 {preset.length}cm
+                        {preset.sleeve > 0 ? ` / 袖丈 ${preset.sleeve}cm` : "（袖丈なし）"}
                       </span>
                     </button>
                     <button
@@ -344,7 +402,7 @@ export function FittingControlsCustomPanels({
               <input
                 className="w-full rounded-md border border-input bg-background px-2 py-1.5 font-mono text-[11px] outline-none ring-0 focus-visible:ring-2 focus-visible:ring-ring"
                 inputMode="decimal"
-                placeholder="袖丈"
+                placeholder="袖丈（任意）"
                 value={presetSleeve}
                 onChange={(e) => setPresetSleeve(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") addPreset(); }}
@@ -352,11 +410,10 @@ export function FittingControlsCustomPanels({
               <button
                 type="button"
                 onClick={addPreset}
-                disabled={parseCmLocal(presetLength) == null || parseCmLocal(presetSleeve) == null}
+                disabled={parseCmLocal(presetLength) == null}
                 className={cn(
                   "rounded-lg px-3 py-1.5 text-[11px] font-bold transition-colors sm:col-span-1",
-                  parseCmLocal(presetLength) != null &&
-                    parseCmLocal(presetSleeve) != null
+                  parseCmLocal(presetLength) != null
                     ? "bg-primary text-primary-foreground hover:bg-primary/90"
                     : "cursor-not-allowed bg-muted text-muted-foreground"
                 )}
@@ -369,7 +426,11 @@ export function FittingControlsCustomPanels({
       )}
       {isGenericTop && (
         <DevPanelSection title="ウィジェット体型（服 # 2点）">
-          <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
+          <div
+            ref={widgetFitSectionRef}
+            className="mt-1 rounded-md outline-none ring-offset-2 focus-within:ring-2 focus-within:ring-primary/35"
+          >
+          <p className="text-[10px] leading-snug text-muted-foreground">
             服プロットの連結 # を2つ指定。ワープ後の2点間の長さ（cm）と、くびれ参照弦（モデルプロットの紫・体重で変わる）を比べて小さめ／おすすめ／ゆったりを出します。未指定時は身幅×2と弦の差にフォールバックします。
           </p>
           <div className="mt-2 flex flex-wrap items-end gap-2">
@@ -407,6 +468,7 @@ export function FittingControlsCustomPanels({
             >
               クリア
             </button>
+          </div>
           </div>
         </DevPanelSection>
       )}

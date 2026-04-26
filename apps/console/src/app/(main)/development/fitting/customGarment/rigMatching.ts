@@ -1,5 +1,6 @@
 import { getPathPoints } from "../lib/pathUtils";
 import { MODEL_RIG_LINE_PATH_DS } from "../lib/modelRigData";
+import { VERIFICATION_RIG_LINE_PATH_DS_SRC } from "../lib/modelDataVerification";
 
 export type RigPathEndpoints = { min: [number, number]; max: [number, number] };
 
@@ -15,6 +16,11 @@ function endpointsByModelD(d: string): RigPathEndpoints | null {
 
 /** モデル rig 各線の端点（幾何マッチング用） */
 export const MODEL_RIG_ENDPOINTS: RigPathEndpoints[] = MODEL_RIG_LINE_PATH_DS.map((d) =>
+  endpointsByModelD(d)
+).filter(Boolean) as RigPathEndpoints[];
+
+/** 検証用（4862×6431）リグの端点。アップロード SVG が 3391 系と違う座標でも 9 本推定できるようにする */
+export const VERIFICATION_RIG_ENDPOINTS: RigPathEndpoints[] = VERIFICATION_RIG_LINE_PATH_DS_SRC.map((d) =>
   endpointsByModelD(d)
 ).filter(Boolean) as RigPathEndpoints[];
 

@@ -1,7 +1,9 @@
 import type { CustomLandmarks } from "../lib/types";
 import { getPathPoints, getPathsBBox } from "../lib/pathUtils";
 import { MODEL_RIG_LINE_PATH_DS } from "../lib/modelRigData";
-import { MODEL_RIG_ENDPOINTS } from "./rigMatching";
+import { VERIFICATION_RIG_LINE_PATH_DS_SRC } from "../lib/modelDataVerification";
+import type { RigPathEndpoints } from "./rigMatching";
+import { MODEL_RIG_ENDPOINTS, VERIFICATION_RIG_ENDPOINTS } from "./rigMatching";
 import type { SvgParsedPath } from "./parseSvgPaths";
 
 function getBBoxOfPathPoints(points: [number, number][]) {
@@ -30,7 +32,8 @@ export function splitGarmentPathsFromSvgParsed(paths: SvgParsedPath[]): {
 } {
   const pathDs = paths.map((p) => p.d);
   // まずは「モデル+リグから抽出した 9 本の rig d」と完全一致するものだけを rig として抜く。
-  const rigExactSet = new Set(MODEL_RIG_LINE_PATH_DS);
+  // 4862×6431 系の検証リグも同一契約で別座標のため併記（Figma エクスポートの d が一致すれば抜ける）。
+  const rigExactSet = new Set([...MODEL_RIG_LINE_PATH_DS, ...VERIFICATION_RIG_LINE_PATH_DS_SRC]);
   const rigExact: SvgParsedPath[] = [];
   const keepExact: SvgParsedPath[] = [];
   for (const p of paths) {
@@ -90,9 +93,8 @@ export function splitGarmentPathsFromSvgParsed(paths: SvgParsedPath[]): {
     .filter(Boolean) as Array<{ d: string; idx: number; min: [number, number]; max: [number, number]; lenY: number; lenX: number }>;
 
   if (straightCandidates.length >= modelRigRigCountTarget) {
-    const pickBest = () => {
+    const pickBestForTemplate = (modelEndpoints: RigPathEndpoints[]) => {
       let best = { score: -1, scale: 1, tx: 0, ty: 0 };
-      const modelEndpoints = MODEL_RIG_ENDPOINTS;
       if (modelEndpoints.length !== modelRigRigCountTarget) return best;
 
       // seed: 直線候補のうち上端〜下端が長いものを優先して試す
@@ -147,9 +149,14 @@ export function splitGarmentPathsFromSvgParsed(paths: SvgParsedPath[]): {
       return best;
     };
 
-    const best = pickBest();
+    const bestDefault = pickBestForTemplate(MODEL_RIG_ENDPOINTS);
+    const bestVer = pickBestForTemplate(VERIFICATION_RIG_ENDPOINTS);
+    const best =
+      bestVer.score > bestDefault.score
+        ? { ...bestVer, modelEndpoints: VERIFICATION_RIG_ENDPOINTS }
+        : { ...bestDefault, modelEndpoints: MODEL_RIG_ENDPOINTS };
     if (best.score >= modelRigRigCountTarget - 1) {
-      const modelEndpoints = MODEL_RIG_ENDPOINTS;
+      const { modelEndpoints } = best;
       // best transform で一致する候補だけを抽出（一致は min/max の近さで判定）
       const tol = Math.max(6, Math.abs(straightCandidates[0]?.lenY ?? 0) * 0.02);
       const used = new Set<number>();
@@ -157,7 +164,7 @@ export function splitGarmentPathsFromSvgParsed(paths: SvgParsedPath[]): {
 
       // まずモデル 9 本ごとに最も近い候補を選ぶ（重複は不可）
       for (let mj = 0; mj < modelEndpoints.length; mj++) {
-        const m = modelEndpoints[mj];
+        const m = modelEndpoints[mj]!;
         const expMin: [number, number] = [m.min[0] * best.scale + best.tx, m.min[1] * best.scale + best.ty];
         const expMax: [number, number] = [m.max[0] * best.scale + best.tx, m.max[1] * best.scale + best.ty];
         let bestCand: { d: string; dist: number; idx: number } | null = null;

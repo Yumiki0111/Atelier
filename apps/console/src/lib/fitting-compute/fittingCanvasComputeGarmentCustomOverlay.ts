@@ -4,7 +4,7 @@ import {
   explainSleeveYScaleInactive,
   resolveEffectiveSleeveGradingGeometry,
 } from "@/app/(main)/development/fitting/generic/resolveEffectiveSleeveGradingGeometry";
-import { applyYScaleToCanvasPoints } from "./fittingCanvasCustomGarmentGradeLength";
+import { applyXScaleToCanvasPoints, applyYScaleToCanvasPoints } from "./fittingCanvasCustomGarmentGradeLength";
 import { isDebugFittingMeasureEnabled } from "./fittingCanvasDebugFlags";
 import {
   computeLengthOverlayFromPurpleOrHighlight,
@@ -65,7 +65,7 @@ export type CustomGarmentOverlayAssemblyInput = {
     NonNullable<MeasureOverlayData["garment"]>["sleeveMeasureDefinitionDebug"]
   >;
   /** 服リグ: ファブリックワープ後に縦スケールをかけたときのパラメータ（肩コンターと同じ Y 変換を適用） */
-  canvasYGradeScale?: { lengthTopY: number; scale: number } | null;
+  canvasYGradeScale?: { lengthTopY: number; scale: number; midShoulderX?: number } | null;
   /** 着丈 Y メッシュ前の紫区間（実測 px / スライダー換算 cm / 目標縦 px / Δ）。入力 cm を幾何として偽装しないこと。 */
   lengthGeomBeforeLengthMeshDebug?: GarmentLengthGeomBeforeLengthMeshDebug;
   /** デバッグ: 紫着丈＋baseline 適格でも縦メッシュをかけなかった理由 */
@@ -139,8 +139,11 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
     ? (customContourBase.map(([x, y]) => customGarmentFabricRigViewWarp(x, y)) as [number, number][])
     : customContourBase;
   if (canvasYGradeScale) {
-    const { lengthTopY, scale } = canvasYGradeScale;
+    const { lengthTopY, scale, midShoulderX } = canvasYGradeScale;
     customContour = applyYScaleToCanvasPoints(customContour, lengthTopY, scale);
+    if (midShoulderX != null && Number.isFinite(midShoulderX)) {
+      customContour = applyXScaleToCanvasPoints(customContour, midShoulderX, scale);
+    }
   }
   const centerXGarment = (refShoulderLx + refShoulderRx) / 2;
   const shoulderBandY0 = shoulderSeamY;

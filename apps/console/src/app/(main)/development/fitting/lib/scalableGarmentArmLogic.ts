@@ -141,6 +141,9 @@ export function scaleSleevePathToSpec(
   specSleeveCm: number,
   garmentLengthPx: number
 ): string {
+  if (!Number.isFinite(specSleeveCm) || specSleeveCm <= 0) {
+    return pathD;
+  }
   const pts = getPathPoints(pathD);
   const { sleeve } = spec;
   /** path 上の向きで end<start になり得る。変形区間は index 順に min〜max（採寸の polylineBetween は既に min/max）。 */

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { isProvisionAdminEmail } from "@/lib/auth/platformAdmin";
+import { FITANDLOOK_OPERATOR_SHOP_HEADER } from "@/lib/auth/operatorShop";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -61,6 +63,32 @@ export async function getAuthenticatedUser(
     if (profileError || !profileData) {
       console.error("Error fetching shop_id from profiles:", profileError);
       return null;
+    }
+
+    const operatorHeader =
+      request.headers.get(FITANDLOOK_OPERATOR_SHOP_HEADER)?.trim() ?? "";
+
+    if (
+      operatorHeader &&
+      isProvisionAdminEmail(user.email) &&
+      operatorHeader !== profileData.shop_id
+    ) {
+      const { data: shopRow, error: shopErr } = await supabaseAdmin
+        .from("shops")
+        .select("id")
+        .eq("id", operatorHeader)
+        .maybeSingle();
+
+      if (shopErr || !shopRow?.id) {
+        console.warn("[getAuthenticatedUser] Invalid operator shop id:", operatorHeader);
+        return null;
+      }
+
+      return {
+        userId: user.id,
+        shopId: shopRow.id,
+        userRole: "owner" as const,
+      };
     }
 
     return {

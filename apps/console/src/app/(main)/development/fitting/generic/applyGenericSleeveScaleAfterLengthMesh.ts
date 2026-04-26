@@ -89,6 +89,14 @@ export function applyGenericSleeveScaleAfterLengthMesh(
     );
   }
 
+  if (!Number.isFinite(size.sleeve) || size.sleeve <= 0) {
+    dbgLog("early_exit", { reason: "no_sleeve_length_input" });
+    return {
+      pathDs: pathDsIn.map((d) => d),
+      customPoints: customPointsIn.map((p) => [p[0], p[1]] as [number, number]),
+    };
+  }
+
   if (dbg) console.groupCollapsed("[FITTING_SLEEVE_PIPELINE] applyGenericSleeveScaleAfterLengthMesh");
   try {
     const sidePlans = buildGenericSleeveScaleSidePlans(pathDs, lm, gt, customPointsIn, dbg, dbgLog);

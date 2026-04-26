@@ -5,6 +5,7 @@ import type {
   ShoulderDebug,
   CustomGarmentData,
   GenericVertexPlotHighlight,
+  PlotIndexLabelDensity,
 } from "../lib/types";
 import {
   BODY_INDENT_WAIST_LEFT_GLOBAL_RANGE,
@@ -20,6 +21,7 @@ import {
   indexLabelOrbitRadius,
   indexLabelRadialOffset,
   indexLabelStrokeWidth,
+  shouldShowPlotIndexLabel,
   vertexHighlightRoles,
 } from "./fittingCanvasPlotOverlayUtils";
 
@@ -47,6 +49,12 @@ interface FittingCanvasPlotOverlayProps {
   onGarmentVertexLinkToggle?: (globalVertexIndex: number) => void;
   /** true のとき袖丈の赤線＋px/cm 箱を出さない（採寸オーバーレイと二重になるのを防ぐ） */
   hideSleeveMeasureLine?: boolean;
+  /** 連結 # テキストの間引き（`all` で全表示） */
+  plotIndexLabelDensity?: PlotIndexLabelDensity;
+  /** 服プロット: ホバー中の頂点は間引き時も # を出す */
+  hoveredGarmentVertexIndex?: number | null;
+  /** 非 null 時はこの連結 # だけ円＋（必要なら）ラベルを表示 */
+  garmentPlotVertexFilter?: number[] | null;
 }
 
 export function FittingCanvasPlotOverlay({
@@ -68,10 +76,18 @@ export function FittingCanvasPlotOverlay({
   garmentVertexLinkPickActive = false,
   onGarmentVertexLinkToggle,
   hideSleeveMeasureLine = false,
+  plotIndexLabelDensity = "all",
+  hoveredGarmentVertexIndex = null,
+  garmentPlotVertexFilter = null,
 }: FittingCanvasPlotOverlayProps) {
   const debugKey = `shoulder-debug-${height}-${weight}-${garment}-${
     garment === "shirt" ? shirtSize : ""
   }`;
+
+  const garmentPlotFilterSet = useMemo(() => {
+    if (garmentPlotVertexFilter == null || garmentPlotVertexFilter.length === 0) return null;
+    return new Set(garmentPlotVertexFilter);
+  }, [garmentPlotVertexFilter]);
 
   const bodyVertexDbgTpl = useMemo(() => {
     const m = new Map<number, [number, number]>();
@@ -168,6 +184,7 @@ export function FittingCanvasPlotOverlay({
             const fill = isVtxDbg ? "#c026d3" : "#22c55e";
             const stroke = isVtxDbg ? "#86198f" : "#166534";
             const textFill = isVtxDbg ? "#a21caf" : "#22c55e";
+            const showIndexText = shouldShowPlotIndexLabel(i, plotIndexLabelDensity, isVtxDbg);
             return (
               <g key={`body-${i}-${x}-${y}`}>
                 <circle
@@ -189,21 +206,23 @@ export function FittingCanvasPlotOverlay({
                       : `ボディ輪郭 #${i} (${Math.round(x)}, ${Math.round(y)}) — 連結順: BPATHS_MODEL の各 path を順に結合した 0 始まり`}
                   </title>
                 </circle>
-                <text
-                  x={x + ox}
-                  y={y + oy}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fontSize={labelSize}
-                  fill={textFill}
-                  fontFamily="monospace"
-                  fontWeight="bold"
-                  stroke="white"
-                  strokeWidth={indexStrokeW}
-                  paintOrder="stroke fill"
-                >
-                  {`#${i}`}
-                </text>
+                {showIndexText ? (
+                  <text
+                    x={x + ox}
+                    y={y + oy}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fontSize={labelSize}
+                    fill={textFill}
+                    fontFamily="monospace"
+                    fontWeight="bold"
+                    stroke="white"
+                    strokeWidth={indexStrokeW}
+                    paintOrder="stroke fill"
+                  >
+                    {`#${i}`}
+                  </text>
+                ) : null}
               </g>
             );
           })}
@@ -257,6 +276,7 @@ export function FittingCanvasPlotOverlay({
             >
             {sd.garmentShoulderPoints.map(([x, y], i) => {
               if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+              if (garmentPlotFilterSet != null && !garmentPlotFilterSet.has(i)) return null;
               const hlRoles = vertexHighlightRoles(i, genericVertexPlotHighlight);
               const isSnapBody =
                 genericVertexPlotHighlight?.lowerSleeveFollowLinkedGlobals?.includes(i) === true;
@@ -271,8 +291,24 @@ export function FittingCanvasPlotOverlay({
               const labelFill = isSnapBody ? "#0e7490" : isHl ? "#4ade80" : "#334155";
               const stroke = isSnapBody ? "#155e75" : isHl ? "#166534" : "#334155";
               const hlNote = isHl ? ` [${hlRoles.join(" · ")}]` : "";
+              const isWidgetFitGlow = hlRoles.includes("ウィジェット体型");
+              const showIndexText = shouldShowPlotIndexLabel(
+                i,
+                plotIndexLabelDensity,
+                isHl || isSnapBody || hoveredGarmentVertexIndex === i || garmentPlotFilterSet != null
+              );
               return (
-                <g key={`pt-${i}-${x}-${y}`}>
+                <g
+                  key={`pt-${i}-${x}-${y}`}
+                  style={
+                    isWidgetFitGlow
+                      ? {
+                          filter:
+                            "drop-shadow(0 0 10px rgba(74, 222, 128, 0.92)) drop-shadow(0 0 4px rgba(22, 163, 74, 0.88))",
+                        }
+                      : undefined
+                  }
+                >
                   <circle
                     cx={x}
                     cy={y}
@@ -304,22 +340,24 @@ export function FittingCanvasPlotOverlay({
                       }`}
                     </title>
                   </circle>
-                  <text
-                    x={x + ox}
-                    y={y + oy}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fontSize={labelSize}
-                    fill={labelFill}
-                    fontFamily="monospace"
-                    fontWeight="bold"
-                    stroke="white"
-                    strokeWidth={indexStrokeW}
-                    paintOrder="stroke fill"
-                    pointerEvents="none"
-                  >
-                    {`#${i}`}
-                  </text>
+                  {showIndexText ? (
+                    <text
+                      x={x + ox}
+                      y={y + oy}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fontSize={labelSize}
+                      fill={labelFill}
+                      fontFamily="monospace"
+                      fontWeight="bold"
+                      stroke="white"
+                      strokeWidth={indexStrokeW}
+                      paintOrder="stroke fill"
+                      pointerEvents="none"
+                    >
+                      {`#${i}`}
+                    </text>
+                  ) : null}
                 </g>
               );
             })}

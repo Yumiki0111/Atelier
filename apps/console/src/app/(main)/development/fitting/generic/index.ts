@@ -28,7 +28,9 @@ export {
   parseSleeveMeasureVertexList,
   appendSleeveMeasureVertexWithR,
   lineIndexInRange,
+  parseIndexSetListInput,
 } from "./lineRangeUtils";
+export type { ParseIndexSetListResult } from "./lineRangeUtils";
 
 export {
   resolveGenericScalableSpec,

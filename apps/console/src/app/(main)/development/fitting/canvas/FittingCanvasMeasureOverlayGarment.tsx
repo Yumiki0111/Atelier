@@ -224,7 +224,7 @@ export function FittingCanvasMeasureOverlayGarment({ g }: { g: GarmentG }): Reac
           身幅 {g.size.chest}cm（採寸のみ）
         </text>
       )}
-      {(!g.sleeveStart || !g.sleeveEnd) && (
+      {(!g.sleeveStart || !g.sleeveEnd) && Number.isFinite(g.size.sleeve) && g.size.sleeve > 0 && (
         <text x={lineLengthX + 24} y={hemY + 56} fontSize={14} fontWeight="bold" fill="#a21caf" fontFamily="sans-serif" dominantBaseline="middle">
           袖丈 {g.size.sleeve}cm（採寸のみ）
         </text>

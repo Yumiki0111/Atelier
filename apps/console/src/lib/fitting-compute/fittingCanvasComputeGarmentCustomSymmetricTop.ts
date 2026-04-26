@@ -18,6 +18,7 @@ import {
   resolveEffectiveSleeveGradingGeometry,
 } from "@/app/(main)/development/fitting/generic/resolveEffectiveSleeveGradingGeometry";
 import {
+  applyGradeLengthHorizontalScaleToMeshPaths,
   applyGradeLengthVerticalScaleToMeshPaths,
   computeGradeLengthVerticalScaleParams,
   wrapDesignToGarmentCanvasWithYScale,
@@ -99,7 +100,7 @@ export type GenericTopLengthMeshResult = {
   customPathDs: string[];
   customPoints: [number, number][];
   designToGarmentCanvasForOverlay: (gx: number, gy: number) => [number, number];
-  canvasYGradeScale: { lengthTopY: number; scale: number } | null;
+  canvasYGradeScale: { lengthTopY: number; scale: number; midShoulderX?: number } | null;
   lengthGeomBeforeLengthMeshDebug?: GarmentLengthGeomBeforeLengthMeshDebug;
   customPointsBeforeFabricWarpOut: [number, number][] | null;
   /** 紫着丈＋baseline 適格だがメッシュをかけなかったときの理由（デバッグ用） */
@@ -157,7 +158,7 @@ export function applyGenericTopLengthMeshIfEligible(input: {
   let customPathDs = pathIn;
   let customPoints = ptsIn;
   let designToGarmentCanvasForOverlay = designToGarmentCanvas;
-  let canvasYGradeScale: { lengthTopY: number; scale: number } | null = null;
+  let canvasYGradeScale: { lengthTopY: number; scale: number; midShoulderX?: number } | null = null;
   let lengthGeomBeforeLengthMeshDebug: GarmentLengthGeomBeforeLengthMeshDebug | undefined;
   let outBeforeWarp: [number, number][] | null = customPointsBeforeFabricWarp;
   let lengthMeshSkipReason: string | undefined;
@@ -220,11 +221,29 @@ export function applyGenericTopLengthMeshIfEligible(input: {
         );
         customPathDs = applied.customPathDs;
         customPoints = applied.customPoints;
-        canvasYGradeScale = { lengthTopY: gradeParams.lengthTopY, scale: gradeParams.scale };
+        const sleeveNotEntered = !Number.isFinite(sizeForGrade.sleeve) || sizeForGrade.sleeve <= 0;
+        let xPivot: number | undefined;
+        if (sleeveNotEntered) {
+          const h = applyGradeLengthHorizontalScaleToMeshPaths(
+            customPathDs,
+            customPoints,
+            gradeParams.midShoulderX,
+            gradeParams.scale
+          );
+          customPathDs = h.customPathDs;
+          customPoints = h.customPoints;
+          xPivot = gradeParams.midShoulderX;
+        }
+        canvasYGradeScale = {
+          lengthTopY: gradeParams.lengthTopY,
+          scale: gradeParams.scale,
+          ...(xPivot != null && Number.isFinite(xPivot) ? { midShoulderX: xPivot } : {}),
+        };
         designToGarmentCanvasForOverlay = wrapDesignToGarmentCanvasWithYScale(
           designToGarmentCanvas,
           gradeParams.lengthTopY,
-          gradeParams.scale
+          gradeParams.scale,
+          xPivot
         );
         outBeforeWarp = null;
       }

@@ -11,7 +11,7 @@ import Link from "next/link";
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { login, isAuthenticated, isLoading: authLoading, isProvisionAdmin } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -25,11 +25,11 @@ function LoginForm() {
       setMessage(messageParam);
     }
 
-    // 既にログインしている場合はホームにリダイレクト
+    // 既にログインしている場合はホーム or 発行画面へ
     if (isAuthenticated && !authLoading) {
-      router.replace("/");
+      router.replace(isProvisionAdmin ? "/admin/provision-shop" : "/");
     }
-  }, [isAuthenticated, authLoading, router, searchParams]);
+  }, [isAuthenticated, authLoading, isProvisionAdmin, router, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

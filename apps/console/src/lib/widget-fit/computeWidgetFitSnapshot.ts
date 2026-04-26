@@ -1,7 +1,7 @@
 import "server-only";
 
 import { computeFittingCanvasSnapshot } from "@/lib/fitting-compute/fittingCanvasCompute";
-import { loadBPATHS_RIG_LINES } from "@/app/(main)/development/fitting/lib/pathData";
+import { getBodyRigLinePathsTemplate } from "@/app/(main)/development/fitting/lib/bodyModelVariant";
 import { shouldSuppressGarmentPathRender } from "@/app/(main)/development/fitting/lib/pathUtils";
 import type { CustomGarmentData, ShirtSize } from "@/app/(main)/development/fitting/lib/types";
 import { buildWidgetFitEaseDiagramFromSnapshot } from "@/lib/widget-fit/buildWidgetFitEaseDiagram";
@@ -36,7 +36,8 @@ export async function computeWidgetFitSnapshot(params: {
   fitEaseSummary: WidgetFitEaseSummaryJson;
   fitEaseDiagram: WidgetFitEaseDiagramJson | null;
 }> {
-  const rigLinePaths = await loadBPATHS_RIG_LINES();
+  const bodyModelVariant = params.customGarmentData.bodyModelVariant;
+  const rigLinePaths = getBodyRigLinePathsTemplate(bodyModelVariant);
   const shirtSize: ShirtSize = "48";
   const snap = computeFittingCanvasSnapshot({
     height: params.heightCm,
@@ -49,6 +50,7 @@ export async function computeWidgetFitSnapshot(params: {
     fromSize: null,
     toSize: null,
     rigBodyEnabled: false,
+    bodyModelVariant,
     genericVertexPlotHighlight: null,
     rigLinePaths,
   });

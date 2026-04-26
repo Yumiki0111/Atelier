@@ -10,7 +10,7 @@ import {
   blendDeformedWithIndentWarpRelief,
 } from "@/app/(main)/development/fitting/lib/bodyUtils";
 import { tPath, getPathPoints, pointAtGlobalVertexIndex } from "@/app/(main)/development/fitting/lib/pathUtils";
-import { BPATHS_MODEL } from "@/app/(main)/development/fitting/lib/pathData";
+import { getBodyTemplatePaths } from "@/app/(main)/development/fitting/lib/bodyModelVariant";
 import {
   BZ,
   BODY_CX,
@@ -75,9 +75,22 @@ export function computeFittingCanvasSnapshot(
     fromCustomGarmentData = null,
     toCustomGarmentData = null,
     genericVertexPlotHighlight = null,
+    bodyModelVariant,
     rigLinePaths,
   }: UseFittingCanvasDataParams & { rigLinePaths: string[] | null }
 ): FittingCanvasSnapshot {
+  const bodyPathsTemplate = getBodyTemplatePaths(bodyModelVariant);
+  /** 検証ボディは連結 # が `mv_model` と不一致のため、リグスキン後の胴くびれリリーフのみオフ */
+  const indentReliefForRigSkin = bodyModelVariant !== "lineArtVerification";
+  /**
+   * 検証モデルは SVG 上の腕（リグ path1/2）の向きを保ちたい。
+   * `applyRigArmAngleTiltToWarpedRigPaths` と服側の同系回転は身長基準 170 に固定（= 追加回転なし）。
+   * 脊髄合わせ（`alignRigRefPathsToCurrentSpine`）によるスケールは残るため、身長を大きく動かすと
+   * 鎖骨・脊髄との相対角にごく小さな差は出うる。
+   * カスタム服の布パスは検証・既定とも同一（肩剛体＋脊髄合わせ）。検証のみ胴リリーフオフ・腕チルト REF 固定・線画テンプレ。
+   */
+  const heightForRigArmTilt = bodyModelVariant === "lineArtVerification" ? REF_HEIGHT_CM : height;
+
   const { yScale, xScale } = getBodyParams(height, weight, rigLinePaths);
   const zones = getZonesAnchored(yScale);
   const { left: leftArmOutline, right: rightArmOutline } = getInterpolatedArmOutline(height);
@@ -170,8 +183,10 @@ export function computeFittingCanvasSnapshot(
       ? alignRigRefPathsToCurrentSpine(rigRefWarpedPaths, rigLineWarpedPaths)
       : rigRefWarpedPaths;
 
-  const rigArmTiltTwistL = (-(height - REF_HEIGHT_CM) * (RIG_ARM_TOWARD_VERTICAL_DEG_PER_CM * Math.PI)) / 180;
-  const rigArmTiltTwistR = ((height - REF_HEIGHT_CM) * (RIG_ARM_TOWARD_VERTICAL_DEG_PER_CM * Math.PI)) / 180;
+  const rigArmTiltTwistL =
+    (-(heightForRigArmTilt - REF_HEIGHT_CM) * (RIG_ARM_TOWARD_VERTICAL_DEG_PER_CM * Math.PI)) / 180;
+  const rigArmTiltTwistR =
+    ((heightForRigArmTilt - REF_HEIGHT_CM) * (RIG_ARM_TOWARD_VERTICAL_DEG_PER_CM * Math.PI)) / 180;
 
   const rigArmPivotLGarment: [number, number] | null =
     rigLineWarpedRigViewPathsBaseGarment.length > RIG_LINE_ARM_L
@@ -212,7 +227,7 @@ export function computeFittingCanvasSnapshot(
     rigLineWarpedRigViewPathsBase.length > RIG_LINE_CLAVICLE_R
       ? applyRigArmAngleTiltToWarpedRigPaths(
           rigLineWarpedRigViewPathsBase,
-          height,
+          heightForRigArmTilt,
           RIG_LINE_ARM_L,
           RIG_LINE_ARM_R
         )
@@ -236,14 +251,14 @@ export function computeFittingCanvasSnapshot(
     if (rigSkinSegments == null) return warpFn(x, y);
     const warpedOnly = warpPlain(x, y);
     const deformed = deformBodyPointToRig(x, y, rigSkinSegments, warpPlain);
-    return blendDeformedWithIndentWarpRelief(x, y, warpedOnly, deformed);
+    return blendDeformedWithIndentWarpRelief(x, y, warpedOnly, deformed, indentReliefForRigSkin);
   };
 
   /** 腕山: 体輪郭と同じ `bodyFollowFn`（`warpArmOutline` だけだとリグスキン後のシルエットとズレる） */
   const armPeakLeft = bodyFollowFn(leftArmOutline[armPeakIdxL]![0], leftArmOutline[armPeakIdxL]![1]);
   const armPeakRight = bodyFollowFn(rightArmOutline[armPeakIdxR]![0], rightArmOutline[armPeakIdxR]![1]);
 
-  const bodyPaths = BPATHS_MODEL.map((d) => tPath(d, bodyFollowFn));
+  const bodyPaths = bodyPathsTemplate.map((d) => tPath(d, bodyFollowFn));
   const rigRedLineArmDiagram =
     rigLineWarpedRigViewPaths.length >= RIG_LINE_PATH_COUNT
       ? buildRigRedLineArmDiagram(rigLineWarpedRigViewPaths)
@@ -255,7 +270,7 @@ export function computeFittingCanvasSnapshot(
   const bodyShoulderBandYMin = BZ.shoulder - 5;
   const bodyShoulderBandYMax = BZ.shoulder + 15;
   const bodyRaw = shoulderContourFromPath(
-    BPATHS_MODEL,
+    bodyPathsTemplate,
     bodyShoulderBandYMin,
     bodyShoulderBandYMax
   );
@@ -371,15 +386,59 @@ export function computeFittingCanvasSnapshot(
     rigLandmarksDebug = cu.rigLandmarksDebug;
   }
 
-  const viewBoxHeight = Math.ceil(bodyHeight(yScale));
+  const baseViewBoxH = Math.ceil(bodyHeight(yScale));
+  let viewBoxHeight = baseViewBoxH;
+  /** 検証ボディはワープ後の足先がテンプレ BZ.foot 基準の高さをわずかに超えうる。はみ出しで「縮小表示」に見えないよう底を広げる */
+  if (bodyModelVariant === "lineArtVerification" && bodyPaths.length > 0) {
+    let maxY = -Infinity;
+    for (const d of bodyPaths) {
+      for (const [, y] of getPathPoints(d)) {
+        if (y > maxY) maxY = y;
+      }
+    }
+    if (Number.isFinite(maxY)) {
+      viewBoxHeight = Math.max(baseViewBoxH, Math.ceil(maxY + 20));
+    }
+  }
+
+  let viewBoxMinX = 0;
+  let viewBoxWidth = 1505;
+  /** mv_model 同系の水平スケールにした検証ボディは腕先が 0–1505 をはみ出す。viewBox を内容に合わせ拡げる */
+  if (bodyModelVariant === "lineArtVerification") {
+    const pad = 32;
+    let minX = Infinity;
+    let maxX = -Infinity;
+    const scanXs = (ds: string[]) => {
+      for (const d of ds) {
+        for (const [x] of getPathPoints(d)) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+        }
+      }
+    };
+    scanXs(bodyPaths);
+    const rigDraw =
+      rigLineWarpedRigViewPaths.length > 0 ? rigLineWarpedRigViewPaths : rigLineWarpedPaths;
+    if (rigDraw.length > 0) scanXs(rigDraw);
+    if (garment === "custom" && customPathDs.length > 0) scanXs(customPathDs);
+    else if (garment === "shirt" && shirtPathD) scanXs([shirtPathD]);
+    else if (garment === "jacket" && jacketFill != null) {
+      scanXs([jacketFill]);
+      if (jacketDetail) scanXs([jacketDetail]);
+    }
+    if (Number.isFinite(minX) && Number.isFinite(maxX)) {
+      viewBoxMinX = Math.min(0, Math.floor(minX - pad));
+      viewBoxWidth = Math.max(1505, Math.ceil(maxX + pad - viewBoxMinX));
+    }
+  }
 
   const bodyVertexDebugEntries: FittingCanvasSnapshot["bodyVertexDebugEntries"] =
     isDebugFittingBodyVerticesEnabled()
       ? (() => {
           const out: { globalIndex: number; template: [number, number] }[] = [];
           for (const gi of DEBUG_BODY_VERTEX_GLOBAL_INDICES) {
-            const tpl = pointAtGlobalVertexIndex(BPATHS_MODEL, gi);
-            const warped = bodyOutlinePoints[gi];
+            const tpl = pointAtGlobalVertexIndex(bodyPathsTemplate, gi);
+            const warped = pointAtGlobalVertexIndex(bodyPaths, gi);
             if (tpl == null || warped == null) continue;
             out.push({ globalIndex: gi, template: tpl });
             console.log("[DEBUG_FITTING_BODY_VERTICES]", {
@@ -398,6 +457,8 @@ export function computeFittingCanvasSnapshot(
     rigLineWarpedPaths,
     rigLineWarpedRigViewPaths,
     rigRedLineArmDiagram,
+    viewBoxMinX,
+    viewBoxWidth,
     viewBoxHeight,
     shirtPathD,
     jacketFill,

@@ -8,13 +8,16 @@ import type {
   CustomGarmentData,
   ShoulderDebug,
   GenericVertexPlotHighlight,
+  PlotIndexLabelDensity,
 } from "../lib/types";
+import type { BodyModelVariant } from "../lib/bodyModelVariant";
 import { useFittingCanvasData } from "./useFittingCanvasData";
 import { shouldSuppressGarmentPathRender } from "../lib/pathUtils";
 import { FittingCanvasPlotOverlay } from "./FittingCanvasPlotOverlay";
 import { FittingCanvasMeasureOverlay } from "./FittingCanvasMeasureOverlay";
 import { FittingCanvasSleeveDebugPanel } from "./FittingCanvasSleeveDebugPanel";
 import { FittingCanvasRigAngleDiagram } from "./FittingCanvasRigAngleDiagram";
+import { BODY_CX } from "../lib/constants";
 
 export interface FittingCanvasProps {
   height: number;
@@ -36,6 +39,8 @@ export interface FittingCanvasProps {
   showRigAngleDiagram?: boolean;
   /** model+rig.svg のボディ輪郭（rig 混ざり）を使う */
   rigBodyEnabled?: boolean;
+  /** 開発のみ: 線画検証ボディ（4862 系 SVG 由来）。既定は mv_model */
+  bodyModelVariant?: BodyModelVariant;
   /** アップロード SVG 内の「服のリグ（debugRigPathDs）」を描画する */
   rigGarmentEnabled?: boolean;
   /** 汎用フィット入力中の連結頂点範囲（服プロットを緑で強調） */
@@ -48,6 +53,12 @@ export interface FittingCanvasProps {
   garmentVertexPickEnabled?: boolean;
   garmentVertexLinkPickActive?: boolean;
   onGarmentVertexLinkToggle?: (globalVertexIndex: number) => void;
+  /** 連結 # テキストの間引き（頂点の円・ツールチップはそのまま） */
+  plotIndexLabelDensity?: PlotIndexLabelDensity;
+  /** 間引き時もホバー中の服 # を常に表示 */
+  hoveredGarmentVertexIndex?: number | null;
+  /** 服プロットで表示する連結 # のみ（null / 未指定で全頂点） */
+  garmentPlotVertexFilter?: number[] | null;
 }
 
 export function FittingCanvas({
@@ -68,6 +79,7 @@ export function FittingCanvas({
   showBodyPlotCoords = false,
   showRigAngleDiagram = false,
   rigBodyEnabled = false,
+  bodyModelVariant,
   rigGarmentEnabled = false,
   genericVertexPlotHighlight = null,
   onCustomPathClick,
@@ -75,13 +87,16 @@ export function FittingCanvas({
   garmentVertexPickEnabled = false,
   garmentVertexLinkPickActive = false,
   onGarmentVertexLinkToggle,
+  plotIndexLabelDensity = "all",
+  hoveredGarmentVertexIndex = null,
+  garmentPlotVertexFilter = null,
 }: FittingCanvasProps) {
-  const viewBoxWidth = 1505;
-  const modelCenterX = viewBoxWidth / 2;
   const {
     bodyPaths,
     rigLineWarpedPaths,
     rigLineWarpedRigViewPaths,
+    viewBoxMinX,
+    viewBoxWidth,
     viewBoxHeight,
     shirtPathD,
     jacketFill,
@@ -112,8 +127,11 @@ export function FittingCanvas({
     fromCustomGarmentData,
     toCustomGarmentData,
     rigBodyEnabled,
+    bodyModelVariant,
     genericVertexPlotHighlight,
   });
+
+  const modelCenterX = BODY_CX;
 
   const [showCanvasDebugHud] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -198,7 +216,7 @@ export function FittingCanvas({
           style={{ aspectRatio: `${viewBoxWidth} / ${viewBoxHeight}` }}
         >
           <svg
-            viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
+            viewBox={`${viewBoxMinX} 0 ${viewBoxWidth} ${viewBoxHeight}`}
             preserveAspectRatio="xMidYMid meet"
             className="block h-full w-full overflow-visible"
             xmlns="http://www.w3.org/2000/svg"
@@ -292,6 +310,9 @@ export function FittingCanvas({
           garmentVertexPickEnabled={garmentVertexPickEnabled}
           garmentVertexLinkPickActive={garmentVertexLinkPickActive}
           onGarmentVertexLinkToggle={onGarmentVertexLinkToggle}
+          plotIndexLabelDensity={plotIndexLabelDensity}
+          hoveredGarmentVertexIndex={hoveredGarmentVertexIndex}
+          garmentPlotVertexFilter={garmentPlotVertexFilter}
         />
         {showRigAngleDiagram ? (
           <FittingCanvasRigAngleDiagram

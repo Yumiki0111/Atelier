@@ -1,31 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { authorizeInternalAdminRequest } from "@/lib/auth/internalAdminRequest";
 
 /**
  * Shops List API（FIT&LOOK 運営者向け管理者 API）
  * 
  * 全ショップの一覧を取得する。
  * 
- * 認可: 環境変数 Atelier_ADMIN_TOKEN で保護
+ * 認可: ADMIN_TOKEN（x-admin-token）またはプラットフォーム管理者 Bearer
  */
 export async function GET(request: NextRequest) {
   try {
-    
-
-    // 管理者トークンで認証
-    const adminToken = request.headers.get("x-Atelier-admin-token");
-    const expectedToken = process.env.Atelier_ADMIN_TOKEN;
-
-    if (!expectedToken) {
-      console.error("[shops list API] Atelier_ADMIN_TOKEN not configured");
-      return NextResponse.json(
-        { error: "Admin token not configured" },
-        { status: 500 }
-      );
-    }
-
-    if (!adminToken || adminToken !== expectedToken) {
-      console.warn("[shops list API] Invalid or missing admin token");
+    const authorized = await authorizeInternalAdminRequest(request);
+    if (!authorized) {
+      console.warn("[shops list API] Unauthorized internal admin request");
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }

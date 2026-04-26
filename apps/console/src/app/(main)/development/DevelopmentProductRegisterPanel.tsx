@@ -7,6 +7,7 @@ import type {
   JacketSize,
   ShirtSize,
 } from "@/app/(main)/development/fitting/lib/types";
+import type { BodyModelVariant } from "@/app/(main)/development/fitting/lib/bodyModelVariant";
 import { logDevFitPipelineAfterSizePresetChange } from "@/lib/fitting-compute/fittingCanvasDevSizePresetDebug";
 import { sanitizeCustomGarmentForProductDb } from "@/app/(main)/development/fitting/lib/sanitizeCustomGarmentForProductDb";
 import { validateGarmentSpecForProduction } from "@/lib/products/validateGarmentSpecForProduction";
@@ -24,6 +25,8 @@ import { CircularImageCropDialog } from "@/features/products/components/Circular
 interface DevelopmentProductRegisterPanelProps {
   garment: GarmentType;
   customGarmentData: CustomGarmentData | null;
+  /** 検証ボディ ON で登録すると `garment_spec.bodyModelVariant` に保存され、ライブラリ／プレビューでも同じボディになる */
+  bodyModelVariant?: BodyModelVariant;
   /** 開発用: DB 登録成功時に `computeFittingCanvasSnapshot` でパイプラインを console へ出す */
   fitDebugContext?: {
     height: number;
@@ -36,6 +39,7 @@ interface DevelopmentProductRegisterPanelProps {
 export function DevelopmentProductRegisterPanel({
   garment,
   customGarmentData,
+  bodyModelVariant = "default",
   fitDebugContext = null,
 }: DevelopmentProductRegisterPanelProps) {
   const { shopId } = useAuth();
@@ -106,7 +110,13 @@ export function DevelopmentProductRegisterPanel({
       return;
     }
 
-    const garmentSpec = sanitizeCustomGarmentForProductDb(customGarmentData);
+    const specForDb: CustomGarmentData = {
+      ...customGarmentData,
+      ...(bodyModelVariant === "lineArtVerification"
+        ? { bodyModelVariant: "lineArtVerification" as const }
+        : {}),
+    };
+    const garmentSpec = sanitizeCustomGarmentForProductDb(specForDb);
     const specOk = validateGarmentSpecForProduction(garmentSpec);
     if (!specOk.ok) {
       toast.error(specOk.message);

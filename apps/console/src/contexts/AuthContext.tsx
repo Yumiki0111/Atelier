@@ -1,15 +1,29 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { supabase, setAuthFetchFailureCallback } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
+import {
+  isPlatformAdminEmailClient,
+  isProvisionAdminEmailClient,
+} from "@/lib/auth/platformAdmin";
+import { FITANDLOOK_OPERATOR_SHOP_STORAGE_KEY } from "@/lib/auth/operatorShop";
 
 interface AuthContextType {
   isAuthenticated: boolean;
   shopId: string;
+  /** 発行管理者がショップ一覧から選んだ代理表示先（未選択時は null） */
+  operatorShopId: string | null;
+  setOperatorShopId: (shopId: string | null) => void;
   user: User | null;
   userRole: "owner" | "member" | null;
+  /** 運営メール。開発タブなどフルコンソール権限の表示用（PLATFORM_ADMIN_EMAILS）。 */
+  isPlatformAdmin: boolean;
+  /** ブランド（ショップ）発行・/admin/* のみ（既定は info@ のみ、PROVISION_ADMIN_EMAILS） */
+  isProvisionAdmin: boolean;
+  /** 開発ナビ・/development: ブランド側オーナー or 非発行のプラットフォーム管理者（発行専用アカウントは除外） */
+  canAccessDevelopment: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name?: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -20,10 +34,38 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [shopId, setShopId] = useState<string>("default_shop");
-  const [userRole, setUserRole] = useState<"owner" | "member" | null>(null);
+  const [profileShopId, setProfileShopId] = useState<string>("default_shop");
+  const [profileUserRole, setProfileUserRole] = useState<"owner" | "member" | null>(null);
+  const [operatorShopId, setOperatorShopIdState] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+
+  const setOperatorShopId = useCallback((id: string | null) => {
+    if (typeof window !== "undefined") {
+      if (id) {
+        window.localStorage.setItem(FITANDLOOK_OPERATOR_SHOP_STORAGE_KEY, id);
+      } else {
+        window.localStorage.removeItem(FITANDLOOK_OPERATOR_SHOP_STORAGE_KEY);
+      }
+    }
+    setOperatorShopIdState(id);
+  }, []);
+
+  // 発行管理者: ブラウザに保存した代理表示ショップを復元（非発行ユーザーではストレージを消す）
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!user?.email) {
+      setOperatorShopIdState(null);
+      return;
+    }
+    if (!isProvisionAdminEmailClient(user.email)) {
+      setOperatorShopIdState(null);
+      window.localStorage.removeItem(FITANDLOOK_OPERATOR_SHOP_STORAGE_KEY);
+      return;
+    }
+    const stored = window.localStorage.getItem(FITANDLOOK_OPERATOR_SHOP_STORAGE_KEY)?.trim();
+    setOperatorShopIdState(stored && stored.length > 0 ? stored : null);
+  }, [user?.email]);
 
   // 認証トークン取得失敗時にセッションをクリアし、リトライの連鎖を止める
   useEffect(() => {
@@ -79,8 +121,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (process.env.NODE_ENV === "development") {
             console.warn("[AuthContext] fetchShopId failed on init:", shopIdError);
           }
-          setShopId("default_shop");
-          setUserRole(null);
+          setProfileShopId("default_shop");
+          setProfileUserRole(null);
         } finally {
           setIsLoading(false);
         }
@@ -90,8 +132,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }).catch((err) => {
       if (!isMounted) return;
       console.warn("[AuthContext] Initial session handling failed:", err);
-      setShopId("default_shop");
-      setUserRole(null);
+      setProfileShopId("default_shop");
+      setProfileUserRole(null);
       setIsLoading(false);
     });
 
@@ -111,13 +153,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await fetchShopId(session.user.id, session.access_token);
         } catch (error) {
           console.error("[AuthContext] Error in fetchShopId during auth state change:", error);
-          setShopId("default_shop");
+          setProfileShopId("default_shop");
         } finally {
           setIsLoading(false);
         }
       } else {
-        setShopId("default_shop");
-        setUserRole(null);
+        setProfileShopId("default_shop");
+        setProfileUserRole(null);
         setIsLoading(false);
       }
     });
@@ -139,7 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (process.env.NODE_ENV === "development") {
           console.warn("[AuthContext] No access token provided, using default shop_id");
         }
-        setShopId("default_shop");
+        setProfileShopId("default_shop");
         setIsLoading(false);
         return;
       }
@@ -191,12 +233,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (process.env.NODE_ENV === "development") {
           console.log("[AuthContext] shop_id found:", data.shopId);
         }
-        setShopId(String(data.shopId));
+        setProfileShopId(String(data.shopId));
       } else {
         if (process.env.NODE_ENV === "development") {
           console.warn("[AuthContext] No shop_id found in response, data:", data);
         }
-        setShopId("default_shop");
+        setProfileShopId("default_shop");
       }
 
       // role を設定
@@ -204,20 +246,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (process.env.NODE_ENV === "development") {
           console.log("[AuthContext] role found:", data.role);
         }
-        setUserRole(data.role);
+        setProfileUserRole(data.role);
       } else {
         if (process.env.NODE_ENV === "development") {
           console.warn("[AuthContext] No valid role found in response");
         }
-        setUserRole(null);
+        setProfileUserRole(null);
       }
     } catch (error: any) {
       const errorMessage = error?.message || String(error) || "Unknown error";
       console.error("[AuthContext] Error in fetchShopId:", errorMessage, error);
       
       // エラーでもデフォルト値を使用して続行
-      setShopId("default_shop");
-      setUserRole(null);
+      setProfileShopId("default_shop");
+      setProfileUserRole(null);
     } finally {
       // 必ずローディング状態を解除
       if (process.env.NODE_ENV === "development") {
@@ -359,21 +401,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           );
         }
         // デフォルトのshop_idを設定
-        setShopId("default_shop");
+        setProfileShopId("default_shop");
       }
       
       // ローディング状態を確実に解除
       setIsLoading(false);
 
-      // ログイン成功後、即座にリダイレクト
+      // ログイン成功後、即座にリダイレクト（発行管理者はアカウント発行画面へ）
+      const dest = isProvisionAdminEmailClient(data.user.email)
+        ? "/admin/provision-shop"
+        : "/";
       if (process.env.NODE_ENV === "development") {
-        console.log("[AuthContext] Redirecting to home page");
+        console.log("[AuthContext] Redirecting to", dest);
       }
-      // window.locationを使用して確実にリダイレクト
-      if (typeof window !== 'undefined') {
-        window.location.href = '/';
+      if (typeof window !== "undefined") {
+        window.location.href = dest;
       } else {
-        router.replace("/");
+        router.replace(dest);
       }
     } catch (error: any) {
       console.error("[AuthContext] Login exception:", error);
@@ -441,12 +485,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
-    setShopId("default_shop");
-    setUserRole(null);
+    setProfileShopId("default_shop");
+    setProfileUserRole(null);
+    setOperatorShopIdState(null);
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(FITANDLOOK_OPERATOR_SHOP_STORAGE_KEY);
+    }
     router.push("/login");
   };
 
   const isAuthenticated = !!user;
+
+  const isPlatformAdmin = useMemo(
+    () => isPlatformAdminEmailClient(user?.email),
+    [user?.email]
+  );
+
+  const isProvisionAdmin = useMemo(
+    () => isProvisionAdminEmailClient(user?.email),
+    [user?.email]
+  );
+
+  const shopId = useMemo(
+    () => (isProvisionAdmin && operatorShopId ? operatorShopId : profileShopId),
+    [isProvisionAdmin, operatorShopId, profileShopId]
+  );
+
+  const userRole = useMemo(
+    (): "owner" | "member" | null =>
+      isProvisionAdmin && operatorShopId ? "owner" : profileUserRole,
+    [isProvisionAdmin, operatorShopId, profileUserRole]
+  );
+
+  const canAccessDevelopment = useMemo(
+    () =>
+      (isProvisionAdmin && !!operatorShopId) ||
+      (!isProvisionAdmin && (profileUserRole === "owner" || isPlatformAdmin)),
+    [isProvisionAdmin, operatorShopId, profileUserRole, isPlatformAdmin]
+  );
 
   // デバッグ用ログ（開発環境のみ）
   useEffect(() => {
@@ -463,7 +539,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ isAuthenticated, shopId, user, userRole, login, signup, logout, isLoading }}
+      value={{
+        isAuthenticated,
+        shopId,
+        operatorShopId,
+        setOperatorShopId,
+        user,
+        userRole,
+        isPlatformAdmin,
+        isProvisionAdmin,
+        canAccessDevelopment,
+        login,
+        signup,
+        logout,
+        isLoading,
+      }}
     >
       {children}
     </AuthContext.Provider>

@@ -9,7 +9,7 @@ Atelier で使用している各種「キー」について、役割・使い方
 Atelier では大きく分けて次の 3 種類のキーを扱います。
 
 - **プラットフォーム運営者向けキー**
-  - `Atelier_ADMIN_TOKEN`
+  - `ADMIN_TOKEN`
 - **暗号化のための内部キー**
   - `SECRET_KEY_SALT`
 - **各テナント（ショップ）向けの Widget キー**
@@ -20,7 +20,7 @@ Atelier では大きく分けて次の 3 種類のキーを扱います。
 
 ---
 
-## 2. Atelier_ADMIN_TOKEN（管理者トークン）
+## 2. ADMIN_TOKEN（管理者トークン）
 
 **用途（誰のためのキーか）**
 
@@ -29,13 +29,13 @@ Atelier では大きく分けて次の 3 種類のキーを扱います。
 
 **どこで使うか**
 
-- API: `POST /api/internal/provision-shop`
+- API: `POST /api/internal/provision-shop`（HTTP ヘッダ `x-admin-token: <値>`。旧名 `x-Atelier-admin-token` も可）
 - ページ: `/admin/provision-shop`（管理者専用 UI）
 
 **値の例**
 
 ```text
-Atelier_ADMIN_TOKEN=70f5be8997a591fec126e304e105409149036b26bfdaabf15d8bd06daad4b8a4
+ADMIN_TOKEN=70f5be8997a591fec126e304e105409149036b26bfdaabf15d8bd06daad4b8a4
 ```
 
 **保存場所**
@@ -78,7 +78,7 @@ SECRET_KEY_SALT=5a9635770cd95b6010c5ba04b708a220
 **セキュリティ上のポイント**
 
 - これ自体は外向きには一切使わない「内部用キー」
-- `Atelier_ADMIN_TOKEN` と同様に外部公開は禁止
+- `ADMIN_TOKEN` と同様に外部公開は禁止
 - 頻繁に変える必要はないが、漏洩した場合は **新しい SALT + 全 Secret Key 再発行** が必要になる
 
 ---
@@ -156,7 +156,7 @@ GET /api/public/widget-config?publicKey=pub_live_030b64caa84e2995672163c125d600b
 
 | 種類 | 例 | 誰が使うか | 用途 | 保存場所 |
 |------|----|-----------|------|----------|
-| **Atelier_ADMIN_TOKEN** | `70f5...` | Atelier 運営者 | 内部管理 API 認証（ショップ作成など） | `.env.local` / 環境変数 |
+| **ADMIN_TOKEN** | `70f5...` | Atelier 運営者 | 内部管理 API 認証（ショップ作成など） | `.env.local` / 環境変数 |
 | **SECRET_KEY_SALT** | `5a96...` | システム内部 | Secret Key ハッシュ化 | `.env.local` / 環境変数 |
 | **Public Key** | `pub_live_...` | 各ショップ（顧客） | Widget 公開 API 呼び出し（クライアント側） | `widget_keys.public_key` |
 | **Secret Key** | `sec_live_...` | 各ショップ（顧客） | サーバー間 API 認証（将来拡張） | 顧客側の安全なストレージ（Atelier DB にはハッシュのみ） |
@@ -165,7 +165,7 @@ GET /api/public/widget-config?publicKey=pub_live_030b64caa84e2995672163c125d600b
 
 ## 6. 運用・ローテーションの方針
 
-### 6-1. Atelier_ADMIN_TOKEN
+### 6-1. ADMIN_TOKEN
 
 - ローテーションタイミング:
   - 運営メンバーの入れ替わり時
@@ -216,5 +216,5 @@ GET /api/public/widget-config?publicKey=pub_live_030b64caa84e2995672163c125d600b
 
 ---
 
-このドキュメントは、`Atelier_ADMIN_TOKEN` や Widget Keys を扱う際のリファレンスとして利用してください。運用ルールやローテーションポリシーを決める際のベースラインにもなります。
+このドキュメントは、`ADMIN_TOKEN` や Widget Keys を扱う際のリファレンスとして利用してください。運用ルールやローテーションポリシーを決める際のベースラインにもなります。
 

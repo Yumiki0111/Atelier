@@ -4,9 +4,10 @@ import { createClient } from "@supabase/supabase-js";
 
 /**
  * 初回ログイン確定API
- * 
- * pending_invites をチェックし、招待が存在すれば profiles にレコードを作成して確定する。
- * 招待がない場合は 403 を返し、ダッシュボードアクセスを拒否する。
+ *
+ * 1) 既に profiles がある → 成功（手動作成ユーザー・2回目以降のログイン用）
+ * 2) 未受諾の pending_invites がある → profiles を upsert し招待を確定
+ * 3) どちらもない → 403
  */
 export async function POST(request: NextRequest) {
   try {
@@ -72,6 +73,29 @@ export async function POST(request: NextRequest) {
         { error: "User email not found" },
         { status: 400 }
       );
+    }
+
+    const { data: existingProfile, error: existingProfileError } = await supabaseAdmin
+      .from("profiles")
+      .select("shop_id, role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (existingProfileError) {
+      console.error("[post-login API] Error fetching profile:", existingProfileError);
+      return NextResponse.json(
+        { error: "Database error", details: existingProfileError.message },
+        { status: 500 }
+      );
+    }
+
+    if (existingProfile?.shop_id) {
+      console.log("[post-login API] Profile already exists for user:", user.id);
+      return NextResponse.json({
+        success: true,
+        shopId: existingProfile.shop_id,
+        role: existingProfile.role,
+      });
     }
 
     console.log("[post-login API] Looking up pending_invites for email:", userEmail);

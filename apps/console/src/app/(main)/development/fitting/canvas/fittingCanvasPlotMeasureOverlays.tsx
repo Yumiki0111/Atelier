@@ -14,6 +14,8 @@ export function sleeveMeasureOverlayNode(
   customGarmentData: CustomGarmentData,
   genericVertexPlotHighlight?: GenericVertexPlotHighlight | null
 ): ReactNode {
+  const specSleeve = customGarmentData.size.sleeve;
+  if (!Number.isFinite(specSleeve) || specSleeve <= 0) return null;
   const chainGt = customGarmentData.genericSymmetricTop?.sleeveMeasureVertexChain;
   const chainHl = genericVertexPlotHighlight?.sleeveMeasureVertexChain;
   const chain = chainHl != null && chainHl.length >= 2 ? chainHl : chainGt;

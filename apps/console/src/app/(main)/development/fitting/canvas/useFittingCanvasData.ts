@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { BPATHS_RIG_LINES } from "../lib/modelRigData";
+import { getBodyRigLinePathsTemplate } from "../lib/bodyModelVariant";
 import {
   computeFittingCanvasSnapshot,
   type UseFittingCanvasDataParams,
@@ -23,10 +23,11 @@ export function useFittingCanvasData({
   fromCustomGarmentData = null,
   toCustomGarmentData = null,
   rigBodyEnabled = false,
+  bodyModelVariant,
   genericVertexPlotHighlight = null,
 }: UseFittingCanvasDataParams): FittingCanvasSnapshot {
   /** 非同期の `loadBPATHS_RIG_LINES()` だと初回は null → yScale とカスタム服パイプラインが1フレーム遅れ、縮み→収束のように見える。 */
-  const rigLinePaths = BPATHS_RIG_LINES;
+  const rigLinePaths = getBodyRigLinePathsTemplate(bodyModelVariant);
 
   return useMemo(
     () =>
@@ -43,6 +44,7 @@ export function useFittingCanvasData({
         fromCustomGarmentData,
         toCustomGarmentData,
         rigBodyEnabled,
+        bodyModelVariant,
         genericVertexPlotHighlight,
         rigLinePaths,
       }),
@@ -54,6 +56,7 @@ export function useFittingCanvasData({
       jacketSize,
       customGarmentData,
       rigBodyEnabled,
+      bodyModelVariant,
       genericVertexPlotHighlight,
       rigLinePaths,
       animProgress,

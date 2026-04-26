@@ -105,3 +105,34 @@ export function formatLineRangeInput(t: [number, number] | undefined): string {
 export function lineIndexInRange(pathIdx: number, r: LineIndexRange): boolean {
   return pathIdx >= r.from && pathIdx <= r.to;
 }
+
+export type ParseIndexSetListResult =
+  | { ok: true; indices: number[] }
+  | { ok: false; error: string };
+
+/**
+ * 服プロット等の「表示する連結 # だけ」指定用。例: `3`, `1,4,5`, `10-20`, `0,3-5,12`
+ * 空入力は { ok, indices: [] }（呼び出し側で「全表示」と「無効」どちらにするか決める）。
+ */
+export function parseIndexSetListInput(raw: string): ParseIndexSetListResult {
+  const s = normalizeLineRangeInputString(raw);
+  if (s === "") return { ok: true, indices: [] };
+  const parts = s
+    .split(/[,，、]+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const out = new Set<number>();
+  for (const p of parts) {
+    if (/^\d+$/.test(p)) {
+      out.add(Math.trunc(Number(p)));
+      continue;
+    }
+    const r = parseLineRangeInput(p);
+    if (!r) {
+      return { ok: false, error: `解釈できない区間: ${p}` };
+    }
+    const [lo, hi] = r;
+    for (let k = lo; k <= hi; k++) out.add(k);
+  }
+  return { ok: true, indices: [...out].sort((a, b) => a - b) };
+}

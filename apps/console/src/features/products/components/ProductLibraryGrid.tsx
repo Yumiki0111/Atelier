@@ -114,7 +114,7 @@ function sortProducts(products: Product[], sortKey: SortKey): Product[] {
 }
 
 export function ProductLibraryGrid() {
-  const { shopId } = useAuth();
+  const { shopId, canAccessDevelopment } = useAuth();
   const { data: products, isLoading, isError, error } = useProducts();
   const { selectProduct, togglePreview, isPreviewOpen, selectedProduct, clearProductSelection } =
     useProductSelection();
@@ -267,9 +267,11 @@ export function ProductLibraryGrid() {
         <div className="space-y-5 py-16 text-center">
           <Package className="mx-auto h-10 w-10 text-muted-foreground/50" aria-hidden />
           <p className="text-sm font-medium text-foreground">商品がまだありません</p>
-          <Button asChild variant="outline">
-            <Link href="/development">開発メニューを開く</Link>
-          </Button>
+          {canAccessDevelopment ? (
+            <Button asChild variant="outline">
+              <Link href="/development">開発メニューを開く</Link>
+            </Button>
+          ) : null}
         </div>
       )}
       {shopId && !isLoading && !isError && total > 0 && (

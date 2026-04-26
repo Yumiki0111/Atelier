@@ -4,18 +4,31 @@ import {
 } from "../lib/sleeveMeasureBodyExact";
 import { getScalableSpec } from "../lib/customGarmentUtils";
 import { resolveEffectiveSleeveGradingGeometry, resolveGenericScalableSpec } from "../generic";
-import type { CustomGarmentData, GenericVertexPlotHighlight } from "../lib/types";
+import type { CustomGarmentData, GenericVertexPlotHighlight, PlotIndexLabelDensity } from "../lib/types";
+
+/** 連結 # テキストを間引くとき、インデックス `i` を表示するか（`force` は強調・デバッグ・ホバー等） */
+export function shouldShowPlotIndexLabel(
+  i: number,
+  density: PlotIndexLabelDensity,
+  force: boolean
+): boolean {
+  if (force) return true;
+  if (density === "all") return true;
+  if (density === "half") return i % 2 === 0;
+  if (density === "quarter") return i % 4 === 0;
+  return i % 8 === 0;
+}
 
 /** 連結頂点 # の文字（密な頂点でも重なりにくいよう小さめ） */
-export const FONT_INDEX_GARMENT = 14;
-export const FONT_INDEX_GARMENT_HIGHLIGHT = 16;
+export const FONT_INDEX_GARMENT = 8;
+export const FONT_INDEX_GARMENT_HIGHLIGHT = 10;
 
 /**
  * 服プロット（`garmentShoulderPoints`）の `#` ラベル。
  * viewBox 高さが ~3k–4k px と大きいため、`meet` 表示では画面ピクセルに強く縮む。読めるよう user space でも大きめに取る。
  */
-export const FONT_INDEX_GARMENT_PLOT = 40;
-export const FONT_INDEX_GARMENT_PLOT_HIGHLIGHT = 46;
+export const FONT_INDEX_GARMENT_PLOT = 22;
+export const FONT_INDEX_GARMENT_PLOT_HIGHLIGHT = 26;
 
 export function indexLabelStrokeWidth(fontSize: number): number {
   return Math.max(1, Math.round(fontSize * 0.09));
@@ -85,6 +98,8 @@ export function vertexHighlightRoles(i: number, h: GenericVertexPlotHighlight | 
   pushIf("下袖（追従）", h.lowerSleeve);
   pushIf("ミラー下袖（追従）", h.lowerSleeveMirror);
   if (h.lowerSleeveFollowLinkedGlobals?.includes(i)) roles.push("袖下〜胴つなぎ（旧）");
+  const w = h.fitCompareWidgetGlobals;
+  if (w != null && (i === w[0] || i === w[1])) roles.push("ウィジェット体型");
   return roles;
 }
 

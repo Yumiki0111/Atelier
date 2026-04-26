@@ -1,4 +1,9 @@
+import type { BodyModelVariant } from "./bodyModelVariant";
+
 export type GarmentType = "shirt" | "jacket" | "custom";
+
+/** 開発フィット: 連結 # テキストの表示密度（頂点の円・title は常に全部） */
+export type PlotIndexLabelDensity = "all" | "half" | "quarter" | "eighth";
 
 /** 組み込みジャケットのサイズ（JACKET_SIZES のキー） */
 export type JacketSize = "3" | "4" | "5";
@@ -144,6 +149,11 @@ export interface CustomGarmentData {
   };
 
   /**
+   * 試着キャンバスの 2D ボディ。未指定は既定ボディ（mv_model 系）。
+   * 検証ボディ ON のまま商品ライブラリに登録したとき `lineArtVerification` が入る。
+   */
+  bodyModelVariant?: BodyModelVariant;
+  /**
    * デバッグ用: アップロードSVG内に含まれていた「リグっぽい」path を、
    * フィット計算から除外した上で別途表示するための raw path d 配列。
    */
@@ -175,6 +185,8 @@ export type GenericVertexPlotHighlight = {
    */
   lowerSleeveFollowBodyPathGlobalRange?: [number, number];
   lengthMeasure?: [number, number];
+  /** ウィジェット体型（服 # 2点）UI フォーカス時: 弦の 2 頂点を緑強調 */
+  fitCompareWidgetGlobals?: [number, number];
 };
 
 /**

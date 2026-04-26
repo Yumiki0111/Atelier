@@ -205,6 +205,8 @@ function appendSleevePointerCallout(
   _summary: WidgetFitEaseSummaryJson,
   vbH: number
 ): void {
+  const slIn = g.size.sleeve;
+  if (!Number.isFinite(slIn) || slIn <= 0) return;
   if (!finitePair(g.sleeveStart) || !finitePair(g.sleeveEnd)) return;
 
   const [sx, sy] = g.sleeveStart;

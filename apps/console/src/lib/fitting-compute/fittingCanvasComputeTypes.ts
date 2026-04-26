@@ -7,6 +7,7 @@ import type {
   MeasureOverlayData,
   GenericVertexPlotHighlight,
 } from "@/app/(main)/development/fitting/lib/types";
+import type { BodyModelVariant } from "@/app/(main)/development/fitting/lib/bodyModelVariant";
 
 export interface UseFittingCanvasDataParams {
   height: number;
@@ -21,6 +22,11 @@ export interface UseFittingCanvasDataParams {
   fromCustomGarmentData?: CustomGarmentData | null;
   toCustomGarmentData?: CustomGarmentData | null;
   rigBodyEnabled?: boolean;
+  /**
+   * 開発用: 既定 `mv_model` の代わりに線画検証ボディ＋対応リグ直線を使う。
+   * 本番・既定値では無効（既存パイプラインと同一）。
+   */
+  bodyModelVariant?: BodyModelVariant;
   /**
    * 汎用フィットの下書き区間（パスカタログ）。`genericSymmetricTop` に未反映でも採寸オーバーレイ・赤/紫線を同期させる。
    */
@@ -109,6 +115,10 @@ export interface FittingCanvasSnapshot {
   rigLineWarpedRigViewPaths: string[];
   /** `rigLineWarpedRigViewPaths` から取った肩・首元の角度図。未ロード時は null */
   rigRedLineArmDiagram: RigRedLineArmDiagram | null;
+  /** 既定 0。検証ボディで左右にはみ出すとき負値になり得る */
+  viewBoxMinX: number;
+  /** 既定 1505。検証ボディで横幅を広げる */
+  viewBoxWidth: number;
   viewBoxHeight: number;
   shirtPathD: string | null;
   jacketFill: string | null;

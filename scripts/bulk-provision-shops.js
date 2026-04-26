@@ -7,23 +7,23 @@
  *   node scripts/bulk-provision-shops.js shops.csv
  * 
  * CSV フォーマット:
- *   shopName,ownerEmail,allowedDomains
- *   株式会社A,owner-a@example.com,"example-a.com,www.example-a.com"
+ *   shopName,ownerEmail（省略可）,allowedDomains（省略可・空なら後から設定）
+ *   株式会社A,,
  *   株式会社B,owner-b@example.com,"example-b.com"
  */
 
 const fs = require('fs');
 const readline = require('readline');
 
-// 環境変数のチェック
-const Atelier_ADMIN_TOKEN = process.env.Atelier_ADMIN_TOKEN;
+// 環境変数のチェック（旧名 Atelier_ADMIN_TOKEN も一時的に受け付ける）
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || process.env.Atelier_ADMIN_TOKEN;
 const API_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-if (!Atelier_ADMIN_TOKEN) {
-  console.error('❌ エラー: Atelier_ADMIN_TOKEN 環境変数が設定されていません（FIT&LOOK 管理者用）');
+if (!ADMIN_TOKEN) {
+  console.error('❌ エラー: ADMIN_TOKEN 環境変数が設定されていません（FIT&LOOK 管理者用）');
   console.error('');
   console.error('使い方:');
-  console.error('  Atelier_ADMIN_TOKEN=your-token node scripts/bulk-provision-shops.js shops.csv');
+  console.error('  ADMIN_TOKEN=your-token node scripts/bulk-provision-shops.js shops.csv');
   process.exit(1);
 }
 
@@ -59,11 +59,11 @@ async function provisionShop(shopName, ownerEmail, allowedDomains) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-Atelier-admin-token': Atelier_ADMIN_TOKEN,
+        'x-admin-token': ADMIN_TOKEN,
       },
       body: JSON.stringify({
         shopName,
-        ownerEmail,
+        ...(ownerEmail ? { ownerEmail } : {}),
         allowedDomains: domainsArray,
       }),
     });
@@ -111,15 +111,18 @@ async function main() {
 
     const [shopName, ownerEmail, allowedDomains] = parseCSVLine(line);
 
-    if (!shopName || !ownerEmail) {
-      console.log(`⚠️  行 ${lineNumber}: スキップ（shopName または ownerEmail が空）`);
+    if (!shopName) {
+      console.log(`⚠️  行 ${lineNumber}: スキップ（shopName が空）`);
       errorCount++;
       continue;
     }
 
-    console.log(`📦 [${lineNumber - 1}] ${shopName} (${ownerEmail}) を作成中...`);
+    const owner = (ownerEmail || '').trim();
+    console.log(
+      `📦 [${lineNumber - 1}] ${shopName}${owner ? ` (${owner})` : '（オーナー招待なし）'} を作成中...`
+    );
 
-    const result = await provisionShop(shopName, ownerEmail, allowedDomains || '');
+    const result = await provisionShop(shopName, owner, allowedDomains || '');
 
     if (result.success) {
       console.log(`✅ [${lineNumber - 1}] ${shopName} を作成しました`);
@@ -131,7 +134,7 @@ async function main() {
       
       results.push({
         shopName,
-        ownerEmail,
+        ...(owner ? { ownerEmail: owner } : {}),
         ...result.data,
       });
     } else {

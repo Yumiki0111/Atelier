@@ -26,7 +26,7 @@ export function buildGradedBodyPathsAndVertexPlotsForGenericTop(
   const { data, lm, h, w, shoulderOriginYForPlace, placementLockToModelRig, place } = input;
   const gtForGeneric = data.presetId === "genericSymmetricTop" ? data.genericSymmetricTop : undefined;
 
-  if (!(data.presetId === "genericSymmetricTop" && genericMeasureOnlyGradingActive(gtForGeneric))) {
+  if (!(data.presetId === "genericSymmetricTop" && genericMeasureOnlyGradingActive(gtForGeneric, data.size))) {
     return null;
   }
 

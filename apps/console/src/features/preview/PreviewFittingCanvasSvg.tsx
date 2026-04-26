@@ -150,6 +150,7 @@ export function PreviewFittingCanvasSvg({
     fromCustomGarmentData: fromCustom,
     toCustomGarmentData: toCustom,
     rigBodyEnabled: false,
+    bodyModelVariant: sizedTarget.bodyModelVariant,
     genericVertexPlotHighlight: null,
   });
   const weightKg = weightKgFromBodyVal(fitBodyVal);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { FittingControls } from "@/app/(main)/development/fitting/controls/FittingControls";
 import { FittingCanvas } from "@/fitting-dev/FittingCanvas";
 import { sizeEqual, landmarksEqual, pathDsContentEqual } from "@/app/(main)/development/fitting/lib/fittingStateUtils";
@@ -11,7 +11,9 @@ import type {
   JacketSize,
   CustomGarmentData,
   GenericVertexPlotHighlight,
+  PlotIndexLabelDensity,
 } from "@/app/(main)/development/fitting/lib/types";
+import type { BodyModelVariant } from "@/app/(main)/development/fitting/lib/bodyModelVariant";
 import { DevelopmentProductRegisterPanel } from "./DevelopmentProductRegisterPanel";
 import { PageHeader } from "@/components/page-header/PageHeader";
 import { ConsoleSectionPanel } from "@/components/console/ConsoleSectionPanel";
@@ -65,14 +67,18 @@ export default function DevelopmentPage() {
   const [showGarment, setShowGarment] = useState(true);
   const [showMeasureOverlay, setShowMeasureOverlay] = useState(true);
   const [showPlotCoords, setShowPlotCoords] = useState(true);
+  const [plotIndexLabelDensity, setPlotIndexLabelDensity] = useState<PlotIndexLabelDensity>("all");
   const [showBodyPlotCoords, setShowBodyPlotCoords] = useState(false);
   const [showRigAngleDiagram, setShowRigAngleDiagram] = useState(false);
   const [rigBodyEnabled, setRigBodyEnabled] = useState(false);
   const [rigGarmentEnabled, setRigGarmentEnabled] = useState(false);
+  const [bodyModelVariant, setBodyModelVariant] = useState<BodyModelVariant>("default");
   const [genericVertexPlotHighlight, setGenericVertexPlotHighlight] = useState<GenericVertexPlotHighlight | null>(
     null
   );
+  const [widgetFitCompareChordGlow, setWidgetFitCompareChordGlow] = useState<[number, number] | null>(null);
   const [hoveredGarmentVertexIndex, setHoveredGarmentVertexIndex] = useState<number | null>(null);
+  const [garmentPlotVertexFilter, setGarmentPlotVertexFilter] = useState<number[] | null>(null);
   const animRunIdRef = useRef(0);
   const startRef = useRef<number | null>(null);
 
@@ -112,6 +118,13 @@ export default function DevelopmentPage() {
   const handleGenericVertexPlotHighlightChange = useCallback((h: GenericVertexPlotHighlight | null) => {
     setGenericVertexPlotHighlight(h);
   }, []);
+
+  const mergedGenericVertexPlotHighlight = useMemo((): GenericVertexPlotHighlight | null => {
+    const chord = widgetFitCompareChordGlow;
+    const base = genericVertexPlotHighlight;
+    if (chord == null) return base;
+    return { ...(base ?? {}), fitCompareWidgetGlobals: chord };
+  }, [genericVertexPlotHighlight, widgetFitCompareChordGlow]);
 
   useEffect(() => {
     setHydrated(true);
@@ -184,6 +197,7 @@ export default function DevelopmentPage() {
           <DevelopmentProductRegisterPanel
             garment={garment}
             customGarmentData={customGarmentData}
+            bodyModelVariant={bodyModelVariant}
             fitDebugContext={{ height, weight, shirtSize, jacketSize }}
           />
         </ConsoleSectionPanel>
@@ -212,11 +226,15 @@ export default function DevelopmentPage() {
             showGarment={showGarment}
             showMeasureOverlay={showMeasureOverlay}
             showPlotCoords={showPlotCoords}
+            plotIndexLabelDensity={plotIndexLabelDensity}
+            hoveredGarmentVertexIndex={hoveredGarmentVertexIndex}
+            garmentPlotVertexFilter={garmentPlotVertexFilter}
             showBodyPlotCoords={showBodyPlotCoords}
             showRigAngleDiagram={showRigAngleDiagram}
             rigBodyEnabled={rigBodyEnabled}
             rigGarmentEnabled={rigGarmentEnabled}
-            genericVertexPlotHighlight={genericVertexPlotHighlight}
+            bodyModelVariant={bodyModelVariant}
+            genericVertexPlotHighlight={mergedGenericVertexPlotHighlight}
             onGarmentVertexHover={setHoveredGarmentVertexIndex}
             garmentVertexPickEnabled={
               garment === "custom" &&
@@ -236,10 +254,14 @@ export default function DevelopmentPage() {
           showGarment={showGarment}
           showMeasureOverlay={showMeasureOverlay}
           showPlotCoords={showPlotCoords}
+          plotIndexLabelDensity={plotIndexLabelDensity}
+          garmentPlotVertexFilter={garmentPlotVertexFilter}
+          onGarmentPlotVertexFilterChange={setGarmentPlotVertexFilter}
           showBodyPlotCoords={showBodyPlotCoords}
           showRigAngleDiagram={showRigAngleDiagram}
           rigBodyEnabled={rigBodyEnabled}
           rigGarmentEnabled={rigGarmentEnabled}
+          bodyModelVariant={bodyModelVariant}
           onHeightChange={setHeight}
           onWeightChange={setWeight}
           onGarmentChange={setGarment}
@@ -249,11 +271,14 @@ export default function DevelopmentPage() {
           onToggleGarment={() => setShowGarment((v) => !v)}
           onToggleMeasureOverlay={() => setShowMeasureOverlay((v) => !v)}
           onTogglePlotCoords={() => setShowPlotCoords((v) => !v)}
+          onPlotIndexLabelDensityChange={setPlotIndexLabelDensity}
           onToggleBodyPlotCoords={() => setShowBodyPlotCoords((v) => !v)}
           onToggleRigAngleDiagram={() => setShowRigAngleDiagram((v) => !v)}
           onToggleRigBody={() => setRigBodyEnabled((v) => !v)}
           onToggleRigGarment={() => setRigGarmentEnabled((v) => !v)}
+          onBodyModelVariantChange={setBodyModelVariant}
           onGenericVertexPlotHighlightChange={handleGenericVertexPlotHighlightChange}
+          onWidgetFitCompareChordHighlightChange={setWidgetFitCompareChordGlow}
           hoveredGarmentVertexIndex={hoveredGarmentVertexIndex}
         />
         </div>

@@ -262,6 +262,8 @@ function SleeveMeasureBlock({
 }
 
 export function FittingCanvasMeasureOverlayGarmentSleeve({ g }: { g: GarmentG }): ReactNode {
+  const slIn = g.size.sleeve;
+  if (!Number.isFinite(slIn) || slIn <= 0) return null;
   if (!isFinitePt(g.sleeveStart) || !isFinitePt(g.sleeveEnd)) return null;
 
   const hasMirror =

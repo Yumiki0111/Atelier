@@ -41,5 +41,14 @@ export function validateGarmentSpecForProduction(
     };
   }
 
+  const bmv = o.bodyModelVariant;
+  if (
+    bmv !== undefined &&
+    bmv !== "default" &&
+    bmv !== "lineArtVerification"
+  ) {
+    return { ok: false, message: "garment_spec の bodyModelVariant が不正です。" };
+  }
+
   return { ok: true };
 }

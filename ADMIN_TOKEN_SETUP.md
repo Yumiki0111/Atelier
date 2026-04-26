@@ -13,11 +13,19 @@
 
 ## 🔐 管理者トークンとは
 
-`Atelier_ADMIN_TOKEN` は、Atelier の内部管理機能（新規ショップの作成など）へのアクセスを保護するための認証トークンです。
+`ADMIN_TOKEN` は、Atelier の内部管理機能（新規ショップの作成など）へのアクセスを保護するための認証トークンです（旧環境変数名 `Atelier_ADMIN_TOKEN` はサーバー側でフォールバックとして読み取れます）。
 
 **用途**:
-- `/admin/provision-shop` ページでの新規ショップ作成
-- `POST /api/internal/provision-shop` API の認証
+- `/admin/provision-shop` ページでの新規ショップ作成（運営メールでログインした場合はトークン入力なしでも可）
+- `POST /api/internal/provision-shop` API の認証（`Authorization: Bearer` で運営メールのセッション、または `x-admin-token` ヘッダ。旧ヘッダ名 `x-Atelier-admin-token` も受け付けます）
+- `GET /api/internal/shops` も同様
+
+**運営メール（権限の2段階）**:
+- **発行管理者**（ショップ作成 API・`/admin/*`・ログイン直後の遷移先）: 既定は **`info@fitandlook.com` のみ**。追加は `PROVISION_ADMIN_EMAILS` / `NEXT_PUBLIC_PROVISION_ADMIN_EMAILS`（カンマ区切り）。
+- **プラットフォーム管理者**（開発タブなどブランド向けコンソールの追加権限）: `PLATFORM_ADMIN_EMAILS` / `NEXT_PUBLIC_PLATFORM_ADMIN_EMAILS`。既定で `info@fitandlook.com` を含みます。`PLATFORM_ADMIN_EMAILS` にだけ載せたメールは発行 API の Bearer では通りません（`ADMIN_TOKEN` は従来どおり）。
+
+**メンバー招待メールの差出人**:
+- オーナーがコンソールからメンバーを招待する流れはそのままです。招待メールの **From** を `info@fitandlook.com` にしたい場合は、Supabase ダッシュボードの **Auth → SMTP 設定 / カスタムメール** で送信元とドメイン認証（SPF・DKIM 等）を構成してください。
 
 **重要**: このトークンは絶対に外部に公開しないでください。
 
@@ -74,7 +82,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 # ✅ ここに生成したトークンをペースト
-Atelier_ADMIN_TOKEN=1311d7f4ddeef9512b71ed663aae1c40f18efb12a40140123e5ec21cc1d97f3d
+ADMIN_TOKEN=1311d7f4ddeef9512b71ed663aae1c40f18efb12a40140123e5ec21cc1d97f3d
 
 # Secret Key Salt（widget_keys のハッシュ化用）
 # こちらも同様にランダムな文字列を生成して設定
@@ -124,7 +132,7 @@ npm run dev
 3. 以下の変数を追加：
 
 ```
-Name: Atelier_ADMIN_TOKEN
+Name: ADMIN_TOKEN
 Value: 1311d7f4ddeef9512b71ed663aae1c40f18efb12a40140123e5ec21cc1d97f3d
 Environment: Production, Preview, Development
 ```
@@ -140,7 +148,7 @@ Environment: Production, Preview, Development
 4. 以下を入力：
 
 ```
-Variable Name: Atelier_ADMIN_TOKEN
+Variable Name: ADMIN_TOKEN
 Value: 1311d7f4ddeef9512b71ed663aae1c40f18efb12a40140123e5ec21cc1d97f3d
 ```
 
@@ -149,7 +157,7 @@ Value: 1311d7f4ddeef9512b71ed663aae1c40f18efb12a40140123e5ec21cc1d97f3d
 
 ### その他のホスティングサービス
 
-各サービスの環境変数設定画面で `Atelier_ADMIN_TOKEN` を設定してください。
+各サービスの環境変数設定画面で `ADMIN_TOKEN` を設定してください。
 
 ---
 
@@ -209,7 +217,7 @@ openssl rand -hex 32
 #### ローカル開発環境
 ```bash
 # apps/console/.env.local を編集
-Atelier_ADMIN_TOKEN=<新しいトークン>
+ADMIN_TOKEN=<新しいトークン>
 ```
 
 #### 本番環境
@@ -227,20 +235,17 @@ Atelier_ADMIN_TOKEN=<新しいトークン>
 ### `/admin/provision-shop` ページでの使用
 
 1. `/admin/provision-shop` にアクセス
-2. 「管理者トークン」フィールドに `Atelier_ADMIN_TOKEN` の値を入力
-3. ショップ情報を入力して「ショップを作成」
+2. 運営メール（発行管理者）でログインしていればトークンは不要。それ以外は「管理者トークン」に `ADMIN_TOKEN` を入力
+3. ショップ名を入力して「ショップを作成」。許可ドメインは任意（空なら後からウィジェット設定で追加）（オーナーは後から招待で紐づけ）
 
 ### API での使用（cURL 例）
 
 ```bash
+# ownerEmail は省略可。allowedDomains も省略可・[] 可（未設定時はウィジェット設定で追加するまで埋め込み API は使えない）
 curl -X POST http://localhost:3000/api/internal/provision-shop \
   -H "Content-Type: application/json" \
-  -H "x-Atelier-admin-token: YOUR_ADMIN_TOKEN_HERE" \
-  -d '{
-    "shopName": "テストショップ",
-    "ownerEmail": "owner@example.com",
-    "allowedDomains": ["localhost:3000", "example.com"]
-  }'
+  -H "x-admin-token: YOUR_ADMIN_TOKEN_HERE" \
+  -d '{"shopName": "テストショップ"}'
 ```
 
 ---
@@ -252,7 +257,7 @@ curl -X POST http://localhost:3000/api/internal/provision-shop \
 **原因**: トークンが正しく設定されていない、または間違っている
 
 **解決方法**:
-1. `.env.local` の `Atelier_ADMIN_TOKEN` を確認
+1. `.env.local` の `ADMIN_TOKEN` を確認
 2. 開発サーバーを再起動（`npm run dev`）
 3. トークンに余分なスペースや改行がないか確認
 

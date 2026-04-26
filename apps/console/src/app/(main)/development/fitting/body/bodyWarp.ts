@@ -236,8 +236,10 @@ export function blendDeformedWithIndentWarpRelief(
   templateX: number,
   templateY: number,
   warped: [number, number],
-  deformed: [number, number]
+  deformed: [number, number],
+  enableIndentRelief = true
 ): [number, number] {
+  if (!enableIndentRelief) return deformed;
   const absDx = Math.abs(templateX - BODY_CX);
   const loc = indentWaistCorridorLocalized(templateX, templateY, absDx);
   if (loc <= 0) return deformed;

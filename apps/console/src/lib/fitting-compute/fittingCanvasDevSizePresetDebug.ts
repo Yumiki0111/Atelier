@@ -284,7 +284,7 @@ export function logGarmentSleeveMeasureUsage(input: {
   console.info(`[FIT][dev] 袖・採寸の使い分け (${action})`, {
     presetId,
     入力サイズ袖丈cm: customGarmentData.size.sleeve,
-    build_applyGenericMeasureOnlyGrading: genericMeasureOnlyGradingActive(gt)
+    build_applyGenericMeasureOnlyGrading: genericMeasureOnlyGradingActive(gt, customGarmentData.size)
       ? "有効"
       : "無効（汎用トップの採寸頂点が不足）",
     キャンバス袖丈補正候補: genericSymmetricTopCanvasSleeveSnapEligible(gt)

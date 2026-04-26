@@ -7,12 +7,14 @@ import {
   BarChart3,
   Bookmark,
   Braces,
+  Building2,
   ChevronLeft,
   ChevronRight,
   LogOut,
   Palette,
   SquareCode,
   UserCog,
+  UserPlus,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,10 +26,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { LinkIssuancePanel } from "@/features/install/LinkIssuancePanel";
+import { useAuth } from "@/contexts/AuthContext";
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 
-const navGroups: { label: string; items: NavItem[] }[] = [
+const navGroupsBase: { label: string; items: NavItem[] }[] = [
   {
     label: "データ & 公開",
     items: [
@@ -37,11 +40,20 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { href: "/install", label: "埋め込みスニペット", icon: SquareCode },
     ],
   },
-  {
-    label: "開発",
-    items: [{ href: "/development", label: "開発", icon: Braces }],
-  },
 ];
+
+const navGroupDevelopment: { label: string; items: NavItem[] } = {
+  label: "開発",
+  items: [{ href: "/development", label: "開発", icon: Braces }],
+};
+
+const navGroupProvision: { label: string; items: NavItem[] } = {
+  label: "運営（アカウント発行）",
+  items: [
+    { href: "/admin/provision-shop", label: "ブランドアカウント発行", icon: UserPlus },
+    { href: "/admin/shops", label: "ショップ一覧", icon: Building2 },
+  ],
+};
 
 const bottomItems: { href: string; label: string; icon: LucideIcon; logout?: boolean }[] = [
   { href: "/settings", label: "アカウント設定", icon: UserCog },
@@ -54,8 +66,25 @@ function isRouteActive(pathname: string | null, href: string): boolean {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { canAccessDevelopment, isProvisionAdmin, operatorShopId } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
+
+  const tenantNav = canAccessDevelopment
+    ? [...navGroupsBase, navGroupDevelopment]
+    : navGroupsBase;
+  /**
+   * 発行管理者: ショップ未選択時は運営メニューのみ。
+   * ショップ一覧で「管理画面」を選ぶとブランド向けナビも表示（代理表示）。
+   */
+  const navGroups = isProvisionAdmin
+    ? operatorShopId
+      ? [navGroupProvision, ...tenantNav]
+      : [navGroupProvision]
+    : tenantNav;
+
+  const logoHref =
+    isProvisionAdmin && !operatorShopId ? "/admin/provision-shop" : "/database/products";
 
   return (
     <div
@@ -71,7 +100,7 @@ export function Sidebar() {
         )}
       >
         {!isCollapsed && (
-          <Link href="/database/products" className="flex min-w-0 flex-1 items-center pr-2">
+          <Link href={logoHref} className="flex min-w-0 flex-1 items-center pr-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/logo.svg"
@@ -103,46 +132,48 @@ export function Sidebar() {
         aria-hidden
       />
 
-      <div
-        className={cn(
-          "shrink-0",
-          isCollapsed ? "px-2 pb-2 pt-3" : "px-3 pb-3 pt-3"
-        )}
-      >
-        <button
-          type="button"
-          onClick={() => setLinkModalOpen(true)}
+      {!isProvisionAdmin || operatorShopId ? (
+        <div
           className={cn(
-            "flex items-center rounded-lg bg-zinc-950 text-zinc-50 shadow-none transition-colors hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
-            isCollapsed
-              ? "mx-auto aspect-square h-10 w-10 shrink-0 justify-center p-0"
-              : "w-full gap-2.5 px-3 py-2.5 text-sm font-medium"
+            "shrink-0",
+            isCollapsed ? "px-2 pb-2 pt-3" : "px-3 pb-3 pt-3"
           )}
-          aria-label="プレビューリンク発行"
-          title={isCollapsed ? "プレビューリンク発行" : undefined}
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-4 w-4 shrink-0"
-            aria-hidden
+          <button
+            type="button"
+            onClick={() => setLinkModalOpen(true)}
+            className={cn(
+              "flex items-center rounded-lg bg-zinc-950 text-zinc-50 shadow-none transition-colors hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
+              isCollapsed
+                ? "mx-auto aspect-square h-10 w-10 shrink-0 justify-center p-0"
+                : "w-full gap-2.5 px-3 py-2.5 text-sm font-medium"
+            )}
+            aria-label="プレビューリンク発行"
+            title={isCollapsed ? "プレビューリンク発行" : undefined}
           >
-            <circle cx="18" cy="5" r="3" />
-            <circle cx="6" cy="12" r="3" />
-            <circle cx="18" cy="19" r="3" />
-            <line x1="8.59" x2="15.42" y1="13.51" y2="17.49" />
-            <line x1="15.41" x2="8.59" y1="6.51" y2="10.49" />
-          </svg>
-          {!isCollapsed ? <span className="truncate">プレビューリンク発行</span> : null}
-        </button>
-      </div>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4 w-4 shrink-0"
+              aria-hidden
+            >
+              <circle cx="18" cy="5" r="3" />
+              <circle cx="6" cy="12" r="3" />
+              <circle cx="18" cy="19" r="3" />
+              <line x1="8.59" x2="15.42" y1="13.51" y2="17.49" />
+              <line x1="15.41" x2="8.59" y1="6.51" y2="10.49" />
+            </svg>
+            {!isCollapsed ? <span className="truncate">プレビューリンク発行</span> : null}
+          </button>
+        </div>
+      ) : null}
 
       <nav
         className={cn(

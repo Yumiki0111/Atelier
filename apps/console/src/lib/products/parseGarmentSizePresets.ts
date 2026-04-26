@@ -1,3 +1,5 @@
+import type { BodyModelVariant } from "@/app/(main)/development/fitting/lib/bodyModelVariant";
+
 /**
  * garment_spec（開発フィット登録）からサイズラベルと着丈・袖丈（cm）を取り出す。
  */
@@ -59,5 +61,24 @@ export function mergeGarmentSpecSizePresets(
     sleeve: p.sleeveCm,
   }));
   g.genericSymmetricTop = gt;
+  return g;
+}
+
+/**
+ * 他フィールドは維持し、`bodyModelVariant` だけ設定または削除する（既存商品の試着ボディを後から切り替え）。
+ */
+export function mergeGarmentSpecBodyModelVariant(
+  garmentSpec: unknown,
+  variant: BodyModelVariant
+): unknown {
+  if (garmentSpec == null || typeof garmentSpec !== "object" || Array.isArray(garmentSpec)) {
+    return garmentSpec;
+  }
+  const g = { ...(garmentSpec as Record<string, unknown>) };
+  if (variant === "lineArtVerification") {
+    g.bodyModelVariant = "lineArtVerification";
+  } else {
+    delete g.bodyModelVariant;
+  }
   return g;
 }

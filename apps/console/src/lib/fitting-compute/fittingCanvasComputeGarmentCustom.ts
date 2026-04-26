@@ -162,6 +162,10 @@ export function computeCustomGarmentBranch(
       ...(c.maxWidthRatio != null ? { maxWidthRatio: c.maxWidthRatio } : {}),
     };
   })();
+  /**
+   * 着丈→px/cm は REF 固定（身長スライダーに着丈メッシュを載せない）。
+   * 検証ボディで `height` を渡すと紫着丈メッシュが身長で振れて服が大きく上下するため、ここも REF に統一する。
+   */
   const placement = buildTopPlacement(
     height,
     weight,
@@ -298,11 +302,15 @@ export function computeCustomGarmentBranch(
   const customGarmentFabricRigViewWarp: (x: number, y: number) => [number, number] = (() => {
     const translateOnly = (x: number, y: number): [number, number] => {
       const refW = warpRigLineRefBodyGarment(x, y);
-      if (rigNeckAnchorTranslateOnlyFnGarment)
+      if (rigNeckAnchorTranslateOnlyFnGarment) {
         return rigNeckAnchorTranslateOnlyFnGarment(refW[0], refW[1]);
-      if (rigSpineTranslateOnlyFnGarment) return rigSpineTranslateOnlyFnGarment(refW[0], refW[1]);
+      }
+      if (rigSpineTranslateOnlyFnGarment) {
+        return rigSpineTranslateOnlyFnGarment(refW[0], refW[1]);
+      }
       return refW;
     };
+    /** 既定ボディも検証ボディも同一: ref ワープ → 肩2点の脊髄合わせ後位置で剛体マップ（浮き制御はここで行う） */
     if (!rigSpineAlignFnGarment) return translateOnly;
     const [rslx, rsly] = placeDesignToTemplate(fabricShoulderLx, shoulderSeamY);
     const [rsrx, rsry] = placeDesignToTemplate(fabricShoulderRx, shoulderSeamY);

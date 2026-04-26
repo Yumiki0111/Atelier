@@ -25,7 +25,7 @@ export type GradeLengthMeshInput = {
 };
 
 export type GradeLengthVerticalScaleParams =
-  | { ok: true; lengthTopY: number; scale: number; preScaleSpanPx: number }
+  | { ok: true; lengthTopY: number; scale: number; preScaleSpanPx: number; midShoulderX: number }
   | { ok: false; reason: string };
 
 /**
@@ -139,7 +139,8 @@ export function computeGradeLengthVerticalScaleParams(
     };
   }
 
-  return { ok: true, lengthTopY, scale, preScaleSpanPx: span };
+  const midShoulderX = (shoulderLeft[0]! + shoulderRight[0]!) / 2;
+  return { ok: true, lengthTopY, scale, preScaleSpanPx: span, midShoulderX };
 }
 
 export function applyGradeLengthVerticalScaleToMeshPaths(
@@ -170,6 +171,23 @@ export function applyGradeLengthVerticalScaleToMeshPaths(
     };
   }
   return { customPathDs: newPathDs, customPoints: newPoints };
+}
+
+/**
+ * 着丈 Y メッシュと同じ比で、キャンバス上の胴中心（両肩の中点 X）基準の水平スケール。
+ * 袖丈未入力（ノースリーブ等）で着丈だけ縦に伸びる見え方を防ぐ。
+ */
+export function applyGradeLengthHorizontalScaleToMeshPaths(
+  customPathDs: string[],
+  customPoints: [number, number][],
+  pivotX: number,
+  scale: number
+): { customPathDs: string[]; customPoints: [number, number][] } {
+  const mapX = (x: number) => pivotX + (x - pivotX) * scale;
+  return {
+    customPathDs: customPathDs.map((d) => tPath(d, (x, y) => [mapX(x), y])),
+    customPoints: customPoints.map(([x, y]) => [mapX(x), y] as [number, number]),
+  };
 }
 
 /** 袖パイプライン後の下袖–胴近傍同期で使う胴–袖頂点ペア */
@@ -379,14 +397,21 @@ export function applyBodySleeveSeamSyncAfterLengthMesh(pathDsIn: string[], pairs
   return pathDs;
 }
 
+/**
+ * 着丈メッシュと同じ変換をデザイン→キャンバス座標に合成。
+ * `xPivotCanvas` を渡すと水平も同じ比でスケール（`applyGradeLengthHorizontalScaleToMeshPaths` と整合）。
+ */
 export function wrapDesignToGarmentCanvasWithYScale(
   designToGarmentCanvas: (gx: number, gy: number) => [number, number],
   lengthTopY: number,
-  scale: number
+  scale: number,
+  xPivotCanvas?: number
 ): (gx: number, gy: number) => [number, number] {
   return (gx, gy) => {
     const [x, y] = designToGarmentCanvas(gx, gy);
-    return [x, lengthTopY + (y - lengthTopY) * scale];
+    const y2 = lengthTopY + (y - lengthTopY) * scale;
+    if (xPivotCanvas == null || !Number.isFinite(xPivotCanvas)) return [x, y2];
+    return [xPivotCanvas + (x - xPivotCanvas) * scale, y2];
   };
 }
 
@@ -397,6 +422,14 @@ export function applyYScaleToCanvasPoints(
 ): [number, number][] {
   const mapY = (y: number) => lengthTopY + (y - lengthTopY) * scale;
   return pts.map(([x, y]) => [x, mapY(y)] as [number, number]);
+}
+
+export function applyXScaleToCanvasPoints(
+  pts: [number, number][],
+  pivotX: number,
+  scale: number
+): [number, number][] {
+  return pts.map(([x, y]) => [pivotX + (x - pivotX) * scale, y] as [number, number]);
 }
 
 /**
