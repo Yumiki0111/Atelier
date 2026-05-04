@@ -17,7 +17,13 @@ import {
 } from "@Atelier/shared";
 import { authenticatedFetch } from "@/lib/auth/api-client";
 import { useAuth } from "@/contexts/AuthContext";
+import { cn } from "@/lib/utils";
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
+import {
+  GRADING_V4_GRID_BODY_SILHOUETTE_STROKE,
+  gradingV4GridBodyPathEndsClosed,
+  gradingV4UsesLayeredGridBodySilhouette,
+} from "@/app/(main)/development/fitting/gradingV4/gradingV4Constants";
 import {
   DEFAULT_PREVIEW_FIT_BODY_VAL,
   DEFAULT_PREVIEW_FIT_HEIGHT_CM,
@@ -46,7 +52,7 @@ import {
 } from "./WidgetPreviewChrome";
 import { PreviewFittingCanvasSvg } from "./PreviewFittingCanvasSvg";
 import { colorFilterForHex } from "./widget-style-product-preview-color";
-import { DEFAULT_FIT_BODY_VAL, GARMENT_FILL } from "./widget-style-product-preview-fit-constants";
+import { DEFAULT_FIT_BODY_VAL } from "./widget-style-product-preview-fit-constants";
 import {
   PreviewFitEaseFootnote,
   PreviewFitEaseSummary,
@@ -57,6 +63,8 @@ import {
   uniformPreviewViewBoxHeightFromHeightCm,
 } from "./widget-style-product-preview-viewbox-helpers";
 import { useFitSvgStage } from "./widget-style-product-preview-fit-svg-stage";
+import { FitSvgBehindGarmentLayer, FitSvgFrontGarmentLayer } from "./FitSvgGarmentLayers";
+import { resolveWidgetFitSizeKeysOrder } from "@/lib/widget/resolveWidgetFitSizeKeysOrder";
 
 const DEFAULT_SWATCHES: { id: string; hex: string; label?: string }[] = [
   { id: "default-1", hex: "#e8c547", label: "Yellow" },
@@ -84,7 +92,7 @@ export type WidgetStyleProductPreviewProps = {
   sizeKeys: string[];
   initialSize: ProductSize;
   garmentFitAvailable: boolean;
-  /** あるときは `FittingCanvas` と同一パイプラインで描画（プレビューと開発の一致用） */
+  /** あるときは `computeFittingCanvasSnapshot` と同一経路で描画（ウィジェット／プレビュー整合用） */
   customGarmentData?: CustomGarmentData | null;
   onClose: () => void;
   /** フォン画面内のベース背景（`/api/widget-design` と揃える） */
@@ -210,11 +218,16 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
   const swatches = DEFAULT_SWATCHES;
   const [selectedColorId, setSelectedColorId] = useState<string>(swatches[0]?.id ?? "");
 
-  /** 親（`getPreviewSizeKeys`）が着丈・袖丈順で並べた配列をそのまま使う。ここで localeCompare 再ソートすると順序が壊れる */
-  const sizeKeys = useMemo(
-    () => (sizeKeysProp.length > 0 ? [...sizeKeysProp] : ["3", "4", "5"]),
-    [sizeKeysProp]
-  );
+  /** Grading v4 は `resolveWidgetFitSizeKeysOrder` で XS–XXL を正規化（3/4/5 等は試着に使えない） */
+  const sizeKeys = useMemo(() => {
+    if (customGarmentData?.presetId === "gradingV4") {
+      return resolveWidgetFitSizeKeysOrder(
+        sizeKeysProp.length > 0 ? sizeKeysProp : [],
+        customGarmentData
+      );
+    }
+    return sizeKeysProp.length > 0 ? [...sizeKeysProp] : ["3", "4", "5"];
+  }, [sizeKeysProp, customGarmentData]);
 
   const [currentSize, setCurrentSize] = useState<string>(() => {
     if (sizeKeys.includes(initialSize as string)) return initialSize as string;
@@ -475,13 +488,21 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
         const body = (await res.json().catch(() => ({}))) as {
           error?: string;
           message?: string;
+          viewBoxMinX?: number;
           viewBoxWidth?: number;
           viewBoxHeight?: number;
           bodyPaths?: string[];
+          garmentPathsBehindBody?: string[];
+          garmentBehindBodyPathStrokeDasharrays?: (string | undefined)[];
+          garmentBehindBodyPathStrokeWidths?: (number | undefined)[];
+          garmentBehindBodyPathStrokes?: (string | undefined)[];
+          garmentBehindBodyPathFills?: (string | undefined)[];
           garmentPaths?: string[];
           garmentPathStrokeDasharrays?: (string | undefined)[];
           garmentPathStrokeWidths?: (number | undefined)[];
           garmentPathStrokes?: (string | undefined)[];
+          garmentPathFills?: (string | undefined)[];
+          presetId?: "gradingV4";
           fitEaseSummary?: WidgetFitEaseSummaryJson;
           fitEaseDiagram?: WidgetFitEaseDiagramJson | null;
         };
@@ -509,13 +530,21 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
           return;
         }
         setFitData({
+          viewBoxMinX: body.viewBoxMinX ?? 0,
           viewBoxWidth: body.viewBoxWidth,
           viewBoxHeight: body.viewBoxHeight,
           bodyPaths: body.bodyPaths,
+          garmentPathsBehindBody: body.garmentPathsBehindBody,
+          garmentBehindBodyPathStrokeDasharrays: body.garmentBehindBodyPathStrokeDasharrays,
+          garmentBehindBodyPathStrokeWidths: body.garmentBehindBodyPathStrokeWidths,
+          garmentBehindBodyPathStrokes: body.garmentBehindBodyPathStrokes,
+          garmentBehindBodyPathFills: body.garmentBehindBodyPathFills,
           garmentPaths: body.garmentPaths,
           garmentPathStrokeDasharrays: body.garmentPathStrokeDasharrays,
           garmentPathStrokeWidths: body.garmentPathStrokeWidths,
           garmentPathStrokes: body.garmentPathStrokes,
+          garmentPathFills: body.garmentPathFills,
+          presetId: body.presetId,
           fitEaseSummary: body.fitEaseSummary,
           fitEaseDiagram: body.fitEaseDiagram,
         });
@@ -578,13 +607,21 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
           const body = (await res.json().catch(() => ({}))) as {
             error?: string;
             message?: string;
+            viewBoxMinX?: number;
             viewBoxWidth?: number;
-            viewBoxHeight?: number;
-            bodyPaths?: string[];
-            garmentPaths?: string[];
-            garmentPathStrokeDasharrays?: (string | undefined)[];
-            garmentPathStrokeWidths?: (number | undefined)[];
-            garmentPathStrokes?: (string | undefined)[];
+          viewBoxHeight?: number;
+          bodyPaths?: string[];
+          garmentPathsBehindBody?: string[];
+          garmentBehindBodyPathStrokeDasharrays?: (string | undefined)[];
+          garmentBehindBodyPathStrokeWidths?: (number | undefined)[];
+          garmentBehindBodyPathStrokes?: (string | undefined)[];
+          garmentBehindBodyPathFills?: (string | undefined)[];
+          garmentPaths?: string[];
+          garmentPathStrokeDasharrays?: (string | undefined)[];
+          garmentPathStrokeWidths?: (number | undefined)[];
+          garmentPathStrokes?: (string | undefined)[];
+          garmentPathFills?: (string | undefined)[];
+          presetId?: "gradingV4";
             fitEaseSummary?: WidgetFitEaseSummaryJson;
             fitEaseDiagram?: WidgetFitEaseDiagramJson | null;
           };
@@ -613,13 +650,21 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
             return;
           }
           setDraftFitData({
+            viewBoxMinX: body.viewBoxMinX ?? 0,
             viewBoxWidth: body.viewBoxWidth,
             viewBoxHeight: body.viewBoxHeight,
             bodyPaths: body.bodyPaths,
+            garmentPathsBehindBody: body.garmentPathsBehindBody,
+            garmentBehindBodyPathStrokeDasharrays: body.garmentBehindBodyPathStrokeDasharrays,
+            garmentBehindBodyPathStrokeWidths: body.garmentBehindBodyPathStrokeWidths,
+            garmentBehindBodyPathStrokes: body.garmentBehindBodyPathStrokes,
+            garmentBehindBodyPathFills: body.garmentBehindBodyPathFills,
             garmentPaths: body.garmentPaths,
             garmentPathStrokeDasharrays: body.garmentPathStrokeDasharrays,
             garmentPathStrokeWidths: body.garmentPathStrokeWidths,
             garmentPathStrokes: body.garmentPathStrokes,
+            garmentPathFills: body.garmentPathFills,
+            presetId: body.presetId,
             fitEaseSummary: body.fitEaseSummary,
             fitEaseDiagram: body.fitEaseDiagram,
           });
@@ -688,7 +733,7 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
             backgroundColor: canvasBg,
           }}
         >
-          <div className="flex shrink-0 flex-col" style={{ backgroundColor: interfaceBg }}>
+          <div className="relative z-10 flex shrink-0 flex-col" style={{ backgroundColor: interfaceBg }}>
             <PreviewBackRow onClick={onClose} />
             <PreviewProductRow
               productName={productName}
@@ -711,11 +756,16 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
             ) : null}
           </div>
 
-          <PreviewViewerShell backgroundColor={canvasBg}>
+          <PreviewViewerShell backgroundColor={canvasBg} clipContent>
         {garmentFitAvailable ? (
           <>
             {customGarmentData ? (
-              <div className="flex h-full min-h-0 w-full flex-1 justify-center">
+              <div
+                className={cn(
+                  "flex min-h-0 w-full min-w-0 flex-1 justify-center overflow-hidden",
+                  embedPublicWidget ? "pb-px pt-0" : "pb-2 pt-px",
+                )}
+              >
                 <PreviewFittingCanvasSvg
                   fitHeightCm={fitHeightCm}
                   fitBodyVal={fitBodyVal}
@@ -726,6 +776,7 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
                   bodyOnly={!garmentPathsInViewer}
                   fitEaseRevealNonce={fitEaseRevealNonce}
                   embedSplashSuspended={embedPublicWidget && embedSplashSuspended}
+                  embeddedWidgetUi
                 />
               </div>
             ) : authLoading || fitLoading ? (
@@ -740,47 +791,97 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
                 {fitError ?? "試着表示を読み込めませんでした"}
               </div>
             ) : (
-              <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col items-center justify-center gap-1 overflow-visible py-0.5">
-                <div className="flex min-h-0 w-full max-w-full flex-1 items-center justify-center">
+              <div
+                className={cn(
+                  "flex min-h-0 w-full min-w-0 flex-col items-center justify-center",
+                  embedPublicWidget
+                    ? "h-full flex-1 gap-0 overflow-hidden pb-px pt-0"
+                    : "h-full flex-1 gap-1 overflow-hidden py-0.5",
+                )}
+              >
+                <div className="flex min-h-0 w-full max-w-full flex-1 items-center justify-center overflow-hidden">
                   <svg
-                    viewBox={`0 0 ${fitData.viewBoxWidth} ${fitData.viewBoxHeight}`}
+                    viewBox={`${fitData.viewBoxMinX ?? 0} 0 ${fitData.viewBoxWidth} ${fitData.viewBoxHeight}`}
                     preserveAspectRatio="xMidYMid meet"
-                    className="h-auto max-h-full w-full min-w-0 max-w-full overflow-visible"
+                    className="mx-auto block h-auto max-h-[88%] min-h-0 min-w-0 w-auto max-w-full overflow-visible sm:max-h-[94%] box-border"
                     xmlns="http://www.w3.org/2000/svg"
                     aria-hidden
                   >
+                    {garmentPathsInViewer ? (
+                      <FitSvgBehindGarmentLayer
+                        fitData={fitData}
+                        garmentStrokeFallback={
+                          fitData.presetId === "gradingV4"
+                            ? "rgba(45,45,45,0.9)"
+                            : chromeForStrokes.canvas.garmentStroke
+                        }
+                        opacityStyle={{
+                          opacity: fitSvgStageEmbed >= 1 ? 1 : 0,
+                          transition: "opacity 0.42s ease-out",
+                        }}
+                      />
+                    ) : null}
                     <g
-                      fill="none"
-                      stroke={chromeForStrokes.canvas.bodyStroke}
-                      strokeWidth={4}
                       style={{
                         opacity: fitSvgStageEmbed >= 1 ? 1 : 0,
                         transition: "opacity 0.42s ease-out",
                       }}
                     >
-                      {fitData.bodyPaths.map((d, i) => (
-                        <path key={`b-${i}`} d={d} />
-                      ))}
+                      {fitData.presetId === "gradingV4" &&
+                      gradingV4UsesLayeredGridBodySilhouette(fitData.bodyPaths.length) ? (
+                        <>
+                          <g fill={canvasBg} stroke="none">
+                            {fitData.bodyPaths.map((d, i) => (
+                              <path
+                                key={`bf-${i}`}
+                                d={d}
+                                fill={gradingV4GridBodyPathEndsClosed(d) ? canvasBg : "none"}
+                              />
+                            ))}
+                          </g>
+                          <g
+                            fill="none"
+                            stroke={GRADING_V4_GRID_BODY_SILHOUETTE_STROKE}
+                            strokeWidth={4}
+                            pointerEvents="none"
+                          >
+                            {fitData.bodyPaths[0] ? <path key="bo" d={fitData.bodyPaths[0]} /> : null}
+                            {fitData.bodyPaths.map((d, i) =>
+                              i > 0 && !gradingV4GridBodyPathEndsClosed(d) ? (
+                                <path key={`bs-${i}`} d={d} />
+                              ) : null
+                            )}
+                          </g>
+                        </>
+                      ) : (
+                        <g
+                          fill={canvasBg}
+                          stroke={
+                            fitData.presetId === "gradingV4"
+                              ? GRADING_V4_GRID_BODY_SILHOUETTE_STROKE
+                              : chromeForStrokes.canvas.bodyStroke
+                          }
+                          strokeWidth={4}
+                        >
+                          {fitData.bodyPaths.map((d, i) => (
+                            <path key={`b-${i}`} d={d} />
+                          ))}
+                        </g>
+                      )}
                     </g>
                     {garmentPathsInViewer ? (
-                      <g
-                        fill={GARMENT_FILL}
-                        style={{
+                      <FitSvgFrontGarmentLayer
+                        fitData={fitData}
+                        garmentStrokeFallback={
+                          fitData.presetId === "gradingV4"
+                            ? "rgba(45,45,45,0.9)"
+                            : chromeForStrokes.canvas.garmentStroke
+                        }
+                        opacityStyle={{
                           opacity: fitSvgStageEmbed >= 1 ? 1 : 0,
                           transition: "opacity 0.42s ease-out",
                         }}
-                      >
-                        {fitData.garmentPaths.map((d, i) => (
-                          <path
-                            key={`g-${i}`}
-                            d={d}
-                            fill="none"
-                            stroke={fitData.garmentPathStrokes?.[i] ?? chromeForStrokes.canvas.garmentStroke}
-                            strokeWidth={fitData.garmentPathStrokeWidths?.[i] ?? 8}
-                            strokeDasharray={fitData.garmentPathStrokeDasharrays?.[i] ?? undefined}
-                          />
-                        ))}
-                      </g>
+                      />
                     ) : null}
                     {garmentPathsInViewer && (fitData.fitEaseDiagram?.ops?.length ?? 0) > 0 ? (
                       <g
@@ -796,6 +897,7 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
                 </div>
                 {garmentPathsInViewer && (fitData.fitEaseDiagram?.ops?.length ?? 0) > 0 ? (
                   <div
+                    className="shrink-0"
                     style={{
                       opacity: showEmbedEaseText ? 1 : 0,
                       transition: "opacity 0.35s ease-out",
@@ -805,6 +907,7 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
                   </div>
                 ) : garmentPathsInViewer ? (
                   <div
+                    className="shrink-0"
                     style={{
                       opacity: showEmbedEaseText ? 1 : 0,
                       transition: "opacity 0.35s ease-out",
@@ -837,22 +940,24 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
         )}
       </PreviewViewerShell>
 
-      {sizeCarouselEnabled ? (
-        <PreviewSizeCarousel
-          sizeKeys={sizeKeys}
-          currentSize={currentSize}
-          windowStart={windowStart}
-          onSelectSize={handleSelectSizeForAnalytics}
-          accentColor={accent}
-        />
-      ) : null}
+      <div className="relative z-10 flex shrink-0 flex-col" style={{ backgroundColor: interfaceBg }}>
+        {sizeCarouselEnabled ? (
+          <PreviewSizeCarousel
+            sizeKeys={sizeKeys}
+            currentSize={currentSize}
+            windowStart={windowStart}
+            onSelectSize={handleSelectSizeForAnalytics}
+            accentColor={accent}
+          />
+        ) : null}
 
-      <PreviewAccentCtaButton
-        variant="cart"
-        label={cartLabel}
-        accentColor={accent}
-        onClick={addToCartUrlTemplate?.trim() ? handleAddToCartClick : undefined}
-      />
+        <PreviewAccentCtaButton
+          variant="cart"
+          label={cartLabel}
+          accentColor={accent}
+          onClick={addToCartUrlTemplate?.trim() ? handleAddToCartClick : undefined}
+        />
+      </div>
 
       {bodyAdjustEnabled && bodySheetOpen ? (
         <div
@@ -860,7 +965,7 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
           style={{ backgroundColor: canvasBg }}
           data-fitlook-body-adjust
         >
-          <div className="flex shrink-0 flex-col" style={{ backgroundColor: interfaceBg }}>
+          <div className="relative z-10 flex shrink-0 flex-col" style={{ backgroundColor: interfaceBg }}>
             <PreviewBackRow onClick={() => setBodySheetOpen(false)} />
             <PreviewProductRow
               productName={productName}
@@ -876,7 +981,7 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
               />
             ) : null}
           </div>
-          <PreviewViewerShell backgroundColor={canvasBg}>
+          <PreviewViewerShell backgroundColor={canvasBg} clipContent>
             {garmentFitAvailable ? (
               <>
                 {customGarmentData ? (
@@ -891,6 +996,7 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
                       bodyOnly
                       bodySheetHeightScale
                       fitEaseRevealNonce={fitEaseRevealNonce}
+                      embeddedWidgetUi
                     />
                   </div>
                 ) : authLoading ? (
@@ -905,25 +1011,60 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
                     {draftFitError}
                   </div>
                 ) : draftFitData ? (
-                  <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col items-center justify-center gap-1 overflow-visible py-0.5">
+                  <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col items-center justify-center gap-1 overflow-hidden py-0.5">
                     <div
-                      className="flex min-h-0 w-full max-w-full flex-1 items-center justify-center overflow-visible"
+                      className="flex min-h-0 w-full max-w-full max-h-[88%] flex-1 items-center justify-center overflow-hidden sm:max-h-[94%]"
                       style={{
                         transform: `scale(${bodySheetPreviewHeightScale(bodyDraftHeight)})`,
                         transformOrigin: "center center",
                       }}
                     >
                       <svg
-                        viewBox={`0 0 ${draftFitData.viewBoxWidth} ${uniformPreviewViewBoxHeightFromHeightCm(bodyDraftHeight)}`}
+                        viewBox={`${draftFitData.viewBoxMinX ?? 0} 0 ${draftFitData.viewBoxWidth} ${uniformPreviewViewBoxHeightFromHeightCm(bodyDraftHeight)}`}
                         preserveAspectRatio="xMidYMid meet"
-                        className="h-auto max-h-full w-full min-w-0 max-w-full overflow-visible"
+                        className="block h-auto max-h-full w-auto min-h-0 min-w-0 max-w-full overflow-visible"
+                        style={{
+                          aspectRatio: `${draftFitData.viewBoxWidth} / ${uniformPreviewViewBoxHeightFromHeightCm(bodyDraftHeight)}`,
+                        }}
                         xmlns="http://www.w3.org/2000/svg"
                         aria-hidden
                       >
-                        <g fill="none" stroke={chromeForStrokes.canvas.bodyStroke} strokeWidth={4}>
-                          {draftFitData.bodyPaths.map((d, i) => (
-                            <path key={`bod-${i}`} d={d} />
-                          ))}
+                        <g style={{ opacity: fitSvgStageEmbed >= 1 ? 1 : 0, transition: "opacity 0.42s ease-out" }}>
+                          {draftFitData.presetId === "gradingV4" &&
+                          gradingV4UsesLayeredGridBodySilhouette(draftFitData.bodyPaths.length) ? (
+                            <>
+                              <g fill={canvasBg} stroke="none">
+                                {draftFitData.bodyPaths.map((d, i) => (
+                                  <path
+                                    key={`bdf-${i}`}
+                                    d={d}
+                                    fill={gradingV4GridBodyPathEndsClosed(d) ? canvasBg : "none"}
+                                  />
+                                ))}
+                              </g>
+                              <g
+                                fill="none"
+                                stroke={GRADING_V4_GRID_BODY_SILHOUETTE_STROKE}
+                                strokeWidth={4}
+                                pointerEvents="none"
+                              >
+                                {draftFitData.bodyPaths[0] ? (
+                                  <path key="bod-o" d={draftFitData.bodyPaths[0]} />
+                                ) : null}
+                                {draftFitData.bodyPaths.map((d, i) =>
+                                  i > 0 && !gradingV4GridBodyPathEndsClosed(d) ? (
+                                    <path key={`bds-${i}`} d={d} />
+                                  ) : null
+                                )}
+                              </g>
+                            </>
+                          ) : (
+                            <g fill={canvasBg} stroke={chromeForStrokes.canvas.bodyStroke} strokeWidth={4}>
+                              {draftFitData.bodyPaths.map((d, i) => (
+                                <path key={`bod-${i}`} d={d} />
+                              ))}
+                            </g>
+                          )}
                         </g>
                       </svg>
                     </div>
@@ -954,54 +1095,56 @@ export function WidgetStyleProductPreview(props: WidgetStyleProductPreviewProps)
               </div>
             )}
           </PreviewViewerShell>
-          <PreviewFitParamSliders
-            heightCm={bodyDraftHeight}
-            bodyVal={bodyDraftVal}
-            onHeightChange={setBodyDraftHeight}
-            onBodyValChange={setBodyDraftVal}
-            accentColor={accent}
-          />
-          <PreviewAccentCtaButton
-            variant="tryOn"
-            label={tryOnLabel}
-            accentColor={accent}
-            onClick={() => {
-              void (async () => {
-                if (embedPublicWidget && embedShopId) {
-                  void sendWidgetAnalyticsEvent({
-                    shopId: embedShopId,
-                    productId,
-                    type: "height_change",
-                    meta: {
-                      heightCm: bodyDraftHeight,
-                      bodyVal: bodyDraftVal,
-                      ...embedAnalyticsMeta,
-                    },
-                  });
-                }
-                setFitHeightCm(bodyDraftHeight);
-                setFitBodyVal(bodyDraftVal);
-                savePreviewFit({ heightCm: bodyDraftHeight, bodyVal: bodyDraftVal });
-                if (isAuthenticated && !embedPublicWidget) {
-                  try {
-                    await authenticatedFetch("/api/auth/profile", {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        preview_fit_height_cm: bodyDraftHeight,
-                        preview_fit_body_val: bodyDraftVal,
-                      }),
+          <div className="relative z-10 flex shrink-0 flex-col" style={{ backgroundColor: interfaceBg }}>
+            <PreviewFitParamSliders
+              heightCm={bodyDraftHeight}
+              bodyVal={bodyDraftVal}
+              onHeightChange={setBodyDraftHeight}
+              onBodyValChange={setBodyDraftVal}
+              accentColor={accent}
+            />
+            <PreviewAccentCtaButton
+              variant="tryOn"
+              label={tryOnLabel}
+              accentColor={accent}
+              onClick={() => {
+                void (async () => {
+                  if (embedPublicWidget && embedShopId) {
+                    void sendWidgetAnalyticsEvent({
+                      shopId: embedShopId,
+                      productId,
+                      type: "height_change",
+                      meta: {
+                        heightCm: bodyDraftHeight,
+                        bodyVal: bodyDraftVal,
+                        ...embedAnalyticsMeta,
+                      },
                     });
-                  } catch {
-                    // オフライン等は localStorage のみ
                   }
-                }
-                setBodySheetOpen(false);
-                /** メイン試着に戻ってから段階表示をやり直す（シート表示中に nonce が変わらないようにする） */
-                setFitEaseRevealNonce((n) => n + 1);
-              })();
-            }}
-          />
+                  setFitHeightCm(bodyDraftHeight);
+                  setFitBodyVal(bodyDraftVal);
+                  savePreviewFit({ heightCm: bodyDraftHeight, bodyVal: bodyDraftVal });
+                  if (isAuthenticated && !embedPublicWidget) {
+                    try {
+                      await authenticatedFetch("/api/auth/profile", {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          preview_fit_height_cm: bodyDraftHeight,
+                          preview_fit_body_val: bodyDraftVal,
+                        }),
+                      });
+                    } catch {
+                      /* ignore */
+                    }
+                  }
+                  setBodySheetOpen(false);
+                  /** メイン試着に戻ってから段階表示をやり直す（シート表示中に nonce が変わらないようにする） */
+                  setFitEaseRevealNonce((n) => n + 1);
+                })();
+              }}
+            />
+          </div>
         </div>
       ) : null}
         </div>

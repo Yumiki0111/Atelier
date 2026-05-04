@@ -3,6 +3,7 @@
  */
 
 import type { CustomLandmarks } from "./types";
+import { getLandmarksFromPaths } from "@/app/(main)/development/fitting/customGarment/svgGarmentSplit";
 import { getPathPoints } from "./pathUtils";
 
 function roundTo(v: number, step: number): number {
@@ -14,8 +15,16 @@ function roundTo(v: number, step: number): number {
  * リグっぽい「直線パス群」から、トップス用の肩Y・肩幅・裾を推定する。
  *
  * 前提: リグは直線（M/L/H/V中心）で、肩幅と裾がはっきり出る。
+ * 格子 Vector(9) は軸線フィルタ後に縦スパン不足で落ちるため、9 本のとき `getLandmarksFromPaths` にフォールバック。
  */
 export function inferLandmarksFromRigPaths(rigPathDs: string[]): CustomLandmarks | null {
+  const h = inferLandmarksFromRigPathsHeuristic(rigPathDs);
+  if (h != null) return h;
+  if (rigPathDs.length === 9) return getLandmarksFromPaths(rigPathDs);
+  return null;
+}
+
+function inferLandmarksFromRigPathsHeuristic(rigPathDs: string[]): CustomLandmarks | null {
   const straightPathDs = rigPathDs.filter((d) => !/[CcQqSsTtAa]/.test(d));
   if (straightPathDs.length < 4) return null;
 

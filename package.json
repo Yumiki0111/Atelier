@@ -19,6 +19,9 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
     "svg:split-subpaths": "node scripts/split-svg-subpaths.mjs",
+    "svg:strip-grid-rig-pixels": "node scripts/strip-grid-body-rig-pixels.mjs",
+    "svg:strip-grid-rig-pixels:aggressive": "node scripts/strip-grid-body-rig-pixels.mjs --aggressive",
+    "sync:grid-rig-d": "node scripts/sync-grid-model-rig-d.mjs",
     "db:push": "node scripts/supabase-db-push.mjs",
     "knip": "knip --no-config-hints --max-issues 50"
   },

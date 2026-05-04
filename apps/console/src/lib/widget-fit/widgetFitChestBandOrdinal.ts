@@ -1,5 +1,6 @@
 import type { BodyModelVariant } from "@/app/(main)/development/fitting/lib/bodyModelVariant";
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
+import { GRADING_V4_ORDERED_SIZE_LABELS } from "@/app/(main)/development/fitting/gradingV4/gradingV4GarmentCm";
 import { WIDGET_FIT_CHEST_BAND_JA, type WidgetFitChestBandJaLabel } from "@/app/(main)/development/fitting/lib/fitCalc";
 
 /** 身長レンジ（cm）。`t` の線形写像に使う上限 */
@@ -116,9 +117,10 @@ export function recommendedSizeIndexForBody(
 }
 
 export function orderedSizeLabelsFromCustomGarment(data: CustomGarmentData | null | undefined): string[] {
-  const presets = data?.genericSymmetricTop?.sizePresets;
-  if (!presets || presets.length === 0) return [];
-  return presets.map((p) => p.label);
+  if (data?.presetId === "gradingV4") {
+    return [...GRADING_V4_ORDERED_SIZE_LABELS];
+  }
+  return [];
 }
 
 /**

@@ -1,193 +1,28 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import { FittingControls } from "@/app/(main)/development/fitting/controls/FittingControls";
-import { FittingCanvas } from "@/fitting-dev/FittingCanvas";
-import { sizeEqual, landmarksEqual, pathDsContentEqual } from "@/app/(main)/development/fitting/lib/fittingStateUtils";
-import { getGenericSymmetricTopPreset } from "@/app/(main)/development/fitting/generic/getGenericSymmetricTopPreset";
-import type {
-  GarmentType,
-  ShirtSize,
-  JacketSize,
-  CustomGarmentData,
-  GenericVertexPlotHighlight,
-  PlotIndexLabelDensity,
-} from "@/app/(main)/development/fitting/lib/types";
-import type { BodyModelVariant } from "@/app/(main)/development/fitting/lib/bodyModelVariant";
+import { useCallback, useRef, useState } from "react";
+import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
 import { DevelopmentProductRegisterPanel } from "./DevelopmentProductRegisterPanel";
 import { PageHeader } from "@/components/page-header/PageHeader";
 import { ConsoleSectionPanel } from "@/components/console/ConsoleSectionPanel";
 import { Package } from "lucide-react";
-
-const ANIM_DURATION_MS = 300;
-const STORAGE_KEY = "fitlook-dev-fitting";
-
-type SavedState = {
-  garment: GarmentType;
-  shirtSize?: ShirtSize;
-  jacketSize?: JacketSize;
-};
-
-function loadSavedState(): Partial<SavedState> | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as SavedState;
-  } catch {
-    return null;
-  }
-}
-
-function saveState(garment: GarmentType, shirtSize: ShirtSize, jacketSize: JacketSize) {
-  if (typeof window === "undefined") return;
-  try {
-    const toSave: SavedState = { garment, shirtSize, jacketSize };
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-  } catch {
-    // ignore
-  }
-}
+import { GradingV4Fitting, type GradingV4FittingHandle } from "@/app/(main)/development/fitting/gradingV4";
 
 export default function DevelopmentPage() {
   const [height, setHeight] = useState(170);
-  const [weight, setWeight] = useState(60);
-  const [garment, setGarment] = useState<GarmentType>("custom");
-  const [shirtSize, setShirtSize] = useState<ShirtSize>("48");
-  const [jacketSize, setJacketSize] = useState<JacketSize>("4");
-  const [customGarmentData, setCustomGarmentData] = useState<CustomGarmentData | null>(() =>
-    getGenericSymmetricTopPreset()
-  );
-  const [hydrated, setHydrated] = useState(false);
-  const [animFromSize, setAnimFromSize] = useState<ShirtSize | null>(null);
-  const [animToSize, setAnimToSize] = useState<ShirtSize | null>(null);
-  const [animFromCustom, setAnimFromCustom] = useState<CustomGarmentData | null>(null);
-  const [animToCustom, setAnimToCustom] = useState<CustomGarmentData | null>(null);
-  const [animProgress, setAnimProgress] = useState(1);
-  const [showGarment, setShowGarment] = useState(true);
-  const [showMeasureOverlay, setShowMeasureOverlay] = useState(true);
-  const [showPlotCoords, setShowPlotCoords] = useState(true);
-  const [plotIndexLabelDensity, setPlotIndexLabelDensity] = useState<PlotIndexLabelDensity>("all");
-  const [showBodyPlotCoords, setShowBodyPlotCoords] = useState(false);
-  const [showRigAngleDiagram, setShowRigAngleDiagram] = useState(false);
-  const [rigBodyEnabled, setRigBodyEnabled] = useState(false);
-  const [rigGarmentEnabled, setRigGarmentEnabled] = useState(false);
-  const [bodyModelVariant, setBodyModelVariant] = useState<BodyModelVariant>("default");
-  const [genericVertexPlotHighlight, setGenericVertexPlotHighlight] = useState<GenericVertexPlotHighlight | null>(
-    null
-  );
-  const [widgetFitCompareChordGlow, setWidgetFitCompareChordGlow] = useState<[number, number] | null>(null);
-  const [hoveredGarmentVertexIndex, setHoveredGarmentVertexIndex] = useState<number | null>(null);
-  const [garmentPlotVertexFilter, setGarmentPlotVertexFilter] = useState<number[] | null>(null);
-  const animRunIdRef = useRef(0);
-  const startRef = useRef<number | null>(null);
+  const [weight, setWeight] = useState(64);
+  const gradingV4Ref = useRef<GradingV4FittingHandle>(null);
 
-  const handleShirtSizeChange = useCallback((next: ShirtSize) => {
-    if (next === shirtSize) return;
-    setAnimFromSize(shirtSize);
-    setAnimToSize(next);
-    setShirtSize(next);
-    setAnimProgress(0);
-    startRef.current = null;
-  }, [shirtSize]);
-
-  const handleCustomGarmentApply = useCallback((newData: CustomGarmentData) => {
-    const prev = customGarmentData;
-    setCustomGarmentData(newData);
-    if (
-      prev &&
-      pathDsContentEqual(prev.pathDs, newData.pathDs) &&
-      (!sizeEqual(prev.size, newData.size) ||
-        !landmarksEqual(prev.landmarks, newData.landmarks))
-    ) {
-      /**
-       * path は同じでサイズ／ランドマークだけ変える場合、補間中は `animatingCustomSizeBlend` が true。
-       * 着丈 Y メッシュ・袖スナップとも from/to の計測を補間して適用。
-       * 同じ SVG のグレード確認では補間しない。
-       */
-      setAnimFromCustom(null);
-      setAnimToCustom(null);
-      setAnimProgress(1);
-    } else if (prev && !pathDsContentEqual(prev.pathDs, newData.pathDs)) {
-      setAnimFromCustom(null);
-      setAnimToCustom(null);
-      setAnimProgress(1);
-    }
-  }, [customGarmentData]);
-
-  const handleGenericVertexPlotHighlightChange = useCallback((h: GenericVertexPlotHighlight | null) => {
-    setGenericVertexPlotHighlight(h);
+  const resolveCustomGarmentDataForRegister = useCallback((): CustomGarmentData | null => {
+    return gradingV4Ref.current?.buildGarmentSpecForProductDb() ?? null;
   }, []);
-
-  const mergedGenericVertexPlotHighlight = useMemo((): GenericVertexPlotHighlight | null => {
-    const chord = widgetFitCompareChordGlow;
-    const base = genericVertexPlotHighlight;
-    if (chord == null) return base;
-    return { ...(base ?? {}), fitCompareWidgetGlobals: chord };
-  }, [genericVertexPlotHighlight, widgetFitCompareChordGlow]);
-
-  useEffect(() => {
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    const saved = loadSavedState();
-    if (saved?.garment != null) setGarment(saved.garment);
-    if (saved?.shirtSize != null) setShirtSize(saved.shirtSize);
-    if (saved?.jacketSize != null) setJacketSize(saved.jacketSize);
-    if (saved?.garment === "custom" && saved?.jacketSize != null) {
-      setCustomGarmentData(getGenericSymmetricTopPreset());
-    }
-  }, [hydrated]);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    saveState(garment, shirtSize, jacketSize);
-  }, [hydrated, garment, shirtSize, jacketSize]);
-
-  /**
-   * `animProgress` を依存に入れると毎フレーム effect が再実行され、cleanup の cancelAnimationFrame が
-   * 継続フレームを潰してグレーディング補間がカクつく。from/to が揃ったときだけ 1 本の RAF チェーンを回す。
-   */
-  useEffect(() => {
-    const animating =
-      (animFromSize != null && animToSize != null) ||
-      (animFromCustom != null && animToCustom != null);
-    if (!animating) return;
-
-    const runId = ++animRunIdRef.current;
-    startRef.current = null;
-
-    const step = (ts: number) => {
-      if (runId !== animRunIdRef.current) return;
-      if (startRef.current == null) startRef.current = ts;
-      const elapsed = ts - startRef.current;
-      const next = Math.min(elapsed / ANIM_DURATION_MS, 1);
-      setAnimProgress(next);
-      if (next < 1) {
-        requestAnimationFrame(step);
-      } else {
-        setAnimFromSize(null);
-        setAnimToSize(null);
-        setAnimFromCustom(null);
-        setAnimToCustom(null);
-      }
-    };
-
-    const id = requestAnimationFrame(step);
-    return () => {
-      cancelAnimationFrame(id);
-      animRunIdRef.current += 1;
-    };
-  }, [animFromSize, animToSize, animFromCustom, animToCustom]);
 
   return (
     <div className="flex min-h-full flex-col pb-6">
       <div className="flex shrink-0 flex-col gap-4">
         <PageHeader title="開発" />
         <p className="max-w-2xl text-xs leading-relaxed text-muted-foreground">
-          体型・サイズ・服のリグを調整し、商品ライブラリに登録したうえでフィットを確認します。
+          体型・サイズ・服を調整し、商品ライブラリに登録したうえでフィットを確認します。
         </p>
         <ConsoleSectionPanel
           title="商品ライブラリへの登録"
@@ -195,10 +30,9 @@ export default function DevelopmentPage() {
           icon={Package}
         >
           <DevelopmentProductRegisterPanel
-            garment={garment}
-            customGarmentData={customGarmentData}
-            bodyModelVariant={bodyModelVariant}
-            fitDebugContext={{ height, weight, shirtSize, jacketSize }}
+            garment="custom"
+            customGarmentData={null}
+            resolveCustomGarmentDataForRegister={resolveCustomGarmentDataForRegister}
           />
         </ConsoleSectionPanel>
       </div>
@@ -206,82 +40,17 @@ export default function DevelopmentPage() {
         <div className="shrink-0">
           <h2 className="text-sm font-semibold text-foreground">フィット調整</h2>
           <p className="mt-1 max-w-xl text-[11px] leading-relaxed text-muted-foreground">
-            体型・キャンバス・サイズを変えて試着を確認します。
+            Garment Grading v4（path id × ゾーンに基づく変形）。プレビュー・ウィジェットは登録済みの{" "}
+            <code className="text-[10px]">garment_spec</code> と同じ計算を参照します。
           </p>
         </div>
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-4">
-        <div className="relative z-0 w-full min-w-0 flex-1 overflow-hidden bg-background lg:sticky lg:top-4 lg:z-10 lg:self-start lg:overflow-visible lg:order-2">
-          <FittingCanvas
-            height={height}
-            weight={weight}
-            garment={garment}
-            shirtSize={shirtSize}
-            jacketSize={jacketSize}
-            customGarmentData={customGarmentData}
-            animProgress={animProgress}
-            fromSize={animFromSize}
-            toSize={animToSize}
-            fromCustomGarmentData={animFromCustom}
-            toCustomGarmentData={animToCustom}
-            showGarment={showGarment}
-            showMeasureOverlay={showMeasureOverlay}
-            showPlotCoords={showPlotCoords}
-            plotIndexLabelDensity={plotIndexLabelDensity}
-            hoveredGarmentVertexIndex={hoveredGarmentVertexIndex}
-            garmentPlotVertexFilter={garmentPlotVertexFilter}
-            showBodyPlotCoords={showBodyPlotCoords}
-            showRigAngleDiagram={showRigAngleDiagram}
-            rigBodyEnabled={rigBodyEnabled}
-            rigGarmentEnabled={rigGarmentEnabled}
-            bodyModelVariant={bodyModelVariant}
-            genericVertexPlotHighlight={mergedGenericVertexPlotHighlight}
-            onGarmentVertexHover={setHoveredGarmentVertexIndex}
-            garmentVertexPickEnabled={
-              garment === "custom" &&
-              customGarmentData?.presetId === "genericSymmetricTop" &&
-              showPlotCoords
-            }
-          />
-        </div>
-        <FittingControls
-          className="max-h-[min(42vh,360px)] w-full max-w-none shrink-0 bg-secondary/30 px-2 py-2 lg:order-1 lg:max-h-none lg:w-[min(17rem,100%)] lg:bg-transparent lg:px-0 lg:py-1"
+        <GradingV4Fitting
+          ref={gradingV4Ref}
           height={height}
           weight={weight}
-          garment={garment}
-          shirtSize={shirtSize}
-          jacketSize={jacketSize}
-          customGarmentData={customGarmentData}
-          showGarment={showGarment}
-          showMeasureOverlay={showMeasureOverlay}
-          showPlotCoords={showPlotCoords}
-          plotIndexLabelDensity={plotIndexLabelDensity}
-          garmentPlotVertexFilter={garmentPlotVertexFilter}
-          onGarmentPlotVertexFilterChange={setGarmentPlotVertexFilter}
-          showBodyPlotCoords={showBodyPlotCoords}
-          showRigAngleDiagram={showRigAngleDiagram}
-          rigBodyEnabled={rigBodyEnabled}
-          rigGarmentEnabled={rigGarmentEnabled}
-          bodyModelVariant={bodyModelVariant}
           onHeightChange={setHeight}
           onWeightChange={setWeight}
-          onGarmentChange={setGarment}
-          onShirtSizeChange={handleShirtSizeChange}
-          onJacketSizeChange={setJacketSize}
-          onCustomGarmentApply={handleCustomGarmentApply}
-          onToggleGarment={() => setShowGarment((v) => !v)}
-          onToggleMeasureOverlay={() => setShowMeasureOverlay((v) => !v)}
-          onTogglePlotCoords={() => setShowPlotCoords((v) => !v)}
-          onPlotIndexLabelDensityChange={setPlotIndexLabelDensity}
-          onToggleBodyPlotCoords={() => setShowBodyPlotCoords((v) => !v)}
-          onToggleRigAngleDiagram={() => setShowRigAngleDiagram((v) => !v)}
-          onToggleRigBody={() => setRigBodyEnabled((v) => !v)}
-          onToggleRigGarment={() => setRigGarmentEnabled((v) => !v)}
-          onBodyModelVariantChange={setBodyModelVariant}
-          onGenericVertexPlotHighlightChange={handleGenericVertexPlotHighlightChange}
-          onWidgetFitCompareChordHighlightChange={setWidgetFitCompareChordGlow}
-          hoveredGarmentVertexIndex={hoveredGarmentVertexIndex}
         />
-        </div>
       </div>
     </div>
   );

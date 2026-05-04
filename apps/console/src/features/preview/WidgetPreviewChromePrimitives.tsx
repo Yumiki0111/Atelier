@@ -24,7 +24,12 @@ export function PreviewBackRow({
   const theme = usePreviewChromeTheme();
   const fg = theme.interface.fg;
   return (
-    <div className="shrink-0 px-3 pb-1 pt-[max(10px,env(safe-area-inset-top))]">
+    <div
+      className={cn(
+        "shrink-0 pb-1 pt-[max(10px,env(safe-area-inset-top))]",
+        isEmbed ? "px-4" : "px-3",
+      )}
+    >
       <button
         type="button"
         onClick={onClick}
@@ -65,8 +70,8 @@ export function PreviewProductRow({
   return (
     <div
       className={cn(
-        "flex shrink-0 flex-row items-start justify-between px-3 pb-2 pt-0.5",
-        isEmbed ? "gap-2" : "gap-1.5",
+        "flex shrink-0 flex-row items-start justify-between pt-0.5",
+        isEmbed ? "gap-2 px-4 pb-2" : "gap-1.5 px-3 pb-2",
       )}
     >
       <div
@@ -192,19 +197,31 @@ export function PreviewColorSwatchRow({
 
 /** 試着キャンバス枠（背景・パディング共通）
  * 親の flex 列で残り高さを確実に取る（basis-0 + min-h-0）。
- * overflow は visible：子 SVG のストロークや viewBox 外の描画を親の overflow-hidden で切らない。
+ * コンソールは `overflow-visible`（採寸図・ストロークのはみ出しを残す）。
+ * 埋め込み（ウィジェット iframe）は `overflow-hidden` と z-0：下層の描画がヘッダー／サイズ行の上に乗らない。
  */
 export function PreviewViewerShell({
   children,
   backgroundColor,
+  clipContent = false,
 }: {
   children: ReactNode;
   /** 描画キャンパス（試着 SVG エリア）。未指定時は `PREVIEW_SURFACE_BG` */
   backgroundColor?: string;
+  /** フォン枠プレビュー：キャンバス外へのはみ出しを隠す（メイン試着・体型シートの両方で使用） */
+  clipContent?: boolean;
 }) {
+  const scale = usePreviewChromeScale();
+  const isEmbed = scale === "embed";
+  const hideOverflow = isEmbed || clipContent;
   return (
     <div
-      className="relative flex min-h-0 flex-1 basis-0 flex-col overflow-visible px-2 pb-2 pt-2"
+      className={cn(
+        "relative z-0 flex min-h-0 min-w-0 flex-1 basis-0 flex-col",
+        hideOverflow
+          ? "justify-center overflow-hidden px-0 pb-px pt-0"
+          : "overflow-visible px-2 pb-2 pt-2",
+      )}
       style={{ backgroundColor: backgroundColor ?? PREVIEW_SURFACE_BG }}
       data-fitlook-viewer-container
     >

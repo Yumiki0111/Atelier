@@ -1,67 +1,23 @@
 import type { BodyModelVariant } from "@/app/(main)/development/fitting/lib/bodyModelVariant";
 
-/**
- * garment_spec（開発フィット登録）からサイズラベルと着丈・袖丈（cm）を取り出す。
- */
+/** サイズごとの cm プリセット（互換レイヤ）。Grading v4 は別カタログ参照。 */
 export type GarmentSizePresetRow = {
   label: string;
-  /** 着丈 cm */
   lengthCm: number;
-  /** 袖丈 cm */
   sleeveCm: number;
 };
 
-export function parseGarmentSizePresets(garmentSpec: unknown): GarmentSizePresetRow[] {
-  if (!garmentSpec || typeof garmentSpec !== "object") return [];
-  const raw = (garmentSpec as { genericSymmetricTop?: { sizePresets?: unknown } })
-    .genericSymmetricTop?.sizePresets;
-  if (!Array.isArray(raw)) return [];
-  const out: GarmentSizePresetRow[] = [];
-  for (const p of raw) {
-    if (!p || typeof p !== "object") continue;
-    const { label, length, sleeve } = p as {
-      label?: unknown;
-      length?: unknown;
-      sleeve?: unknown;
-    };
-    if (typeof label !== "string" || !label.trim()) continue;
-    if (typeof length !== "number" || !Number.isFinite(length)) continue;
-    if (typeof sleeve !== "number" || !Number.isFinite(sleeve)) continue;
-    out.push({ label: label.trim(), lengthCm: length, sleeveCm: sleeve });
-  }
-  return out;
+/** Grading v4 ではウィジェット側の固定カタログを使用。DB 側のプリセット配列は廃止。 */
+export function parseGarmentSizePresets(_garmentSpec: unknown): GarmentSizePresetRow[] {
+  return [];
 }
 
-/** `genericSymmetricTop` があるときのみ寸法プリセットを編集できる */
-export function canEditGarmentSizePresets(garmentSpec: unknown): boolean {
-  if (garmentSpec == null || typeof garmentSpec !== "object") return false;
-  const g = garmentSpec as { genericSymmetricTop?: unknown };
-  return g.genericSymmetricTop != null && typeof g.genericSymmetricTop === "object";
+export function canEditGarmentSizePresets(_garmentSpec: unknown): boolean {
+  return false;
 }
 
-/**
- * garment_spec の他フィールドは維持し、`genericSymmetricTop.sizePresets` だけ置き換える。
- */
-export function mergeGarmentSpecSizePresets(
-  garmentSpec: unknown,
-  presets: GarmentSizePresetRow[]
-): unknown {
-  if (garmentSpec == null || typeof garmentSpec !== "object") {
-    return garmentSpec;
-  }
-  const g = { ...(garmentSpec as Record<string, unknown>) };
-  const prevGt = g.genericSymmetricTop;
-  const gt =
-    prevGt && typeof prevGt === "object"
-      ? { ...(prevGt as Record<string, unknown>) }
-      : {};
-  gt.sizePresets = presets.map((p) => ({
-    label: p.label,
-    length: p.lengthCm,
-    sleeve: p.sleeveCm,
-  }));
-  g.genericSymmetricTop = gt;
-  return g;
+export function mergeGarmentSpecSizePresets(garmentSpec: unknown, _presets: GarmentSizePresetRow[]): unknown {
+  return garmentSpec;
 }
 
 /**

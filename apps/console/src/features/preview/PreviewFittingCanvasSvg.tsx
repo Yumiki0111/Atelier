@@ -3,6 +3,12 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useFittingCanvasData } from "@/app/(main)/development/fitting/canvas/useFittingCanvasData";
 import { shouldSuppressGarmentPathRender } from "@/app/(main)/development/fitting/lib/pathUtils";
+import { resolveCustomSvgPathRenderablePaint } from "@/app/(main)/development/fitting/customGarment/resolveCustomSvgPathRenderablePaint";
+import {
+  GRADING_V4_GRID_BODY_SILHOUETTE_STROKE,
+  gradingV4GridBodyPathEndsClosed,
+  gradingV4UsesLayeredGridBodySilhouette,
+} from "@/app/(main)/development/fitting/gradingV4/gradingV4Constants";
 import { landmarksEqual, pathDsContentEqual, sizeEqual } from "@/app/(main)/development/fitting/lib/fittingStateUtils";
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
 import { applyWidgetSizeToCustomGarmentData } from "@/lib/widget-fit/applyWidgetSizeToGarment";
@@ -15,15 +21,16 @@ import {
   orderedSizeLabelsFromCustomGarment,
   resolveOrderedSizeKeysForBand,
 } from "@/lib/widget-fit/widgetFitChestBandOrdinal";
+import { GradingV4EditorMirrorPreview } from "@/features/preview/GradingV4EditorMirrorPreview";
 import { WidgetFitEaseDiagramSvg } from "@/features/preview/WidgetFitEaseDiagramSvg";
 import { weightKgFromBodyVal } from "@Atelier/shared";
+import { cn } from "@/lib/utils";
 import { usePreviewChromeTheme } from "./WidgetPreviewChromeTheme";
 import {
   GARMENT_FILL,
   PREVIEW_JACKET_SIZE,
   PREVIEW_SHIRT_SIZE,
   PREVIEW_SIZE_ANIM_MS,
-  VIEWBOX_W,
 } from "./widget-style-product-preview-fit-constants";
 import { PreviewFitEaseFootnote, PreviewFitEaseSummary } from "./widget-style-product-preview-fit-ease-ui";
 import { useFitSvgStage } from "./widget-style-product-preview-fit-svg-stage";
@@ -40,6 +47,7 @@ export function PreviewFittingCanvasSvg({
   bodySheetHeightScale = false,
   fitEaseRevealNonce = 0,
   embedSplashSuspended = false,
+  embeddedWidgetUi = false,
 }: {
   fitHeightCm: number;
   fitBodyVal: number;
@@ -57,8 +65,17 @@ export function PreviewFittingCanvasSvg({
   fitEaseRevealNonce?: number;
   /** 親ウィジェットのスプラッシュ中は図解・脚注の段階表示を保留 */
   embedSplashSuspended?: boolean;
+  /**
+   * フォン枠プレビュー（埋め込み iframe とコンソールのウィジェットデザインプレビュー共通）向け:
+   * SVG ブロックに縦上限（max-h 88%/94%）を付け、はみ出しを防ぐ。
+   */
+  embeddedWidgetUi?: boolean;
 }) {
-  const { bodyStroke, garmentStroke } = usePreviewChromeTheme().canvas;
+  const { bodyStroke, garmentStroke, surfaceBackground: canvasSurfaceBackground } = usePreviewChromeTheme().canvas;
+  const isGradingV4 = customGarmentData.presetId === "gradingV4";
+  const previewBodyStroke = isGradingV4 ? GRADING_V4_GRID_BODY_SILHOUETTE_STROKE : bodyStroke;
+  const previewGarmentStrokeFallback = isGradingV4 ? "rgba(45,45,45,0.9)" : garmentStroke;
+  const previewGarmentDefaultStrokeWidth = 1;
   const sizedTarget = useMemo(
     () => applyWidgetSizeToCustomGarmentData(customGarmentData, currentSize),
     [customGarmentData, currentSize]
@@ -88,10 +105,15 @@ export function PreviewFittingCanvasSvg({
     }
     const fromSized = applyWidgetSizeToCustomGarmentData(customGarmentData, sizeCommittedRef.current);
     const toSized = applyWidgetSizeToCustomGarmentData(customGarmentData, currentSize);
-    if (
-      pathDsContentEqual(fromSized.pathDs, toSized.pathDs) &&
-      (!sizeEqual(fromSized.size, toSized.size) || !landmarksEqual(fromSized.landmarks, toSized.landmarks))
-    ) {
+    const sizeOrLandmarksChanged =
+      !sizeEqual(fromSized.size, toSized.size) || !landmarksEqual(fromSized.landmarks, toSized.landmarks);
+    /** Grading v4 ミラーは平置き cm の lerp で滑らかにする。pathDs がサイズごとに違っても従来のアニメ分岐に乗せる */
+    const animateGradingV4Mirror =
+      customGarmentData.presetId === "gradingV4" && sizeOrLandmarksChanged;
+    const animateSamePathsDifferentMeasure =
+      pathDsContentEqual(fromSized.pathDs, toSized.pathDs) && sizeOrLandmarksChanged;
+
+    if (animateGradingV4Mirror || animateSamePathsDifferentMeasure) {
       setFromCustom(fromSized);
       setToCustom(toSized);
       setAnimProgress(0);
@@ -151,7 +173,6 @@ export function PreviewFittingCanvasSvg({
     toCustomGarmentData: toCustom,
     rigBodyEnabled: false,
     bodyModelVariant: sizedTarget.bodyModelVariant,
-    genericVertexPlotHighlight: null,
   });
   const weightKg = weightKgFromBodyVal(fitBodyVal);
   const fitChestBandMode = useMemo(
@@ -179,8 +200,13 @@ export function PreviewFittingCanvasSvg({
   );
   /** パス・採寸オーバーレイと同じ `snap.viewBoxHeight`（身長＋体重の yScale）。ここをずらすと図解が viewBox 外に出る。 */
   const viewBoxH = snap.viewBoxHeight;
+  const gradingBehindN =
+    !bodyOnly && sizedTarget.presetId === "gradingV4" ? snap.gradingV4BehindBodyPathCount : 0;
+
   const sheetScale = bodySheetHeightScale ? bodySheetPreviewHeightScale(fitHeightCm) : 1;
+  /** 袖・裾カプセル図解。Grading v4 も試着 `snap` と同一 viewBox で重ねる */
   const hasEaseDiagram = Boolean(fitEaseDiagram?.ops?.length);
+  const easeDiagramRenderable = hasEaseDiagram;
   /** 商品切替・体型適用（`fitEaseRevealNonce`）のときに段階表示をやり直す。サイズ変更のみではリセットしない */
   const [easeRevealDone, setEaseRevealDone] = useState(false);
   const [easeRevealKey, setEaseRevealKey] = useState(0);
@@ -188,7 +214,7 @@ export function PreviewFittingCanvasSvg({
     setEaseRevealDone(false);
     setEaseRevealKey((k) => k + 1);
   }, [customGarmentData, fitEaseRevealNonce]);
-  const fitSvgStage = useFitSvgStage(hasEaseDiagram, [bodyOnly, hasEaseDiagram, easeRevealKey], {
+  const fitSvgStage = useFitSvgStage(easeDiagramRenderable, [bodyOnly, easeDiagramRenderable, easeRevealKey], {
     embedSplashSuspended: embedSplashSuspended === true,
   });
   useEffect(() => {
@@ -199,9 +225,19 @@ export function PreviewFittingCanvasSvg({
   const showEaseText = easeRevealDone || fitSvgStage >= 3;
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 max-w-full flex-col items-center justify-center gap-1 overflow-visible">
+    <div
+      className={cn(
+        "flex h-full min-h-0 w-full min-w-0 max-w-full flex-col items-center justify-center gap-1",
+        embeddedWidgetUi ? "overflow-hidden" : "overflow-visible",
+      )}
+    >
       <div
-        className="flex min-h-0 w-full flex-1 items-center justify-center overflow-visible"
+        className={cn(
+          "flex min-h-0 w-full flex-1 items-center justify-center",
+          embeddedWidgetUi
+            ? "min-h-0 w-full min-w-0 max-w-full max-h-[88%] overflow-hidden sm:max-h-[94%]"
+            : "overflow-visible",
+        )}
         style={
           bodySheetHeightScale
             ? {
@@ -211,62 +247,174 @@ export function PreviewFittingCanvasSvg({
             : undefined
         }
       >
-        <svg
-          viewBox={`0 0 ${VIEWBOX_W} ${viewBoxH}`}
-          preserveAspectRatio="xMidYMid meet"
-          className="h-auto max-h-full w-full min-w-0 max-w-full overflow-visible"
-          xmlns="http://www.w3.org/2000/svg"
-          aria-hidden
-        >
-          <g
-            fill="none"
-            stroke={bodyStroke}
-            strokeWidth={4}
-            style={{
-              opacity: fitSvgStage >= 1 ? 1 : 0,
-              transition: "opacity 0.42s ease-out",
-            }}
+        {isGradingV4 && !bodyOnly ? (
+          <div
+            className={cn(
+              "relative isolate flex h-full min-h-0 w-full max-w-full flex-col items-center",
+              embeddedWidgetUi ? "overflow-hidden" : "overflow-visible",
+            )}
           >
-            {snap.bodyPaths.map((d, i) => (
-              <path key={`b-${i}`} d={d} />
-            ))}
-          </g>
-          {!bodyOnly ? (
+            <GradingV4EditorMirrorPreview
+              canvasSurfaceColor={canvasSurfaceBackground}
+              fitSvgStage={fitSvgStage}
+              garmentDefaultStrokeWidth={previewGarmentDefaultStrokeWidth}
+              garmentStrokeFallback={previewGarmentStrokeFallback}
+              previewBodyStroke={previewBodyStroke}
+              snap={snap}
+            />
+            {easeDiagramRenderable && isGradingV4 && fitEaseDiagram != null ? (
+              <svg
+                aria-hidden
+                className="pointer-events-none absolute inset-0 z-[40] size-full overflow-visible"
+                viewBox={`${snap.viewBoxMinX} 0 ${snap.viewBoxWidth} ${viewBoxH}`}
+                preserveAspectRatio="xMidYMid meet"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <g
+                  style={{
+                    opacity: showEaseOverlay ? 1 : 0,
+                    transition: "opacity 0.35s ease-out",
+                  }}
+                >
+                  <WidgetFitEaseDiagramSvg diagram={fitEaseDiagram} />
+                </g>
+              </svg>
+            ) : null}
+          </div>
+        ) : (
+          <svg
+            viewBox={`${snap.viewBoxMinX} 0 ${snap.viewBoxWidth} ${viewBoxH}`}
+            preserveAspectRatio="xMidYMid meet"
+            className="block h-auto max-h-full w-auto min-h-0 max-w-full overflow-visible box-border"
+            style={{ aspectRatio: `${snap.viewBoxWidth} / ${viewBoxH}` }}
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden
+          >
+            {!bodyOnly && gradingBehindN > 0 ? (
+              <g
+                fill={GARMENT_FILL}
+                style={{
+                  opacity: fitSvgStage >= 1 ? 1 : 0,
+                  transition: "opacity 0.42s ease-out",
+                }}
+              >
+                {snap.customPathDs.slice(0, gradingBehindN).map((d, j) => {
+                  const i = j;
+                  if (!d || d.length === 0 || shouldSuppressGarmentPathRender(d)) return null;
+                  const paint = resolveCustomSvgPathRenderablePaint({
+                    garmentStrokeFallback: previewGarmentStrokeFallback,
+                    pathStroke: snap.customPathStrokes[i],
+                    pathFill: snap.customPathFills[i],
+                    pathStrokeWidth: snap.customPathStrokeWidths[i],
+                    defaultStrokeWidth: previewGarmentDefaultStrokeWidth,
+                    allPathStrokes: snap.customPathStrokes,
+                    pathIndex: i,
+                    preserveFillOnlyPaths: isGradingV4,
+                  });
+                  if (paint.omit === true) return null;
+                  return (
+                    <path
+                      key={`g-back-${i}`}
+                      d={d}
+                      fill={paint.fill}
+                      stroke={paint.stroke}
+                      strokeWidth={paint.strokeWidth}
+                      strokeDasharray={snap.customPathStrokeDasharrays[i] ?? undefined}
+                    />
+                  );
+                })}
+              </g>
+            ) : null}
             <g
-              fill={GARMENT_FILL}
               style={{
                 opacity: fitSvgStage >= 1 ? 1 : 0,
                 transition: "opacity 0.42s ease-out",
               }}
             >
-              {snap.customPathDs.map((d, i) => {
-                if (!d || d.length === 0 || shouldSuppressGarmentPathRender(d)) return null;
-                return (
-                  <path
-                    key={`g-${i}`}
-                    d={d}
-                    fill="none"
-                    stroke={snap.customPathStrokes[i] ?? garmentStroke}
-                    strokeWidth={snap.customPathStrokeWidths[i] ?? 8}
-                    strokeDasharray={snap.customPathStrokeDasharrays[i] ?? undefined}
-                  />
-                );
-              })}
+              {isGradingV4 && gradingV4UsesLayeredGridBodySilhouette(snap.bodyPaths.length) ? (
+                <>
+                  <g fill={canvasSurfaceBackground} stroke="none">
+                    {snap.bodyPaths.map((d, i) => (
+                      <path
+                        key={`bf-${i}`}
+                        d={d}
+                        fill={
+                          gradingV4GridBodyPathEndsClosed(d) ? canvasSurfaceBackground : "none"
+                        }
+                      />
+                    ))}
+                  </g>
+                  <g fill="none" stroke={previewBodyStroke} strokeWidth={4} pointerEvents="none">
+                    {snap.bodyPaths[0] ? (
+                      <path key="bo" d={snap.bodyPaths[0]} />
+                    ) : null}
+                    {snap.bodyPaths.map((d, i) =>
+                      i > 0 && !gradingV4GridBodyPathEndsClosed(d) ? (
+                        <path key={`bs-${i}`} d={d} />
+                      ) : null
+                    )}
+                  </g>
+                </>
+              ) : (
+                <g fill={canvasSurfaceBackground} stroke={previewBodyStroke} strokeWidth={4}>
+                  {snap.bodyPaths.map((d, i) => (
+                    <path key={`b-${i}`} d={d} />
+                  ))}
+                </g>
+              )}
             </g>
-          ) : null}
-          {!bodyOnly && hasEaseDiagram ? (
-            <g
-              style={{
-                opacity: showEaseOverlay ? 1 : 0,
-                transition: "opacity 0.35s ease-out",
-              }}
-            >
-              <WidgetFitEaseDiagramSvg diagram={fitEaseDiagram} />
-            </g>
-          ) : null}
-        </svg>
+            {!bodyOnly ? (
+              <g
+                fill={GARMENT_FILL}
+                style={{
+                  opacity: fitSvgStage >= 1 ? 1 : 0,
+                  transition: "opacity 0.42s ease-out",
+                }}
+              >
+                {(gradingBehindN > 0
+                  ? snap.customPathDs.slice(gradingBehindN)
+                  : snap.customPathDs
+                ).map((d, ji) => {
+                  const i = gradingBehindN > 0 ? ji + gradingBehindN : ji;
+                  if (!d || d.length === 0 || shouldSuppressGarmentPathRender(d)) return null;
+                  const paint = resolveCustomSvgPathRenderablePaint({
+                    garmentStrokeFallback: previewGarmentStrokeFallback,
+                    pathStroke: snap.customPathStrokes[i],
+                    pathFill: snap.customPathFills[i],
+                    pathStrokeWidth: snap.customPathStrokeWidths[i],
+                    defaultStrokeWidth: previewGarmentDefaultStrokeWidth,
+                    allPathStrokes: snap.customPathStrokes,
+                    pathIndex: i,
+                    preserveFillOnlyPaths: isGradingV4,
+                  });
+                  if (paint.omit === true) return null;
+                  return (
+                    <path
+                      key={`g-${i}`}
+                      d={d}
+                      fill={paint.fill}
+                      stroke={paint.stroke}
+                      strokeWidth={paint.strokeWidth}
+                      strokeDasharray={snap.customPathStrokeDasharrays[i] ?? undefined}
+                    />
+                  );
+                })}
+              </g>
+            ) : null}
+            {!bodyOnly && easeDiagramRenderable ? (
+              <g
+                style={{
+                  opacity: showEaseOverlay ? 1 : 0,
+                  transition: "opacity 0.35s ease-out",
+                }}
+              >
+                <WidgetFitEaseDiagramSvg diagram={fitEaseDiagram} />
+              </g>
+            ) : null}
+          </svg>
+        )}
       </div>
-      {!bodyOnly && hasEaseDiagram ? (
+      {!bodyOnly && easeDiagramRenderable ? (
         <div
           style={{
             opacity: showEaseText ? 1 : 0,
@@ -275,7 +423,7 @@ export function PreviewFittingCanvasSvg({
         >
           <PreviewFitEaseFootnote summary={fitEaseSummary} />
         </div>
-      ) : !bodyOnly ? (
+      ) : !bodyOnly && !easeDiagramRenderable && !isGradingV4 ? (
         <div
           style={{
             opacity: showEaseText ? 1 : 0,

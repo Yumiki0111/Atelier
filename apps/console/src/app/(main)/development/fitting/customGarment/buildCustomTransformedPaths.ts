@@ -1,14 +1,18 @@
 import type { CustomGarmentData, BodyZones } from "../lib/types";
-import { buildTopPlacement } from "../lib/garmentBase";
+import {
+  buildTopPlacement,
+  customLandmarksToTopLandmarks,
+} from "../lib/garmentBase";
 import { scaleModelViewToBodyTemplate } from "../lib/modelRigData";
 import { tPath, getPathPoints } from "../lib/pathUtils";
 import { BODY_CX, REF_HEIGHT_CM } from "../lib/constants";
-import { getBodyParams, getZonesAnchored, warpArmOutline, getInterpolatedArmOutline } from "../lib/bodyUtils";
-import { getScalableSpec, shouldApplyScaleScaling, toTopLandmarks } from "./scalableSpec";
+import {
+  getBodyParams,
+  getZonesAnchored,
+  warpArmOutline,
+  getInterpolatedArmOutline,
+} from "../lib/bodyUtils";
 import { vertexPlotsPlaceOnly } from "./buildCustomTransformedPathsPlaceUtils";
-import { buildGradedBodyPathsAndVertexPlotsForGenericTop } from "./buildCustomTransformedPathsGenericSymmetricTop";
-
-export { genericLengthMeasureVerticalSpanPx } from "./buildCustomTransformedPathsPlaceUtils";
 
 /** 変形後の path 本数に合わせ、線の見た目配列を並べる（photo モードは襟・袖を実線・デフォルト） */
 function presentationAlignedToPathOutput(
@@ -19,29 +23,35 @@ function presentationAlignedToPathOutput(
   dash: (string | undefined)[];
   width: (number | undefined)[];
   stroke: (string | undefined)[];
+  fill: (string | undefined)[];
 } {
   const srcDash = data.pathStrokeDasharrays;
   const srcW = data.pathStrokeWidths;
   const srcS = data.pathStrokes;
+  const srcFill = data.pathFills;
   if (!photoDerived) {
     return {
       dash: bodyPaths.map((_, i) => srcDash?.[i]),
       width: bodyPaths.map((_, i) => srcW?.[i]),
       stroke: bodyPaths.map((_, i) => srcS?.[i]),
+      fill: bodyPaths.map((_, i) => srcFill?.[i]),
     };
   }
   const dash: (string | undefined)[] = [undefined];
   const width: (number | undefined)[] = [undefined];
   const stroke: (string | undefined)[] = [undefined];
+  const fillArr: (string | undefined)[] = [undefined];
   for (let i = 0; i < bodyPaths.length; i++) {
     dash.push(srcDash?.[i]);
     width.push(srcW?.[i]);
     stroke.push(srcS?.[i]);
+    fillArr.push(srcFill?.[i]);
   }
   dash.push(undefined, undefined);
   width.push(undefined, undefined);
   stroke.push(undefined, undefined);
-  return { dash, width, stroke };
+  fillArr.push(undefined, undefined);
+  return { dash, width, stroke, fill: fillArr };
 }
 
 /** photoDerived: 出力は [襟, ...入力に対応する bodyPaths, 左袖, 右袖]。入力 path i は出力 path i+1 に対応 */
@@ -96,11 +106,17 @@ export type CustomGarmentTransformResult = {
   pathStrokeDasharrays: (string | undefined)[];
   pathStrokeWidths: (number | undefined)[];
   pathStrokes: (string | undefined)[];
+  pathFills: (string | undefined)[];
 };
 
 /** @see `placementLockToModelRig` — リグロック時は `scaleModelViewToBodyTemplate` でボディへ写す */
 export type BuildCustomTransformedPathsOptions = {
   placementLockToModelRig?: boolean;
+  /**
+   * リグロック時のデザイン→ボディ写像。省略時は `scaleModelViewToBodyTemplate`（model+rig 3391×6431）。
+   * 線画検証・格子リグ（391/389×518）アップロードではここに `gridRigSvgPointToBodyTemplatePreserveAspect` / `gridRigVectorPointToBodyTemplate` 相当を渡す。
+   */
+  placeDesignToBodyWhenRigLocked?: (x: number, y: number) => [number, number];
   /** 後方互換のため残すが、服のプレース・袖ワープには使わない */
   rigLinePaths?: string[] | null;
 };
@@ -124,67 +140,21 @@ export function buildCustomTransformedPathsWithVertexPlots(
   shoulderOriginY?: number,
   opts?: BuildCustomTransformedPathsOptions
 ): CustomGarmentTransformResult {
-  const lmBase = data.landmarks;
   const placementLockToModelRig = opts?.placementLockToModelRig === true;
-  const lm = { ...lmBase };
-  const scalableSpec = getScalableSpec(data.pathDs, data.presetId);
-  const specLengthCm = data.size?.length ?? (scalableSpec?.bodyLengthCm ?? 117.5);
+  const top = customLandmarksToTopLandmarks(data.landmarks);
+  const placeDesignLocked =
+    opts?.placeDesignToBodyWhenRigLocked ?? scaleModelViewToBodyTemplate;
+  const place = placementLockToModelRig
+    ? placeDesignLocked
+    : buildTopPlacement(h, w, data.size, top, shoulderOriginY, null, REF_HEIGHT_CM).place;
 
-  /** 体の横幅ワープと一致させる（基準体重固定だと体重スライダーで袖シルエットだけズレる） */
   const { yScale, xScale } = getBodyParams(h, w, null);
   const zones = getZonesAnchored(yScale);
-  const bodyScaledLandmarks =
-    placementLockToModelRig
-      ? lm
-      : scalableSpec && shouldApplyScaleScaling(data)
-        ? (() => {
-            const s = specLengthCm / scalableSpec.bodyLengthCm;
-            const scaledHemY = scalableSpec.designShoulderY + (scalableSpec.designHemY - scalableSpec.designShoulderY) * s;
-            // garmentLengthOverride は design 座標（肩Y〜裾Y）で必須。body の originY を混ぜると着丈スケールが狂う
-            const designLength = scaledHemY - scalableSpec.designShoulderY;
-            return {
-              ...lm,
-              shoulderY: scalableSpec.designShoulderY,
-              hemY: scaledHemY,
-              garmentLengthOverride: designLength,
-            };
-          })()
-        : lm;
-  // shoulderOriginY はデザイン座標のどのYが body.shoulder に対応するかを示す。
-  // buildTopPlacement に渡すことで originY がデザイン肩Yに固定され、
-  // by = zones.shoulder + (gy - shoulderOriginY) * scaleY が成立する。
-  const top = toTopLandmarks(bodyScaledLandmarks);
-  // scalableSpec 分岐では top.landmarks.shoulderY が scalableSpec.designShoulderY に上書きされるため、
-  // originY（肩基準）も合わせないと size(length) 変更時に肩がズレる。
-  const shoulderOriginYForPlace =
-    placementLockToModelRig
-      ? shoulderOriginY
-      : scalableSpec && shouldApplyScaleScaling(data)
-        ? scalableSpec.designShoulderY
-        : shoulderOriginY;
-  const place = placementLockToModelRig
-    ? scaleModelViewToBodyTemplate
-    : buildTopPlacement(h, w, data.size, top, shoulderOriginYForPlace, null, REF_HEIGHT_CM).place;
 
   const { left: leftArmOutline, right: rightArmOutline } = getInterpolatedArmOutline(REF_HEIGHT_CM);
 
-  const gradedTop = buildGradedBodyPathsAndVertexPlotsForGenericTop({
-    data,
-    lm,
-    h,
-    w,
-    shoulderOriginYForPlace,
-    placementLockToModelRig,
-    place,
-  });
-
-  const { bodyPaths, vertexPlotsBodySpace: vertexPlotsFromGarment } =
-    gradedTop != null
-      ? gradedTop
-      : {
-          bodyPaths: data.pathDs.map((d) => tPath(d, place)),
-          vertexPlotsBodySpace: vertexPlotsPlaceOnly(data.pathDs, place),
-        };
+  const bodyPaths = data.pathDs.map((d) => tPath(d, place));
+  const vertexPlotsFromGarment = vertexPlotsPlaceOnly(data.pathDs, place);
 
   if (!data.photoDerived) {
     const pres = presentationAlignedToPathOutput(data, bodyPaths, false);
@@ -194,6 +164,7 @@ export function buildCustomTransformedPathsWithVertexPlots(
       pathStrokeDasharrays: pres.dash,
       pathStrokeWidths: pres.width,
       pathStrokes: pres.stroke,
+      pathFills: pres.fill,
     };
   }
 
@@ -209,5 +180,6 @@ export function buildCustomTransformedPathsWithVertexPlots(
     pathStrokeDasharrays: pres.dash,
     pathStrokeWidths: pres.width,
     pathStrokes: pres.stroke,
+    pathFills: pres.fill,
   };
 }

@@ -1,69 +1,44 @@
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
-import { compareGenericSizePresetRow } from "@/app/(main)/development/fitting/generic/genericDevDefaults";
-import { isGarmentSpecRenderable } from "@/lib/widget-fit/applyWidgetSizeToGarment";
+import { GRADING_V4_ORDERED_SIZE_LABELS } from "@/app/(main)/development/fitting/gradingV4/gradingV4GarmentCm";
+import { parseGradingV4SizeKey } from "@/lib/widget-fit/widgetFitGradingSize";
 
 function sortSizeKeysLocale(keys: string[]): string[] {
   return [...keys].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 }
 
-/** プリセット行の着丈→袖丈→ラベル。行に無いキーは末尾に locale 順。 */
-function sortKeysByPresetMeasures(
-  keys: string[],
-  presetRows: { label: string; length: number; sleeve: number }[]
-): string[] {
-  const uniq = [...new Set(keys)];
-  const byLabel = new Map<string, { label: string; length: number; sleeve: number }>();
-  for (const p of presetRows) {
-    const L = String(p.label).trim();
-    if (!L || byLabel.has(L)) continue;
-    if (!Number.isFinite(p.length) || !Number.isFinite(p.sleeve)) continue;
-    byLabel.set(L, { label: L, length: p.length, sleeve: p.sleeve });
-  }
-  if (byLabel.size === 0) return sortSizeKeysLocale(uniq);
-
+function sortKeysByGradingCatalog(keys: string[], gradingOrder: readonly string[]): string[] {
+  const uniq = [...new Set(keys.map((k) => String(k).trim()).filter(Boolean))];
+  const orderIndex = new Map(gradingOrder.map((k, i) => [k, i] as const));
   return uniq.sort((a, b) => {
-    const pa = byLabel.get(a);
-    const pb = byLabel.get(b);
-    if (pa && pb) return compareGenericSizePresetRow(pa, pb);
-    if (pa && !pb) return -1;
-    if (!pa && pb) return 1;
+    const ia = orderIndex.get(a);
+    const ib = orderIndex.get(b);
+    if (ia != null && ib != null) return ia - ib;
+    if (ia != null) return -1;
+    if (ib != null) return 1;
     return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
   });
 }
 
-function validPresetRows(garmentSpec: unknown): { label: string; length: number; sleeve: number }[] {
-  if (garmentSpec == null || typeof garmentSpec !== "object") return [];
-  const gs = garmentSpec as CustomGarmentData;
-  const presets = gs.genericSymmetricTop?.sizePresets ?? [];
-  return presets.filter(
-    (p) =>
-      String(p.label).trim() !== "" &&
-      Number.isFinite(p.length) &&
-      Number.isFinite(p.sleeve)
-  );
-}
-
 /**
- * ウィジェット／プレビュー共通: 2D 試着＋sizePresets があるときは着丈→袖丈順。
- * アセット由来のキーとプリセットラベルを和集合し、上記で並べる。
+ * ウィジェット／プレビュー: Grading v4 はカタログ順。それ以外のキーは locale 順。
  */
 export function resolveWidgetFitSizeKeysOrder(
   fromAssetKeys: string[],
   garmentSpec: unknown
 ): string[] {
   const fromAssets = [...new Set(fromAssetKeys.map((k) => String(k).trim()))].filter(Boolean);
-  const renderable = isGarmentSpecRenderable(garmentSpec);
-  const presetRows = renderable ? validPresetRows(garmentSpec) : [];
-  const presetLabels = presetRows.map((p) => String(p.label).trim());
-
-  if (renderable && presetLabels.length > 0) {
-    return sortKeysByPresetMeasures([...new Set([...fromAssets, ...presetLabels])], presetRows);
+  const gs = garmentSpec as CustomGarmentData | null | undefined;
+  if (gs?.presetId === "gradingV4") {
+    const gradingOrder = [...GRADING_V4_ORDERED_SIZE_LABELS];
+    const parsed = fromAssets.map((k) => parseGradingV4SizeKey(String(k))).filter((k): k is NonNullable<typeof k> => k != null);
+    if (parsed.length === 0) {
+      return [...gradingOrder];
+    }
+    if (parsed.length !== fromAssets.length) {
+      return [...gradingOrder];
+    }
+    return sortKeysByGradingCatalog([...new Set(parsed)], gradingOrder);
   }
   if (fromAssets.length > 0) return sortSizeKeysLocale(fromAssets);
-  if (renderable) {
-    return presetRows.length > 0
-      ? [...presetRows].sort(compareGenericSizePresetRow).map((p) => String(p.label).trim())
-      : ["default"];
-  }
   return [];
 }

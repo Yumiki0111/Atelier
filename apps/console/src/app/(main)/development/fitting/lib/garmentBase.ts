@@ -108,7 +108,7 @@ export function inferLengthCmFromLandmarks(lm: Pick<TopLandmarks, "shoulderY" | 
 }
 
 /**
- * 着丈(cm)とランドマークの肩幅・着丈(px)比から肩幅(cm)を推定（汎用 SVG 用。固定サイズ表は使わない）。
+ * 着丈(cm)とランドマークの肩幅・着丈(px)比から肩幅(cm)を推定（アップロード SVG 用。固定サイズ表は使わない）。
  */
 export function inferShoulderCmFromLandmarkSpan(
   lm: Pick<CustomLandmarks, "shoulderY" | "hemY" | "shoulderLx" | "shoulderRx" | "garmentLengthOverride">,
@@ -132,6 +132,24 @@ export function inferSleeveCmSeedFromLengthCm(lengthCm: number): number {
   if (!Number.isFinite(lengthCm) || lengthCm <= 0) return 0;
   const cm = Math.round(lengthCm * 0.56 * 10) / 10;
   return Math.max(38, Math.min(95, cm));
+}
+
+/** `CustomGarmentData.landmarks` を `TopLandmarks` に変換（pit は肩と揃える）。 */
+export function customLandmarksToTopLandmarks(c: CustomLandmarks): TopLandmarks {
+  return {
+    shoulderY: c.shoulderY,
+    shoulderLx: c.shoulderLx,
+    shoulderRx: c.shoulderRx,
+    pitY: c.shoulderY,
+    pitLx: c.shoulderLx,
+    pitRx: c.shoulderRx,
+    hemY: c.hemY,
+    hemCx: c.hemCx,
+    ...(c.garmentLengthOverride != null ? { garmentLengthOverride: c.garmentLengthOverride } : {}),
+    ...(c.bodyShoulderOffsetY != null ? { bodyShoulderOffsetY: c.bodyShoulderOffsetY } : {}),
+    ...(c.totalWidth != null ? { totalWidth: c.totalWidth } : {}),
+    ...(c.maxWidthRatio != null ? { maxWidthRatio: c.maxWidthRatio } : {}),
+  };
 }
 
 /**
@@ -165,7 +183,7 @@ export function buildTopPlacement(
   // 着丈が 0 や極端に小さいと scaleY が爆発して服が巨大表示になるためガード
   const MIN_GARMENT_LENGTH = 50;
   const effectiveGarmentLength = Math.max(garmentLength, MIN_GARMENT_LENGTH);
-  /** 着丈(cm)未入力（汎用トップの GENERIC_EMPTY_SIZE 等）では目標着丈が無いので縦スケール 1。0 のままだと bodyLength=0 で scaleY=0 になり服が潰れる */
+  /** 着丈(cm)未入力では目標着丈が無いので縦スケール 1。0 のままだと bodyLength=0 で scaleY=0 になり服が潰れる */
   const hasLengthTarget = Number.isFinite(size.length) && size.length > 0;
   const bodyLength = hasLengthTarget ? size.length * bodyPxPerCm : effectiveGarmentLength;
   const scaleYRaw = bodyLength / effectiveGarmentLength;

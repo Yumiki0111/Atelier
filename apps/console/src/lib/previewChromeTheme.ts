@@ -16,6 +16,8 @@ export type PreviewChromePalette = {
 export type PreviewChromeTheme = {
   interface: PreviewChromePalette;
   canvas: PreviewChromePalette & {
+    /** 試着キャンバス下地として渡された色（ウィジェット等の指定色と一致させる） */
+    surfaceBackground: string;
     bodyStroke: string;
     garmentStroke: string;
   };
@@ -184,6 +186,7 @@ export function buildPreviewChromeTheme(
     interface: interfacePalette,
     canvas: {
       ...canvasPaletteBase,
+      surfaceBackground: canvasBackgroundColor,
       bodyStroke: cDark ? "rgba(255,255,255,0.42)" : "#9ca3af",
       garmentStroke: cDark ? "rgba(255,255,255,0.78)" : "rgba(55, 55, 55, 0.82)",
     },

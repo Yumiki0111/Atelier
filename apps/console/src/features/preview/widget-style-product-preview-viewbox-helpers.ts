@@ -13,11 +13,11 @@ export function uniformPreviewViewBoxHeightFromHeightCm(heightCm: number): numbe
 }
 
 /**
- * 体型変更シート専用。身長スライダーを上げたときに、画面上のシルエットが大きく見えるようにする。
- * （viewBox 高さが伸びると `meet` で縮みやすいため、表示だけ身長比で補正する）
+ * 体型変更シート専用。低身長側はやや縮小してバランスを取る。
+ * 上限は 1.0：それ以上の拡大は `transform` でキャンバスからはみ出しやすい（特に 195cm 付近）。
  */
 export function bodySheetPreviewHeightScale(heightCm: number): number {
   const h = Math.max(150, Math.min(195, Math.round(heightCm)));
   const raw = h / DEFAULT_PREVIEW_FIT_HEIGHT_CM;
-  return Math.max(0.88, Math.min(1.12, raw));
+  return Math.max(0.88, Math.min(1.0, raw));
 }

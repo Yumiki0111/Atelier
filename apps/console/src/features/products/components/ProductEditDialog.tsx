@@ -498,7 +498,7 @@ export function ProductEditDialog({
                 )}
                 {!isLoading && product && !canEditMeasures && (
                   <p className="mt-2 text-xs text-muted-foreground">
-                    寸法をここで編集するには、開発タブで登録済みの「汎用トップス」データ（genericSymmetricTop）が必要です。未登録の場合は開発タブで編集してください。
+                    サイズラベルは Grading v4 の固定カタログ（XS〜XXL）です。平置き寸法は開発タブの Garment Grading v4 で調整してください。
                   </p>
                 )}
               </>

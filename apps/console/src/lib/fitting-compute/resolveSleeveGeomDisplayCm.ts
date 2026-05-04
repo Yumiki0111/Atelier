@@ -3,7 +3,7 @@ import type { MeasureOverlayData } from "@/app/(main)/development/fitting/lib/ty
 type GarmentG = NonNullable<MeasureOverlayData["garment"]>;
 
 /**
- * 採寸オーバーレイ（`FittingCanvasMeasureOverlayGarmentSleeve` の `screenSleeveCm`）と同じ袖「幾何」cm。
+ * プライマリ袖のチェーン弧長÷袖 px/cm と同じ定義の「幾何」袖丈（cm）。
  * パイプライン後の `sleeveGeomDebug.cm` を正とし、図・ツールチップ・ウィジェットで数値を揃える。
  */
 export function resolveSleeveGeomDisplayCm(g: GarmentG): number | null {

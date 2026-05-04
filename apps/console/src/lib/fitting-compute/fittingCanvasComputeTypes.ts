@@ -5,7 +5,6 @@ import type {
   CustomGarmentData,
   ShoulderDebug,
   MeasureOverlayData,
-  GenericVertexPlotHighlight,
 } from "@/app/(main)/development/fitting/lib/types";
 import type { BodyModelVariant } from "@/app/(main)/development/fitting/lib/bodyModelVariant";
 
@@ -27,10 +26,6 @@ export interface UseFittingCanvasDataParams {
    * 本番・既定値では無効（既存パイプラインと同一）。
    */
   bodyModelVariant?: BodyModelVariant;
-  /**
-   * 汎用フィットの下書き区間（パスカタログ）。`genericSymmetricTop` に未反映でも採寸オーバーレイ・赤/紫線を同期させる。
-   */
-  genericVertexPlotHighlight?: GenericVertexPlotHighlight | null;
 }
 
 export type FittingCanvasRigLandmarksDebug = {
@@ -41,8 +36,7 @@ export type FittingCanvasRigLandmarksDebug = {
   usedHemY: number | null;
   /** モデルリグロック時に `buildTopPlacement` をリグ推定肩・裾に合わせたか */
   useRigLandmarksForPlacement: boolean;
-  genericApplied: boolean | null;
-  /** 汎用トップでリグが無い／本数不一致のときの注意文（キャンバスデバッグ用） */
+  /** モデルとのリグ一致が取れないときの注意文（デバッグ用） */
   rigRequirementWarnings?: string[];
 };
 
@@ -130,7 +124,10 @@ export interface FittingCanvasSnapshot {
   customPathStrokeDasharrays: (string | undefined)[];
   customPathStrokeWidths: (number | undefined)[];
   customPathStrokes: (string | undefined)[];
+  customPathFills: (string | undefined)[];
   customRigPathDs: string[];
+  /** Grading v4: 背面レイヤ path 数。0 のとき従来どおり全 path を体型より上に描画 */
+  gradingV4BehindBodyPathCount: number;
   shoulderDebug: ShoulderDebug | null;
   bodyPlotPoints: { label: string; point: [number, number] }[];
   bodyOutlinePoints: [number, number][];

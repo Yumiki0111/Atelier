@@ -7,10 +7,9 @@ import {
 } from "@/lib/widget-fit/applyWidgetSizeToGarment";
 import { validateGarmentSpecForProduction } from "@/lib/products/validateGarmentSpecForProduction";
 import { resolveWidgetFitSizeKeysOrder } from "@/lib/widget/resolveWidgetFitSizeKeysOrder";
+import { normalizeWidgetFitSizeQuery } from "@/lib/widget-fit/widgetFitGradingSize";
 import { computeWidgetFitSnapshot } from "@/lib/widget-fit/computeWidgetFitSnapshot";
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
-
-const VIEWBOX_W = 1505;
 
 export async function OPTIONS(request: NextRequest) {
   return handleCorsOptions(request);
@@ -24,7 +23,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const publicKey = searchParams.get("publicKey");
     const externalProductId = searchParams.get("externalProductId");
-    const size = searchParams.get("size") || "default";
+    const sizeParam = searchParams.get("size") || "default";
     const heightCm = Math.min(195, Math.max(150, parseInt(searchParams.get("heightCm") || "170", 10) || 170));
     const weightKg = Math.min(120, Math.max(35, parseFloat(searchParams.get("weightKg") || "60") || 60));
 
@@ -77,7 +76,8 @@ export async function GET(request: NextRequest) {
     }
 
     const base = raw as CustomGarmentData;
-    const sized = applyWidgetSizeToCustomGarmentData(base, size);
+    const resolvedSize = normalizeWidgetFitSizeQuery(sizeParam, base);
+    const sized = applyWidgetSizeToCustomGarmentData(base, resolvedSize);
 
     let catalogOrder = resolveWidgetFitSizeKeysOrder([], base);
     const productId = (product as { id: string }).id;
@@ -98,18 +98,26 @@ export async function GET(request: NextRequest) {
       heightCm,
       weightKg,
       fitChestBandCategory: (product as { category?: string | null }).category ?? null,
-      currentSizeLabel: size,
+      currentSizeLabel: resolvedSize,
       orderedSizeKeysFromCatalog: catalogOrder,
     });
 
     const response = NextResponse.json({
-      viewBoxWidth: VIEWBOX_W,
+      viewBoxMinX: snap.viewBoxMinX,
+      viewBoxWidth: snap.viewBoxWidth,
       viewBoxHeight: snap.viewBoxHeight,
       bodyPaths: snap.bodyPaths,
+      garmentPathsBehindBody: snap.garmentPathsBehindBody,
+      garmentBehindBodyPathStrokeDasharrays: snap.garmentBehindBodyPathStrokeDasharrays,
+      garmentBehindBodyPathStrokeWidths: snap.garmentBehindBodyPathStrokeWidths,
+      garmentBehindBodyPathStrokes: snap.garmentBehindBodyPathStrokes,
+      garmentBehindBodyPathFills: snap.garmentBehindBodyPathFills,
       garmentPaths: snap.garmentPaths,
       garmentPathStrokeDasharrays: snap.garmentPathStrokeDasharrays,
       garmentPathStrokeWidths: snap.garmentPathStrokeWidths,
       garmentPathStrokes: snap.garmentPathStrokes,
+      garmentPathFills: snap.garmentPathFills,
+      presetId: base.presetId,
       fitEaseSummary: snap.fitEaseSummary,
       fitEaseDiagram: snap.fitEaseDiagram,
     });

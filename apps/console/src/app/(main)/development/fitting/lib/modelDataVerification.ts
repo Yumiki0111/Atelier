@@ -10,6 +10,10 @@
  */
 import { tPath } from "./pathUtils";
 import { BODY_CX } from "./constants";
+import {
+  gridModelRigCompoundToNineSvgPathDs,
+  gridRigSvgPointToBodyTemplatePreserveAspect,
+} from "./gridModelRigExtract";
 
 const SRC_VIEW = { w: 4862, h: 6431 };
 const BODY_VIEW = { w: 1505, h: 2852 };
@@ -80,3 +84,36 @@ export const VERIFICATION_BODY_INDENT_WAIST_RIGHT_GLOBAL_RANGE = [
   VERIFICATION_BODY_INDENT_WAIST_REFERENCE_CHORD_GLOBAL_INDICES[1] - _VERIF_INDENT_HALF,
   VERIFICATION_BODY_INDENT_WAIST_REFERENCE_CHORD_GLOBAL_INDICES[1] + _VERIF_INDENT_HALF,
 ] as const;
+
+/** 線画検証 `line-art-verification-group-116.svg` の viewBox 幅（格子 389 と 2px 差） */
+export const LINE_ART_VERIFICATION_VIEWBOX_W = 391;
+export const LINE_ART_VERIFICATION_VIEWBOX_H = 518;
+
+/** `public/fitting-models/` の Group 116 線画（輪郭＋リグ）。`LineArtSvgBodyLayer` の fetch / `<image>` 用 */
+export const LINE_ART_VERIFICATION_GROUP_116_SVG_HREF =
+  "/fitting-models/line-art-verification-group-116.svg";
+
+export const LINE_ART_VERIFICATION_SVG_VIEWBOX_W = LINE_ART_VERIFICATION_VIEWBOX_W;
+export const LINE_ART_VERIFICATION_SVG_VIEWBOX_H = LINE_ART_VERIFICATION_VIEWBOX_H;
+
+/** 391×518 リグ／服アップロード座標 → ボディテンプレ（格子 `gridRigSvgPointToBodyTemplatePreserveAspect` と同ルール） */
+export function lineArtVerificationSvgPointToBodyTemplate(
+  sx: number,
+  sy: number
+): [number, number] {
+  return gridRigSvgPointToBodyTemplatePreserveAspect(
+    LINE_ART_VERIFICATION_VIEWBOX_W,
+    LINE_ART_VERIFICATION_VIEWBOX_H,
+    sx,
+    sy
+  );
+}
+
+/** `line-art-verification-group-116.svg` の 2 本目（391×518）。格子 Vector(9) と同型の stroke compound。 */
+export const LINE_ART_VERIFICATION_RIG_STROKE_COMPOUND_D =
+  "M195.505 0V294M160.923 517L166.958 287.16L195.537 274.72M389.504 272L251.496 117.12L195.497 94.04L139.498 117.12L1.50391 272M230.072 517L224.036 287.16L195.457 274.72";
+
+/** Group 116 線画リグ 9 本（viewBox 座標）。`rigMatching` / `svgGarmentSplit` の幾何・完全一致抜き用 */
+export const VERIFICATION_RIG_NINE_PATH_DS_SVG = gridModelRigCompoundToNineSvgPathDs(
+  LINE_ART_VERIFICATION_RIG_STROKE_COMPOUND_D
+);

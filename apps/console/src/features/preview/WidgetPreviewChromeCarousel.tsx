@@ -82,7 +82,7 @@ export function PreviewSizeCarousel({
   }, [recomputeChipAlign]);
 
   return (
-    <div className={cn("flex shrink-0 flex-col px-3", isEmbed ? "gap-2 pb-0.5 pt-2" : "gap-1.5 pb-0 pt-2")}>
+    <div className={cn("flex shrink-0 flex-col", isEmbed ? "gap-1.5 px-4 pb-0.5 pt-2" : "gap-1.5 px-3 pb-0 pt-2")}>
       {/** `PreviewAccentCtaButton` と同じ `px-3` + `w-full` 相当で、‹› は CTA 左右ゾーンに近い狭い列に収める */}
       <div className="flex w-full min-w-0 items-center">
         <button
@@ -90,7 +90,7 @@ export function PreviewSizeCarousel({
           aria-label="前のサイズ"
           className={cn(
             "m-0 flex shrink-0 items-center justify-center rounded-full border-none bg-transparent p-0 leading-none disabled:pointer-events-none disabled:opacity-35",
-            isEmbed ? "text-[26px]" : "text-[20px]",
+            isEmbed ? "min-w-[40px] px-0.5 text-[26px]" : "text-[20px]",
           )}
           style={{ color: cv.fg }}
           disabled={!canPrev}
@@ -151,7 +151,7 @@ export function PreviewSizeCarousel({
           aria-label="次のサイズ"
           className={cn(
             "m-0 flex shrink-0 items-center justify-center rounded-full border-none bg-transparent p-0 leading-none disabled:pointer-events-none disabled:opacity-35",
-            isEmbed ? "text-[26px]" : "text-[20px]",
+            isEmbed ? "min-w-[40px] px-0.5 text-[26px]" : "text-[20px]",
           )}
           style={{ color: cv.fg }}
           disabled={!canNext}

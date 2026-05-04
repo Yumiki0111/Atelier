@@ -7,7 +7,12 @@ import { injectModalBaseStyles } from "./widget-modal-styles";
 import { attachDesktopOverlayLayoutSync, closeOverlay } from "./widget-modal-overlay-layout";
 import { widgetEventMeta, tryNavigateAddToCart } from "./widget-modal-cart";
 import { el, sortSizeKeys } from "./widget-modal-dom-utils";
-import { SURFACE_BG, DEFAULT_FIT_BODY_VAL } from "./widget-modal-constants";
+import {
+  SURFACE_BG,
+  DEFAULT_FIT_BODY_VAL,
+  GRADING_V4_GRID_BODY_TEMPLATE_PATH_COUNT,
+  gradingV4GridBodyPathEndsClosed,
+} from "./widget-modal-constants";
 import {
   appendWidgetFitEaseSummary,
   appendFitEaseDiagramToSvg,
@@ -17,6 +22,7 @@ import {
   type WidgetFitEaseSummaryJson,
   type WidgetFitEaseDiagramJson,
 } from "./widget-modal-fit-ease-ui";
+import { appendWidgetFitGarmentPathGroup } from "./widget-fit-svg-path-dom";
 
 export function updateModalWithConfig(
   _shadowRoot: ShadowRoot,
@@ -123,7 +129,7 @@ export function updateModalWithConfig(
     sizeKeys = sortSizeKeys(sizeKeys);
   }
   if (sizeKeys.length === 0) {
-    sizeKeys = garmentFitAvailable ? ["default"] : ["3", "4", "5"];
+    sizeKeys = garmentFitAvailable ? ["XS", "S", "M", "L", "XL", "XXL"] : ["3", "4", "5"];
   }
   let currentSize = sizeKeys[0];
   if (params.initialSize && sizeKeys.includes(params.initialSize)) {
@@ -153,7 +159,7 @@ export function updateModalWithConfig(
   // ── 戻る（PreviewBackRow に合わせる）
   const backRow = el(
     "div",
-    "padding:max(10px, env(safe-area-inset-top)) 12px 4px 12px;flex-shrink:0;"
+    `padding:max(10px, env(safe-area-inset-top)) 16px 4px 16px;flex-shrink:0;position:relative;z-index:3;background:${interfaceBg};`
   );
   const backBtn = el(
     "button",
@@ -172,7 +178,7 @@ export function updateModalWithConfig(
   // ── 商品行（左: サムネ・名前・価格 / 右: 体型）
   const productRow = el(
     "div",
-    "display:flex;flex-direction:row;align-items:flex-start;justify-content:space-between;flex-shrink:0;padding:2px 12px 8px 12px;gap:6px;"
+    `display:flex;flex-direction:row;align-items:flex-start;justify-content:space-between;flex-shrink:0;position:relative;z-index:3;padding:6px 16px 8px 16px;gap:8px;background:${interfaceBg};`
   );
   const leftCol = el("div", "display:flex;flex-direction:row;align-items:flex-start;gap:6px;min-width:0;flex:1;");
 
@@ -271,7 +277,7 @@ export function updateModalWithConfig(
   // ── 試着表示（開発と同じ計算の SVG）または従来のシルエット＋サムネ
   const viewerArea = el(
     "div",
-    `flex:1;min-height:120px;min-width:0;flex-basis:0;position:relative;background:${canvasBg};display:flex;align-items:center;justify-content:center;overflow:visible;padding:8px;box-sizing:border-box;`
+    `flex:1 1 0%;min-height:0;min-width:0;position:relative;z-index:1;background:${canvasBg};display:flex;align-items:center;justify-content:center;overflow:hidden;padding:10px 12px 12px;box-sizing:border-box;`
   );
   viewerArea.setAttribute("data-fitlook-viewer-container", "true");
 
@@ -289,7 +295,10 @@ export function updateModalWithConfig(
     opts: { bodyOnly: boolean; hasDiagram: boolean; instantDiagram?: boolean }
   ): void {
     const gBody = svg.querySelector("[data-fitlook-fit-body]");
-    const gGarment = svg.querySelector("[data-fitlook-fit-garment]");
+    /** 背面＋前面で各 `<g data-fitlook-fit-garment>` があるため、先頭のみにせずすべてにフェードを掛ける */
+    const garmentGroups = [...svg.querySelectorAll("[data-fitlook-fit-garment]")].filter(
+      (n): n is SVGGElement => n instanceof SVGGElement
+    );
     const diag = svg.querySelector("[data-fitlook-ease-diagram]");
     const fadeBodyMs = "0.42s";
     const instantDiagram = opts.instantDiagram === true;
@@ -298,9 +307,11 @@ export function updateModalWithConfig(
       gBody.style.opacity = "0";
       gBody.style.transition = `opacity ${fadeBodyMs} ease-out`;
     }
-    if (!opts.bodyOnly && gGarment instanceof SVGGElement) {
-      gGarment.style.opacity = "0";
-      gGarment.style.transition = `opacity ${fadeBodyMs} ease-out`;
+    if (!opts.bodyOnly) {
+      garmentGroups.forEach((gGarment) => {
+        gGarment.style.opacity = "0";
+        gGarment.style.transition = `opacity ${fadeBodyMs} ease-out`;
+      });
     }
     if (opts.hasDiagram && diag instanceof SVGGElement) {
       if (instantDiagram) {
@@ -316,7 +327,7 @@ export function updateModalWithConfig(
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         if (gBody instanceof SVGGElement) gBody.style.opacity = "1";
-        if (!opts.bodyOnly && gGarment instanceof SVGGElement) gGarment.style.opacity = "1";
+        if (!opts.bodyOnly) garmentGroups.forEach((gGarment) => (gGarment.style.opacity = "1"));
       });
     });
 
@@ -373,13 +384,21 @@ export function updateModalWithConfig(
       const res = await fetch(`${base}/api/public/widget-fit-svg?${sp.toString()}`);
       if (!res.ok) throw new Error(String(res.status));
       const data = (await res.json()) as {
+        viewBoxMinX?: number;
         viewBoxWidth: number;
         viewBoxHeight: number;
         bodyPaths: string[];
+        presetId?: string;
+        garmentPathsBehindBody?: string[];
+        garmentBehindBodyPathStrokeDasharrays?: (string | undefined)[];
+        garmentBehindBodyPathStrokeWidths?: (number | undefined)[];
+        garmentBehindBodyPathStrokes?: (string | undefined)[];
+        garmentBehindBodyPathFills?: (string | undefined)[];
         garmentPaths: string[];
         garmentPathStrokeDasharrays?: (string | undefined)[];
         garmentPathStrokeWidths?: (number | undefined)[];
         garmentPathStrokes?: (string | undefined)[];
+        garmentPathFills?: (string | undefined)[];
         fitEaseSummary?: WidgetFitEaseSummaryJson;
         fitEaseDiagram?: WidgetFitEaseDiagramJson | null;
       };
@@ -387,46 +406,87 @@ export function updateModalWithConfig(
       target.innerHTML = "";
       const column = el(
         "div",
-        "display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:100%;max-width:100%;max-height:100%;min-height:0;"
+        "display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:100%;max-width:min(100%,300px);max-height:100%;min-height:0;margin:0 auto;overflow:hidden;"
       );
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-      svg.setAttribute("viewBox", `0 0 ${data.viewBoxWidth} ${data.viewBoxHeight}`);
+      svg.setAttribute("viewBox", `${data.viewBoxMinX ?? 0} 0 ${data.viewBoxWidth} ${data.viewBoxHeight}`);
       svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+      svg.setAttribute("overflow", "visible");
       svg.style.cssText =
-        "width:100%;max-width:100%;height:auto;max-height:100%;display:block;margin:0 auto;";
+        `aspect-ratio:${data.viewBoxWidth} / ${data.viewBoxHeight};width:auto;max-width:100%;height:auto;max-height:100%;display:block;margin:0 auto;`;
+      const defaultGarmentStroke =
+        data.presetId === "gradingV4" ? "rgba(45,45,45,0.9)" : "rgba(70, 70, 70, 0.82)";
+      if (!bodyOnly) {
+        const behind = data.garmentPathsBehindBody;
+        if (behind != null && behind.length > 0) {
+          appendWidgetFitGarmentPathGroup(
+            svg,
+            {
+              paths: behind,
+              strokeDasharrays: data.garmentBehindBodyPathStrokeDasharrays,
+              strokeWidths: data.garmentBehindBodyPathStrokeWidths,
+              strokes: data.garmentBehindBodyPathStrokes,
+              fills: data.garmentBehindBodyPathFills,
+            },
+            { presetId: data.presetId, defaultStroke: defaultGarmentStroke, gradingBehindGarmentLayer: true }
+          );
+        }
+      }
       const gBody = document.createElementNS("http://www.w3.org/2000/svg", "g");
       gBody.setAttribute("data-fitlook-fit-body", "true");
-      gBody.setAttribute("fill", "none");
-      gBody.setAttribute("stroke", "#bbb");
-      gBody.setAttribute("stroke-width", "4");
-      for (const d of data.bodyPaths) {
-        const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        p.setAttribute("d", d);
-        gBody.appendChild(p);
+      const gridLayered =
+        data.presetId === "gradingV4" && data.bodyPaths.length === GRADING_V4_GRID_BODY_TEMPLATE_PATH_COUNT;
+      if (gridLayered) {
+        const gFill = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        gFill.setAttribute("stroke", "none");
+        for (const d of data.bodyPaths) {
+          const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          p.setAttribute("d", d);
+          p.setAttribute("fill", gradingV4GridBodyPathEndsClosed(d) ? canvasBg : "none");
+          gFill.appendChild(p);
+        }
+        const gOutline = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        gOutline.setAttribute("fill", "none");
+        gOutline.setAttribute("stroke", "#bbb");
+        gOutline.setAttribute("stroke-width", "4");
+        const d0 = data.bodyPaths[0];
+        if (d0) {
+          const p0 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          p0.setAttribute("d", d0);
+          gOutline.appendChild(p0);
+        }
+        for (let bi = 1; bi < data.bodyPaths.length; bi++) {
+          const di = data.bodyPaths[bi]!;
+          if (gradingV4GridBodyPathEndsClosed(di)) continue;
+          const pOp = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          pOp.setAttribute("d", di);
+          gOutline.appendChild(pOp);
+        }
+        gBody.appendChild(gFill);
+        gBody.appendChild(gOutline);
+      } else {
+        gBody.setAttribute("fill", canvasBg);
+        gBody.setAttribute("stroke", "#bbb");
+        gBody.setAttribute("stroke-width", "4");
+        for (const d of data.bodyPaths) {
+          const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          p.setAttribute("d", d);
+          gBody.appendChild(p);
+        }
       }
       svg.appendChild(gBody);
       if (!bodyOnly) {
-        const gGarment = document.createElementNS("http://www.w3.org/2000/svg", "g");
-        gGarment.setAttribute("data-fitlook-fit-garment", "true");
-        gGarment.setAttribute("fill", "none");
-        const dashArr = data.garmentPathStrokeDasharrays;
-        const widthArr = data.garmentPathStrokeWidths;
-        const strokeArr = data.garmentPathStrokes;
-        for (let gi = 0; gi < data.garmentPaths.length; gi++) {
-          const d = data.garmentPaths[gi]!;
-          const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
-          p.setAttribute("d", d);
-          const sw = widthArr?.[gi];
-          const stroke = strokeArr?.[gi];
-          const dash = dashArr?.[gi];
-          p.setAttribute("stroke-width", sw != null && Number.isFinite(sw) ? String(sw) : "8");
-          p.setAttribute("stroke", stroke && stroke.length > 0 ? stroke : "rgba(70, 70, 70, 0.82)");
-          if (dash != null && String(dash).trim().length > 0) {
-            p.setAttribute("stroke-dasharray", String(dash));
-          }
-          gGarment.appendChild(p);
-        }
-        svg.appendChild(gGarment);
+        appendWidgetFitGarmentPathGroup(
+          svg,
+          {
+            paths: data.garmentPaths,
+            strokeDasharrays: data.garmentPathStrokeDasharrays,
+            strokeWidths: data.garmentPathStrokeWidths,
+            strokes: data.garmentPathStrokes,
+            fills: data.garmentPathFills,
+          },
+          { presetId: data.presetId, defaultStroke: defaultGarmentStroke }
+        );
         const dia = data.fitEaseDiagram;
         if (dia && Array.isArray(dia.ops) && dia.ops.length > 0) {
           appendFitEaseDiagramToSvg(svg, dia);
@@ -536,19 +596,22 @@ export function updateModalWithConfig(
       ? Math.min(Math.max(0, idxSize), Math.max(0, sizeKeys.length - WINDOW))
       : 0;
 
-  const sizeSection = el("div", "padding:8px 12px 2px;display:flex;flex-direction:column;gap:6px;");
-  const sizeRow = el("div", "display:flex;flex-direction:row;align-items:center;justify-content:center;gap:8px;");
+  const sizeSection = el(
+    "div",
+    `flex-shrink:0;position:relative;z-index:3;padding:8px 14px 2px;display:flex;flex-direction:column;gap:6px;background:${interfaceBg};`
+  );
+  const sizeRow = el("div", "display:flex;flex-direction:row;align-items:center;justify-content:center;gap:6px;");
 
   const prevBtn = el(
     "button",
-    "min-width:64px;min-height:64px;width:64px;height:64px;border:none;background:transparent;font-size:34px;color:#111;cursor:pointer;line-height:1;border-radius:999px;display:flex;align-items:center;justify-content:center;"
+    "flex-shrink:0;min-width:48px;min-height:52px;width:48px;height:52px;border:none;background:transparent;font-size:32px;color:#111;cursor:pointer;line-height:1;border-radius:999px;display:flex;align-items:center;justify-content:center;"
   );
   prevBtn.type = "button";
   prevBtn.setAttribute("aria-label", "前のサイズ");
   prevBtn.textContent = "‹";
   const nextBtn = el(
     "button",
-    "min-width:64px;min-height:64px;width:64px;height:64px;border:none;background:transparent;font-size:34px;color:#111;cursor:pointer;line-height:1;border-radius:999px;display:flex;align-items:center;justify-content:center;"
+    "flex-shrink:0;min-width:48px;min-height:52px;width:48px;height:52px;border:none;background:transparent;font-size:32px;color:#111;cursor:pointer;line-height:1;border-radius:999px;display:flex;align-items:center;justify-content:center;"
   );
   nextBtn.type = "button";
   nextBtn.setAttribute("aria-label", "次のサイズ");
@@ -630,7 +693,7 @@ export function updateModalWithConfig(
   // ── カート
   const cartWrap = el(
     "div",
-    "flex-shrink:0;padding-top:4px;padding-left:12px;padding-right:12px;padding-bottom:max(12px, env(safe-area-inset-bottom));"
+    `flex-shrink:0;position:relative;z-index:3;background:${interfaceBg};padding-top:4px;padding-left:14px;padding-right:14px;padding-bottom:max(12px, env(safe-area-inset-bottom));`
   );
   const cartBtn = el(
     "button",
@@ -718,7 +781,7 @@ export function updateModalWithConfig(
 
     const figureArea = el(
       "div",
-      `flex:1;min-height:120px;min-width:0;flex-basis:0;position:relative;display:flex;align-items:center;justify-content:center;overflow:visible;padding:8px 12px 8px;box-sizing:border-box;background:${canvasBg};`
+      `flex:1 1 0%;min-height:0;min-width:0;position:relative;z-index:1;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:10px 12px 12px;box-sizing:border-box;background:${canvasBg};`
     );
 
     function scheduleBodyDraftPreview() {
@@ -760,7 +823,10 @@ export function updateModalWithConfig(
     );
 
     const hRow = el("div", "width:100%;");
-    const hLabel = el("div", "display:flex;justify-content:space-between;align-items:center;font-size:9px;font-weight:400;line-height:1.25;margin-bottom:4px;color:#111;");
+    const hLabel = el(
+      "div",
+      "display:flex;justify-content:space-between;align-items:center;font-size:9px;font-weight:400;line-height:1;margin-bottom:2px;color:#111;"
+    );
     const hTitle = el("span", "", "身長");
     const hVal = el("span", "", `${setupHeight} cm`);
     hLabel.appendChild(hTitle);
@@ -770,7 +836,7 @@ export function updateModalWithConfig(
     hInput.min = "150";
     hInput.max = "195";
     hInput.value = String(fitHeightCm);
-    hInput.style.cssText = "width:100%;height:28px;accent-color:" + accent + ";";
+    hInput.style.cssText = "width:100%;height:28px;margin:0;accent-color:" + accent + ";";
     hInput.addEventListener("input", () => {
       setupHeight = parseInt(hInput.value, 10) || 170;
       hVal.textContent = `${setupHeight} cm`;
@@ -781,14 +847,14 @@ export function updateModalWithConfig(
     controls.appendChild(hRow);
 
     const bRow = el("div", "width:100%;");
-    const bLabel = el("div", "font-size:9px;font-weight:400;line-height:1.25;margin-bottom:4px;color:#111;");
+    const bLabel = el("div", "font-size:9px;font-weight:400;line-height:1;margin-bottom:2px;color:#111;");
     bLabel.textContent = "シルエット";
     const bInput = document.createElement("input");
     bInput.type = "range";
     bInput.min = "0";
     bInput.max = "100";
     bInput.value = String(fitBodyVal);
-    bInput.style.cssText = "width:100%;height:28px;accent-color:" + accent + ";";
+    bInput.style.cssText = "width:100%;height:28px;margin:0;accent-color:" + accent + ";";
     bInput.addEventListener("input", () => {
       bodyVal = parseInt(bInput.value, 10) || 0;
       scheduleBodyDraftPreview();
@@ -798,6 +864,22 @@ export function updateModalWithConfig(
     controls.appendChild(bRow);
 
     bodyAdjustOverlay.appendChild(controls);
+
+    // #region agent log
+    fetch("http://127.0.0.1:7468/ingest/8ae11b2e-0353-49f9-add8-94485bd038d3", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "38ca00" },
+      body: JSON.stringify({
+        sessionId: "38ca00",
+        runId: "widget-body-controls",
+        hypothesisId: "H-widget-slider-gap",
+        location: "widget-modal-update-config.ts:bodyAdjustControlsMount",
+        message: "body adjust controls mounted (label/range spacing tune)",
+        data: { labelLineHeight: 1, labelMarginBottomPx: 2, rangeMargin: 0 },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
 
     const ctaPad =
       "padding:8px 12px;padding-bottom:max(12px, env(safe-area-inset-bottom));flex-shrink:0;background:" +

@@ -1,6 +1,6 @@
 /**
  * フィット用：肩・襟付近の輪郭抽出、肩点の算出など。
- * FittingCanvas の useMemo 内で使う純粋関数群。
+ * React の `useMemo` 連鎖やプレビューから使う純関数群。
  */
 
 import type { CustomGarmentData, GarmentType } from "./types";

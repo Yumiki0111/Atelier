@@ -1,6 +1,5 @@
 import type { WidgetParams } from "./widget-api";
 import { getApiBaseUrl } from "./widget-utils";
-import { emitDebugLog } from "./widget-debug-log";
 import { mountFitLookLogoLoadingAnimation } from "./widget-fitlook-logo";
 import { injectModalBaseStyles } from "./widget-modal-styles";
 import { SURFACE_BG } from "./widget-modal-constants";
@@ -61,33 +60,6 @@ export function renderModalWithLoading(
   if (_params.desktopPanel === true) {
     attachDesktopOverlayLayoutSync(overlay);
   }
-
-  // #region agent log
-  emitDebugLog({
-    sessionId: "673bd6",
-    runId: "debug-desktop-panel",
-    hypothesisId: "B",
-    location: "widget-modal.ts:renderModalWithLoading",
-    message: "modal loading attach branch",
-    data: {
-      desktopPanelIsTrue: _params.desktopPanel === true,
-      calledAttach: _params.desktopPanel === true,
-      overlayAttrAfter: overlay.getAttribute("data-fitlook-desktop-panel"),
-    },
-  });
-  fetch("http://127.0.0.1:7468/ingest/8ae11b2e-0353-49f9-add8-94485bd038d3", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a81229" },
-    body: JSON.stringify({
-      sessionId: "a81229",
-      hypothesisId: "A",
-      location: "widget-modal.ts:renderModalWithLoading:afterAttach",
-      message: "loading overlay desktopPanel",
-      data: { desktopPanelIsTrue: _params.desktopPanel === true, calledAttach: _params.desktopPanel === true },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
 
   const cleanup = { fn: cancelSplash };
   (overlay as unknown as { __fitlookCleanup: typeof cleanup }).__fitlookCleanup = cleanup;
@@ -169,21 +141,6 @@ export function appendEmbedIframeBehindSplash(
     requestAnimationFrame(() => attachDesktopOverlayLayoutSync(overlay));
   }
 
-  // #region agent log
-  emitDebugLog({
-    sessionId: "673bd6",
-    runId: "debug-desktop-panel",
-    hypothesisId: "E",
-    location: "widget-modal.ts:appendEmbedIframeBehindSplash:end",
-    message: "embed iframe branch",
-    data: {
-      desktopPanel: params.desktopPanel === true,
-      scheduledRafAttach: params.desktopPanel === true,
-      overlayAttr: overlay.getAttribute("data-fitlook-desktop-panel"),
-    },
-  });
-  // #endregion
-
   return iframe;
 }
 
@@ -202,21 +159,6 @@ export function mountEmbedIframe(
   injectModalBaseStyles();
   const splashCleanup = (overlay as unknown as { __fitlookCleanup?: { fn: () => void } }).__fitlookCleanup;
   if (splashCleanup?.fn) splashCleanup.fn();
-
-  // #region agent log
-  fetch("http://127.0.0.1:7468/ingest/8ae11b2e-0353-49f9-add8-94485bd038d3", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a81229" },
-    body: JSON.stringify({
-      sessionId: "a81229",
-      hypothesisId: "A",
-      location: "widget-modal.ts:mountEmbedIframe:entry",
-      message: "mountEmbedIframe desktopPanel branch",
-      data: { desktopPanelIsTrue: params.desktopPanel === true },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
 
   if (params.desktopPanel === true) {
     attachDesktopOverlayLayoutSync(overlay);

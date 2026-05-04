@@ -90,6 +90,7 @@ type WidgetFitEaseDiagramOp =
   | { kind: "circle"; cx: number; cy: number; r: number; fill: string; stroke?: string; strokeWidth?: number; dash?: string };
 
 export type WidgetFitEaseDiagramJson = {
+  viewBoxMinX?: number;
   viewBoxWidth: number;
   viewBoxHeight: number;
   ops: WidgetFitEaseDiagramOp[];

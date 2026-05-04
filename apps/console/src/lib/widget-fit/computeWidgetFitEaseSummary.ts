@@ -5,7 +5,6 @@ import type { FittingCanvasSnapshot } from "@/lib/fitting-compute/fittingCanvasC
 import {
   bodyArmPeakSpanCm,
   bodyIndentReferenceChordLengthCm,
-  garmentFitCompareSpanCm,
 } from "@/lib/widget-fit/bodyPlotReferenceMeasures";
 import { resolveWidgetFitChestBandJaFromBodyHeuristic } from "@/lib/widget-fit/widgetFitChestBandOrdinal";
 
@@ -51,7 +50,7 @@ export type WidgetFitEaseSummaryJson = {
 };
 
 /**
- * 開発キャンバスと同じ `FittingCanvasSnapshot` から、ウィジェット向けの「ゆとり目安」を組み立てる。
+ * `computeFittingCanvasSnapshot` の `FittingCanvasSnapshot`（プレビュー／ウィジェット共通）から、ウィジェット向け「ゆとり目安」を組み立てる。
  */
 export function buildWidgetFitEaseSummaryFromSnapshot(
   snap: FittingCanvasSnapshot,
@@ -88,28 +87,7 @@ export function buildWidgetFitEaseSummaryFromSnapshot(
   const chordCm =
     bppc != null && bppc > 0 ? bodyIndentReferenceChordLengthCm(snap, bppc) : null;
   const garmentChestProxyCm = g.size.chest * 2;
-  const fitPair = opts?.customGarmentData?.genericSymmetricTop?.fitCompareVertexGlobalPair;
-  let easeVsChord: number | null = null;
   if (
-    fitPair != null &&
-    fitPair.length === 2 &&
-    bppc != null &&
-    bppc > 0 &&
-    snap.customPathDs.length > 0 &&
-    chordCm != null &&
-    Number.isFinite(chordCm) &&
-    chordCm > 8 &&
-    chordCm < 200
-  ) {
-    const garmentCm = garmentFitCompareSpanCm(snap.customPathDs, fitPair, bppc);
-    if (garmentCm != null && Number.isFinite(garmentCm) && garmentCm > 1 && garmentCm < 220) {
-      easeVsChord = garmentCm - chordCm;
-    }
-  }
-  if (easeVsChord != null && Number.isFinite(easeVsChord) && Math.abs(easeVsChord) <= 120) {
-    chestRaw = round1(easeVsChord);
-    chestEaseForBand = easeVsChord;
-  } else if (
     chordCm != null &&
     Number.isFinite(chordCm) &&
     Number.isFinite(garmentChestProxyCm) &&

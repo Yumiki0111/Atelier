@@ -1,10 +1,24 @@
 import type { CustomLandmarks } from "../lib/types";
 import { getPathPoints, getPathsBBox } from "../lib/pathUtils";
 import { MODEL_RIG_LINE_PATH_DS } from "../lib/modelRigData";
-import { VERIFICATION_RIG_LINE_PATH_DS_SRC } from "../lib/modelDataVerification";
 import type { RigPathEndpoints } from "./rigMatching";
-import { MODEL_RIG_ENDPOINTS, VERIFICATION_RIG_ENDPOINTS } from "./rigMatching";
+import {
+  MODEL_RIG_ENDPOINTS,
+  VERIFICATION_RIG_ENDPOINTS,
+  GRID_MODEL_RIG_ENDPOINTS,
+  normalizePathDForMatch,
+} from "./rigMatching";
 import type { SvgParsedPath } from "./parseSvgPaths";
+import {
+  assertValidGridModelRigCompound,
+  gridModelRigCompoundToNineSvgPathDs,
+  GRID_MODEL_RIG_STROKE_COMPOUND_D,
+} from "../lib/gridModelRigExtract";
+import { GRID_RIG_NINE_PATH_DS_SVG } from "../lib/gridSvgRigData";
+import {
+  LINE_ART_VERIFICATION_RIG_STROKE_COMPOUND_D,
+  VERIFICATION_RIG_NINE_PATH_DS_SVG,
+} from "../lib/modelDataVerification";
 
 function getBBoxOfPathPoints(points: [number, number][]) {
   let minX = Infinity;
@@ -21,19 +35,71 @@ function getBBoxOfPathPoints(points: [number, number][]) {
   return { minX, minY, maxX, maxY };
 }
 
+/** `gridVector9Only`: 格子ボディ運用時。mv_model / 検証リグへの幾何マッチを行わない */
+export type SvgGarmentRigSplitPreset = "auto" | "gridVector9Only";
+
+/**
+ * 先頭 path が Vector(9) compound（canonical または構造正当）なら 9 本に分ける。失敗時は null。
+ */
+function trySplitGridVector9FromFirstPath(paths: SvgParsedPath[]): {
+  garmentPaths: SvgParsedPath[];
+  rigPaths: SvgParsedPath[];
+} | null {
+  if (paths.length < 1) return null;
+  const compoundD = paths[0]!.d.trim();
+  const matchesCanonicalVector9 =
+    normalizePathDForMatch(compoundD) === normalizePathDForMatch(GRID_MODEL_RIG_STROKE_COMPOUND_D);
+  if (matchesCanonicalVector9) {
+    const stem = paths[0]!;
+    const rigPaths: SvgParsedPath[] = [...GRID_RIG_NINE_PATH_DS_SVG].map((d) => ({ ...stem, d }));
+    return { rigPaths, garmentPaths: paths.slice(1) };
+  }
+  const matchesVerificationVector9 =
+    normalizePathDForMatch(compoundD) === normalizePathDForMatch(LINE_ART_VERIFICATION_RIG_STROKE_COMPOUND_D);
+  if (matchesVerificationVector9) {
+    const stem = paths[0]!;
+    const rigPaths: SvgParsedPath[] = [...VERIFICATION_RIG_NINE_PATH_DS_SVG].map((d) => ({ ...stem, d }));
+    return { rigPaths, garmentPaths: paths.slice(1) };
+  }
+  try {
+    assertValidGridModelRigCompound(compoundD);
+    const stem = paths[0]!;
+    const rigDs = gridModelRigCompoundToNineSvgPathDs(compoundD);
+    const rigPaths: SvgParsedPath[] = rigDs.map((d) => ({ ...stem, d }));
+    return { rigPaths, garmentPaths: paths.slice(1) };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * 共通リグ入り SVG（model+rig を服SVGに合成した状態）を想定し、
  * 「ボディ輪郭・中心軸・補助線」っぽい path を除外して“服パーツだけ”に寄せます。
  * `SvgParsedPath` 単位で分割し、線スタイル（stroke 等）を服側に残します。
+ *
+ * @param preset `gridVector9Only`: 画面上で格子モデルを選んでいるときのみ。それ以外モデル用リグ検出へ落ちない。
  */
-export function splitGarmentPathsFromSvgParsed(paths: SvgParsedPath[]): {
+export function splitGarmentPathsFromSvgParsed(
+  paths: SvgParsedPath[],
+  preset: SvgGarmentRigSplitPreset = "auto"
+): {
   garmentPaths: SvgParsedPath[];
   rigPaths: SvgParsedPath[];
 } {
+  const gridSplit = trySplitGridVector9FromFirstPath(paths);
+  if (gridSplit != null) return gridSplit;
+  if (preset === "gridVector9Only") {
+    return { garmentPaths: paths, rigPaths: [] };
+  }
+
   const pathDs = paths.map((p) => p.d);
   // まずは「モデル+リグから抽出した 9 本の rig d」と完全一致するものだけを rig として抜く。
   // 4862×6431 系の検証リグも同一契約で別座標のため併記（Figma エクスポートの d が一致すれば抜ける）。
-  const rigExactSet = new Set([...MODEL_RIG_LINE_PATH_DS, ...VERIFICATION_RIG_LINE_PATH_DS_SRC]);
+  const rigExactSet = new Set([
+    ...MODEL_RIG_LINE_PATH_DS,
+    ...GRID_RIG_NINE_PATH_DS_SVG,
+    ...VERIFICATION_RIG_NINE_PATH_DS_SVG,
+  ]);
   const rigExact: SvgParsedPath[] = [];
   const keepExact: SvgParsedPath[] = [];
   for (const p of paths) {
@@ -151,12 +217,50 @@ export function splitGarmentPathsFromSvgParsed(paths: SvgParsedPath[]): {
 
     const bestDefault = pickBestForTemplate(MODEL_RIG_ENDPOINTS);
     const bestVer = pickBestForTemplate(VERIFICATION_RIG_ENDPOINTS);
-    const best =
-      bestVer.score > bestDefault.score
-        ? { ...bestVer, modelEndpoints: VERIFICATION_RIG_ENDPOINTS }
-        : { ...bestDefault, modelEndpoints: MODEL_RIG_ENDPOINTS };
+    const bestGrid = pickBestForTemplate(GRID_MODEL_RIG_ENDPOINTS);
+
+    type GridSplitTemplateKind = "default" | "verification" | "grid";
+    const ranked: Array<{
+      score: number;
+      scale: number;
+      tx: number;
+      ty: number;
+      modelEndpoints: RigPathEndpoints[];
+      kind: GridSplitTemplateKind;
+    }> = [
+      {
+        score: bestDefault.score,
+        scale: bestDefault.scale,
+        tx: bestDefault.tx,
+        ty: bestDefault.ty,
+        modelEndpoints: MODEL_RIG_ENDPOINTS,
+        kind: "default",
+      },
+      {
+        score: bestVer.score,
+        scale: bestVer.scale,
+        tx: bestVer.tx,
+        ty: bestVer.ty,
+        modelEndpoints: VERIFICATION_RIG_ENDPOINTS,
+        kind: "verification",
+      },
+      {
+        score: bestGrid.score,
+        scale: bestGrid.scale,
+        tx: bestGrid.tx,
+        ty: bestGrid.ty,
+        modelEndpoints: GRID_MODEL_RIG_ENDPOINTS,
+        kind: "grid",
+      },
+    ];
+    ranked.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      const pri: Record<GridSplitTemplateKind, number> = { grid: 0, verification: 1, default: 2 };
+      return pri[a.kind] - pri[b.kind];
+    });
+    const best = ranked[0]!;
     if (best.score >= modelRigRigCountTarget - 1) {
-      const { modelEndpoints } = best;
+      const modelEndpoints = best.modelEndpoints;
       // best transform で一致する候補だけを抽出（一致は min/max の近さで判定）
       const tol = Math.max(6, Math.abs(straightCandidates[0]?.lenY ?? 0) * 0.02);
       const used = new Set<number>();
@@ -257,8 +361,11 @@ export function splitGarmentPathsFromSvgParsed(paths: SvgParsedPath[]): {
 }
 
 /** d のみの配列向け。線スタイルは保持しない。 */
-export function splitGarmentPathsFromSvg(pathDs: string[]): { garmentPathDs: string[]; rigPathDs: string[] } {
-  const r = splitGarmentPathsFromSvgParsed(pathDs.map((d) => ({ d })));
+export function splitGarmentPathsFromSvg(
+  pathDs: string[],
+  preset: SvgGarmentRigSplitPreset = "auto"
+): { garmentPathDs: string[]; rigPathDs: string[] } {
+  const r = splitGarmentPathsFromSvgParsed(pathDs.map((d) => ({ d })), preset);
   return { garmentPathDs: r.garmentPaths.map((p) => p.d), rigPathDs: r.rigPaths.map((p) => p.d) };
 }
 

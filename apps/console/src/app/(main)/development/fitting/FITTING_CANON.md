@@ -1,6 +1,6 @@
 # 開発フィッティング — 正典（Canon）一体版
 
-**単一の正**として、モデル変形・赤リグ・服ワープ・汎用トップ・腕 path 前提をここにまとめる。  
+**単一の正**として、モデル変形・赤リグ・服ワープ・**Garment Grading v4**（`presetId: "gradingV4"` のカスタム SVG）および組み込みデモ（シャツ／ジャケット）・腕 path 前提をここにまとめる。
 変更が必要なときは **先に本書を更新**し、PR で「Canon との差分」を明示する。
 
 ---
@@ -19,16 +19,16 @@
 
 ## 1. スコープと単一入口
 
-**ディレクトリ:** 共有モジュールは `lib/`、スナップショット計算は `compute/`、キャンバス UI・`useFittingCanvasData` は `canvas/`、左パネルは `controls/`。`body/`・`svgPath/`・`customGarment/`・`generic/` は従来どおり fitting 直下。
+**レイアウト:** 開発用の共有コードは **`(main)/development/fitting/`** 直下の `lib/`・`canvas/`・`customGarment/`・`gradingV4/` 等。体格→スナップショット計算本体はコンソールの **`apps/console/src/lib/fitting-compute/`**（インポートは多く **`@/lib/fitting-compute/...`**）。
 
 | 項目 | 正 |
 |------|----|
-| 体型→描画の集約 | `compute/fittingCanvasCompute.ts` の **`computeFittingCanvasSnapshot`**（呼び出し: `canvas/useFittingCanvasData.ts`） |
+| 体型→描画の集約 | **`computeFittingCanvasSnapshot`**（`apps/console/src/lib/fitting-compute/fittingCanvasCompute.ts`）。呼び出し例: `fitting/canvas/useFittingCanvasData.ts`・プレビュー |
 | ボディテンプレ | viewBox **1505×2852**、`BODY_CX = 752.5`（`lib/constants.ts`） |
 | モデル SVG → テンプレ座標 | `lib/modelRigData.ts` の **`scaleModelViewToBodyTemplate`**: 元 viewBox **3391×6431** をテンプレ幅・高さ比でスケール（`BPATHS_RIG_LINES` と同一写像） |
 | 赤リグ線ソース | **`MODEL_RIG_LINE_PATH_DS`**（9 本）→ 上記写像後 **`BPATHS_RIG_LINES`** |
 
-**禁止:** 体・服・赤リグの幾何の「真実」を、このパイプライン以外で **二重計算**しない（採寸オーバーレイ等の **表示専用**の補助計算は可）。
+**禁止:** 体・服・赤リグの幾何の「真実」を、このパイプライン以外で **二重計算**しない（HUD・採寸注釈の **表示専用** の補助計算は可）。
 
 ---
 
@@ -45,7 +45,7 @@
 
 ## 3. リグ 9 本の index 契約
 
-`lib/modelRigData.ts` と `compute/fittingCanvasCompute.ts`（`RIG_LINE_SPINE` 等）で **同一の並び**。
+`lib/modelRigData.ts` と `fittingCanvasCompute.ts`（`RIG_LINE_SPINE` 等）で **同一の並び**。
 
 | index | 役割 |
 |-------|------|
@@ -88,9 +88,9 @@
 
 ## 6. `RIG_ARM_TOWARD_VERTICAL_DEG_PER_CM`
 
-- **場所:** `compute/fittingCanvasCompute.ts`
+- **場所:** `fittingCanvasCompute.ts`
 - 身長が `REF_HEIGHT_CM` から離れるほど **path 1・2 だけ**肩 pivot で追加回転。
-- **0 にすると** 非基準身長で **袖が腕に追従しにくくなる**ことがある（リグスキンと `computeSleeveRotations` の関係）。
+- **0 にすると** 非基準身長で **袖が腕に追従しにくくなる**ことがある（リグスキンおよび腕ラインとの整合）。
 - **非 0** のとき、脊髄・鎖骨に対する腕線の **見かけの内角**が身長と少し連動する（トレードオフ）。
 
 **禁止:** 「角度表示だけ」のためにここを 0 固定して体・服を無検証で変える。表示補正は図示レイヤで。
@@ -105,7 +105,7 @@
 | 服の横・多くのプレース・袖ワープの横 | 多く **`getBodyParams(..., REF_WEIGHT_KG)`** |
 | 服用リグワープ | `height` + **`REF_WEIGHT_KG`**（服リグが体重で横に伸びない） |
 
-詳細コメント: `compute/fittingCanvasCompute.ts`（ジャケット分岐前のブロック）。
+詳細コメント: `fittingCanvasCompute.ts`（ジャケット分岐前のブロック）。
 
 **禁止:** 全体を `weight` に統一する単純置換。
 
@@ -116,123 +116,47 @@
 - `lengthCalibrationHeightCm` **未指定** → 着丈の `bodyPxPerCm` は **現在身長 `h`**。
 - **カスタム既定** → **`REF_HEIGHT_CM` を渡す**（身長スライダーに着丈スケールを直結させない）。
 
-**禁止:** カスタムだけこの引数を外して着丈を身長に直結させる（オーバーレイ・商品登録と不整合）。
+**禁止:** カスタムだけこの引数を外して着丈を身長に直結させる（HUD・商品登録と不整合）。
 
 ---
 
 ## 9. カスタム服 `buildCustomTransformedPaths.ts`
 
-1. **`placementLockToModelRig`**: `place` = **`scaleModelViewToBodyTemplate` のみ**。`compute/fittingCanvasCompute` の `transformHeightCmForCustomPaths` / ロックフラグと連動。
+1. **`placementLockToModelRig`**: `place` = **`scaleModelViewToBodyTemplate` のみ**。`fittingCanvasComputeGarmentCustom.ts` の `transformHeightCmForCustomPaths` / ロックフラグと連動。
 2. **通常**: `buildTopPlacement(h, w, …, null, REF_HEIGHT_CM).place`
 3. **photoDerived 袖**: `getInterpolatedArmOutline(REF_HEIGHT_CM)` → `warpArmOutline(..., h)`
-4. **汎用トップ**: 下記 §10
+4. **Grading v4:** `fitting/gradingV4/` の分割 path・マークアップレイヤ変形（`presetId === "gradingV4"` と `fittingCanvasComputeGarmentCustom.ts` が束ねる）。
 
 **禁止:** `getInterpolatedArmOutline` を **`h` 起点**に勝手に変更して compute 本体の肩・袖基準とズラす。
 
 ### 9.1 リグロック時のテンプレート水平位置（服の左右中央）
 
-アップロード SVG で服とモデルリグ本数が一致する場合、`compute/fittingCanvasComputeGarmentCustom.ts` が **ワープ前**にテンプレ X をシフトして体軸に寄せる（`templateShiftXLocked`）。**頂点平均ではなく bbox 中心 X** を使う理由・失敗しやすいパターン・処理順は **`CUSTOM_GARMENT_CENTERING.md`** に集約する。
+アップロード SVG で服とモデルリグ本数が一致する場合、`fittingCanvasComputeGarmentCustom.ts` が **ワープ前**にテンプレ X をシフトして体軸に寄せる（`templateShiftXLocked`）。**頂点平均ではなく bbox 中心 X** を使う理由・失敗しやすいパターン・処理順は **`CUSTOM_GARMENT_CENTERING.md`** に集約する。
 
 ---
 
-## 10. 汎用トップ `genericSymmetricTop`（旧 GARMENT_LOGIC）
+## 10. 袖・胴（現行実装の注意）
 
-### スコープ
+- **カスタム／Grading v4:** **`buildCustomTransformedPaths`**（プレース、リグロック写像、`photoDerived` 時はモデル腕への袖ヒント）、および **`fitting/gradingV4/`** のマークアップ変形。旧 **`ScalableGarmentSpec` / `sleeveOnlyTransform` / `scalableGarmentArmLogic` は削除済み**。
+- **シャツ／ジャケット:** **`shirtUtils` / `jacketUtils`** と `fittingCanvasComputeGarmentShirt` / `Jacket`。袖・胴の幾何はここでは **プレース＋サイズ表ベースの専用ロジック**。
+- 多層 path・リグロック・胴ワープの契約を変えるときは **§4–9** と **`CUSTOM_GARMENT_CENTERING.md`** を先に読む。
 
-- **対象:** `presetId === "genericSymmetricTop"`。SVG アップロード＋（任意）4 連結区間の手入力と Apply。
-- **廃止:** `blousonFixed`、同梱 `BLOUSON_PATH_DS`、ブローゾン専用 `getScalableSpec` / 強制腕ロジック。
-- **初期:** `getGenericSymmetricTopPreset`（`pathDs: []`）、サイズ表は `genericDevDefaults.ts`。
-
-### 共有プリミティブ
-
-- **`ArmLogicConfig`** と **`scaleBodyToSpec` / `scaleSleevePathToSpec` / `computeSleeveRotations`** は **`buildGenericArmConfig` → `sleeveOnlyTransform`** から利用。
-
-### 変換分岐
-
-1. **Apply 済み + 4 シーム:** `runGenericSymmetricTopFitWithTopology` / `runGenericSymmetricTopFitManual`（sleeveOnly）。
-2. **measure-only:** `applyGenericMeasureOnlyGrading` → `place`。
-3. **`getScalableSpec` / `getArmLogicConfig`:** レガシー用 **常に `null`**。旧ブローゾン胴スケールは使わない。
-4. **それ以外:** `tPath` + `place`。
-
-### キャンバス・オーバーレイ
-
-- **`resolveGenericScalableSpec`:** 4 区間が揃うときのみ spec。袖丈赤線は `sleeveMeasureIndices` 等。
-- **ミラー袖丈:** `lockedTopology` があれば利用（ブローゾン固定トポへのフォールバックなし）。
-
-### 汎用 `generic/` の追加注意（path 変形）
-
-- 外腕シームは **`flattenSvgPathToPolyline`**（`pathUtils`）で曲線を L 化してから変換。`DEBUG_NO_SEAM_FLATTEN` で切替可能（開発用）。
-- 汎用 spec では **`snapCenterXToBody: false`**（前胴の縦アーティファクト抑制）。
-- アップロード時:** 服 path は `garmentPathDs`、リグは **`debugRigPathDs`**（`splitGarmentPathsFromSvg`）。
-- Apply 前後で形が変わるのは **`applySleeveOnlyGarmentTransform`** の有無が主因になり得る。
-
-### 将来メモ
-
-解析層で役割推定 → フィット層は sleeveOnly のみ、という方向。**現状は手入力トポロジー前提**。
+**禁止:** 座標系混在（SVG 原座標のままボディ `place` 空間と比較する等）。
 
 ---
 
-## 11. 腕ロジック path 前提（旧 ARM_LOGIC_PREREQUISITES）
+## 11. オーバーレイ・DEBUG（変形の正ではない）
 
-腕ロジックが破綻しないための **服 path 契約**（コート例つき）。
-
-### Path 構成
-
-| 役割 | 説明 | コート例 |
-|------|------|----------|
-| 袖左 | 肩→袖先の外側。place 後、肩 pivot で剛体回転 | path 1 |
-| 袖右 | 同上 | path 4 |
-| 脇左 | 袖付け付近。attach からの距離でブレンド | path 2 |
-| 脇右 | 同上 | path 5 |
-
-### attach
-
-- **seam path 上に頂点があること**。コート例: path 2 終点 = ATTACH_L。
-- ブレンドは attach から **BLEND_MAX_DIST** 以内の seam 頂点のみ。
-
-### `ScalableSpec.sleeve`
-
-- `anchorIdx`: 肩（pivot）
-- `cuffIdx`: 袖口（腕角度に使用）
-- `lengthStartIdx`～`lengthEndIdx`: 袖丈計測・スケール区間
-
-### `bodyPathIndices`
-
-- 着丈 Y スケール対象。**袖 path を含めない**。コート例: [0, 2, 3, 5]。
-
-### パラメータ
-
-- **`seamBlendMaxDist`:** attach からこの距離内のみ脇ブレンド。attach が seam 上にない場合は小さくして事実上無効化も可。
-- **`skinningMaxDist`:** 胴スキニング半径。**220 で統一**（無断で大きくしない）。
-
-### 特殊ガイド
-
-- 脇ブレンドで肩頂が範囲に入る等 → `seamBlendMaxDist` を **180** 程度に抑える例あり。
-- **`innerIndices` なし** → `scaleSleevePathToSpec` で袖幅まで伸びる → **袖スケールをスキップ**し placement＋回転のみ、が安全なことがある。
+- `MeasureOverlayData` に載る線・ラベルは **注釈**。スナップショット計算本体の経路とは切り離して読む。
+- **`sessionStorage`:** `DEBUG_RIG_ARM`, `DEBUG_FITTING_MEASURE`, `DEBUG_NO_SEAM_FLATTEN` 等は **別コードパス**になり得る。正は **フラグ OFF**。
 
 ---
 
-## 12. 袖・腕の追従（`scalableGarmentArmLogic` / `sleeveOnlyTransform`）
-
-- **`computeSleeveRotations`:** プレース後シーム方向 vs **渡された腕ポリライン** → 肩周り回転。
-- **`sleeveOnlyTransform`:** 外腕へブレンド（袖付け weight 0 等は実装準拠）。
-
-**禁止:** 座標系混在（プレース空間と SVG 原座標のまま比較）。§11 のパラメータを無断で大変更。
-
----
-
-## 13. オーバーレイ・DEBUG（変形の正ではない）
-
-- **`canvas/FittingCanvasMeasureOverlay`:** 注釈のみ。変形に影響しない。
-- **`sessionStorage`:** `DEBUG_RIG_ARM`, `DEBUG_FITTING`, `DEBUG_NO_SEAM_FLATTEN` 等は **別コードパス**になり得る。正は **フラグ OFF**。
-
----
-
-## 14. Canon の外だが挙動を壊しやすいもの（見落とし対策）
+## 12. Canon の外だが挙動を壊しやすいもの（見落とし対策）
 
 | 項目 | 内容 |
 |------|------|
-| **`apps/console/.../development/page.tsx`** | `localStorage` キー `fitlook-dev-fitting` で服種・サイズを復元。**身長・体重は保存されない**。リロードで入力が戻ると「コードは同じなのに見え方が違う」になり得る。 |
+| **`development/page.tsx`** | `localStorage` キー `fitlook-dev-fitting` で服種・サイズを復元。**身長・体重は保存されない**。リロードで入力が戻ると「コードは同じなのに見え方が違う」になり得る。 |
 | **サイズアニメ** | `animProgress` / `fromSize` `toSize` / カスタム from-to で **`interpolatePath`** 等。スナップショット計算の分岐が増える。 |
 | **`rigBodyEnabled` / `rigGarmentEnabled`** | UI トグルで **描画・デバッグ用パス**が変わる（計算の芯は同じでも確認対象がずれる）。 |
 | **`next` / Turbopack / `node_modules` 更新** | 同一コミットでも環境差で見え方が変わることはあり得る。不具合切り分け時は `npm ci` 等を意識。 |
@@ -241,38 +165,38 @@
 
 ---
 
-## 15. 変更時の手動回帰チェック（最低限）
+## 13. 変更時の手動回帰チェック（最低限）
 
 1. 身長: 体・赤リグ・カスタム服の肩・袖が **同時に**破綻なく動く。
 2. 体重: **体**が太る／痩せる。**服の横幅**が意図せず大きく変わっていない。
 3. リグ ON: `rigLineWarpedRigViewPaths` と **`rigTemplateToRigView*`** で **腕傾きが共有**されている。
-4. **170 / 60** 付近でシャツ・ジャケット・汎用トップの基準見た目が大きく崩れていない。
+4. **170 / 60** 付近で組み込みデモ（シャツ・ジャケット）および **Grading v4 カスタム**の基準見た目が大きく崩れていない。
 
 ---
 
-## 16. 変更してよいこと（例）
+## 14. 変更してよいこと（例）
 
-- Canon と同値のリファクタ、オーバーレイ文言、DEBUG ログ。
+- Canon と同値のリファクタ、HUD 文言、DEBUG ログ。
 - **Canon を更新したうえでの**係数調整（腕鉛直寄せ・脊髄頭ブレンドなど）。
 
 ---
 
-## 17. 主要ファイル索引
+## 15. 主要ファイル索引
 
 | 領域 | ファイル |
 |------|----------|
-| スナップショット | `compute/fittingCanvasCompute.ts` |
-| React 供給 | `canvas/useFittingCanvasData.ts` |
-| 定数・ゾーン | `lib/constants.ts`, `body/bodyZones.ts`, `lib/bodyUtils.ts` |
-| リグデータ・写像 | `lib/modelRigData.ts` |
-| リグスキン | `lib/rigSkin2D.ts` |
-| プレース | `lib/garmentBase.ts` |
-| カスタム変換 | `customGarment/buildCustomTransformedPaths.ts` |
-| カスタム服・リグロック水平合わせ | `compute/fittingCanvasComputeGarmentCustom.ts`、`CUSTOM_GARMENT_CENTERING.md` |
-| 袖 | `lib/sleeveOnlyTransform.ts`, `lib/scalableGarmentArmLogic.ts` |
-| 汎用 fit | `generic/runGenericTopFit.ts`, `applyGenericMeasureOnlyGrading.ts` |
-| 肩角度図（表示） | `canvas/FittingCanvasRigAngleDiagram.tsx` |
-| 開発ページ状態 | `../page.tsx` |
+| スナップショット | `apps/console/src/lib/fitting-compute/fittingCanvasCompute.ts` |
+| カスタム服 compute | `apps/console/src/lib/fitting-compute/fittingCanvasComputeGarmentCustom.ts` |
+| React（データ供給例） | `fitting/canvas/useFittingCanvasData.ts` |
+| Grading v4 | `fitting/gradingV4/` |
+| 定数・ゾーン | `fitting/lib/constants.ts`, `fitting/body/bodyZones.ts`, `fitting/lib/bodyUtils.ts` |
+| リグデータ・写像 | `fitting/lib/modelRigData.ts` |
+| リグスキン | `fitting/lib/rigSkin2D.ts` |
+| プレース | `fitting/lib/garmentBase.ts` |
+| カスタム変形 | `fitting/customGarment/buildCustomTransformedPaths.ts` |
+| リグロック水平合わせ | `CUSTOM_GARMENT_CENTERING.md` |
+| 組み込みシャツ／ジャケット | `fitting/lib/shirtUtils.ts`, `fitting/lib/jacketUtils.ts`, `lib/fitting-compute/fittingCanvasComputeGarmentShirt.ts`, `fittingCanvasComputeGarmentJacket.ts` |
+| 開発ページ状態 | `(main)/development/page.tsx` |
 
 ---
 

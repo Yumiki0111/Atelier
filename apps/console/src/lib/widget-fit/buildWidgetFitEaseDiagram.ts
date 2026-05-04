@@ -4,7 +4,6 @@ import { pointOnPolylineAtArcLength, polylineArcLengthPx } from "@/lib/fitting-c
 import { resolveSleeveGeomDisplayCm } from "@/lib/fitting-compute/resolveSleeveGeomDisplayCm";
 import type { WidgetFitEaseSummaryJson } from "@/lib/widget-fit/computeWidgetFitEaseSummary";
 
-const VIEW_W = 1505;
 /** 袖・裾の白カプセル中心をまとめて少し左へ（px） */
 const SIZE_LABEL_NUDGE_X = -44;
 
@@ -60,6 +59,8 @@ export type WidgetFitEaseDiagramOp =
   | { kind: "circle"; cx: number; cy: number; r: number; fill: string; stroke?: string; strokeWidth?: number; dash?: string };
 
 export type WidgetFitEaseDiagramJson = {
+  /** 図解座標の X 基準。未指定時は 0（従来 0..1505 と同一） */
+  viewBoxMinX?: number;
   viewBoxWidth: number;
   viewBoxHeight: number;
   ops: WidgetFitEaseDiagramOp[];
@@ -77,12 +78,8 @@ type GarmentG = NonNullable<MeasureOverlayData["garment"]>;
 
 type PillBox = { bx: number; by: number; w: number; h: number };
 
-function estimatePillSize(text: string, fontSize: number): { w: number; h: number } {
-  const tw = Math.ceil(text.length * fontSize * 0.62 + PILL_PAD_X * 2);
-  const w = clamp(tw, 268, VIEW_W - 24);
-  const h = Math.ceil(fontSize + PILL_PAD_Y * 2);
-  return { w, h };
-}
+/** 試着 viewBox の X 範囲（`snap.viewBoxMinX` / `snap.viewBoxWidth`） */
+type VbXSpan = { minX: number; width: number };
 
 /** Left sleeve pill may need bx < 0 (parent SVG overflow-visible). */
 const SLEEVE_PILL_MIN_BX = -480;
@@ -93,13 +90,15 @@ function layoutPill(
   text: string,
   fontSize: number,
   vbH: number,
+  vbX: VbXSpan,
   opts?: { minBx?: number }
 ): PillBox {
   const tw = Math.ceil(text.length * fontSize * 0.62 + PILL_PAD_X * 2);
-  const w = clamp(tw, 268, VIEW_W - 24);
+  const w = clamp(tw, 268, vbX.width - 24);
   const h = Math.ceil(fontSize + PILL_PAD_Y * 2);
   const minBx = opts?.minBx ?? 0;
-  const bx = clamp(cx - w / 2, minBx, VIEW_W - w - 8);
+  const maxBx = vbX.minX + vbX.width - w - 8;
+  const bx = clamp(cx - w / 2, minBx, maxBx);
   const by = clamp(cy - h / 2, 8, vbH - h - 8);
   return { bx, by, w, h };
 }
@@ -174,7 +173,8 @@ function appendHemCallout(
   ops: WidgetFitEaseDiagramOp[],
   g: GarmentG,
   summary: WidgetFitEaseSummaryJson,
-  vbH: number
+  vbH: number,
+  vbX: VbXSpan
 ): void {
   const hemCm = fmtSignedCmShort(summary.hemFromCrotchCm);
   if (!hemCm || !finitePair(g.hemCenter)) return;
@@ -188,7 +188,14 @@ function appendHemCallout(
   const pretty = hemCm.replace(/cm$/i, " cm");
   const lineText = `またから約 ${pretty}`;
   const pillCy = hy + HEM_LEADER_DOWN;
-  const pill = layoutPill(hx + HEM_CALLOUT_BIAS_X + SIZE_LABEL_NUDGE_X, pillCy, lineText, FONT_HEM_PILL, vbH);
+  const pill = layoutPill(
+    hx + HEM_CALLOUT_BIAS_X + SIZE_LABEL_NUDGE_X,
+    pillCy,
+    lineText,
+    FONT_HEM_PILL,
+    vbH,
+    vbX
+  );
   const attach = pillEdgeToward(pill, hx, hy);
 
   ops.push(dashedLeader3(hx, hy, attach[0], attach[1]));
@@ -203,7 +210,9 @@ function appendSleevePointerCallout(
   ops: WidgetFitEaseDiagramOp[],
   g: GarmentG,
   _summary: WidgetFitEaseSummaryJson,
-  vbH: number
+  vbH: number,
+  leftSleeveMinBx: number,
+  vbX: VbXSpan
 ): void {
   const slIn = g.size.sleeve;
   if (!Number.isFinite(slIn) || slIn <= 0) return;
@@ -226,7 +235,8 @@ function appendSleevePointerCallout(
   const [px, py]: [number, number] =
     arcLen > 1e-6 ? pointOnPolylineAtArcLength(chain, arcLen * 0.5) : [(sx + ex) / 2, (sy + ey) / 2];
 
-  const toLeft = px < VIEW_W * 0.5;
+  const midX = vbX.minX + vbX.width * 0.5;
+  const toLeft = px < midX;
   const sleeveBiasX = toLeft ? -SLEEVE_CALLOUT_BIAS_X_LEFT : SLEEVE_CALLOUT_BIAS_X_RIGHT;
   const pillCx = px + sleeveBiasX + SIZE_LABEL_NUDGE_X + SLEEVE_ONLY_NUDGE_X;
   const pillCy = py - SLEEVE_CALLOUT_UP;
@@ -246,9 +256,9 @@ function appendSleevePointerCallout(
   const sleeveLineText =
     pillCm != null && Number.isFinite(pillCm) ? `袖丈 ${pillCm.toFixed(1)} cm` : "袖丈 —";
 
-  /** Left sleeve: relaxed minBx so pill can sit past x=0; otherwise bias tweaks clamp and appear to do nothing. */
-  const pill = layoutPill(pillCx, pillCy, sleeveLineText, FONT_HEM_PILL, vbH, {
-    minBx: toLeft ? SLEEVE_PILL_MIN_BX : 0,
+  /** 左袖：`minBx < 0` は埋め込み SVG（既定 overflow）で欠けやすい。ウィジェットは `0` を渡す。 */
+  const pill = layoutPill(pillCx, pillCy, sleeveLineText, FONT_HEM_PILL, vbH, vbX, {
+    minBx: toLeft ? leftSleeveMinBx : vbX.minX,
   });
   const attach = pillBottomCenter(pill);
 
@@ -257,24 +267,35 @@ function appendSleevePointerCallout(
   appendPill(ops, pill, sleeveLineText, FONT_HEM_PILL);
 }
 
+export type BuildWidgetFitEaseDiagramOpts = {
+  /**
+   * true のとき左袖カプセルを viewBox 左辺（`viewBoxMinX`）にクランプする。
+   * ウィジェット等の狭い埋め込みで「カプセル半分欠け」を防ぐ。
+   */
+  clampPillsToViewBox?: boolean;
+};
+
 /**
  * 採寸図：袖・裾とも黒点・点線・白カプセル。着丈の別スケール線は出さない。
  */
 export function buildWidgetFitEaseDiagramFromSnapshot(
   snap: FittingCanvasSnapshot,
-  summary: WidgetFitEaseSummaryJson
+  summary: WidgetFitEaseSummaryJson,
+  opts?: BuildWidgetFitEaseDiagramOpts
 ): WidgetFitEaseDiagramJson | null {
   const g = snap.measureOverlay.garment;
   if (!g?.size) return null;
 
   const vbH = snap.viewBoxHeight;
+  const vbX: VbXSpan = { minX: snap.viewBoxMinX, width: snap.viewBoxWidth };
 
   const ops: WidgetFitEaseDiagramOp[] = [];
 
-  appendSleevePointerCallout(ops, g, summary, vbH);
-  appendHemCallout(ops, g, summary, vbH);
+  const leftSleeveMinBx = opts?.clampPillsToViewBox === true ? vbX.minX : SLEEVE_PILL_MIN_BX;
+  appendSleevePointerCallout(ops, g, summary, vbH, leftSleeveMinBx, vbX);
+  appendHemCallout(ops, g, summary, vbH, vbX);
 
   if (ops.length === 0) return null;
 
-  return { viewBoxWidth: VIEW_W, viewBoxHeight: vbH, ops };
+  return { viewBoxMinX: vbX.minX, viewBoxWidth: vbX.width, viewBoxHeight: vbH, ops };
 }

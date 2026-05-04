@@ -9,6 +9,7 @@ export type SvgPathPresentation = {
   strokeDasharray?: string;
   strokeWidth?: number;
   stroke?: string;
+  fill?: string;
 };
 
 export type SvgParsedPath = { d: string } & SvgPathPresentation;
@@ -35,6 +36,13 @@ function normalizeDasharray(raw: string | undefined): string | undefined {
   const t = raw.trim().toLowerCase();
   if (t === "none") return undefined;
   return raw.replace(/,/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function normalizeFillPresentation(raw: string | undefined): string | undefined {
+  if (raw == null || raw === "") return undefined;
+  const low = raw.trim().toLowerCase();
+  if (low === "none" || low === "transparent") return undefined;
+  return raw.trim();
 }
 
 /** `style="fill:none;stroke-dasharray:4 2"` のような文字列を宣言ごとに分割 */
@@ -70,10 +78,12 @@ function parsePresentationFromPresentationAttrs(attrs: string): SvgPathPresentat
     const low = strokeRaw.trim().toLowerCase();
     if (low !== "none" && low !== "transparent") stroke = strokeRaw.trim();
   }
+  const fillParsed = normalizeFillPresentation(pickAttr(attrs, "fill"));
   const out: SvgPathPresentation = {};
   if (strokeDasharray != null) out.strokeDasharray = strokeDasharray;
   if (strokeWidth != null && strokeWidth > 0) out.strokeWidth = strokeWidth;
   if (stroke != null) out.stroke = stroke;
+  if (fillParsed != null) out.fill = fillParsed;
   return out;
 }
 
@@ -110,6 +120,12 @@ function parsePresentationFromAttrs(attrs: string): SvgPathPresentation {
     } else {
       out.stroke = raw.trim();
     }
+  }
+
+  if (decl.has("fill")) {
+    const f = normalizeFillPresentation(decl.get("fill"));
+    if (f != null) out.fill = f;
+    else delete out.fill;
   }
 
   return out;

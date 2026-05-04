@@ -14,10 +14,48 @@ import {
   orderedSizeLabelsFromCustomGarment,
   resolveOrderedSizeKeysForBand,
 } from "@/lib/widget-fit/widgetFitChestBandOrdinal";
+import type { FittingCanvasSnapshot } from "@/lib/fitting-compute/fittingCanvasComputeTypes";
+
+function collectRenderableGarmentSlice(
+  snap: FittingCanvasSnapshot,
+  fromIdx: number,
+  toIdx: number
+): {
+  garmentPaths: string[];
+  garmentPathStrokeDasharrays: (string | undefined)[];
+  garmentPathStrokeWidths: (number | undefined)[];
+  garmentPathStrokes: (string | undefined)[];
+  garmentPathFills: (string | undefined)[];
+} {
+  const garmentPaths: string[] = [];
+  const garmentPathStrokeDasharrays: (string | undefined)[] = [];
+  const garmentPathStrokeWidths: (number | undefined)[] = [];
+  const garmentPathStrokes: (string | undefined)[] = [];
+  const garmentPathFills: (string | undefined)[] = [];
+
+  for (let i = fromIdx; i < toIdx; i++) {
+    const d = snap.customPathDs[i]!;
+    if (!d || d.length === 0 || shouldSuppressGarmentPathRender(d)) continue;
+    garmentPaths.push(d);
+    garmentPathStrokeDasharrays.push(snap.customPathStrokeDasharrays[i]);
+    garmentPathStrokeWidths.push(snap.customPathStrokeWidths[i]);
+    garmentPathStrokes.push(snap.customPathStrokes[i]);
+    garmentPathFills.push(snap.customPathFills[i]);
+  }
+
+  return {
+    garmentPaths,
+    garmentPathStrokeDasharrays,
+    garmentPathStrokeWidths,
+    garmentPathStrokes,
+    garmentPathFills,
+  };
+}
 
 /**
- * 開発の FittingCanvas と同じ計算（オーバーレイ・プロットは呼び出し側で使わない）。
- * `garmentPaths` と線スタイル配列は同じインデックスで対応する。
+ * `computeFittingCanvasSnapshot` と同じ計算（オーバーレイ・プロットは呼び出し側で使わない）。
+ * Grading v4 かつ背面ありのとき、`garmentPathsBehindBody*` は体型より下、`garmentPaths*` は体型より上（前面のみ）。
+ * 背面が無い／従来プリセットでは `garmentPathsBehindBody` は空配列。
  */
 export async function computeWidgetFitSnapshot(params: {
   customGarmentData: CustomGarmentData;
@@ -33,12 +71,20 @@ export async function computeWidgetFitSnapshot(params: {
    */
   orderedSizeKeysFromCatalog?: string[] | null;
 }): Promise<{
+  viewBoxMinX: number;
+  viewBoxWidth: number;
   viewBoxHeight: number;
   bodyPaths: string[];
+  garmentPathsBehindBody: string[];
+  garmentBehindBodyPathStrokeDasharrays: (string | undefined)[];
+  garmentBehindBodyPathStrokeWidths: (number | undefined)[];
+  garmentBehindBodyPathStrokes: (string | undefined)[];
+  garmentBehindBodyPathFills: (string | undefined)[];
   garmentPaths: string[];
   garmentPathStrokeDasharrays: (string | undefined)[];
   garmentPathStrokeWidths: (number | undefined)[];
   garmentPathStrokes: (string | undefined)[];
+  garmentPathFills: (string | undefined)[];
   fitEaseSummary: WidgetFitEaseSummaryJson;
   fitEaseDiagram: WidgetFitEaseDiagramJson | null;
 }> {
@@ -57,23 +103,12 @@ export async function computeWidgetFitSnapshot(params: {
     toSize: null,
     rigBodyEnabled: false,
     bodyModelVariant,
-    genericVertexPlotHighlight: null,
     rigLinePaths,
   });
 
-  const garmentPaths: string[] = [];
-  const garmentPathStrokeDasharrays: (string | undefined)[] = [];
-  const garmentPathStrokeWidths: (number | undefined)[] = [];
-  const garmentPathStrokes: (string | undefined)[] = [];
-
-  for (let i = 0; i < snap.customPathDs.length; i++) {
-    const d = snap.customPathDs[i]!;
-    if (!d || d.length === 0 || shouldSuppressGarmentPathRender(d)) continue;
-    garmentPaths.push(d);
-    garmentPathStrokeDasharrays.push(snap.customPathStrokeDasharrays[i]);
-    garmentPathStrokeWidths.push(snap.customPathStrokeWidths[i]);
-    garmentPathStrokes.push(snap.customPathStrokes[i]);
-  }
+  const behindN = snap.gradingV4BehindBodyPathCount;
+  const behind = collectRenderableGarmentSlice(snap, 0, behindN);
+  const front = collectRenderableGarmentSlice(snap, behindN, snap.customPathDs.length);
 
   const fitChestBandMode = resolveWidgetFitChestBandMode(params.fitChestBandCategory);
   const presetLabels = orderedSizeLabelsFromCustomGarment(params.customGarmentData);
@@ -96,15 +131,25 @@ export async function computeWidgetFitSnapshot(params: {
         ? currentSizeLabel
         : undefined,
   });
-  const fitEaseDiagram = buildWidgetFitEaseDiagramFromSnapshot(snap, fitEaseSummary);
+  const fitEaseDiagram = buildWidgetFitEaseDiagramFromSnapshot(snap, fitEaseSummary, {
+    clampPillsToViewBox: true,
+  });
 
   return {
+    viewBoxMinX: snap.viewBoxMinX,
+    viewBoxWidth: snap.viewBoxWidth,
     viewBoxHeight: snap.viewBoxHeight,
     bodyPaths: snap.bodyPaths,
-    garmentPaths,
-    garmentPathStrokeDasharrays,
-    garmentPathStrokeWidths,
-    garmentPathStrokes,
+    garmentPathsBehindBody: behind.garmentPaths,
+    garmentBehindBodyPathStrokeDasharrays: behind.garmentPathStrokeDasharrays,
+    garmentBehindBodyPathStrokeWidths: behind.garmentPathStrokeWidths,
+    garmentBehindBodyPathStrokes: behind.garmentPathStrokes,
+    garmentBehindBodyPathFills: behind.garmentPathFills,
+    garmentPaths: front.garmentPaths,
+    garmentPathStrokeDasharrays: front.garmentPathStrokeDasharrays,
+    garmentPathStrokeWidths: front.garmentPathStrokeWidths,
+    garmentPathStrokes: front.garmentPathStrokes,
+    garmentPathFills: front.garmentPathFills,
     fitEaseSummary,
     fitEaseDiagram,
   };

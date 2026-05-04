@@ -7,10 +7,9 @@ import {
 } from "@/lib/widget-fit/applyWidgetSizeToGarment";
 import { validateGarmentSpecForProduction } from "@/lib/products/validateGarmentSpecForProduction";
 import { resolveWidgetFitSizeKeysOrder } from "@/lib/widget/resolveWidgetFitSizeKeysOrder";
+import { normalizeWidgetFitSizeQuery } from "@/lib/widget-fit/widgetFitGradingSize";
 import { computeWidgetFitSnapshot } from "@/lib/widget-fit/computeWidgetFitSnapshot";
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
-
-const VIEWBOX_W = 1505;
 
 /**
  * 認証済みコンソール用: 自店舗商品の garment_spec を開発と同じ計算で SVG 用パスに変換する。
@@ -31,7 +30,7 @@ export async function GET(
 
     const { id: productId } = await params;
     const searchParams = request.nextUrl.searchParams;
-    const size = searchParams.get("size") || "default";
+    const sizeParam = searchParams.get("size") || "default";
     const heightCm = Math.min(195, Math.max(150, parseInt(searchParams.get("heightCm") || "170", 10) || 170));
     const weightKg = Math.min(120, Math.max(35, parseFloat(searchParams.get("weightKg") || "60") || 60));
 
@@ -60,7 +59,8 @@ export async function GET(
     }
 
     const base = raw as CustomGarmentData;
-    const sized = applyWidgetSizeToCustomGarmentData(base, size);
+    const resolvedSize = normalizeWidgetFitSizeQuery(sizeParam, base);
+    const sized = applyWidgetSizeToCustomGarmentData(base, resolvedSize);
 
     let catalogOrder = resolveWidgetFitSizeKeysOrder([], base);
     const { data: assetRows } = await supabaseAdmin
@@ -82,7 +82,7 @@ export async function GET(
         heightCm,
         weightKg,
         fitChestBandCategory: (product as { category?: string | null }).category ?? null,
-        currentSizeLabel: size,
+        currentSizeLabel: resolvedSize,
         orderedSizeKeysFromCatalog: catalogOrder,
       });
     } catch (computeErr) {
@@ -95,13 +95,21 @@ export async function GET(
     }
 
     return NextResponse.json({
-      viewBoxWidth: VIEWBOX_W,
+      viewBoxMinX: snap.viewBoxMinX,
+      viewBoxWidth: snap.viewBoxWidth,
       viewBoxHeight: snap.viewBoxHeight,
       bodyPaths: snap.bodyPaths,
+      garmentPathsBehindBody: snap.garmentPathsBehindBody,
+      garmentBehindBodyPathStrokeDasharrays: snap.garmentBehindBodyPathStrokeDasharrays,
+      garmentBehindBodyPathStrokeWidths: snap.garmentBehindBodyPathStrokeWidths,
+      garmentBehindBodyPathStrokes: snap.garmentBehindBodyPathStrokes,
+      garmentBehindBodyPathFills: snap.garmentBehindBodyPathFills,
       garmentPaths: snap.garmentPaths,
       garmentPathStrokeDasharrays: snap.garmentPathStrokeDasharrays,
       garmentPathStrokeWidths: snap.garmentPathStrokeWidths,
       garmentPathStrokes: snap.garmentPathStrokes,
+      garmentPathFills: snap.garmentPathFills,
+      presetId: base.presetId,
       fitEaseSummary: snap.fitEaseSummary,
       fitEaseDiagram: snap.fitEaseDiagram,
     });

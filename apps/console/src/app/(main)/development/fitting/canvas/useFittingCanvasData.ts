@@ -24,10 +24,11 @@ export function useFittingCanvasData({
   toCustomGarmentData = null,
   rigBodyEnabled = false,
   bodyModelVariant,
-  genericVertexPlotHighlight = null,
 }: UseFittingCanvasDataParams): FittingCanvasSnapshot {
+  /** UI の body トグルが無いビュー（プレビュー等）は `CustomGarmentData.bodyModelVariant` にフォールバック */
+  const resolvedBodyModelVariant = bodyModelVariant ?? customGarmentData?.bodyModelVariant;
   /** 非同期の `loadBPATHS_RIG_LINES()` だと初回は null → yScale とカスタム服パイプラインが1フレーム遅れ、縮み→収束のように見える。 */
-  const rigLinePaths = getBodyRigLinePathsTemplate(bodyModelVariant);
+  const rigLinePaths = getBodyRigLinePathsTemplate(resolvedBodyModelVariant);
 
   return useMemo(
     () =>
@@ -44,8 +45,7 @@ export function useFittingCanvasData({
         fromCustomGarmentData,
         toCustomGarmentData,
         rigBodyEnabled,
-        bodyModelVariant,
-        genericVertexPlotHighlight,
+        bodyModelVariant: resolvedBodyModelVariant,
         rigLinePaths,
       }),
     [
@@ -57,7 +57,7 @@ export function useFittingCanvasData({
       customGarmentData,
       rigBodyEnabled,
       bodyModelVariant,
-      genericVertexPlotHighlight,
+      resolvedBodyModelVariant,
       rigLinePaths,
       animProgress,
       fromSize,

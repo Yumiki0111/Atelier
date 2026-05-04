@@ -38,7 +38,7 @@
 
 - **入力**
   - 必須: 商品名（既存と同様）。
-  - 必須: `CustomGarmentData` 相当のペイロード（path、ランドマーク、採寸、`genericSymmetricTop` による袖丈・着丈・グレーディング関連フィールド等）。
+  - 必須: `CustomGarmentData` 相当のペイロード（path、ランドマーク、採寸、**Garment Grading v4**（`presetId: "gradingV4"`）のマークアップ・サイズカタログ等）。
   - **必須（本仕様）**: 服 SVG から分離・保持している **リグ用 path 配列**（現コードでは `debugRigPathDs`）。モデル側 rig は開発画面と同様に **アプリ同梱のモデル rig（`pathData` / `modelRigData` 系）** を用いる。
   - 必須: **商品画像**（1 枚。フォーマット・最大サイズは「未決定」参照）。
 - **処理**
@@ -62,7 +62,7 @@
 ### 3.4 プレビュー（タップ）
 
 - **表示**: **モデル（既存の 2D ボディ＋モデル rig）** と **登録された服 path＋服リグ** を重ねた結果。
-- **ロジック**: 開発タブの `FittingCanvas` / `useFittingCanvasData` / **`fittingCanvasCompute`** が参照する入力（身長・体重、`customGarmentData`、`rigBodyEnabled` / `rigGarmentEnabled` 等）を、プレビュー用に **同じ関数群へ供給**する。
+- **ロジック**: プレビューは `useFittingCanvasData` 経由で **`fittingCanvasCompute`**（`computeFittingCanvasSnapshot`）と同一入力を受け取る（身長・体重、`customGarmentData`、`rigBodyEnabled` / `rigGarmentEnabled`、`bodyModelVariant` 等）。
 - **リグ一致の再利用（新規実装禁止の意味）**
   - 一致判定: `customGarment/rigMatching.ts` の **`garmentDebugRigMatchesLoadedRig`**（服 `debugRigPathDs` とロード済み `rigLinePaths` の幾何一致）。
   - 身長スケール等: `bodyParams.ts` の **`getBodyParams(..., rigLinePaths)`**、`rigDerivedHeight.ts` 経由の Y スケール。
@@ -70,7 +70,7 @@
 - **「リグ手動ロジック」**（要語彙の固定）  
   要件文の意図としては、プレビュー側でも開発と同様に **肩インデックス等の手動調整**や **リグ表示トグル**が必要かどうかが曖昧。  
   - **最小案**: 身長・体重・サイズプリセット（`garment_spec` 内）のみ変更可能。  
-  - **最大案**: `FittingControls` の該当サブセット（肩デバッグ等）をプレビューに埋め込む。  
+  - **最大案**: 開発用コントロールの該当サブセット（肩デバッグ等）をプレビューに埋め込む。  
   → **製品としてどちらにするか決定必須**（「未決定事項」参照）。
 
 ---
@@ -115,7 +115,7 @@
 ## 6. プレビュー UI 構成（案）
 
 - 条件分岐: `selectedProduct.garmentSpec` が存在する → **2D プレビューパネル**（新コンポーネントまたは `PreviewPanel` 内ブランチ）。存在しない → 従来の 3D プレビュー。
-- 2D 側は **開発ページの `FittingCanvas` をラップ**し、`customGarmentData` に API から復元したオブジェクトを渡す。モデル rig は開発と同じデータソースを使い、**服リグは `garment_spec` から復元**する。
+- 2D 側は **`useFittingCanvasData`＋キャンバス表示** で、`customGarmentData` に API から復元したオブジェクトを渡す。モデル rig は開発と同じデータソースを使い、**服リグは `garment_spec` から復元**する。
 
 ---
 
@@ -132,7 +132,7 @@
 2. **画像制約**: 形式（PNG/JPEG/WebP）、最大サイズ、必須か任意か。
 3. **「リグ手動ロジック」の UI 範囲**: プレビューで編集可能にするか、閲覧のみか。編集する場合、変更をサーバーに保存するか（通常は不要）。
 4. **一覧の「商品情報」列挙**: ブランド・カテゴリ・SKU・説明文など、どこまで表示するか。
-5. **サイズ概念**: 3D 用の S/M/L トグルと、`genericSymmetricTop.sizePresets` の関係（2D 専用商品ではプレビュー UI をプリセット切替に寄せるか）。
+5. **サイズ概念**: 3D 用の S/M/L トグルと、**Grading v4 フラットサイズ一覧**（例: `GRADING_V4_SIZE_FLAT_CM`）の対応（2D 専用商品ではプレビュー UI をサイズ切替に寄せるか）。
 6. **アップロード失敗時の整合性**: 商品レコードのみ作成され画像が無い状態の許容と、クリーンアップジョブの要否。
 7. **リグ不一致時の UX**: `garmentDebugRigMatchesLoadedRig` が false のとき、警告表示・自動フォールバック（従来 placement）のどちらを標準にするか。
 
@@ -143,9 +143,9 @@
 | 用途 | 主なファイル |
 |------|----------------|
 | 服・モデル rig 一致 | `apps/console/src/app/(main)/development/fitting/customGarment/rigMatching.ts` |
-| フィット計算・rig ランドマーク利用 | `apps/console/src/app/(main)/development/fitting/fittingCanvasCompute.ts` |
+| フィット計算・rig ランドマーク利用 | `apps/console/src/lib/fitting-compute/fittingCanvasCompute.ts` |
 | 身長とモデル rig | `apps/console/src/app/(main)/development/fitting/body/bodyParams.ts`, `rigDerivedHeight.ts` |
-| 開発 UI との表示一致 | `FittingCanvas.tsx`, `useFittingCanvasData.ts` |
+| プレビュー計算の入口 | `useFittingCanvasData.ts`（`fitting/canvas/`） |
 | 現状の DB 向けサニタイズ（変更対象） | `sanitizeCustomGarmentForProductDb.ts`, `stripGarmentSpecForStorage.ts` |
 | 現状の一覧・3D プレビュー | `ProductLibraryGrid.tsx`, `PreviewPanel.tsx` |
 

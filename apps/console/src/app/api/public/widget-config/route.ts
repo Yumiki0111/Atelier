@@ -3,6 +3,8 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { setCorsHeaders, handleCorsOptions, validatePublicKeyAndDomain } from "@/lib/api/cors";
 import { isGarmentSpecRenderable } from "@/lib/widget-fit/applyWidgetSizeToGarment";
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
+import { matchStoredGarmentFlatCmToGradingSize } from "@/lib/widget-fit/widgetFitGradingSize";
+import { GRADING_V4_ORDERED_SIZE_LABELS } from "@/app/(main)/development/fitting/gradingV4/gradingV4GarmentCm";
 import { resolveWidgetFitSizeKeysOrder } from "@/lib/widget/resolveWidgetFitSizeKeysOrder";
 import { formatPriceYenForDisplay, normalizeWidgetCtaAccentColor } from "@Atelier/shared";
 
@@ -148,39 +150,40 @@ export async function GET(request: NextRequest) {
       }
     } else if (garmentFitAvailable) {
       const gs = product.garment_spec as CustomGarmentData;
-      const presets = gs.genericSymmetricTop?.sizePresets ?? [];
-      if (presets.length > 0) {
-        for (const p of presets) {
-          sizes[p.label] = [{ category }];
+      if (gs.presetId === "gradingV4") {
+        for (const label of GRADING_V4_ORDERED_SIZE_LABELS) {
+          sizes[label] = [{ category }];
         }
-        defaultSize = presets[0].label;
+        defaultSize = matchStoredGarmentFlatCmToGradingSize(gs) ?? "S";
       } else {
-        sizes.default = [{ category }];
-        defaultSize = "default";
+        for (const label of GRADING_V4_ORDERED_SIZE_LABELS) {
+          sizes[label] = [{ category }];
+        }
+        defaultSize = "S";
       }
     }
 
     /** `Object.keys` の順が UI の並びになるため、プレビューと同じ着丈→袖丈順に組み替え（プリセットのみキーもマージ） */
     if (garmentFitAvailable) {
       const ordered = resolveWidgetFitSizeKeysOrder(Object.keys(sizes), product.garment_spec);
-      const gs = product.garment_spec as CustomGarmentData;
-      const presetLabels = new Set(
-        (gs.genericSymmetricTop?.sizePresets ?? [])
-          .map((p) => String(p.label).trim())
-          .filter(Boolean)
-      );
+      const gradingLabelSet = new Set<string>(GRADING_V4_ORDERED_SIZE_LABELS as readonly string[]);
       const next: Record<string, { category?: string }[]> = {};
       for (const k of ordered) {
         const existing = sizes[k];
         if (existing != null && existing.length > 0) {
           next[k] = existing;
-        } else if (presetLabels.has(k)) {
+        } else if (gradingLabelSet.has(k)) {
           next[k] = [{ category }];
         }
       }
       sizes = next;
-      if (ordered.includes("M")) defaultSize = "M";
-      else if (ordered[0]) defaultSize = ordered[0];
+      const gsInner = product.garment_spec as CustomGarmentData;
+      const preferred =
+        gsInner.presetId === "gradingV4"
+          ? (matchStoredGarmentFlatCmToGradingSize(gsInner) ?? "S")
+          : "S";
+      defaultSize =
+        next[preferred] != null && next[preferred]!.length > 0 ? preferred : ordered[0] ?? preferred;
     }
 
     // ウィジェットデザイン設定を取得

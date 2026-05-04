@@ -1,4 +1,7 @@
+import type { BodyModelVariant } from "@/app/(main)/development/fitting/lib/bodyModelVariant";
 import { BODY_CX, REF_HEIGHT_CM } from "@/app/(main)/development/fitting/lib/constants";
+import { gridRigVectorPointToBodyTemplate } from "@/app/(main)/development/fitting/lib/gridModelRigExtract";
+import { lineArtVerificationSvgPointToBodyTemplate } from "@/app/(main)/development/fitting/lib/modelDataVerification";
 import { inferLandmarksFromRigPaths } from "@/app/(main)/development/fitting/lib/customLandmarkResolve";
 import { buildCustomTransformedPathsWithVertexPlots } from "@/app/(main)/development/fitting/lib/customGarmentUtils";
 import type { FittingCanvasRigLandmarksDebug } from "./fittingCanvasComputeTypes";
@@ -11,20 +14,37 @@ import { scaleModelViewToBodyTemplate } from "@/app/(main)/development/fitting/l
 import { pathDsContentEqual } from "@/app/(main)/development/fitting/lib/fittingStateUtils";
 import type {
   CustomGarmentData,
-  GenericVertexPlotHighlight,
   MeasureOverlayData,
   ShoulderDebug,
-  SizeMeasure,
 } from "@/app/(main)/development/fitting/lib/types";
 import { getAllPathPoints } from "@/app/(main)/development/fitting/lib/fittingContourUtils";
 import { getPathPoints, interpolatePath, tPath } from "@/app/(main)/development/fitting/lib/pathUtils";
 import { bboxCenterXFromPathDs, bboxCenterXFromPoints } from "./fittingCanvasComputeGarmentCustomBbox";
-import { isDebugFittingLengthPipelineEnabled } from "./fittingCanvasDebugFlags";
-import {
-  applyGenericTopLengthMeshIfEligible,
-  purpleLengthVerticalSpanPxFromVertices,
-  runGenericSymmetricTopSleevePipeline,
-} from "./fittingCanvasComputeGarmentCustomSymmetricTop";
+
+function mergeGradingV4PathLayersForCompute(data: CustomGarmentData): {
+  merged: CustomGarmentData;
+  gradingV4BehindBodyPathCount: number;
+} {
+  const bb = data.gradingV4BehindBody;
+  const nb = bb?.pathDs.length ?? 0;
+  if (nb === 0 || bb == null) {
+    return { merged: data, gradingV4BehindBodyPathCount: 0 };
+  }
+  const nf = data.pathDs.length;
+  const take = <T>(arr: (T | undefined)[] | undefined, len: number): (T | undefined)[] =>
+    Array.from({ length: len }, (_, i) => arr?.[i]);
+  return {
+    gradingV4BehindBodyPathCount: nb,
+    merged: {
+      ...data,
+      pathDs: [...bb.pathDs, ...data.pathDs],
+      pathStrokeDasharrays: [...take(bb.pathStrokeDasharrays, nb), ...take(data.pathStrokeDasharrays, nf)],
+      pathStrokeWidths: [...take(bb.pathStrokeWidths, nb), ...take(data.pathStrokeWidths, nf)],
+      pathStrokes: [...take(bb.pathStrokes, nb), ...take(data.pathStrokes, nf)],
+      pathFills: [...take(bb.pathFills, nb), ...take(data.pathFills, nf)],
+    },
+  };
+}
 
 export type CustomGarmentBranchContext = {
   height: number;
@@ -39,8 +59,9 @@ export type CustomGarmentBranchContext = {
   fromCustomGarmentData: CustomGarmentData | null;
   toCustomGarmentData: CustomGarmentData | null;
   animProgress: number;
-  genericVertexPlotHighlight: GenericVertexPlotHighlight | null;
   bodyShoulderContour: [number, number][];
+  /** `lineArtVerification` / `gridSvgBody` ではアップロード SVG が 391/389×518。リグロック写像は mv_model 3391×6431 と別 */
+  bodyModelVariant?: BodyModelVariant;
 };
 
 export function computeCustomGarmentBranch(
@@ -51,10 +72,13 @@ export function computeCustomGarmentBranch(
   customPathStrokeDasharrays: (string | undefined)[];
   customPathStrokeWidths: (number | undefined)[];
   customPathStrokes: (string | undefined)[];
+  customPathFills: (string | undefined)[];
   customRigPathDs: string[];
   shoulderDebug: ShoulderDebug;
   garmentOverlay: MeasureOverlayData["garment"];
   rigLandmarksDebug: FittingCanvasRigLandmarksDebug;
+  /** Grading v4: 背面 path 本数（`customPathDs` の先頭からこの数） */
+  gradingV4BehindBodyPathCount: number;
 } {
   const {
     height,
@@ -69,9 +93,21 @@ export function computeCustomGarmentBranch(
     fromCustomGarmentData,
     toCustomGarmentData,
     animProgress,
-    genericVertexPlotHighlight,
     bodyShoulderContour,
+    bodyModelVariant,
   } = ctx;
+
+  const placeDesignToTemplate =
+    bodyModelVariant === "lineArtVerification"
+      ? lineArtVerificationSvgPointToBodyTemplate
+      : bodyModelVariant === "gridSvgBody"
+        ? gridRigVectorPointToBodyTemplate
+        : scaleModelViewToBodyTemplate;
+
+  const rigLockTransformOpts = {
+    placementLockToModelRig: true as const,
+    placeDesignToBodyWhenRigLocked: placeDesignToTemplate,
+  };
 
   const c = customGarmentData.landmarks;
   const rigN = customGarmentData.debugRigPathDs?.length ?? 0;
@@ -88,7 +124,9 @@ export function computeCustomGarmentBranch(
       customPathStrokeDasharrays: [],
       customPathStrokeWidths: [],
       customPathStrokes: [],
+      customPathFills: [],
       customRigPathDs: [],
+      gradingV4BehindBodyPathCount: 0,
       shoulderDebug: {
         bodyShoulderContour,
         garmentShoulderContour: [],
@@ -103,10 +141,6 @@ export function computeCustomGarmentBranch(
         usedShoulderY: c.shoulderY ?? null,
         usedHemY: c.hemY ?? null,
         useRigLandmarksForPlacement: false,
-        genericApplied:
-          customGarmentData.presetId === "genericSymmetricTop"
-            ? !!customGarmentData.genericSymmetricTop?.applied
-            : null,
         rigRequirementWarnings: w,
       },
     };
@@ -123,13 +157,31 @@ export function computeCustomGarmentBranch(
     usedShoulderY: c.shoulderY ?? null,
     usedHemY: c.hemY ?? null,
     useRigLandmarksForPlacement,
-    genericApplied:
-      customGarmentData.presetId === "genericSymmetricTop"
-        ? !!customGarmentData.genericSymmetricTop?.applied
-        : null,
   };
 
-  const customAllOutline = getAllPathPoints(customGarmentData.pathDs);
+  const { merged: cgPaths, gradingV4BehindBodyPathCount } = mergeGradingV4PathLayersForCompute(customGarmentData);
+  // #region agent log
+  if (typeof fetch !== "undefined" && customGarmentData.presetId === "gradingV4") {
+    fetch("http://127.0.0.1:7468/ingest/8ae11b2e-0353-49f9-add8-94485bd038d3", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "47077e" },
+      body: JSON.stringify({
+        sessionId: "47077e",
+        runId: "pre",
+        hypothesisId: "H2-layer",
+        location: "fittingCanvasComputeGarmentCustom.ts:afterMergeGradingLayers",
+        message: "merge grading layers",
+        data: {
+          behindBodyPathCount: gradingV4BehindBodyPathCount,
+          mergedPathDsN: cgPaths.pathDs.length,
+          rawBehindN: customGarmentData.gradingV4BehindBody?.pathDs?.length ?? 0,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+  }
+  // #endregion
+  const customAllOutline = getAllPathPoints(cgPaths.pathDs);
   const shoulderSeamY = rigLm != null ? rigLm.shoulderY : getShoulderSeamYForData(customGarmentData);
 
   const topLandmarks = (() => {
@@ -175,7 +227,6 @@ export function computeCustomGarmentBranch(
     null,
     REF_HEIGHT_CM
   );
-  const placeDesignToTemplate = scaleModelViewToBodyTemplate;
   const placementLockToModelRigFor = (cg: { debugRigPathDs?: string[] | null } | null | undefined) =>
     !!cg &&
     rigLinePaths != null &&
@@ -193,15 +244,30 @@ export function computeCustomGarmentBranch(
   let customPathStrokeDasharrays: (string | undefined)[] = [];
   let customPathStrokeWidths: (number | undefined)[] = [];
   let customPathStrokes: (string | undefined)[] = [];
+  let customPathFills: (string | undefined)[] = [];
 
   if (
     fromCustomGarmentData &&
     toCustomGarmentData &&
-    pathDsContentEqual(fromCustomGarmentData.pathDs, toCustomGarmentData.pathDs) &&
+    (() => {
+      const a = mergeGradingV4PathLayersForCompute(fromCustomGarmentData);
+      const b = mergeGradingV4PathLayersForCompute(toCustomGarmentData);
+      if (a.gradingV4BehindBodyPathCount !== b.gradingV4BehindBodyPathCount) return false;
+      if (a.merged.pathDs.length !== b.merged.pathDs.length) return false;
+      if (
+        fromCustomGarmentData.presetId === "gradingV4" &&
+        toCustomGarmentData.presetId === "gradingV4"
+      ) {
+        return true;
+      }
+      return pathDsContentEqual(a.merged.pathDs, b.merged.pathDs);
+    })() &&
     animProgress < 1 &&
     placementLockToModelRigFor(fromCustomGarmentData) &&
     placementLockToModelRigFor(toCustomGarmentData)
   ) {
+    const fromLayers = mergeGradingV4PathLayersForCompute(fromCustomGarmentData);
+    const toLayers = mergeGradingV4PathLayersForCompute(toCustomGarmentData);
     const fromC = fromCustomGarmentData.landmarks;
     const toC = toCustomGarmentData.landmarks;
     const fromRlm = inferLandmarksFromRigPaths(fromCustomGarmentData.debugRigPathDs!)!;
@@ -209,11 +275,11 @@ export function computeCustomGarmentBranch(
     const shoulderYFrom = fromRlm.shoulderY;
     const shoulderYTo = toRlm.shoulderY;
     const fromMerged = {
-      ...fromCustomGarmentData,
+      ...fromLayers.merged,
       landmarks: { ...fromC, ...fromRlm, shoulderY: fromRlm.shoulderY, hemY: fromRlm.hemY },
     };
     const toMerged = {
-      ...toCustomGarmentData,
+      ...toLayers.merged,
       landmarks: { ...toC, ...toRlm, shoulderY: toRlm.shoulderY, hemY: toRlm.hemY },
     };
     const fromOut = buildCustomTransformedPathsWithVertexPlots(
@@ -221,11 +287,9 @@ export function computeCustomGarmentBranch(
       REF_HEIGHT_CM,
       weight,
       shoulderYFrom,
-      { placementLockToModelRig: true }
+      rigLockTransformOpts
     );
-    const toOut = buildCustomTransformedPathsWithVertexPlots(toMerged, REF_HEIGHT_CM, weight, shoulderYTo, {
-      placementLockToModelRig: true,
-    });
+    const toOut = buildCustomTransformedPathsWithVertexPlots(toMerged, REF_HEIGHT_CM, weight, shoulderYTo, rigLockTransformOpts);
     const t = smootherStep(animProgress);
     customPathDs = fromOut.pathDs.map((d, i) =>
       interpolatePath(d, toOut.pathDs[i] ?? d, t)
@@ -238,6 +302,9 @@ export function computeCustomGarmentBranch(
     );
     customPathStrokes = fromOut.pathDs.map((_, i) =>
       t < 0.5 ? fromOut.pathStrokes[i] : toOut.pathStrokes[i]
+    );
+    customPathFills = fromOut.pathDs.map((_, i) =>
+      t < 0.5 ? fromOut.pathFills[i] : toOut.pathFills[i]
     );
     const n = Math.min(fromOut.vertexPlotsBodySpace.length, toOut.vertexPlotsBodySpace.length);
     customPoints = Array.from({ length: n }, (unused, i) => {
@@ -252,25 +319,25 @@ export function computeCustomGarmentBranch(
         ? { ...c, ...rigLm, shoulderY: rigLm.shoulderY, hemY: rigLm.hemY }
         : { ...c, shoulderY: shoulderSeamY, hemY: c.hemY };
     const transformed = buildCustomTransformedPathsWithVertexPlots(
-      { ...customGarmentData, landmarks: mergedLandmarks },
+      { ...cgPaths, landmarks: mergedLandmarks },
       transformHeightCmForCustomPaths,
       weight,
       shoulderSeamY,
-      { placementLockToModelRig: true }
+      rigLockTransformOpts
     );
     customPathDs = transformed.pathDs;
     customPoints = transformed.vertexPlotsBodySpace;
     customPathStrokeDasharrays = transformed.pathStrokeDasharrays;
     customPathStrokeWidths = transformed.pathStrokeWidths;
     customPathStrokes = transformed.pathStrokes;
+    customPathFills = transformed.pathFills;
   }
 
   /**
    * リグロック時: ワープ前にテンプレ X をシフトして体の中心に寄せる。
    * 頂点「平均」X は片側に点が密だと寄り、右（左）に寄せ過ぎるため、服は bbox 中心、脊髄は path0 の bbox 中心。
    * 脊髄が取れないときは BODY_CX をターゲットにする。
-   * 着丈連結など measure-only 胴グレードはリグ線を変えないが服 path の bbox は変わり得るため、
-   * シフト量の garment 側は `debugRigPathDs` を place した bbox 中心に固定し、右左への寄せ過ぎを防ぐ。
+   * シフト量の garment 側は `debugRigPathDs` を place した bbox 中心（無ければ服 path）に固定し、右左への寄せ過ぎを防ぐ。
    */
   let templateShiftXLocked = 0;
   if (rigLinePaths.length > RIG_LINE_SPINE) {
@@ -335,18 +402,12 @@ export function computeCustomGarmentBranch(
     return customGarmentFabricRigViewWarp(px + templateShiftXLocked, py);
   };
 
-  let customPointsBeforeFabricWarp: [number, number][] | null = customPoints.map(
-    ([x, y]) => [x, y] as [number, number]
-  );
-
   customPathDs = customPathDs.map((d) => tPath(d, customGarmentFabricRigViewWarp));
   customRigPathDs = customRigPathDs.map((d, idx) => tPath(d, rigTemplateToRigViewForGarmentPath(idx)));
   customPoints = customPoints.map(([x, y]) => customGarmentFabricRigViewWarp(x, y));
 
   /**
-   * path 補間中は `animatingCustomSizeBlend` が true。着丈 Y メッシュはオフにせず、
-   * from/to の `SizeMeasure` を補間した `lengthMeshSizeForGrade` で目標着丈だけを中間値に合わせる。
-   * 袖スナップも `lengthMeshSizeForGrade`（from→to 補間）で目標袖丈を中間値に合わせて適用。
+   * 同一 path のサイズのみ補間するとき true（オーバーレイデバッグ用）。
    */
   const animatingCustomSizeBlend =
     fromCustomGarmentData != null &&
@@ -354,147 +415,8 @@ export function computeCustomGarmentBranch(
     pathDsContentEqual(fromCustomGarmentData.pathDs, toCustomGarmentData.pathDs) &&
     animProgress < 1;
 
-  const gtSym = customGarmentData.genericSymmetricTop;
-  const genericTopPurpleLengthRange =
-    customGarmentData.presetId === "genericSymmetricTop" &&
-    gtSym != null &&
-    gtSym.lengthMeasureVertexStart != null &&
-    gtSym.lengthMeasureVertexEnd != null &&
-    Number.isFinite(gtSym.lengthMeasureVertexStart) &&
-    Number.isFinite(gtSym.lengthMeasureVertexEnd) &&
-    gtSym.lengthMeasureVertexStart !== gtSym.lengthMeasureVertexEnd;
-
-  const lengthGradingBaselineOk =
-    gtSym != null &&
-    gtSym.gradingBaselineLengthCm != null &&
-    Number.isFinite(gtSym.gradingBaselineLengthCm) &&
-    gtSym.gradingBaselineLengthCm > 0;
-
-  const canApplyLengthMeshGrade = genericTopPurpleLengthRange && lengthGradingBaselineOk;
-
-  const lengthMeshSizeForGrade: SizeMeasure | undefined =
-    animatingCustomSizeBlend &&
-    fromCustomGarmentData != null &&
-    toCustomGarmentData != null &&
-    pathDsContentEqual(fromCustomGarmentData.pathDs, toCustomGarmentData.pathDs)
-      ? (() => {
-          const t = smootherStep(animProgress);
-          const a = fromCustomGarmentData.size;
-          const b = toCustomGarmentData.size;
-          return {
-            shoulder: a.shoulder + (b.shoulder - a.shoulder) * t,
-            chest: a.chest + (b.chest - a.chest) * t,
-            length: a.length + (b.length - a.length) * t,
-            sleeve: a.sleeve + (b.sleeve - a.sleeve) * t,
-          };
-        })()
-      : undefined;
-
-  const spanBeforeLengthMesh =
-    customGarmentData.presetId === "genericSymmetricTop"
-      ? purpleLengthVerticalSpanPxFromVertices(customPoints, customGarmentData, genericVertexPlotHighlight)
-      : null;
-
-  const lengthMesh = applyGenericTopLengthMeshIfEligible({
-    canApplyLengthMeshGrade,
-    animatingCustomSizeBlend,
-    lengthMeshSizeForGrade,
-    customGarmentData,
-    customPathDs,
-    customPoints,
-    customAllOutline,
-    c,
-    rigLm,
-    useRigLandmarksForPlacement,
-    shoulderSeamY,
-    designToGarmentCanvas,
-    bodyPxPerCm: placement.bodyPxPerCm,
-    genericVertexPlotHighlight,
-    customPointsBeforeFabricWarp,
-  });
-
-  customPathDs = lengthMesh.customPathDs;
-  customPoints = lengthMesh.customPoints;
-  const designToGarmentCanvasForOverlay = lengthMesh.designToGarmentCanvasForOverlay;
-  const canvasYGradeScale = lengthMesh.canvasYGradeScale;
-  const lengthGeomBeforeLengthMeshDebug = lengthMesh.lengthGeomBeforeLengthMeshDebug;
-  customPointsBeforeFabricWarp = lengthMesh.customPointsBeforeFabricWarpOut;
-  const lengthMeshSkipReason = lengthMesh.lengthMeshSkipReason;
-
-  const spanAfterLengthMesh =
-    customGarmentData.presetId === "genericSymmetricTop"
-      ? purpleLengthVerticalSpanPxFromVertices(customPoints, customGarmentData, genericVertexPlotHighlight)
-      : null;
-
-  /** 裾スナップは廃止。着丈 Y メッシュが既に `targetLengthPx / span` で紫区間を目標に揃えており、その後に 1 頂点だけ動かすと二重補正でチラつく。 */
-
-  const sleevePhase = runGenericSymmetricTopSleevePipeline({
-    customGarmentData,
-    customPathDs,
-    customPoints,
-    c,
-    animatingCustomSizeBlend,
-    sleeveSizeForSnap: lengthMeshSizeForGrade,
-    bodyPxPerCm: placement.bodyPxPerCm,
-  });
-  customPathDs = sleevePhase.customPathDs;
-  customPoints = sleevePhase.customPoints;
-  const sleeveGeomBeforeSleeveFixDebug = sleevePhase.sleeveGeomBeforeSleeveFixDebug;
-  const sleeveGeomBeforeSleeveFixDebugRight = sleevePhase.sleeveGeomBeforeSleeveFixDebugRight;
-  const sleevePxPerCmForMeasure = sleevePhase.sleevePxPerCmForMeasure;
-  const sleevePipelineGeom = sleevePhase.sleevePipelineGeom;
-  const sleevePipelineGeomMirror = sleevePhase.sleevePipelineGeomMirror;
-  const sleeveMeasureDefinitionDebug = sleevePhase.sleeveMeasureDefinitionDebug;
-
-  const spanAfterSleeve =
-    customGarmentData.presetId === "genericSymmetricTop"
-      ? purpleLengthVerticalSpanPxFromVertices(customPoints, customGarmentData, genericVertexPlotHighlight)
-      : null;
-
-  if (isDebugFittingLengthPipelineEnabled() && customGarmentData.presetId === "genericSymmetricTop") {
-    const lenIn = customGarmentData.size.length;
-    const bppc = placement.bodyPxPerCm;
-    const nominalTargetPx =
-      Number.isFinite(lenIn) && lenIn > 0.5 ? lenIn * bppc : null;
-    const target = lengthMesh.appliedTargetLengthPx;
-    const deltaMeshVsTarget =
-      target != null && spanAfterLengthMesh != null ? spanAfterLengthMesh - target : null;
-    console.groupCollapsed("[FITTING_LENGTH_PIPELINE] 順序と数値（汎用トップ着丈）");
-    console.log("① 入力", {
-      sizeLengthCm: lenIn,
-      bodyPxPerCm: bppc,
-      nominalTargetPxFromSize: nominalTargetPx,
-      canApplyLengthMeshGrade,
-      lengthMeshSkipReason: lengthMesh.lengthMeshSkipReason ?? null,
-    });
-    console.log("② 着丈 Y メッシュ（ワープ後 path）", {
-      applied: lengthMesh.canvasYGradeScale != null,
-      canvasYGradeScale: lengthMesh.canvasYGradeScale,
-      appliedTargetLengthPx: lengthMesh.appliedTargetLengthPx ?? null,
-      lengthGeomBeforeLengthMeshDebug: lengthMesh.lengthGeomBeforeLengthMeshDebug ?? null,
-    });
-    console.log("③ 紫スパン px（各段階の customPoints）", {
-      beforeLengthMesh: spanBeforeLengthMesh,
-      afterLengthMesh: spanAfterLengthMesh,
-      afterSleeve: spanAfterSleeve,
-    });
-    console.log("④ 着丈メッシュ後の紫スパン − 目標 px（裾スナップは行わない）", {
-      targetLengthPx: target ?? null,
-      spanAfterMeshMinusTargetPx: deltaMeshVsTarget,
-    });
-    console.log("⑤ 袖パイプライン（最終）", {
-      animatingCustomSizeBlend,
-      sleeveTargetBlended: lengthMeshSizeForGrade != null,
-    });
-    console.log("⑥ オーバーレイ: 着丈は紫区間の実測 px÷bodyPxPerCm", {
-      appliedTargetLengthPx: lengthMesh.appliedTargetLengthPx ?? null,
-    });
-    console.groupEnd();
-  }
-
   const { garmentOverlay, shoulderDebug } = assembleCustomGarmentOverlayAndShoulderDebug({
     customGarmentData,
-    resolvedPathDsForSleeveMeasure: customPathDs,
     customPoints,
     customAllOutline,
     bodyShoulderContour,
@@ -504,21 +426,10 @@ export function computeCustomGarmentBranch(
     hasGarmentRig: true,
     shoulderSeamY,
     placeDesignToTemplate,
-    designToGarmentCanvas: designToGarmentCanvasForOverlay,
+    designToGarmentCanvas,
     customGarmentFabricRigViewWarp,
-    genericVertexPlotHighlight,
-    customPointsBeforeFabricWarp,
     bodyPxPerCm: placement.bodyPxPerCm,
-    sleevePxPerCmForMeasure,
-    sleevePipelineGeom,
-    sleevePipelineGeomMirror,
-    sleeveGeomBeforeSleeveFixDebug,
-    sleeveGeomBeforeSleeveFixDebugRight,
-    canvasYGradeScale,
-    lengthGeomBeforeLengthMeshDebug,
-    lengthMeshSkipReason,
     animatingCustomSizeBlend,
-    sleeveMeasureDefinitionDebug,
   });
 
   return {
@@ -526,7 +437,9 @@ export function computeCustomGarmentBranch(
     customPathStrokeDasharrays,
     customPathStrokeWidths,
     customPathStrokes,
+    customPathFills,
     customRigPathDs,
+    gradingV4BehindBodyPathCount,
     shoulderDebug,
     garmentOverlay,
     rigLandmarksDebug,

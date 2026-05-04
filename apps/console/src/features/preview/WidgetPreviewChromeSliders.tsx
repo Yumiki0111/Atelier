@@ -131,8 +131,8 @@ export function PreviewFitParamSliders({
       <div>
         <div
           className={cn(
-            "flex justify-between font-normal leading-tight",
-            isEmbed ? "mb-1.5 text-[11px]" : "mb-1 text-[9px]",
+            "flex justify-between font-normal leading-none",
+            isEmbed ? "mb-1 text-[11px]" : "mb-0.5 text-[9px]",
           )}
           style={{ color: cv.fg }}
         >
@@ -147,13 +147,13 @@ export function PreviewFitParamSliders({
           onChange={(e) => onHeightInput(parseInt(e.target.value, 10) || 170)}
           onPointerUp={flushHeight}
           onPointerCancel={flushHeight}
-          className={cn("w-full", isEmbed ? "h-8" : "h-7")}
+          className={cn("m-0 w-full", isEmbed ? "h-8" : "h-7")}
           style={{ accentColor }}
         />
       </div>
       <div>
         <div
-          className={cn("font-normal leading-tight", isEmbed ? "mb-1.5 text-[11px]" : "mb-1 text-[9px]")}
+          className={cn("font-normal leading-none", isEmbed ? "mb-1 text-[11px]" : "mb-0.5 text-[9px]")}
           style={{ color: cv.fg }}
         >
           シルエット
@@ -166,7 +166,7 @@ export function PreviewFitParamSliders({
           onChange={(e) => onBodyInput(parseInt(e.target.value, 10) || 0)}
           onPointerUp={flushBody}
           onPointerCancel={flushBody}
-          className={cn("w-full", isEmbed ? "h-8" : "h-7")}
+          className={cn("m-0 w-full", isEmbed ? "h-8" : "h-7")}
           style={{ accentColor }}
         />
       </div>

@@ -1,5 +1,6 @@
 import { BPATHS as BPATHS_MODEL_DEFAULT } from "./modelData";
 import { BPATHS_RIG_LINES as BPATHS_RIG_LINES_DEFAULT } from "./modelRigData";
+import { BPATHS_RIG_LINES_GRID_SVG } from "./gridSvgRigData";
 import {
   BPATHS_VERIFICATION_BODY,
   BPATHS_VERIFICATION_RIG_LINES,
@@ -13,8 +14,9 @@ import {
   BODY_INDENT_WAIST_RIGHT_GLOBAL_RANGE,
 } from "@/lib/fitting-compute/fittingCanvasDebugFlags";
 import { REF_HEIGHT_CM } from "./constants";
+import { BPATHS_GRADING_V4_GRID_SVG_BODY_TEMPLATE } from "../gradingV4/gradingV4GridBodyTemplate.generated";
 
-export type BodyModelVariant = "default" | "lineArtVerification";
+export type BodyModelVariant = "default" | "lineArtVerification" | "gridSvgBody";
 
 /** 胴くびれ帯・参照弦の連結 #（プロット・体重ワープで共有） */
 export type BodyIndentWaistGlobalIndices = {
@@ -53,9 +55,13 @@ export function getRigArmTiltHeightCm(variant: BodyModelVariant | undefined, hei
 }
 
 export function getBodyTemplatePaths(variant: BodyModelVariant | undefined): string[] {
-  return variant === "lineArtVerification" ? BPATHS_VERIFICATION_BODY : BPATHS_MODEL_DEFAULT;
+  if (variant === "lineArtVerification") return BPATHS_VERIFICATION_BODY;
+  if (variant === "gridSvgBody") return BPATHS_GRADING_V4_GRID_SVG_BODY_TEMPLATE;
+  return BPATHS_MODEL_DEFAULT;
 }
 
 export function getBodyRigLinePathsTemplate(variant: BodyModelVariant | undefined): string[] {
-  return variant === "lineArtVerification" ? BPATHS_VERIFICATION_RIG_LINES : BPATHS_RIG_LINES_DEFAULT;
+  if (variant === "lineArtVerification") return BPATHS_VERIFICATION_RIG_LINES;
+  if (variant === "gridSvgBody") return BPATHS_RIG_LINES_GRID_SVG;
+  return BPATHS_RIG_LINES_DEFAULT;
 }

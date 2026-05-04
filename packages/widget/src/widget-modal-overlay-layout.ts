@@ -1,5 +1,3 @@
-import { emitDebugLog } from "./widget-debug-log";
-
 /**
  * 右下パネル用の幅判定。`visualViewport.width` だけを使うと、環境によっては
  * `innerWidth` より小さい値になり（ズーム・ブラウザ実装差）、PC でも常に 768 未満扱いになる。
@@ -52,66 +50,6 @@ export function attachDesktopOverlayLayoutSync(overlay: HTMLElement): () => void
     } else {
       overlay.removeAttribute("data-fitlook-desktop-panel");
     }
-    // #region agent log
-    emitDebugLog({
-      sessionId: "673bd6",
-      runId: "debug-desktop-panel",
-      hypothesisId: "C",
-      location: "widget-modal-overlay-layout.ts:apply",
-      message: "desktop panel decision",
-      data: {
-        w,
-        wideEnough,
-        inputSuggestsMouse,
-        previewLinkSharePage,
-        hoverNone,
-        hoverHover,
-        pointerFine,
-        usePanel,
-        overlayAttr: overlay.getAttribute("data-fitlook-desktop-panel"),
-      },
-    });
-    // #endregion
-    if (typeof window !== "undefined") {
-      (window as unknown as { __FITLOOK_DESKTOP_PANEL_LAST?: Record<string, unknown> }).__FITLOOK_DESKTOP_PANEL_LAST = {
-        w,
-        wideEnough,
-        inputSuggestsMouse,
-        previewLinkSharePage,
-        hoverNone,
-        hoverHover,
-        pointerFine,
-        usePanel,
-        overlayAttr: overlay.getAttribute("data-fitlook-desktop-panel"),
-      };
-    }
-    // #region agent log
-    fetch("http://127.0.0.1:7468/ingest/8ae11b2e-0353-49f9-add8-94485bd038d3", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a81229" },
-      body: JSON.stringify({
-        sessionId: "a81229",
-        hypothesisId: "B-C-D-E",
-        location: "widget-modal-overlay-layout.ts:apply",
-        message: "desktop panel apply",
-        data: {
-          runId: "post-fix-preview-link-panel",
-          w,
-          wideEnough,
-          inputSuggestsMouse,
-          previewLinkSharePage,
-          innerWidth: typeof window !== "undefined" ? window.innerWidth : null,
-          vvW: typeof window !== "undefined" ? window.visualViewport?.width ?? null : null,
-          hoverNone,
-          hoverHover,
-          pointerFine,
-          usePanel,
-          overlayAttr: overlay.getAttribute("data-fitlook-desktop-panel"),
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
   };
   apply();
   const onResize = () => apply();

@@ -1,14 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type {
-  CustomGarmentData,
-  GarmentType,
-  JacketSize,
-  ShirtSize,
-} from "@/app/(main)/development/fitting/lib/types";
+import type { CustomGarmentData, GarmentType } from "@/app/(main)/development/fitting/lib/types";
 import type { BodyModelVariant } from "@/app/(main)/development/fitting/lib/bodyModelVariant";
-import { logDevFitPipelineAfterSizePresetChange } from "@/lib/fitting-compute/fittingCanvasDevSizePresetDebug";
 import { sanitizeCustomGarmentForProductDb } from "@/app/(main)/development/fitting/lib/sanitizeCustomGarmentForProductDb";
 import { validateGarmentSpecForProduction } from "@/lib/products/validateGarmentSpecForProduction";
 import { useAddProduct } from "@/features/products/useProducts";
@@ -25,22 +19,19 @@ import { CircularImageCropDialog } from "@/features/products/components/Circular
 interface DevelopmentProductRegisterPanelProps {
   garment: GarmentType;
   customGarmentData: CustomGarmentData | null;
+  /**
+   * Grading v4 など: 登録直前に呼ばれ、非 null なら `customGarmentData` より優先して garment_spec にする。
+   */
+  resolveCustomGarmentDataForRegister?: () => CustomGarmentData | null;
   /** 検証ボディ ON で登録すると `garment_spec.bodyModelVariant` に保存され、ライブラリ／プレビューでも同じボディになる */
   bodyModelVariant?: BodyModelVariant;
-  /** 開発用: DB 登録成功時に `computeFittingCanvasSnapshot` でパイプラインを console へ出す */
-  fitDebugContext?: {
-    height: number;
-    weight: number;
-    shirtSize: ShirtSize;
-    jacketSize: JacketSize;
-  } | null;
 }
 
 export function DevelopmentProductRegisterPanel({
   garment,
   customGarmentData,
+  resolveCustomGarmentDataForRegister,
   bodyModelVariant = "default",
-  fitDebugContext = null,
 }: DevelopmentProductRegisterPanelProps) {
   const { shopId } = useAuth();
   const addProduct = useAddProduct();
@@ -53,11 +44,15 @@ export function DevelopmentProductRegisterPanel({
     null
   );
 
+  const resolvedForRegister = resolveCustomGarmentDataForRegister
+    ? resolveCustomGarmentDataForRegister()
+    : customGarmentData;
+
   const canRegister =
     !!shopId &&
     garment === "custom" &&
-    customGarmentData != null &&
-    customGarmentData.pathDs.length > 0;
+    resolvedForRegister != null &&
+    resolvedForRegister.pathDs.length > 0;
 
   const handleThumbnailUpload = async (file: File) => {
     setUploadingThumbnail(true);
@@ -103,7 +98,10 @@ export function DevelopmentProductRegisterPanel({
   };
 
   const handleRegister = async () => {
-    if (!canRegister || !customGarmentData) return;
+    const baseData = resolveCustomGarmentDataForRegister
+      ? resolveCustomGarmentDataForRegister()
+      : customGarmentData;
+    if (!canRegister || !baseData) return;
     const trimmed = name.trim();
     if (!trimmed) {
       toast.error("商品名を入力してください");
@@ -111,8 +109,8 @@ export function DevelopmentProductRegisterPanel({
     }
 
     const specForDb: CustomGarmentData = {
-      ...customGarmentData,
-      ...(bodyModelVariant === "lineArtVerification"
+      ...baseData,
+      ...(bodyModelVariant === "lineArtVerification" && baseData.presetId !== "gradingV4"
         ? { bodyModelVariant: "lineArtVerification" as const }
         : {}),
     };
@@ -145,21 +143,6 @@ export function DevelopmentProductRegisterPanel({
         ...(thumb !== "" ? { thumbnailUrl: thumb } : {}),
       });
       toast.success("商品ライブラリに登録しました");
-      if (
-        process.env.NODE_ENV !== "production" &&
-        fitDebugContext != null &&
-        customGarmentData != null &&
-        customGarmentData.presetId === "genericSymmetricTop"
-      ) {
-        void logDevFitPipelineAfterSizePresetChange({
-          action: "productDbRegister",
-          height: fitDebugContext.height,
-          weight: fitDebugContext.weight,
-          shirtSize: fitDebugContext.shirtSize,
-          jacketSize: fitDebugContext.jacketSize,
-          customGarmentData,
-        });
-      }
       setName("");
       setPriceYenInput("");
       setThumbnailUrl("");
