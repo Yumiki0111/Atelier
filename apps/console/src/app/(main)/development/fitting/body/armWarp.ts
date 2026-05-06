@@ -190,6 +190,9 @@ export function warpArmOutlineAlongRefFixedAxis(
   return legacy;
 }
 
+/** テンプレ肩をワープ後座標へ（既定は固定縫い目肩）。格子ボディ等では `lineArtLinearWarp` を渡して胴と連続にする。 */
+export type ShoulderWarpFromTemplateFn = (sx: number, sy: number) => [number, number];
+
 /** 既定: ワープ肩→手首方向へ沿線・直交を基準比でスケール（`warpArmOutlineAlongRefFixedAxis`）。 */
 export function warpArmOutline(
   armOutline: [number, number][],

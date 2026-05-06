@@ -30,14 +30,14 @@ export function resolveCustomSvgPathRenderablePaint(opts: {
   pathIndex?: number;
   /**
    * true のとき、他 path に stroke があっても「fill のみ」の path を塗りとして残す。
-   * Grading v4 など、塗り面がシルエットの本体である SVG で omit すると服が透けて見える。
+   * 平置き cm など、塗り面がシルエットの本体である SVG で omit すると服が透けて見える。
    */
   preserveFillOnlyPaths?: boolean;
   /**
-   * Grading v4 の背面レイヤ（back-stroke 系）のみ。
+   * 平置き cm の背面レイヤ（back-stroke 系）のみ。
    * ストレージ上 stroke が無く fill のみの列挙になりがちだが geometry は縫線。fill 色で stroke を引く。
    */
-  gradingBehindHealFillOnlyAsStroke?: boolean;
+  flatCmBehindHealFillOnlyAsStroke?: boolean;
   /** 指定時、最終 strokeWidth をこれ未満にしない（export SVG の細い stroke を下回らない） */
   minStrokeWidth?: number;
 }): CustomSvgPathRenderablePaint {
@@ -50,7 +50,7 @@ export function resolveCustomSvgPathRenderablePaint(opts: {
     allPathStrokes,
     pathIndex,
     preserveFillOnlyPaths,
-    gradingBehindHealFillOnlyAsStroke,
+    flatCmBehindHealFillOnlyAsStroke,
     minStrokeWidth,
   } = opts;
   const wRaw = pathStrokeWidth ?? defaultStrokeWidth;
@@ -63,7 +63,7 @@ export function resolveCustomSvgPathRenderablePaint(opts: {
   const hasMeaningfulFill = fillTrim.length > 0 && !/^none$/i.test(fillTrim);
   const hasParsedStrokeAttr = pathStroke != null && pathStroke.trim().length > 0;
 
-  if (gradingBehindHealFillOnlyAsStroke === true && hasMeaningfulFill && !hasParsedStrokeAttr) {
+  if (flatCmBehindHealFillOnlyAsStroke === true && hasMeaningfulFill && !hasParsedStrokeAttr) {
     return { omit: false, fill: "none", stroke: fillTrim, strokeWidth: w };
   }
 

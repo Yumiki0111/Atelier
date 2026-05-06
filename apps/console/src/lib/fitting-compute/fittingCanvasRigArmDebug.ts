@@ -59,8 +59,18 @@ export function buildRigArmAngleDebug(params: {
   rightArmOutline: [number, number][];
   leftArmWarped: [number, number][];
   rightArmWarped: [number, number][];
+  /** 例: 線画検証では胴スキニングを使わないため 0 に揃える */
+  skinDeltaThetaOverride?: { left: number; right: number };
 }): FittingCanvasRigArmAngleDebug {
-  const { height, weight, leftArmOutline, rightArmOutline, leftArmWarped, rightArmWarped } = params;
+  const {
+    height,
+    weight,
+    leftArmOutline,
+    rightArmOutline,
+    leftArmWarped,
+    rightArmWarped,
+    skinDeltaThetaOverride,
+  } = params;
   const shL = leftArmWarped[0]!;
   const shR = rightArmWarped[0]!;
   const wrL = leftArmWarped[leftArmWarped.length - 1]!;
@@ -84,7 +94,7 @@ export function buildRigArmAngleDebug(params: {
   const warpedArmAxisDegR = rigSegmentAxisDeg(shR, wrR);
   const refWarpedArmAxisDegL = rigSegmentAxisDeg(refShL, refWrL);
   const refWarpedArmAxisDegR = rigSegmentAxisDeg(refShR, refWrR);
-  const dt = getDeltaThetas(height, weight);
+  const dt = skinDeltaThetaOverride ?? getDeltaThetas(height, weight);
   const radToDeg = 180 / Math.PI;
 
   return {

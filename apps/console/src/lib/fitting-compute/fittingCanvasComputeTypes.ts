@@ -22,10 +22,13 @@ export interface UseFittingCanvasDataParams {
   toCustomGarmentData?: CustomGarmentData | null;
   rigBodyEnabled?: boolean;
   /**
-   * 開発用: 既定 `mv_model` の代わりに線画検証ボディ＋対応リグ直線を使う。
-   * 本番・既定値では無効（既存パイプラインと同一）。
+   * 開発用: 格子前面／背面テンプレの切替。未指定は格子前面。
    */
   bodyModelVariant?: BodyModelVariant;
+  /**
+   * 平置き cm プリセット時は既定で格子ボディに固定するが、true のときは `bodyModelVariant` / `rigLinePaths` を渡されたまま使う（開発プレビュー切替用）。
+   */
+  respectRequestedBodyModelVariant?: boolean;
 }
 
 export type FittingCanvasRigLandmarksDebug = {
@@ -126,8 +129,8 @@ export interface FittingCanvasSnapshot {
   customPathStrokes: (string | undefined)[];
   customPathFills: (string | undefined)[];
   customRigPathDs: string[];
-  /** Grading v4: 背面レイヤ path 数。0 のとき従来どおり全 path を体型より上に描画 */
-  gradingV4BehindBodyPathCount: number;
+  /** 平置き cm: 背面レイヤ path 数。0 のとき従来どおり全 path を体型より上に描画 */
+  behindBodyPathCount: number;
   shoulderDebug: ShoulderDebug | null;
   bodyPlotPoints: { label: string; point: [number, number] }[];
   bodyOutlinePoints: [number, number][];
@@ -138,4 +141,9 @@ export interface FittingCanvasSnapshot {
    * `DEBUG_FITTING_BODY_VERTICES=1` のときのみ。`globalIndex` は `bodyOutlinePoints` の # と同じ連結順。
    */
   bodyVertexDebugEntries: { globalIndex: number; template: [number, number] }[] | null;
+  /**
+   * `computeFittingCanvasSnapshot` 時点のボディ variant。
+   * 背面テンプレの作図ガイド線を stroke から除外するなどに使う。
+   */
+  bodyModelVariant?: BodyModelVariant;
 }

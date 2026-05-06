@@ -7,7 +7,7 @@ import {
 } from "@/lib/widget-fit/applyWidgetSizeToGarment";
 import { validateGarmentSpecForProduction } from "@/lib/products/validateGarmentSpecForProduction";
 import { resolveWidgetFitSizeKeysOrder } from "@/lib/widget/resolveWidgetFitSizeKeysOrder";
-import { normalizeWidgetFitSizeQuery } from "@/lib/widget-fit/widgetFitGradingSize";
+import { normalizeWidgetFitSizeQuery } from "@/lib/widget-fit/widgetFitFlatCmSize";
 import { computeWidgetFitSnapshot } from "@/lib/widget-fit/computeWidgetFitSnapshot";
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
 
@@ -33,6 +33,8 @@ export async function GET(
     const sizeParam = searchParams.get("size") || "default";
     const heightCm = Math.min(195, Math.max(150, parseInt(searchParams.get("heightCm") || "170", 10) || 170));
     const weightKg = Math.min(120, Math.max(35, parseFloat(searchParams.get("weightKg") || "60") || 60));
+    const bodyView = searchParams.get("view") === "back" ? "back" : "front";
+    const includeFitEase = searchParams.get("fitEase") !== "0";
 
     const { data: product, error } = await supabaseAdmin
       .from("products")
@@ -84,6 +86,8 @@ export async function GET(
         fitChestBandCategory: (product as { category?: string | null }).category ?? null,
         currentSizeLabel: resolvedSize,
         orderedSizeKeysFromCatalog: catalogOrder,
+        bodyView,
+        includeFitEase,
       });
     } catch (computeErr) {
       const msg = computeErr instanceof Error ? computeErr.message : String(computeErr);
@@ -110,6 +114,7 @@ export async function GET(
       garmentPathStrokes: snap.garmentPathStrokes,
       garmentPathFills: snap.garmentPathFills,
       presetId: base.presetId,
+      bodyModelVariant: snap.bodyModelVariant,
       fitEaseSummary: snap.fitEaseSummary,
       fitEaseDiagram: snap.fitEaseDiagram,
     });

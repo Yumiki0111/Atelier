@@ -1,22 +1,21 @@
-import { BPATHS as BPATHS_MODEL_DEFAULT } from "./modelData";
-import { BPATHS_RIG_LINES as BPATHS_RIG_LINES_DEFAULT } from "./modelRigData";
-import { BPATHS_RIG_LINES_GRID_SVG } from "./gridSvgRigData";
-import {
-  BPATHS_VERIFICATION_BODY,
-  BPATHS_VERIFICATION_RIG_LINES,
-  VERIFICATION_BODY_INDENT_WAIST_LEFT_GLOBAL_RANGE,
-  VERIFICATION_BODY_INDENT_WAIST_REFERENCE_CHORD_GLOBAL_INDICES,
-  VERIFICATION_BODY_INDENT_WAIST_RIGHT_GLOBAL_RANGE,
-} from "./modelDataVerification";
+import { BPATHS_RIG_LINES_GRID_SVG } from "./rig/gridSvgRigData";
 import {
   BODY_INDENT_WAIST_LEFT_GLOBAL_RANGE,
   BODY_INDENT_WAIST_REFERENCE_CHORD_GLOBAL_INDICES,
   BODY_INDENT_WAIST_RIGHT_GLOBAL_RANGE,
 } from "@/lib/fitting-compute/fittingCanvasDebugFlags";
-import { REF_HEIGHT_CM } from "./constants";
-import { BPATHS_GRADING_V4_GRID_SVG_BODY_TEMPLATE } from "../gradingV4/gradingV4GridBodyTemplate.generated";
+import {
+  BPATHS_GARMENT_FLAT_CM_GRID_SVG_BODY_TEMPLATE,
+  BPATHS_GARMENT_FLAT_CM_GRID_SVG_BODY_BACK_TEMPLATE,
+} from "../garmentFlatCmGrading/garmentFlatCmGradingGridBodyTemplate.generated";
 
-export type BodyModelVariant = "default" | "lineArtVerification" | "gridSvgBody";
+export type BodyModelVariant = "gridSvgBody" | "gridSvgBodyBack";
+
+/** garment_spec / API。廃止した `default`・`lineArtVerification`・未知値は格子前面扱い。 */
+export function parseStoredBodyModelVariant(raw: unknown): BodyModelVariant | undefined {
+  if (raw === "gridSvgBody" || raw === "gridSvgBodyBack") return raw;
+  return undefined;
+}
 
 /** 胴くびれ帯・参照弦の連結 #（プロット・体重ワープで共有） */
 export type BodyIndentWaistGlobalIndices = {
@@ -25,14 +24,7 @@ export type BodyIndentWaistGlobalIndices = {
   referenceChord: readonly [number, number];
 };
 
-export function getBodyIndentWaistGlobalIndices(variant: BodyModelVariant | undefined): BodyIndentWaistGlobalIndices {
-  if (variant === "lineArtVerification") {
-    return {
-      left: VERIFICATION_BODY_INDENT_WAIST_LEFT_GLOBAL_RANGE,
-      right: VERIFICATION_BODY_INDENT_WAIST_RIGHT_GLOBAL_RANGE,
-      referenceChord: VERIFICATION_BODY_INDENT_WAIST_REFERENCE_CHORD_GLOBAL_INDICES,
-    };
-  }
+export function getBodyIndentWaistGlobalIndices(_variant: BodyModelVariant | undefined): BodyIndentWaistGlobalIndices {
   return {
     left: BODY_INDENT_WAIST_LEFT_GLOBAL_RANGE,
     right: BODY_INDENT_WAIST_RIGHT_GLOBAL_RANGE,
@@ -46,22 +38,11 @@ export function getBodyIndentWaistDebugVertexIndices(variant: BodyModelVariant |
   return [w.left[0], w.referenceChord[0], w.left[1], w.right[0], w.referenceChord[1], w.right[1]];
 }
 
-/**
- * リグ path1/2 の身長連動「鉛直寄り」に渡す身長（cm）。
- * 線画検証は SVG 腕角を保つため常に基準身長（追加回転なし）。既定ボディは実身長。
- */
-export function getRigArmTiltHeightCm(variant: BodyModelVariant | undefined, heightCm: number): number {
-  return variant === "lineArtVerification" ? REF_HEIGHT_CM : heightCm;
-}
-
 export function getBodyTemplatePaths(variant: BodyModelVariant | undefined): string[] {
-  if (variant === "lineArtVerification") return BPATHS_VERIFICATION_BODY;
-  if (variant === "gridSvgBody") return BPATHS_GRADING_V4_GRID_SVG_BODY_TEMPLATE;
-  return BPATHS_MODEL_DEFAULT;
+  if (variant === "gridSvgBodyBack") return BPATHS_GARMENT_FLAT_CM_GRID_SVG_BODY_BACK_TEMPLATE;
+  return BPATHS_GARMENT_FLAT_CM_GRID_SVG_BODY_TEMPLATE;
 }
 
-export function getBodyRigLinePathsTemplate(variant: BodyModelVariant | undefined): string[] {
-  if (variant === "lineArtVerification") return BPATHS_VERIFICATION_RIG_LINES;
-  if (variant === "gridSvgBody") return BPATHS_RIG_LINES_GRID_SVG;
-  return BPATHS_RIG_LINES_DEFAULT;
+export function getBodyRigLinePathsTemplate(_variant: BodyModelVariant | undefined): string[] {
+  return BPATHS_RIG_LINES_GRID_SVG;
 }

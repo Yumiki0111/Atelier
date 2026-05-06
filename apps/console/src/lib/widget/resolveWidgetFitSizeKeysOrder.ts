@@ -1,14 +1,18 @@
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
-import { GRADING_V4_ORDERED_SIZE_LABELS } from "@/app/(main)/development/fitting/gradingV4/gradingV4GarmentCm";
-import { parseGradingV4SizeKey } from "@/lib/widget-fit/widgetFitGradingSize";
+import { GARMENT_FLAT_CM_ORDERED_SIZE_LABELS } from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmGradingMeasurements";
+import { isGarmentFlatCmPresetId } from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmPreset";
+import {
+  inferGarmentFlatCmSizeKey,
+  parseFlatCmSizeKey,
+} from "@/lib/widget-fit/widgetFitFlatCmSize";
 
 function sortSizeKeysLocale(keys: string[]): string[] {
   return [...keys].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 }
 
-function sortKeysByGradingCatalog(keys: string[], gradingOrder: readonly string[]): string[] {
+function sortKeysByFlatCmCatalog(keys: string[], sizeOrder: readonly string[]): string[] {
   const uniq = [...new Set(keys.map((k) => String(k).trim()).filter(Boolean))];
-  const orderIndex = new Map(gradingOrder.map((k, i) => [k, i] as const));
+  const orderIndex = new Map(sizeOrder.map((k, i) => [k, i] as const));
   return uniq.sort((a, b) => {
     const ia = orderIndex.get(a);
     const ib = orderIndex.get(b);
@@ -20,7 +24,7 @@ function sortKeysByGradingCatalog(keys: string[], gradingOrder: readonly string[
 }
 
 /**
- * ウィジェット／プレビュー: Grading v4 はカタログ順。それ以外のキーは locale 順。
+ * ウィジェット／プレビュー: 平置き cm プリセットはカタログ順。それ以外のキーは locale 順。
  */
 export function resolveWidgetFitSizeKeysOrder(
   fromAssetKeys: string[],
@@ -28,16 +32,27 @@ export function resolveWidgetFitSizeKeysOrder(
 ): string[] {
   const fromAssets = [...new Set(fromAssetKeys.map((k) => String(k).trim()))].filter(Boolean);
   const gs = garmentSpec as CustomGarmentData | null | undefined;
-  if (gs?.presetId === "gradingV4") {
-    const gradingOrder = [...GRADING_V4_ORDERED_SIZE_LABELS];
-    const parsed = fromAssets.map((k) => parseGradingV4SizeKey(String(k))).filter((k): k is NonNullable<typeof k> => k != null);
-    if (parsed.length === 0) {
-      return [...gradingOrder];
+  if (gs != null && isGarmentFlatCmPresetId(gs.presetId)) {
+    const flatCmSizeOrder = [...GARMENT_FLAT_CM_ORDERED_SIZE_LABELS];
+    const raw = gs as unknown as Record<string, unknown>;
+    const offeredRaw = raw.flatCmOfferedSizeLabels;
+    if (Array.isArray(offeredRaw) && offeredRaw.length > 0) {
+      const fromOffered = offeredRaw
+        .map((k) => parseFlatCmSizeKey(String(k)))
+        .filter((k): k is NonNullable<typeof k> => k != null);
+      if (fromOffered.length > 0) {
+        return sortKeysByFlatCmCatalog([...new Set(fromOffered)], flatCmSizeOrder);
+      }
     }
-    if (parsed.length !== fromAssets.length) {
-      return [...gradingOrder];
+    const parsedFromAssets = fromAssets
+      .map((k) => parseFlatCmSizeKey(String(k)))
+      .filter((k): k is NonNullable<typeof k> => k != null);
+    if (parsedFromAssets.length > 0) {
+      return sortKeysByFlatCmCatalog([...new Set(parsedFromAssets)], flatCmSizeOrder);
     }
-    return sortKeysByGradingCatalog([...new Set(parsed)], gradingOrder);
+    const inferred = inferGarmentFlatCmSizeKey(gs);
+    if (inferred) return [inferred];
+    return [...flatCmSizeOrder];
   }
   if (fromAssets.length > 0) return sortSizeKeysLocale(fromAssets);
   return [];

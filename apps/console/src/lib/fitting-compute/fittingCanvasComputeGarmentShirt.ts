@@ -1,9 +1,9 @@
 import { bodyHeight, getBodyParams } from "@/app/(main)/development/fitting/lib/bodyUtils";
 import { REF_WEIGHT_KG, SH, SIZES } from "@/app/(main)/development/fitting/lib/constants";
-import { buildTopPlacement } from "@/app/(main)/development/fitting/lib/garmentBase";
+import { buildTopPlacement } from "@/app/(main)/development/fitting/lib/garment/garmentBase";
 import { SHIRT_LEFT, SHIRT_RIGHT } from "@/app/(main)/development/fitting/lib/pathData";
-import { shirtLandmarks } from "@/app/(main)/development/fitting/lib/shirtConfig";
-import { buildShirtPath, buildShirtPathFromSizeMeasure } from "@/app/(main)/development/fitting/lib/shirtUtils";
+import { shirtLandmarks } from "@/app/(main)/development/fitting/lib/garment/shirtConfig";
+import { buildShirtPath, buildShirtPathFromSizeMeasure } from "@/app/(main)/development/fitting/lib/garment/shirtUtils";
 import type { MeasureOverlayData, ShirtSize, ShoulderDebug, SizeMeasure } from "@/app/(main)/development/fitting/lib/types";
 import { getAllPathPoints } from "@/app/(main)/development/fitting/lib/fittingContourUtils";
 import { outerCollarPoints, shoulderContourFromPath } from "@/app/(main)/development/fitting/lib/fittingContourUtils";

@@ -24,16 +24,6 @@ export const JACKET_CENTER = [
   "M718.5 216.5H710",
 ];
 
-/** Body outline paths */
-export { BPATHS as BPATHS_MODEL } from "./modelData";
+/** 試着ボディ輪郭のフォールバック（格子テンプレ前面）。高解像度 model+rig 系ボディに依存しない既定。 */
+export { BPATHS_GARMENT_FLAT_CM_GRID_SVG_BODY_TEMPLATE as BPATHS_MODEL } from "../garmentFlatCmGrading/garmentFlatCmGradingGridBodyTemplate.generated";
 
-// `modelRigData.ts` is very large; load it lazily so the dev bundle stays usable.
-export async function loadBPATHS_RIG_BODY(): Promise<string[]> {
-  const mod = await import("./modelRigData");
-  return mod.BPATHS_RIG_BODY;
-}
-
-export async function loadBPATHS_RIG_LINES(): Promise<string[]> {
-  const mod = await import("./modelRigData");
-  return mod.BPATHS_RIG_LINES;
-}

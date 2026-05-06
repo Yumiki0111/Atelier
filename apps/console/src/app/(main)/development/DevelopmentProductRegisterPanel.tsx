@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import type { CustomGarmentData, GarmentType } from "@/app/(main)/development/fitting/lib/types";
-import type { BodyModelVariant } from "@/app/(main)/development/fitting/lib/bodyModelVariant";
-import { sanitizeCustomGarmentForProductDb } from "@/app/(main)/development/fitting/lib/sanitizeCustomGarmentForProductDb";
+import { sanitizeCustomGarmentForProductDb } from "@/app/(main)/development/fitting/lib/garment/sanitizeCustomGarmentForProductDb";
 import { validateGarmentSpecForProduction } from "@/lib/products/validateGarmentSpecForProduction";
 import { useAddProduct } from "@/features/products/useProducts";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,23 +14,19 @@ import { toast } from "sonner";
 import { getErrorMessage, translateErrorMessage } from "@/lib/errors/error-handler";
 import { Database, Upload, X } from "lucide-react";
 import { CircularImageCropDialog } from "@/features/products/components/CircularImageCropDialog";
-
 interface DevelopmentProductRegisterPanelProps {
   garment: GarmentType;
   customGarmentData: CustomGarmentData | null;
   /**
-   * Grading v4 など: 登録直前に呼ばれ、非 null なら `customGarmentData` より優先して garment_spec にする。
+   * 平置き cm グレード: 登録直前に呼ばれ、非 null なら `customGarmentData` より優先して garment_spec にする。
    */
   resolveCustomGarmentDataForRegister?: () => CustomGarmentData | null;
-  /** 検証ボディ ON で登録すると `garment_spec.bodyModelVariant` に保存され、ライブラリ／プレビューでも同じボディになる */
-  bodyModelVariant?: BodyModelVariant;
 }
 
 export function DevelopmentProductRegisterPanel({
   garment,
   customGarmentData,
   resolveCustomGarmentDataForRegister,
-  bodyModelVariant = "default",
 }: DevelopmentProductRegisterPanelProps) {
   const { shopId } = useAuth();
   const addProduct = useAddProduct();
@@ -108,12 +103,7 @@ export function DevelopmentProductRegisterPanel({
       return;
     }
 
-    const specForDb: CustomGarmentData = {
-      ...baseData,
-      ...(bodyModelVariant === "lineArtVerification" && baseData.presetId !== "gradingV4"
-        ? { bodyModelVariant: "lineArtVerification" as const }
-        : {}),
-    };
+    const specForDb: CustomGarmentData = { ...baseData };
     const garmentSpec = sanitizeCustomGarmentForProductDb(specForDb);
     const specOk = validateGarmentSpecForProduction(garmentSpec);
     if (!specOk.ok) {

@@ -1,5 +1,5 @@
 import type { SvgParsedPath } from "./parseSvgPaths";
-import { assertValidGridModelRigCompound } from "@/app/(main)/development/fitting/lib/gridModelRigExtract";
+import { assertValidGridModelRigCompound } from "@/app/(main)/development/fitting/lib/rig/gridModelRigExtract";
 import { getPathPoints } from "../svgPath/extractPoints";
 import { flattenSvgPathToPolyline } from "../svgPath/pathFlatten";
 

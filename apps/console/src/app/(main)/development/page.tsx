@@ -6,15 +6,15 @@ import { DevelopmentProductRegisterPanel } from "./DevelopmentProductRegisterPan
 import { PageHeader } from "@/components/page-header/PageHeader";
 import { ConsoleSectionPanel } from "@/components/console/ConsoleSectionPanel";
 import { Package } from "lucide-react";
-import { GradingV4Fitting, type GradingV4FittingHandle } from "@/app/(main)/development/fitting/gradingV4";
+import { GarmentFlatCmGradingFitting, type GarmentFlatCmGradingFittingHandle } from "@/app/(main)/development/fitting/garmentFlatCmGrading";
 
 export default function DevelopmentPage() {
   const [height, setHeight] = useState(170);
   const [weight, setWeight] = useState(64);
-  const gradingV4Ref = useRef<GradingV4FittingHandle>(null);
+  const garmentFlatCmGradingRef = useRef<GarmentFlatCmGradingFittingHandle>(null);
 
   const resolveCustomGarmentDataForRegister = useCallback((): CustomGarmentData | null => {
-    return gradingV4Ref.current?.buildGarmentSpecForProductDb() ?? null;
+    return garmentFlatCmGradingRef.current?.buildGarmentSpecForProductDb() ?? null;
   }, []);
 
   return (
@@ -40,12 +40,12 @@ export default function DevelopmentPage() {
         <div className="shrink-0">
           <h2 className="text-sm font-semibold text-foreground">フィット調整</h2>
           <p className="mt-1 max-w-xl text-[11px] leading-relaxed text-muted-foreground">
-            Garment Grading v4（path id × ゾーンに基づく変形）。プレビュー・ウィジェットは登録済みの{" "}
+            Garment 平置き cm グレード（path id × ゾーンに基づく変形）。プレビュー・ウィジェットは登録済みの{" "}
             <code className="text-[10px]">garment_spec</code> と同じ計算を参照します。
           </p>
         </div>
-        <GradingV4Fitting
-          ref={gradingV4Ref}
+        <GarmentFlatCmGradingFitting
+          ref={garmentFlatCmGradingRef}
           height={height}
           weight={weight}
           onHeightChange={setHeight}

@@ -1,16 +1,14 @@
 import type { BodyModelVariant } from "@/app/(main)/development/fitting/lib/bodyModelVariant";
 import { BODY_CX, REF_HEIGHT_CM } from "@/app/(main)/development/fitting/lib/constants";
-import { gridRigVectorPointToBodyTemplate } from "@/app/(main)/development/fitting/lib/gridModelRigExtract";
-import { lineArtVerificationSvgPointToBodyTemplate } from "@/app/(main)/development/fitting/lib/modelDataVerification";
-import { inferLandmarksFromRigPaths } from "@/app/(main)/development/fitting/lib/customLandmarkResolve";
+import { gridRigVectorPointToBodyTemplate } from "@/app/(main)/development/fitting/lib/rig/gridModelRigExtract";
+import { inferLandmarksFromRigPaths } from "@/app/(main)/development/fitting/lib/garment/customLandmarkResolve";
 import { buildCustomTransformedPathsWithVertexPlots } from "@/app/(main)/development/fitting/lib/customGarmentUtils";
 import type { FittingCanvasRigLandmarksDebug } from "./fittingCanvasComputeTypes";
 import { assembleCustomGarmentOverlayAndShoulderDebug } from "./fittingCanvasComputeGarmentCustomOverlay";
 import { smootherStep } from "./fittingCanvasRigArmDebug";
 import { rigidMapFromShoulderSegmentPair, RIG_LINE_SPINE } from "./fittingCanvasRigAlign";
 import { getShoulderSeamYForData } from "@/app/(main)/development/fitting/lib/fittingContourUtils";
-import { buildTopPlacement } from "@/app/(main)/development/fitting/lib/garmentBase";
-import { scaleModelViewToBodyTemplate } from "@/app/(main)/development/fitting/lib/modelRigData";
+import { buildTopPlacement } from "@/app/(main)/development/fitting/lib/garment/garmentBase";
 import { pathDsContentEqual } from "@/app/(main)/development/fitting/lib/fittingStateUtils";
 import type {
   CustomGarmentData,
@@ -20,21 +18,22 @@ import type {
 import { getAllPathPoints } from "@/app/(main)/development/fitting/lib/fittingContourUtils";
 import { getPathPoints, interpolatePath, tPath } from "@/app/(main)/development/fitting/lib/pathUtils";
 import { bboxCenterXFromPathDs, bboxCenterXFromPoints } from "./fittingCanvasComputeGarmentCustomBbox";
+import { isGarmentFlatCmPresetId } from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmPreset";
 
-function mergeGradingV4PathLayersForCompute(data: CustomGarmentData): {
+function mergeBehindBodyPathLayersForCompute(data: CustomGarmentData): {
   merged: CustomGarmentData;
-  gradingV4BehindBodyPathCount: number;
+  behindBodyPathCount: number;
 } {
-  const bb = data.gradingV4BehindBody;
+  const bb = data.behindBody;
   const nb = bb?.pathDs.length ?? 0;
   if (nb === 0 || bb == null) {
-    return { merged: data, gradingV4BehindBodyPathCount: 0 };
+    return { merged: data, behindBodyPathCount: 0 };
   }
   const nf = data.pathDs.length;
   const take = <T>(arr: (T | undefined)[] | undefined, len: number): (T | undefined)[] =>
     Array.from({ length: len }, (_, i) => arr?.[i]);
   return {
-    gradingV4BehindBodyPathCount: nb,
+    behindBodyPathCount: nb,
     merged: {
       ...data,
       pathDs: [...bb.pathDs, ...data.pathDs],
@@ -60,7 +59,7 @@ export type CustomGarmentBranchContext = {
   toCustomGarmentData: CustomGarmentData | null;
   animProgress: number;
   bodyShoulderContour: [number, number][];
-  /** `lineArtVerification` / `gridSvgBody` ではアップロード SVG が 391/389×518。リグロック写像は mv_model 3391×6431 と別 */
+  /** `gridSvgBody` 系: アップロード SVG は格子 viewBox。リグロック写像は model+rig 系とは別 */
   bodyModelVariant?: BodyModelVariant;
 };
 
@@ -77,8 +76,8 @@ export function computeCustomGarmentBranch(
   shoulderDebug: ShoulderDebug;
   garmentOverlay: MeasureOverlayData["garment"];
   rigLandmarksDebug: FittingCanvasRigLandmarksDebug;
-  /** Grading v4: 背面 path 本数（`customPathDs` の先頭からこの数） */
-  gradingV4BehindBodyPathCount: number;
+  /** 平置き cm: 背面 path 本数（`customPathDs` の先頭からこの数） */
+  behindBodyPathCount: number;
 } {
   const {
     height,
@@ -97,12 +96,7 @@ export function computeCustomGarmentBranch(
     bodyModelVariant,
   } = ctx;
 
-  const placeDesignToTemplate =
-    bodyModelVariant === "lineArtVerification"
-      ? lineArtVerificationSvgPointToBodyTemplate
-      : bodyModelVariant === "gridSvgBody"
-        ? gridRigVectorPointToBodyTemplate
-        : scaleModelViewToBodyTemplate;
+  const placeDesignToTemplate = gridRigVectorPointToBodyTemplate;
 
   const rigLockTransformOpts = {
     placementLockToModelRig: true as const,
@@ -126,7 +120,7 @@ export function computeCustomGarmentBranch(
       customPathStrokes: [],
       customPathFills: [],
       customRigPathDs: [],
-      gradingV4BehindBodyPathCount: 0,
+      behindBodyPathCount: 0,
       shoulderDebug: {
         bodyShoulderContour,
         garmentShoulderContour: [],
@@ -159,28 +153,7 @@ export function computeCustomGarmentBranch(
     useRigLandmarksForPlacement,
   };
 
-  const { merged: cgPaths, gradingV4BehindBodyPathCount } = mergeGradingV4PathLayersForCompute(customGarmentData);
-  // #region agent log
-  if (typeof fetch !== "undefined" && customGarmentData.presetId === "gradingV4") {
-    fetch("http://127.0.0.1:7468/ingest/8ae11b2e-0353-49f9-add8-94485bd038d3", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "47077e" },
-      body: JSON.stringify({
-        sessionId: "47077e",
-        runId: "pre",
-        hypothesisId: "H2-layer",
-        location: "fittingCanvasComputeGarmentCustom.ts:afterMergeGradingLayers",
-        message: "merge grading layers",
-        data: {
-          behindBodyPathCount: gradingV4BehindBodyPathCount,
-          mergedPathDsN: cgPaths.pathDs.length,
-          rawBehindN: customGarmentData.gradingV4BehindBody?.pathDs?.length ?? 0,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-  }
-  // #endregion
+  const { merged: cgPaths, behindBodyPathCount } = mergeBehindBodyPathLayersForCompute(customGarmentData);
   const customAllOutline = getAllPathPoints(cgPaths.pathDs);
   const shoulderSeamY = rigLm != null ? rigLm.shoulderY : getShoulderSeamYForData(customGarmentData);
 
@@ -250,13 +223,13 @@ export function computeCustomGarmentBranch(
     fromCustomGarmentData &&
     toCustomGarmentData &&
     (() => {
-      const a = mergeGradingV4PathLayersForCompute(fromCustomGarmentData);
-      const b = mergeGradingV4PathLayersForCompute(toCustomGarmentData);
-      if (a.gradingV4BehindBodyPathCount !== b.gradingV4BehindBodyPathCount) return false;
+      const a = mergeBehindBodyPathLayersForCompute(fromCustomGarmentData);
+      const b = mergeBehindBodyPathLayersForCompute(toCustomGarmentData);
+      if (a.behindBodyPathCount !== b.behindBodyPathCount) return false;
       if (a.merged.pathDs.length !== b.merged.pathDs.length) return false;
       if (
-        fromCustomGarmentData.presetId === "gradingV4" &&
-        toCustomGarmentData.presetId === "gradingV4"
+        isGarmentFlatCmPresetId(fromCustomGarmentData.presetId) &&
+        isGarmentFlatCmPresetId(toCustomGarmentData.presetId)
       ) {
         return true;
       }
@@ -266,8 +239,8 @@ export function computeCustomGarmentBranch(
     placementLockToModelRigFor(fromCustomGarmentData) &&
     placementLockToModelRigFor(toCustomGarmentData)
   ) {
-    const fromLayers = mergeGradingV4PathLayersForCompute(fromCustomGarmentData);
-    const toLayers = mergeGradingV4PathLayersForCompute(toCustomGarmentData);
+    const fromLayers = mergeBehindBodyPathLayersForCompute(fromCustomGarmentData);
+    const toLayers = mergeBehindBodyPathLayersForCompute(toCustomGarmentData);
     const fromC = fromCustomGarmentData.landmarks;
     const toC = toCustomGarmentData.landmarks;
     const fromRlm = inferLandmarksFromRigPaths(fromCustomGarmentData.debugRigPathDs!)!;
@@ -439,7 +412,7 @@ export function computeCustomGarmentBranch(
     customPathStrokes,
     customPathFills,
     customRigPathDs,
-    gradingV4BehindBodyPathCount,
+    behindBodyPathCount,
     shoulderDebug,
     garmentOverlay,
     rigLandmarksDebug,

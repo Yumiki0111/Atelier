@@ -4,17 +4,34 @@ import { computeFittingCanvasSnapshot } from "@/lib/fitting-compute/fittingCanva
 import { getBodyRigLinePathsTemplate } from "@/app/(main)/development/fitting/lib/bodyModelVariant";
 import { shouldSuppressGarmentPathRender } from "@/app/(main)/development/fitting/lib/pathUtils";
 import type { CustomGarmentData, ShirtSize } from "@/app/(main)/development/fitting/lib/types";
+import type { BodyModelVariant } from "@/app/(main)/development/fitting/lib/bodyModelVariant";
 import { buildWidgetFitEaseDiagramFromSnapshot } from "@/lib/widget-fit/buildWidgetFitEaseDiagram";
 import type { WidgetFitEaseDiagramJson } from "@/lib/widget-fit/buildWidgetFitEaseDiagram";
 import { resolveWidgetFitChestBandMode } from "@/app/(main)/development/fitting/lib/fitCalc";
-import { buildWidgetFitEaseSummaryFromSnapshot } from "@/lib/widget-fit/computeWidgetFitEaseSummary";
-import type { WidgetFitEaseSummaryJson } from "@/lib/widget-fit/computeWidgetFitEaseSummary";
+import {
+  buildWidgetFitEaseSummaryFromSnapshot,
+  type WidgetFitEaseSummaryJson,
+} from "@/lib/widget-fit/computeWidgetFitEaseSummary";
 import { resolveWidgetFitSizeKeysOrder } from "@/lib/widget/resolveWidgetFitSizeKeysOrder";
 import {
   orderedSizeLabelsFromCustomGarment,
   resolveOrderedSizeKeysForBand,
 } from "@/lib/widget-fit/widgetFitChestBandOrdinal";
 import type { FittingCanvasSnapshot } from "@/lib/fitting-compute/fittingCanvasComputeTypes";
+import {
+  resolveGarmentDataForPreviewView,
+  type GarmentPreviewBodyView,
+} from "@/lib/widget-fit/resolveGarmentDataForPreviewView";
+
+const WIDGET_FIT_EASE_DISABLED: WidgetFitEaseSummaryJson = {
+  shoulderEaseCm: null,
+  chestEaseCm: null,
+  sleeveFromWristCm: null,
+  hemFromCrotchCm: null,
+  fitChestBandJa: "",
+  fitToneJa: "",
+  linesJa: [],
+};
 
 function collectRenderableGarmentSlice(
   snap: FittingCanvasSnapshot,
@@ -54,7 +71,7 @@ function collectRenderableGarmentSlice(
 
 /**
  * `computeFittingCanvasSnapshot` と同じ計算（オーバーレイ・プロットは呼び出し側で使わない）。
- * Grading v4 かつ背面ありのとき、`garmentPathsBehindBody*` は体型より下、`garmentPaths*` は体型より上（前面のみ）。
+ * 平置き cm かつ背面ありのとき、`garmentPathsBehindBody*` は体型より下、`garmentPaths*` は体型より上（前面のみ）。
  * 背面が無い／従来プリセットでは `garmentPathsBehindBody` は空配列。
  */
 export async function computeWidgetFitSnapshot(params: {
@@ -70,6 +87,10 @@ export async function computeWidgetFitSnapshot(params: {
    * 空 `[]` を渡していた経路では胸バッジが幾何フォールバックになり、サイズを変えても常に「おすすめ」になりやすい。
    */
   orderedSizeKeysFromCatalog?: string[] | null;
+  /** 試着の前後。平置き cm のみ意味あり */
+  bodyView?: GarmentPreviewBodyView;
+  /** false のとき fitEase 図解・文言を抑止（プレビュー簡略化用） */
+  includeFitEase?: boolean;
 }): Promise<{
   viewBoxMinX: number;
   viewBoxWidth: number;
@@ -85,10 +106,15 @@ export async function computeWidgetFitSnapshot(params: {
   garmentPathStrokeWidths: (number | undefined)[];
   garmentPathStrokes: (string | undefined)[];
   garmentPathFills: (string | undefined)[];
+  bodyModelVariant: BodyModelVariant | undefined;
   fitEaseSummary: WidgetFitEaseSummaryJson;
   fitEaseDiagram: WidgetFitEaseDiagramJson | null;
 }> {
-  const bodyModelVariant = params.customGarmentData.bodyModelVariant;
+  const garmentForSnap = resolveGarmentDataForPreviewView(
+    params.customGarmentData,
+    params.bodyView ?? "front"
+  );
+  const bodyModelVariant = garmentForSnap.bodyModelVariant;
   const rigLinePaths = getBodyRigLinePathsTemplate(bodyModelVariant);
   const shirtSize: ShirtSize = "48";
   const snap = computeFittingCanvasSnapshot({
@@ -97,7 +123,7 @@ export async function computeWidgetFitSnapshot(params: {
     garment: "custom",
     shirtSize,
     jacketSize: "4",
-    customGarmentData: params.customGarmentData,
+    customGarmentData: garmentForSnap,
     animProgress: 1,
     fromSize: null,
     toSize: null,
@@ -106,7 +132,7 @@ export async function computeWidgetFitSnapshot(params: {
     rigLinePaths,
   });
 
-  const behindN = snap.gradingV4BehindBodyPathCount;
+  const behindN = snap.behindBodyPathCount;
   const behind = collectRenderableGarmentSlice(snap, 0, behindN);
   const front = collectRenderableGarmentSlice(snap, behindN, snap.customPathDs.length);
 
@@ -121,19 +147,24 @@ export async function computeWidgetFitSnapshot(params: {
     currentSizeLabel != null && currentSizeLabel.length > 0
       ? resolveOrderedSizeKeysForBand(presetLabels, catalogOrder, currentSizeLabel)
       : null;
-  const fitEaseSummary = buildWidgetFitEaseSummaryFromSnapshot(snap, params.weightKg, {
-    fitChestBandMode,
-    customGarmentData: params.customGarmentData,
-    heightCm: bandKeys != null ? params.heightCm : undefined,
-    orderedSizeKeys: bandKeys ?? undefined,
-    currentSize:
-      bandKeys != null && currentSizeLabel != null && currentSizeLabel.length > 0
-        ? currentSizeLabel
-        : undefined,
-  });
-  const fitEaseDiagram = buildWidgetFitEaseDiagramFromSnapshot(snap, fitEaseSummary, {
-    clampPillsToViewBox: true,
-  });
+  const includeFit = params.includeFitEase !== false;
+  const fitEaseSummary = includeFit
+    ? buildWidgetFitEaseSummaryFromSnapshot(snap, params.weightKg, {
+        fitChestBandMode,
+        customGarmentData: params.customGarmentData,
+        heightCm: bandKeys != null ? params.heightCm : undefined,
+        orderedSizeKeys: bandKeys ?? undefined,
+        currentSize:
+          bandKeys != null && currentSizeLabel != null && currentSizeLabel.length > 0
+            ? currentSizeLabel
+            : undefined,
+      })
+    : WIDGET_FIT_EASE_DISABLED;
+  const fitEaseDiagram = includeFit
+    ? buildWidgetFitEaseDiagramFromSnapshot(snap, fitEaseSummary, {
+        clampPillsToViewBox: true,
+      })
+    : null;
 
   return {
     viewBoxMinX: snap.viewBoxMinX,
@@ -152,5 +183,6 @@ export async function computeWidgetFitSnapshot(params: {
     garmentPathFills: front.garmentPathFills,
     fitEaseSummary,
     fitEaseDiagram,
+    bodyModelVariant: snap.bodyModelVariant ?? bodyModelVariant,
   };
 }

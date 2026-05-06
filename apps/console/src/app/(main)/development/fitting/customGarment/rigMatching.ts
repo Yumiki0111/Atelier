@@ -1,9 +1,6 @@
 import { getPathPoints } from "../lib/pathUtils";
-import { MODEL_RIG_LINE_PATH_DS } from "../lib/modelRigData";
-import {
-  VERIFICATION_RIG_NINE_PATH_DS_SVG,
-} from "../lib/modelDataVerification";
-import { GRID_RIG_NINE_PATH_DS_SVG } from "../lib/gridSvgRigData";
+import { MODEL_RIG_LINE_PATH_DS } from "../lib/rig/modelRigData";
+import { GRID_RIG_NINE_PATH_DS_SVG } from "../lib/rig/gridSvgRigData";
 
 export type RigPathEndpoints = { min: [number, number]; max: [number, number] };
 
@@ -22,13 +19,8 @@ export const MODEL_RIG_ENDPOINTS: RigPathEndpoints[] = MODEL_RIG_LINE_PATH_DS.ma
   endpointsByModelD(d)
 ).filter(Boolean) as RigPathEndpoints[];
 
-/** 格子 Vector(9) 分解後の 9 本（389×518）の端点。直線リグ推定で mv_model より優先する */
+/** 格子 Vector(9) 分解後の 9 本（389×518）の端点。直線リグ推定で `MODEL_RIG_ENDPOINTS` より優先する */
 export const GRID_MODEL_RIG_ENDPOINTS: RigPathEndpoints[] = GRID_RIG_NINE_PATH_DS_SVG.map((d) =>
-  endpointsByModelD(d)
-).filter(Boolean) as RigPathEndpoints[];
-
-/** Group 116 線画検証用 9 本（391×518）の端点。リグ線画・アップロード照合と一致させる */
-export const VERIFICATION_RIG_ENDPOINTS: RigPathEndpoints[] = VERIFICATION_RIG_NINE_PATH_DS_SVG.map((d) =>
   endpointsByModelD(d)
 ).filter(Boolean) as RigPathEndpoints[];
 

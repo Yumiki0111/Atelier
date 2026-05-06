@@ -1,6 +1,7 @@
+import { isGarmentFlatCmPresetId } from "@Atelier/shared";
 import type { BodyModelVariant } from "@/app/(main)/development/fitting/lib/bodyModelVariant";
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
-import { GRADING_V4_ORDERED_SIZE_LABELS } from "@/app/(main)/development/fitting/gradingV4/gradingV4GarmentCm";
+import { GARMENT_FLAT_CM_ORDERED_SIZE_LABELS } from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmGradingMeasurements";
 import { WIDGET_FIT_CHEST_BAND_JA, type WidgetFitChestBandJaLabel } from "@/app/(main)/development/fitting/lib/fitCalc";
 
 /** 身長レンジ（cm）。`t` の線形写像に使う上限 */
@@ -34,10 +35,6 @@ const LOW_STATURE_RECOMMEND_INDEX_BIAS = -1.35;
 const MID_TALL_RECOMMEND_BIAS_MIN_CM = 170;
 const MID_TALL_RECOMMEND_BIAS_MAX_CM = 185;
 const MID_TALL_RECOMMEND_INDEX_BIAS = 0.48;
-/**
- * 検証用ボディ（`lineArtVerification`）のみ: 身長由来の基準体重（BMI 22）よりこれだけ重いとき、推奨を **最大 1 段**だけ上げる。
- */
-const VERIFICATION_OVER_REF_KG_FOR_ONE_SIZE_STEP = 8;
 
 function standardWeightKgForHeight(heightCm: number): number {
   const hM = heightCm / 100;
@@ -45,53 +42,15 @@ function standardWeightKgForHeight(heightCm: number): number {
 }
 
 /**
- * 検証用モデル: 身長（＋身長帯バイアス）だけで基準段を決め、体重は基準より十分重いときだけ **1 段**上げる。
- */
-function recommendedSizeIndexForBodyLineArtVerification(
-  heightCm: number,
-  weightKg: number,
-  sizeCount: number
-): number {
-  if (sizeCount <= 1) return 0;
-  const hRef = Math.max(HEIGHT_BAND_MIN, Math.min(HEIGHT_REF_MAX, heightCm));
-  const hT = Math.max(HEIGHT_BAND_MIN, Math.min(HEIGHT_T_MAX, heightCm));
-  const t = (hT - HEIGHT_BAND_MIN) / (HEIGHT_T_MAX - HEIGHT_BAND_MIN);
-  const w = Math.max(35, Math.min(120, weightKg));
-  const refKg = standardWeightKgForHeight(hRef);
-  const heightAnchor = Math.floor(t * (sizeCount - 1));
-  const shortBias =
-    heightCm <= LOW_STATURE_MAX_CM ? LOW_STATURE_RECOMMEND_INDEX_BIAS : 0;
-  let floatIdx = t * (sizeCount - 1) + shortBias;
-  if (
-    sizeCount >= 3 &&
-    heightCm >= MID_TALL_RECOMMEND_BIAS_MIN_CM &&
-    heightCm <= MID_TALL_RECOMMEND_BIAS_MAX_CM &&
-    Math.floor(floatIdx) === 0
-  ) {
-    floatIdx += MID_TALL_RECOMMEND_INDEX_BIAS;
-  }
-  const rawIdx = Math.floor(floatIdx);
-  let idx = Math.max(rawIdx, heightAnchor - 1);
-  idx = Math.max(0, Math.min(sizeCount - 1, idx));
-  if (w > refKg + VERIFICATION_OVER_REF_KG_FOR_ONE_SIZE_STEP) {
-    idx = Math.min(sizeCount - 1, idx + 1);
-  }
-  return idx;
-}
-
-/**
  * 身長＋体重から「一般論」の推奨サイズ段（小→大の 0…n-1）。
- * 既定は身長・体重を線形合成。検証用ボディは身長優位＋重すぎるときだけ 1 段上げ。
+ * 身長・体重を線形合成。
  */
 export function recommendedSizeIndexForBody(
   heightCm: number,
   weightKg: number,
   sizeCount: number,
-  bodyModelVariant?: BodyModelVariant
+  _bodyModelVariant?: BodyModelVariant
 ): number {
-  if (bodyModelVariant === "lineArtVerification") {
-    return recommendedSizeIndexForBodyLineArtVerification(heightCm, weightKg, sizeCount);
-  }
   if (sizeCount <= 1) return 0;
   const hRef = Math.max(HEIGHT_BAND_MIN, Math.min(HEIGHT_REF_MAX, heightCm));
   const hT = Math.max(HEIGHT_BAND_MIN, Math.min(HEIGHT_T_MAX, heightCm));
@@ -117,8 +76,8 @@ export function recommendedSizeIndexForBody(
 }
 
 export function orderedSizeLabelsFromCustomGarment(data: CustomGarmentData | null | undefined): string[] {
-  if (data?.presetId === "gradingV4") {
-    return [...GRADING_V4_ORDERED_SIZE_LABELS];
+  if (data != null && isGarmentFlatCmPresetId(data.presetId)) {
+    return [...GARMENT_FLAT_CM_ORDERED_SIZE_LABELS];
   }
   return [];
 }
@@ -143,7 +102,7 @@ export type ResolveWidgetFitChestBandBodyHeuristicInput = {
   weightKg: number;
   orderedSizeKeys: string[];
   currentSize: string;
-  /** 検証用ボディのとき推奨段の出し方が変わる（身長優位＋重めだけ 1 段上げ） */
+  /** 後方互換用（未使用） */
   bodyModelVariant?: BodyModelVariant;
 };
 

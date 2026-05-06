@@ -21,4 +21,5 @@ export {
   getSkinnedVertex,
   warpArmOutlineAlongArm,
   warpArmOutlineAlongRefFixedAxis,
+  type ShoulderWarpFromTemplateFn,
 } from "./armWarp";

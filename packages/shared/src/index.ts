@@ -10,3 +10,4 @@ export * from "./previewFit";
 export * from "./widgetAddToCartUrl";
 export * from "./formatPriceYen";
 export * from "./widgetDesignDefaults";
+export * from "./garmentFlatCmPreset";

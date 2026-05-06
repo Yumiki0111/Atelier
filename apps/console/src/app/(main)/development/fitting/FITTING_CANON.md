@@ -1,6 +1,6 @@
 # 開発フィッティング — 正典（Canon）一体版
 
-**単一の正**として、モデル変形・赤リグ・服ワープ・**Garment Grading v4**（`presetId: "gradingV4"` のカスタム SVG）および組み込みデモ（シャツ／ジャケット）・腕 path 前提をここにまとめる。
+**単一の正**として、モデル変形・赤リグ・服ワープ・**平置き cm グレード**（`presetId: garmentFlatCmGrading` のカスタム SVG）および組み込みデモ（シャツ／ジャケット）・腕 path 前提をここにまとめる。
 変更が必要なときは **先に本書を更新**し、PR で「Canon との差分」を明示する。
 
 ---
@@ -19,7 +19,7 @@
 
 ## 1. スコープと単一入口
 
-**レイアウト:** 開発用の共有コードは **`(main)/development/fitting/`** 直下の `lib/`・`canvas/`・`customGarment/`・`gradingV4/` 等。体格→スナップショット計算本体はコンソールの **`apps/console/src/lib/fitting-compute/`**（インポートは多く **`@/lib/fitting-compute/...`**）。
+**レイアウト:** 開発用の共有コードは **`(main)/development/fitting/`** 直下の `lib/`・`canvas/`・`customGarment/`・`garmentFlatCmGrading/` 等。体格→スナップショット計算本体はコンソールの **`apps/console/src/lib/fitting-compute/`**（インポートは多く **`@/lib/fitting-compute/...`**）。
 
 | 項目 | 正 |
 |------|----|
@@ -125,7 +125,7 @@
 1. **`placementLockToModelRig`**: `place` = **`scaleModelViewToBodyTemplate` のみ**。`fittingCanvasComputeGarmentCustom.ts` の `transformHeightCmForCustomPaths` / ロックフラグと連動。
 2. **通常**: `buildTopPlacement(h, w, …, null, REF_HEIGHT_CM).place`
 3. **photoDerived 袖**: `getInterpolatedArmOutline(REF_HEIGHT_CM)` → `warpArmOutline(..., h)`
-4. **Grading v4:** `fitting/gradingV4/` の分割 path・マークアップレイヤ変形（`presetId === "gradingV4"` と `fittingCanvasComputeGarmentCustom.ts` が束ねる）。
+4. **平置き cm グレード:** `fitting/garmentFlatCmGrading/` の分割 path・マークアップレイヤ変形（`isGarmentFlatCmPresetId(presetId)` と `fittingCanvasComputeGarmentCustom.ts` が束ねる）。
 
 **禁止:** `getInterpolatedArmOutline` を **`h` 起点**に勝手に変更して compute 本体の肩・袖基準とズラす。
 
@@ -137,7 +137,7 @@
 
 ## 10. 袖・胴（現行実装の注意）
 
-- **カスタム／Grading v4:** **`buildCustomTransformedPaths`**（プレース、リグロック写像、`photoDerived` 時はモデル腕への袖ヒント）、および **`fitting/gradingV4/`** のマークアップ変形。旧 **`ScalableGarmentSpec` / `sleeveOnlyTransform` / `scalableGarmentArmLogic` は削除済み**。
+- **カスタム／平置き cm グレード:** **`buildCustomTransformedPaths`**（プレース、リグロック写像、`photoDerived` 時はモデル腕への袖ヒント）、および **`fitting/garmentFlatCmGrading/`** のマークアップ変形。旧 **`ScalableGarmentSpec` / `sleeveOnlyTransform` / `scalableGarmentArmLogic` は削除済み**。
 - **シャツ／ジャケット:** **`shirtUtils` / `jacketUtils`** と `fittingCanvasComputeGarmentShirt` / `Jacket`。袖・胴の幾何はここでは **プレース＋サイズ表ベースの専用ロジック**。
 - 多層 path・リグロック・胴ワープの契約を変えるときは **§4–9** と **`CUSTOM_GARMENT_CENTERING.md`** を先に読む。
 
@@ -170,7 +170,7 @@
 1. 身長: 体・赤リグ・カスタム服の肩・袖が **同時に**破綻なく動く。
 2. 体重: **体**が太る／痩せる。**服の横幅**が意図せず大きく変わっていない。
 3. リグ ON: `rigLineWarpedRigViewPaths` と **`rigTemplateToRigView*`** で **腕傾きが共有**されている。
-4. **170 / 60** 付近で組み込みデモ（シャツ・ジャケット）および **Grading v4 カスタム**の基準見た目が大きく崩れていない。
+4. **170 / 60** 付近で組み込みデモ（シャツ・ジャケット）および **平置き cm カスタム**の基準見た目が大きく崩れていない。
 
 ---
 
@@ -188,7 +188,7 @@
 | スナップショット | `apps/console/src/lib/fitting-compute/fittingCanvasCompute.ts` |
 | カスタム服 compute | `apps/console/src/lib/fitting-compute/fittingCanvasComputeGarmentCustom.ts` |
 | React（データ供給例） | `fitting/canvas/useFittingCanvasData.ts` |
-| Grading v4 | `fitting/gradingV4/` |
+| 平置き cm グレード | `fitting/garmentFlatCmGrading/` |
 | 定数・ゾーン | `fitting/lib/constants.ts`, `fitting/body/bodyZones.ts`, `fitting/lib/bodyUtils.ts` |
 | リグデータ・写像 | `fitting/lib/modelRigData.ts` |
 | リグスキン | `fitting/lib/rigSkin2D.ts` |

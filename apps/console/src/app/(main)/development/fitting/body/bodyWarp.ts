@@ -4,7 +4,7 @@ import {
   BODY_INDENT_WAIST_RIGHT_GLOBAL_RANGE,
 } from "@/lib/fitting-compute/fittingCanvasDebugFlags";
 import { BODY_CX, BZ, BODY_H, BASE_SHOULDER_HALF } from "../lib/constants";
-import { BPATHS_MODEL } from "../lib/pathData";
+import { getBodyTemplatePaths } from "../lib/bodyModelVariant";
 import { pointAtGlobalVertexIndex } from "../lib/pathUtils";
 import { getAnchorYOffset } from "./bodyZones";
 import { armOutlineX } from "./bodyOutlineSample";
@@ -64,8 +64,7 @@ const ARM_END = BASE_SHOULDER_HALF * 1.05;
 
 /**
  * 胴側を放射のみにする Y 帯の脇下側マージン（テンプレ Y）。
- * `mv_model` 脇稜の頂点は path 上で global 209–231 / 422–444 付近にあり、一部が Y≈730–747 と
- * `BZ.armpit`(750) より上側にかかる。750 未満だけ腕帯に落ちると脇がくびれるため広げる。
+ * 脇稜付近の global 帯は `BZ.armpit` より上にかかると腕帯で脇がくびれるため、マージンで広げる。
  */
 const TORSO_SIDE_RADIAL_ARMPIT_PAD = 40;
 
@@ -99,7 +98,7 @@ export function buildIndentWaistPolylines(
 }
 
 const DEFAULT_INDENT_WAIST_POLYLINES: IndentWaistPolylines = buildIndentWaistPolylines(
-  BPATHS_MODEL,
+  getBodyTemplatePaths("gridSvgBody"),
   BODY_INDENT_WAIST_LEFT_GLOBAL_RANGE,
   BODY_INDENT_WAIST_RIGHT_GLOBAL_RANGE
 );
@@ -288,7 +287,7 @@ export type WarpOptions = {
    * 服・服用リグの `warp` は false。
    */
   applyArmpitBaseRigRelief?: boolean;
-  /** 省略時は `BPATHS_MODEL`＋既定連結 #。検証ボディはテンプレ path と #362/#148 帯を渡す */
+  /** 省略時は格子前面テンプレ＋既定連結 #。検証ボディはテンプレ path と #362/#148 帯を渡す */
   indentWaistPolylines?: IndentWaistPolylines;
 };
 

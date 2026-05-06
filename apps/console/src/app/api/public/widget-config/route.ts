@@ -3,10 +3,10 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { setCorsHeaders, handleCorsOptions, validatePublicKeyAndDomain } from "@/lib/api/cors";
 import { isGarmentSpecRenderable } from "@/lib/widget-fit/applyWidgetSizeToGarment";
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
-import { matchStoredGarmentFlatCmToGradingSize } from "@/lib/widget-fit/widgetFitGradingSize";
-import { GRADING_V4_ORDERED_SIZE_LABELS } from "@/app/(main)/development/fitting/gradingV4/gradingV4GarmentCm";
+import { inferGarmentFlatCmSizeKey } from "@/lib/widget-fit/widgetFitFlatCmSize";
+import { GARMENT_FLAT_CM_ORDERED_SIZE_LABELS } from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmGradingMeasurements";
 import { resolveWidgetFitSizeKeysOrder } from "@/lib/widget/resolveWidgetFitSizeKeysOrder";
-import { formatPriceYenForDisplay, normalizeWidgetCtaAccentColor } from "@Atelier/shared";
+import { formatPriceYenForDisplay, normalizeWidgetCtaAccentColor, isGarmentFlatCmPresetId } from "@Atelier/shared";
 
 /**
  * Widget Config 公開API
@@ -150,13 +150,13 @@ export async function GET(request: NextRequest) {
       }
     } else if (garmentFitAvailable) {
       const gs = product.garment_spec as CustomGarmentData;
-      if (gs.presetId === "gradingV4") {
-        for (const label of GRADING_V4_ORDERED_SIZE_LABELS) {
+      if (isGarmentFlatCmPresetId(gs.presetId)) {
+        for (const label of GARMENT_FLAT_CM_ORDERED_SIZE_LABELS) {
           sizes[label] = [{ category }];
         }
-        defaultSize = matchStoredGarmentFlatCmToGradingSize(gs) ?? "S";
+        defaultSize = inferGarmentFlatCmSizeKey(gs) ?? "S";
       } else {
-        for (const label of GRADING_V4_ORDERED_SIZE_LABELS) {
+        for (const label of GARMENT_FLAT_CM_ORDERED_SIZE_LABELS) {
           sizes[label] = [{ category }];
         }
         defaultSize = "S";
@@ -166,21 +166,21 @@ export async function GET(request: NextRequest) {
     /** `Object.keys` の順が UI の並びになるため、プレビューと同じ着丈→袖丈順に組み替え（プリセットのみキーもマージ） */
     if (garmentFitAvailable) {
       const ordered = resolveWidgetFitSizeKeysOrder(Object.keys(sizes), product.garment_spec);
-      const gradingLabelSet = new Set<string>(GRADING_V4_ORDERED_SIZE_LABELS as readonly string[]);
+      const flatCmCatalogLabelSet = new Set<string>(GARMENT_FLAT_CM_ORDERED_SIZE_LABELS as readonly string[]);
       const next: Record<string, { category?: string }[]> = {};
       for (const k of ordered) {
         const existing = sizes[k];
         if (existing != null && existing.length > 0) {
           next[k] = existing;
-        } else if (gradingLabelSet.has(k)) {
+        } else if (flatCmCatalogLabelSet.has(k)) {
           next[k] = [{ category }];
         }
       }
       sizes = next;
       const gsInner = product.garment_spec as CustomGarmentData;
       const preferred =
-        gsInner.presetId === "gradingV4"
-          ? (matchStoredGarmentFlatCmToGradingSize(gsInner) ?? "S")
+        gsInner.presetId != null && isGarmentFlatCmPresetId(gsInner.presetId)
+          ? (inferGarmentFlatCmSizeKey(gsInner) ?? "S")
           : "S";
       defaultSize =
         next[preferred] != null && next[preferred]!.length > 0 ? preferred : ordered[0] ?? preferred;

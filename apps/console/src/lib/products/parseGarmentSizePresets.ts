@@ -1,13 +1,11 @@
-import type { BodyModelVariant } from "@/app/(main)/development/fitting/lib/bodyModelVariant";
-
-/** サイズごとの cm プリセット（互換レイヤ）。Grading v4 は別カタログ参照。 */
+/** サイズごとの cm プリセット（互換レイヤ）。平置き cm は別カタログ参照。 */
 export type GarmentSizePresetRow = {
   label: string;
   lengthCm: number;
   sleeveCm: number;
 };
 
-/** Grading v4 ではウィジェット側の固定カタログを使用。DB 側のプリセット配列は廃止。 */
+/** 平置き cm ではウィジェット側の固定カタログを使用。DB 側のプリセット配列は廃止。 */
 export function parseGarmentSizePresets(_garmentSpec: unknown): GarmentSizePresetRow[] {
   return [];
 }
@@ -21,19 +19,15 @@ export function mergeGarmentSpecSizePresets(garmentSpec: unknown, _presets: Garm
 }
 
 /**
- * 他フィールドは維持し、`bodyModelVariant` だけ設定または削除する（既存商品の試着ボディを後から切り替え）。
+ * 保存済み garment_spec の `bodyModelVariant === "lineArtVerification"` は廃止（格子テンプレに統一）。
+ * 他フィールドは維持し、線画検証のみ除去する。
  */
-export function mergeGarmentSpecBodyModelVariant(
-  garmentSpec: unknown,
-  variant: BodyModelVariant
-): unknown {
+export function mergeGarmentSpecBodyModelVariant(garmentSpec: unknown, _obsolete: null): unknown {
   if (garmentSpec == null || typeof garmentSpec !== "object" || Array.isArray(garmentSpec)) {
     return garmentSpec;
   }
   const g = { ...(garmentSpec as Record<string, unknown>) };
-  if (variant === "lineArtVerification") {
-    g.bodyModelVariant = "lineArtVerification";
-  } else {
+  if (g.bodyModelVariant === "lineArtVerification") {
     delete g.bodyModelVariant;
   }
   return g;

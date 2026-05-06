@@ -1,10 +1,14 @@
 import type { BodyModelVariant } from "./bodyModelVariant";
+import type { FlatCmSizeKey, GarmentFlatCmZone } from "../garmentFlatCmGrading/garmentFlatCmGradingConstants";
+import type { GarmentFlatCmPresetId } from "../garmentFlatCmGrading/garmentFlatCmPreset";
 
-/** Grading v4: 開発キャンバスでモデルより下（背面）にだけ積む path。※前面 `pathDs` と別配列 */
-export type GradingV4BehindBodyPaths = {
+/** 開発キャンバスでモデルより下（背面）にだけ積む path。※前面 `pathDs` と別配列 */
+export type BehindBodySvgPaths = {
   pathDs: string[];
   /** 各 path の id（ウィジェットサイズ適用時のグレードゾーン決定）。未保存の legacy は無し */
   pathIds?: string[];
+  /** `pathDs` と同じ長さ。グループ id 契約の S 基準ゾーン（path id に依存しない） */
+  pathZones?: GarmentFlatCmZone[];
   pathStrokeDasharrays?: (string | undefined)[];
   pathStrokeWidths?: (number | undefined)[];
   pathStrokes?: (string | undefined)[];
@@ -15,6 +19,42 @@ export type GarmentType = "shirt" | "jacket" | "custom";
 
 /** 組み込みジャケットのサイズ（JACKET_SIZES のキー） */
 export type JacketSize = "3" | "4" | "5";
+
+/** アップロードSVG内の肩・裾などの参照座標（viewBox座標） */
+export interface CustomLandmarks {
+  shoulderY: number;
+  shoulderLx: number;
+  shoulderRx: number;
+  hemY: number;
+  hemCx: number;
+  /** 指定時は着丈スケールをこの値(px)で計算。肩合わせしつつスケールを固定したいとき（例: Group 11） */
+  garmentLengthOverride?: number;
+  /** 指定時はボディ肩ラインに対するオフセット(px)。正で少し下げる。 */
+  bodyShoulderOffsetY?: number;
+  /** 指定時は scaleX を体肩幅でキャップ（でかい表示の防止）。ブローゾン・カーフヘア用 */
+  totalWidth?: number;
+  /** totalWidth 使用時の最大幅比（体肩幅基準）。例: shoulder/47 */
+  maxWidthRatio?: number;
+}
+
+/**
+ * 背面ビュー用の平置きガーメント片（親スペックの `size` / `presetId` と組み合わせる）。
+ */
+export type GarmentRearViewSpec = {
+  pathDs: string[];
+  pathStrokeDasharrays?: (string | undefined)[];
+  pathStrokeWidths?: (number | undefined)[];
+  pathStrokes?: (string | undefined)[];
+  pathFills?: (string | undefined)[];
+  landmarks: CustomLandmarks;
+  debugRigPathDs?: string[];
+  behindBody?: BehindBodySvgPaths;
+  flatCmOutlinePathIds?: string[];
+  /** `flatCmBasePathDs.length` と同じ。`sleeve_L` / `sleeve_R` / `body`（祖先 g id または legacy path id） */
+  flatCmOutlinePathZones?: GarmentFlatCmZone[];
+  flatCmBasePathDs?: string[];
+  flatCmBaseBehindBody?: BehindBodySvgPaths;
+};
 
 /** アップロードした商品SVG＋採寸。モデル(170/60)に対する比率で変換して着用する */
 export interface CustomGarmentData {
@@ -34,12 +74,17 @@ export interface CustomGarmentData {
   size: SizeMeasure;
   /** 写真由来の輪郭のとき true。袖はモデル腕に沿わせ、襟後ろのヒントを足す */
   photoDerived?: boolean;
-  /** Garment Grading v4（開発登録・ライブラリ保存） */
-  presetId?: "gradingV4";
+  /** 平置き cm グレード（開発登録・ライブラリ保存） */
+  presetId?: GarmentFlatCmPresetId;
+  /**
+   * プレビュー／ウィジェットのサイズチップ列（資産の `size` が無い場合のフォールバック）。
+   * 開発登録時に保存プリセットから自動付与する。
+   */
+  flatCmOfferedSizeLabels?: readonly FlatCmSizeKey[];
 
   /**
-   * 試着キャンバスの 2D ボディ。未指定は既定ボディ（mv_model 系）。
-   * 検証ボディ ON のまま商品ライブラリに登録したとき `lineArtVerification` が入る。
+   * 試着キャンバスの 2D ボディ。未指定は格子ボディテンプレ（前面）。
+   * 旧データにだけ `lineArtVerification` が残りうる（読み取り時は格子に正規化）。
    */
   bodyModelVariant?: BodyModelVariant;
   /**
@@ -48,35 +93,24 @@ export interface CustomGarmentData {
    */
   debugRigPathDs?: string[];
   /**
-   * Grading v4: `garmentBackSvg` 由来（back-stroke 系）。試着ではモデルより手前に描く前面パスは従来どおり `pathDs`。
+   * `garmentBackSvg` 由来（back-stroke 系）。試着ではモデルより手前に描く前面パスは従来どおり `pathDs`。
    * 無い既存データは背面なし（再保存で付与）。
    */
-  gradingV4BehindBody?: GradingV4BehindBodyPaths;
+  behindBody?: BehindBodySvgPaths;
   /**
-   * Grading v4: アセット SVG の S 形状（グレード前）の outline path d と id。
-   * ウィジェット・API でサイズ変更するとき、`pathDs` をここから `rewriteGradingV4GarmentPath` で再計算する。
+   * アセット SVG の S 形状（グレード前）の outline path d と id。
+   * ウィジェット・API でサイズ変更するとき、`pathDs` をここから `rewriteFlatCmGarmentPath` で再計算する。
    */
-  gradingV4OutlinePathIds?: string[];
-  gradingV4BasePathDs?: string[];
-  /** back-stroke 系の S 形状（gradingV4BehindBody.pathIds と並行） */
-  gradingV4BaseBehindBody?: GradingV4BehindBodyPaths;
-}
-
-/** アップロードSVG内の肩・裾などの参照座標（viewBox座標） */
-export interface CustomLandmarks {
-  shoulderY: number;
-  shoulderLx: number;
-  shoulderRx: number;
-  hemY: number;
-  hemCx: number;
-  /** 指定時は着丈スケールをこの値(px)で計算。肩合わせしつつスケールを固定したいとき（例: Group 11） */
-  garmentLengthOverride?: number;
-  /** 指定時はボディ肩ラインに対するオフセット(px)。正で少し下げる。 */
-  bodyShoulderOffsetY?: number;
-  /** 指定時は scaleX を体肩幅でキャップ（でかい表示の防止）。ブローゾン・カーフヘア用 */
-  totalWidth?: number;
-  /** totalWidth 使用時の最大幅比（体肩幅基準）。例: shoulder/47 */
-  maxWidthRatio?: number;
+  flatCmOutlinePathIds?: string[];
+  flatCmOutlinePathZones?: GarmentFlatCmZone[];
+  flatCmBasePathDs?: string[];
+  /** back-stroke 系の S 形状（behindBody.pathIds と並行） */
+  flatCmBaseBehindBody?: BehindBodySvgPaths;
+  /**
+   * 任意: 後ろ向き試着用の平置きガーメント（前面とは別 SVG）。
+   * 無い場合は背面でも前面アートを流用し、ボディのみ `gridSvgBodyBack`。
+   */
+  rearViewGarment?: GarmentRearViewSpec;
 }
 
 export type ShirtSize = "44" | "46" | "48" | "50" | "52" | "54";

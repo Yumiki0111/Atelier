@@ -1,4 +1,4 @@
-import { weightKgFromBodyVal, normalizeWidgetCtaAccentColor } from "@Atelier/shared";
+import { weightKgFromBodyVal, normalizeWidgetCtaAccentColor, isGarmentFlatCmPresetId } from "@Atelier/shared";
 import type { WidgetConfig, WidgetColorSwatch } from "./types";
 import { WIDGET_LOG_PREFIX } from "./embed-data";
 import { isDevelopmentMode, getApiBaseUrl } from "./widget-utils";
@@ -10,8 +10,11 @@ import { el, sortSizeKeys } from "./widget-modal-dom-utils";
 import {
   SURFACE_BG,
   DEFAULT_FIT_BODY_VAL,
-  GRADING_V4_GRID_BODY_TEMPLATE_PATH_COUNT,
-  gradingV4GridBodyPathEndsClosed,
+  GARMENT_FLAT_CM_GRID_BODY_TEMPLATE_PATH_COUNT,
+  GARMENT_FLAT_CM_GRID_BODY_BACK_TEMPLATE_PATH_COUNT,
+  garmentFlatCmGridBodyFillLayerPaint,
+  GARMENT_FLAT_CM_GRID_BODY_SILHOUETTE_STROKE,
+  garmentFlatCmGridBodyLayeredOutlinePathAfterFirst,
 } from "./widget-modal-constants";
 import {
   appendWidgetFitEaseSummary,
@@ -389,6 +392,7 @@ export function updateModalWithConfig(
         viewBoxHeight: number;
         bodyPaths: string[];
         presetId?: string;
+        bodyModelVariant?: "gridSvgBody" | "gridSvgBodyBack";
         garmentPathsBehindBody?: string[];
         garmentBehindBodyPathStrokeDasharrays?: (string | undefined)[];
         garmentBehindBodyPathStrokeWidths?: (number | undefined)[];
@@ -415,7 +419,7 @@ export function updateModalWithConfig(
       svg.style.cssText =
         `aspect-ratio:${data.viewBoxWidth} / ${data.viewBoxHeight};width:auto;max-width:100%;height:auto;max-height:100%;display:block;margin:0 auto;`;
       const defaultGarmentStroke =
-        data.presetId === "gradingV4" ? "rgba(45,45,45,0.9)" : "rgba(70, 70, 70, 0.82)";
+        isGarmentFlatCmPresetId(data.presetId) ? "rgba(26,26,26,0.97)" : "rgba(54, 54, 54, 0.88)";
       if (!bodyOnly) {
         const behind = data.garmentPathsBehindBody;
         if (behind != null && behind.length > 0) {
@@ -428,21 +432,35 @@ export function updateModalWithConfig(
               strokes: data.garmentBehindBodyPathStrokes,
               fills: data.garmentBehindBodyPathFills,
             },
-            { presetId: data.presetId, defaultStroke: defaultGarmentStroke, gradingBehindGarmentLayer: true }
+            {
+              presetId: data.presetId,
+              defaultStroke: defaultGarmentStroke,
+              flatCmBehindGarmentLayer: true,
+              blendBehindStrokeWithGridBody:
+                isGarmentFlatCmPresetId(data.presetId) && data.bodyModelVariant === "gridSvgBodyBack"
+                  ? { canvasBg, silhouetteStroke: GARMENT_FLAT_CM_GRID_BODY_SILHOUETTE_STROKE }
+                  : undefined,
+            }
           );
         }
       }
       const gBody = document.createElementNS("http://www.w3.org/2000/svg", "g");
       gBody.setAttribute("data-fitlook-fit-body", "true");
       const gridLayered =
-        data.presetId === "gradingV4" && data.bodyPaths.length === GRADING_V4_GRID_BODY_TEMPLATE_PATH_COUNT;
+        isGarmentFlatCmPresetId(data.presetId) &&
+        (data.bodyPaths.length === GARMENT_FLAT_CM_GRID_BODY_TEMPLATE_PATH_COUNT ||
+          data.bodyPaths.length === GARMENT_FLAT_CM_GRID_BODY_BACK_TEMPLATE_PATH_COUNT);
       if (gridLayered) {
         const gFill = document.createElementNS("http://www.w3.org/2000/svg", "g");
         gFill.setAttribute("stroke", "none");
-        for (const d of data.bodyPaths) {
+        for (let bi = 0; bi < data.bodyPaths.length; bi++) {
+          const d = data.bodyPaths[bi]!;
           const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
           p.setAttribute("d", d);
-          p.setAttribute("fill", gradingV4GridBodyPathEndsClosed(d) ? canvasBg : "none");
+          p.setAttribute(
+            "fill",
+            garmentFlatCmGridBodyFillLayerPaint(d, bi, data.bodyPaths.length, canvasBg)
+          );
           gFill.appendChild(p);
         }
         const gOutline = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -457,7 +475,7 @@ export function updateModalWithConfig(
         }
         for (let bi = 1; bi < data.bodyPaths.length; bi++) {
           const di = data.bodyPaths[bi]!;
-          if (gradingV4GridBodyPathEndsClosed(di)) continue;
+          if (!garmentFlatCmGridBodyLayeredOutlinePathAfterFirst(di, bi, data.bodyPaths.length)) continue;
           const pOp = document.createElementNS("http://www.w3.org/2000/svg", "path");
           pOp.setAttribute("d", di);
           gOutline.appendChild(pOp);

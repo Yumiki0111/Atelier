@@ -2,7 +2,7 @@ import { bodyHeight, getBodyParams } from "@/app/(main)/development/fitting/lib/
 import { JACKET_SIZES, JK, REF_WEIGHT_KG } from "@/app/(main)/development/fitting/lib/constants";
 import type { JacketSize, MeasureOverlayData, ShoulderDebug } from "@/app/(main)/development/fitting/lib/types";
 import { getPathPoints } from "@/app/(main)/development/fitting/lib/pathUtils";
-import { buildJacketPath } from "@/app/(main)/development/fitting/lib/jacketUtils";
+import { buildJacketPath } from "@/app/(main)/development/fitting/lib/garment/jacketUtils";
 
 export function computeJacketGarmentBranch(input: {
   height: number;

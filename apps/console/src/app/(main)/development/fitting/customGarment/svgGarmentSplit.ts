@@ -1,10 +1,9 @@
 import type { CustomLandmarks } from "../lib/types";
 import { getPathPoints, getPathsBBox } from "../lib/pathUtils";
-import { MODEL_RIG_LINE_PATH_DS } from "../lib/modelRigData";
+import { MODEL_RIG_LINE_PATH_DS } from "../lib/rig/modelRigData";
 import type { RigPathEndpoints } from "./rigMatching";
 import {
   MODEL_RIG_ENDPOINTS,
-  VERIFICATION_RIG_ENDPOINTS,
   GRID_MODEL_RIG_ENDPOINTS,
   normalizePathDForMatch,
 } from "./rigMatching";
@@ -13,12 +12,8 @@ import {
   assertValidGridModelRigCompound,
   gridModelRigCompoundToNineSvgPathDs,
   GRID_MODEL_RIG_STROKE_COMPOUND_D,
-} from "../lib/gridModelRigExtract";
-import { GRID_RIG_NINE_PATH_DS_SVG } from "../lib/gridSvgRigData";
-import {
-  LINE_ART_VERIFICATION_RIG_STROKE_COMPOUND_D,
-  VERIFICATION_RIG_NINE_PATH_DS_SVG,
-} from "../lib/modelDataVerification";
+} from "../lib/rig/gridModelRigExtract";
+import { GRID_RIG_NINE_PATH_DS_SVG } from "../lib/rig/gridSvgRigData";
 
 function getBBoxOfPathPoints(points: [number, number][]) {
   let minX = Infinity;
@@ -35,7 +30,7 @@ function getBBoxOfPathPoints(points: [number, number][]) {
   return { minX, minY, maxX, maxY };
 }
 
-/** `gridVector9Only`: 格子ボディ運用時。mv_model / 検証リグへの幾何マッチを行わない */
+/** `gridVector9Only`: 格子ボディ運用時。`MODEL_RIG_LINE_PATH_DS` 系・検証リグへの幾何マッチを行わない */
 export type SvgGarmentRigSplitPreset = "auto" | "gridVector9Only";
 
 /**
@@ -52,13 +47,6 @@ function trySplitGridVector9FromFirstPath(paths: SvgParsedPath[]): {
   if (matchesCanonicalVector9) {
     const stem = paths[0]!;
     const rigPaths: SvgParsedPath[] = [...GRID_RIG_NINE_PATH_DS_SVG].map((d) => ({ ...stem, d }));
-    return { rigPaths, garmentPaths: paths.slice(1) };
-  }
-  const matchesVerificationVector9 =
-    normalizePathDForMatch(compoundD) === normalizePathDForMatch(LINE_ART_VERIFICATION_RIG_STROKE_COMPOUND_D);
-  if (matchesVerificationVector9) {
-    const stem = paths[0]!;
-    const rigPaths: SvgParsedPath[] = [...VERIFICATION_RIG_NINE_PATH_DS_SVG].map((d) => ({ ...stem, d }));
     return { rigPaths, garmentPaths: paths.slice(1) };
   }
   try {
@@ -95,11 +83,7 @@ export function splitGarmentPathsFromSvgParsed(
   const pathDs = paths.map((p) => p.d);
   // まずは「モデル+リグから抽出した 9 本の rig d」と完全一致するものだけを rig として抜く。
   // 4862×6431 系の検証リグも同一契約で別座標のため併記（Figma エクスポートの d が一致すれば抜ける）。
-  const rigExactSet = new Set([
-    ...MODEL_RIG_LINE_PATH_DS,
-    ...GRID_RIG_NINE_PATH_DS_SVG,
-    ...VERIFICATION_RIG_NINE_PATH_DS_SVG,
-  ]);
+  const rigExactSet = new Set([...MODEL_RIG_LINE_PATH_DS, ...GRID_RIG_NINE_PATH_DS_SVG]);
   const rigExact: SvgParsedPath[] = [];
   const keepExact: SvgParsedPath[] = [];
   for (const p of paths) {
@@ -216,10 +200,9 @@ export function splitGarmentPathsFromSvgParsed(
     };
 
     const bestDefault = pickBestForTemplate(MODEL_RIG_ENDPOINTS);
-    const bestVer = pickBestForTemplate(VERIFICATION_RIG_ENDPOINTS);
     const bestGrid = pickBestForTemplate(GRID_MODEL_RIG_ENDPOINTS);
 
-    type GridSplitTemplateKind = "default" | "verification" | "grid";
+    type GridSplitTemplateKind = "default" | "grid";
     const ranked: Array<{
       score: number;
       scale: number;
@@ -237,14 +220,6 @@ export function splitGarmentPathsFromSvgParsed(
         kind: "default",
       },
       {
-        score: bestVer.score,
-        scale: bestVer.scale,
-        tx: bestVer.tx,
-        ty: bestVer.ty,
-        modelEndpoints: VERIFICATION_RIG_ENDPOINTS,
-        kind: "verification",
-      },
-      {
         score: bestGrid.score,
         scale: bestGrid.scale,
         tx: bestGrid.tx,
@@ -255,7 +230,7 @@ export function splitGarmentPathsFromSvgParsed(
     ];
     ranked.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
-      const pri: Record<GridSplitTemplateKind, number> = { grid: 0, verification: 1, default: 2 };
+      const pri: Record<GridSplitTemplateKind, number> = { grid: 0, default: 1 };
       return pri[a.kind] - pri[b.kind];
     });
     const best = ranked[0]!;

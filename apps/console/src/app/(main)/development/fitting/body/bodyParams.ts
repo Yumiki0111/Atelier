@@ -1,5 +1,5 @@
 import { REF_WEIGHT_KG } from "../lib/constants";
-import { yScaleFromHeightAndRigLinePaths } from "../lib/rigDerivedHeight";
+import { yScaleFromHeightAndRigLinePaths } from "../lib/rig/rigDerivedHeight";
 
 export interface BodyParams {
   yScale: number;

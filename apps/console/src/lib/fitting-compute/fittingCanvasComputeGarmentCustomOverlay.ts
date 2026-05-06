@@ -158,7 +158,7 @@ export function assembleCustomGarmentOverlayAndShoulderDebug(
     lengthGuideHem,
     lengthGeomDebug,
     bodyPxPerCm,
-    sizeLabel: "Grading v4",
+    sizeLabel: "平置き cm",
     chestLeft: designToGarmentCanvas(chestMinX, chestMidY),
     chestRight: designToGarmentCanvas(chestMaxX, chestMidY),
     sleeveStart: primarySleeve.sleeveStart,

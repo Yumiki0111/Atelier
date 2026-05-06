@@ -1,182 +1,58 @@
 # FIT&LOOK 3D試着ウィジェット - ECサイト統合ガイド
 
-## 🎯 概要
+## 概要
 
-FIT&LOOK 3D試着ウィジェットをECサイトに統合する方法です。商品ページに**数行のスニペット**を埋め込むだけで、**右下に自動的に固定ボタン**が表示され、クリックすると3D試着モーダルが開きます。
+FIT&LOOK の試着ウィジェットを EC サイトに埋め込む手順です。ホストページに **`widget.js` を読み込み**、**公開キーと外部商品 ID を付けた要素**を置くと、右下にランチャーが表示され、タップで試着モーダル（コンソール側の `/embed/widget-fit` を iframe で読み込み）が開きます。
 
-## ✨ 特徴
+## 必須であること
 
-- **自動配置**: 右下に64px × 64pxの丸いボタンが自動表示
-- **商品ID自動取得**: URLパス（`/product/g115253154287`）から自動的に商品IDを取得
-- **API URL自動取得**: `widget.js`の読み込み元から自動的にAPI URLを取得
-- **超シンプル**: Public Keyだけ設定すればOK
+ウィジェットは **`document` 内のホスト要素**（`data-fitlook-public-key` またはレガシーの `data-atelier-public-key` など）を探して初期化します。**`window.__AtelierWidgetConfig` のようなグローバル設定は読みません**（現在の `packages/widget` 実装）。
 
-## 📋 必要な情報
+各ホスト要素に最低限必要なのは次です。
 
-統合前に、以下をFIT&LOOK コンソールから取得してください：
+1. **Public Key** — `data-fitlook-public-key="pub_live_..."`（レガシー: `data-atelier-public-key`）
+2. **外部商品 ID** — `data-fitlook-external-product-id="..."`（レガシー: `data-atelier-external-product-id`）  
+   FIT&LOOK コンソールで商品に紐づけた **外部 SKU / 任意 ID** と一致させます。URL パスやメタタグからの自動推測は行いません。
 
-1. **Public Key**: 設定ページで確認（例: `pub_live_030b64caa84e2995672163c125d600bd`）
-2. **Widget URL**: 
-   - 本番環境: `https://Atelier-rho-red.vercel.app/widget.js`
-   - 開発環境: `http://localhost:3000/widget.js`（FIT&LOOK コンソールアプリのURL）
+API のベース URL は通常、`widget.js` の `<script src>` のオリジンから決まります。EC とコンソールのオリジンが異なる場合は **`data-fitlook-api-url`**（レガシー: `data-atelier-api-url`）でコンソールのオリジンを明示してください。
 
-## 🚀 実装方法（超シンプル）
+## 必要な情報（コンソール側）
 
-### Next.js App Router - 最小実装
+1. **Public Key**（設定ページなど）
+2. **Widget の URL**  
+   - 本番例: `https://Atelier-rho-red.vercel.app/widget.js`（デプロイ先が変われば置き換え）
+   - ローカル: `http://localhost:3000/widget.js`
 
-```tsx
-// app/product/[id]/page.tsx
-import Script from 'next/script';
+## 実装例
 
-export default function ProductPage() {
-  const widgetUrl = process.env.NODE_ENV === 'development'
-    ? 'http://localhost:3000/widget.js'
-    : 'https://Atelier-rho-red.vercel.app/widget.js';
-  const publicKey = process.env.NEXT_PUBLIC_Atelier_PUBLIC_KEY || 'pub_live_030b64caa84e2995672163c125d600bd';
-  
-  return (
-    <>
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `window.__AtelierWidgetConfig = { publicKey: '${publicKey}' };`,
-        }}
-      />
-      <Script src={widgetUrl} strategy="afterInteractive" />
-    </>
-  );
-}
-```
+### Next.js App Router（推奨）
 
-**たったこれだけ！** 
-- 商品ID: URLパス（`/product/[id]`）から自動取得
-- API URL: `widget.js`の読み込み元から自動取得
-- 設定が必要なのは**Public Keyだけ**です
-
-### Next.js - headに埋め込む場合
+`params` は現行の Next.js（コンソールは 16.x）では **`Promise`** のため `await` します。
 
 ```tsx
 // app/product/[id]/page.tsx
-import Script from 'next/script';
-import { Metadata } from 'next';
+import Script from "next/script";
 
-export default function ProductPage() {
-  const widgetUrl = process.env.NODE_ENV === 'development'
-    ? 'http://localhost:3000/widget.js'
-    : 'https://Atelier-rho-red.vercel.app/widget.js';
-  
-  return (
-    <>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `window.__AtelierWidgetConfig = { publicKey: 'pub_live_030b64caa84e2995672163c125d600bd' };`,
-          }}
-        />
-      </head>
-      <Script src={widgetUrl} strategy="afterInteractive" />
-    </>
-  );
-}
-```
+const widgetUrl =
+  process.env.NODE_ENV === "development"
+    ? "http://localhost:3000/widget.js"
+    : "https://Atelier-rho-red.vercel.app/widget.js";
 
-### React（通常のReactアプリ）
+const publicKey =
+  process.env.NEXT_PUBLIC_FITLOOK_PUBLIC_KEY ?? "pub_live_030b64caa84e2995672163c125d600bd";
 
-```tsx
-// ProductPage.tsx
-import { useEffect } from 'react';
-
-export default function ProductPage() {
-  useEffect(() => {
-    // グローバル設定
-    (window as any).__AtelierWidgetConfig = {
-      publicKey: 'pub_live_030b64caa84e2995672163c125d600bd'
-    };
-    
-    // スクリプトを読み込む
-    const script = document.createElement('script');
-    script.src = 'https://Atelier-rho-red.vercel.app/widget.js';
-    script.defer = true;
-    document.body.appendChild(script);
-    
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, []);
-  
-  return <div>商品ページ</div>;
-}
-```
-
-### 通常のHTML
-
-```html
-<!DOCTYPE html>
-<html>
-<head>
-  <title>商品ページ</title>
-  <script>
-    window.__AtelierWidgetConfig = { publicKey: 'pub_live_030b64caa84e2995672163c125d600bd' };
-  </script>
-  <script defer src="https://Atelier-rho-red.vercel.app/widget.js"></script>
-</head>
-<body>
-  <h1>商品名</h1>
-</body>
-</html>
-```
-
-**たった2行！** `<head>`に埋め込むだけです。
-
-### 実際の使用例（Next.js）
-
-```tsx
-// app/product/[id]/page.tsx
-import Script from 'next/script';
-
-export default async function ProductPage({ params }: ProductPageProps) {
+export default async function ProductPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
-  const widgetUrl = process.env.NODE_ENV === 'development'
-    ? 'http://localhost:3000/widget.js'
-    : 'https://Atelier-rho-red.vercel.app/widget.js';
-  const publicKey = process.env.NEXT_PUBLIC_Atelier_PUBLIC_KEY || 'pub_live_030b64caa84e2995672163c125d600bd';
 
   return (
     <>
-      {/* この2行だけ！ */}
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `window.__AtelierWidgetConfig = { publicKey: '${publicKey}' };`,
-        }}
-      />
-      <Script src={widgetUrl} strategy="afterInteractive" />
-      
-      {/* 商品ページのコンテンツ */}
-      <div>商品ページの内容...</div>
-    </>
-  );
-}
-```
-
-**注意**: `apiUrl`や`productId`は設定不要です。自動取得されます。
-
-### 環境変数を使用する場合（オプション）
-
-環境変数を使いたい場合：
-
-```tsx
-// app/product/[id]/page.tsx
-import Script from 'next/script';
-
-export default function ProductPage() {
-  const widgetUrl = process.env.NEXT_PUBLIC_Atelier_WIDGET_URL || 'https://Atelier-rho-red.vercel.app/widget.js';
-  const publicKey = process.env.NEXT_PUBLIC_Atelier_PUBLIC_KEY || 'pub_live_030b64caa84e2995672163c125d600bd';
-  
-  return (
-    <>
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `window.__AtelierWidgetConfig = { publicKey: '${publicKey}' };`,
-        }}
+      <div
+        data-fitlook-public-key={publicKey}
+        data-fitlook-external-product-id={id}
       />
       <Script src={widgetUrl} strategy="afterInteractive" />
     </>
@@ -184,152 +60,132 @@ export default function ProductPage() {
 }
 ```
 
-`.env.local`:
-```env
-NEXT_PUBLIC_Atelier_WIDGET_URL=https://Atelier-rho-red.vercel.app/widget.js
-NEXT_PUBLIC_Atelier_PUBLIC_KEY=pub_live_030b64caa84e2995672163c125d600bd
-```
-
-**注意**: `apiUrl`と`productId`は自動取得されるため、設定不要です。
-
-## 🔍 自動取得される情報
-
-ウィジェットは以下の情報を自動取得します：
-
-### 商品IDの自動取得順序
-
-1. **URLパス**: `/product/g115253154287` → `g115253154287` を取得（最も一般的）
-2. **グローバル設定**: `window.__AtelierWidgetConfig.productId`（明示的に設定した場合）
-3. **メタタグ**: `<meta property="product:id" content="g115253154287">`
-4. **データ属性**: `<div data-product-id="g115253154287">`
-
-### API URLの自動取得
-
-- `widget.js`のスクリプトタグの`src`から自動取得
-- 例: `https://Atelier-rho-red.vercel.app/widget.js` → `https://Atelier-rho-red.vercel.app`
-
-## 🎨 UIの動作
-
-- **固定ボタン**: 画面右下に64px × 64pxの丸いボタンが表示
-- **ボタンテキスト**: "3D"
-- **ホバー効果**: マウスオーバーで黒背景に白文字に変化
-- **モーダル**: クリックで3D試着モーダルが開く
-
-## ⚠️ 重要な注意事項
-
-### 1. Widget URLの設定
-
-**重要**: `widget.js`は**FIT&LOOK コンソールアプリ**から読み込む必要があります。ECサイト自身のURLから読み込まないでください。
-
-- ✅ 正しい: `https://Atelier-rho-red.vercel.app/widget.js`
-- ❌ 間違い: `https://your-ec-site.com/widget.js`
-
-### 2. CORS設定
-
-ECサイトのドメインをFIT&LOOK コンソールの設定ページで許可ドメインに追加してください。
-
-- 開発環境: `localhost:3001`（ECサイトのポート）
-- 本番環境: `your-ec-site.com`
-
-### 3. Public Keyの管理
-
-Public Keyは機密情報ではありませんが、本番環境では環境変数で管理することを推奨します。
-
-### 4. 商品IDの形式
-
-商品IDはURLパスから自動取得されます。URLが `/product/g115253154287` の形式であれば、自動的に `g115253154287` が商品IDとして使用されます。
-
-異なるURL形式の場合は、明示的に設定してください：
+別ポートで EC を動かし API だけコンソール（例: `localhost:3000`）へ向ける場合:
 
 ```tsx
-<script
-  dangerouslySetInnerHTML={{
-    __html: `window.__AtelierWidgetConfig = { 
-      publicKey: 'pub_live_030b64caa84e2995672163c125d600bd',
-      productId: '${params.id}'  // 明示的に設定
-    };`,
-  }}
+<div
+  data-fitlook-public-key={publicKey}
+  data-fitlook-external-product-id={id}
+  data-fitlook-api-url="http://localhost:3000"
 />
 ```
 
-## 🐛 トラブルシューティング
-
-### ボタンが表示されない
-
-1. **ブラウザのコンソールを確認**: エラーメッセージを確認
-2. **Widget URLが正しいか確認**: FIT&LOOK コンソールアプリのURLから読み込んでいるか
-3. **Public Keyが正しいか確認**: 設定ページで確認
-
-### "この商品の3D試着は現在利用できません" と表示される
-
-1. **許可ドメインを確認**: ECサイトのドメインが許可されているか
-2. **商品IDが正しいか確認**: FIT&LOOK コンソールで商品が登録されているか
-3. **Public Keyが有効か確認**: 設定ページで有効化されているか
-
-### CORSエラーが発生する
-
-ECサイトのドメインをFIT&LOOK コンソールの設定ページで許可ドメインに追加してください。
-
-## ⚠️ Next.js 15の注意事項
-
-Next.js 15では、`searchParams`がPromiseになりました。以下のエラーが出る場合は修正が必要です：
-
-```
-Error: Route "/" used `searchParams.q`. `searchParams` is a Promise and must be unwrapped with `await` or `React.use()` before accessing its properties.
-```
-
-### 修正方法
+### React（CRA / Vite 等）
 
 ```tsx
-// ❌ 間違い（Next.js 14以前）
-export default function Home({ searchParams }: { searchParams: { q?: string } }) {
-  const query = searchParams.q || '';
-  // ...
-}
+import { useEffect } from "react";
 
-// ✅ 正しい（Next.js 15）
-export default async function Home({ 
-  searchParams 
-}: { 
-  searchParams: Promise<{ q?: string }> 
+export function ProductWidgetHost({
+  publicKey,
+  externalProductId,
+  widgetJsUrl,
+}: {
+  publicKey: string;
+  externalProductId: string;
+  widgetJsUrl: string;
 }) {
-  const params = await searchParams;
-  const query = params.q || '';
-  // ...
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src = widgetJsUrl;
+    script.async = true;
+    document.body.appendChild(script);
+    return () => {
+      script.remove();
+    };
+  }, [widgetJsUrl]);
+
+  return (
+    <div
+      data-fitlook-public-key={publicKey}
+      data-fitlook-external-product-id={externalProductId}
+    />
+  );
 }
 ```
 
-または、`React.use()`を使用する場合：
+### プレーン HTML
 
-```tsx
-import { use } from 'react';
+```html
+<script async src="https://Atelier-rho-red.vercel.app/widget.js"></script>
 
-export default function Home({ 
-  searchParams 
-}: { 
-  searchParams: Promise<{ q?: string }> 
-}) {
-  const params = use(searchParams);
-  const query = params.q || '';
-  // ...
-}
+<div
+  data-fitlook-public-key="pub_live_030b64caa84e2995672163c125d600bd"
+  data-fitlook-external-product-id="g115253154287">
+</div>
 ```
 
-## 📞 サポート
+ローカル検証では `LOCAL_TESTING.md` も参照してください。
 
-問題が解決しない場合は、FIT&LOOK コンソールの設定ページで以下を確認してください：
+### 環境変数の例（オプション）
 
-- Public Keyが有効化されているか
-- 許可ドメインにECサイトのドメインが追加されているか
-- 商品が正しく登録されているか
+EC 側の `.env.local` など:
 
-## 📝 チェックリスト
+```env
+NEXT_PUBLIC_FITLOOK_WIDGET_URL=https://Atelier-rho-red.vercel.app/widget.js
+NEXT_PUBLIC_FITLOOK_PUBLIC_KEY=pub_live_030b64caa84e2995672163c125d600bd
+```
 
-実装前に以下を確認してください：
+過去のドキュメントで使っていた `NEXT_PUBLIC_Atelier_*` は、プロジェクト側の名前として問題ありませんが、ウィジェット本体はそれらを自動では読みません（ページコードで変数を属性に渡してください）。
 
-- [ ] Public Keyを取得
-- [ ] Widget URLを確認（本番/開発環境）
-- [ ] 許可ドメインにECサイトのドメインを追加
-- [ ] 商品がFIT&LOOK コンソールに登録されている
-- [ ] 商品IDが正しく設定されている（または自動取得される）
-- [ ] Next.js 15を使用している場合、`searchParams`を`await`で展開している
+## API URL が決まる順序（`packages/widget/src/widget-utils.ts`）
+
+1. ビルド注入の `process.env.API_BASE_URL`（通常の CDN 埋め込みでは未設定）
+2. `data-fitlook-api-url` / `data-atelier-api-url`
+3. `document.querySelector('script[src*="widget.js"]')` の絶対 URL のオリジン
+4. 相対パスで読み込んだ場合などのフォールバック（ページの `location.origin`）
+
+## UI のざっくりした動作
+
+- 既定では固定ランチャー（デザインはコンソールのウィジェット設定に依存）
+- クリックでモーダルを開き、試着 UI は **`/embed/widget-fit?publicKey=...&externalProductId=...`** を iframe で表示
+
+詳細な属性（インライン配置・オーバーレイ・デスクトップパネルなど）は `packages/widget/src/embed-data.ts` / `widget-api.ts` のコメントを参照してください。
+
+## 注意事項
+
+### Widget URL
+
+`widget.js` は **FIT&LOOK コンソールアプリが配信する URL** から読み込んでください。
+
+- 正しい例: `https://（コンソールのドメイン）/widget.js`
+- 誤り: EC サイト自身のオリジンだけに置いただけで、コンソールと無関係なパスから読むこと（API と設定が一致しません）
+
+### 許可ドメインと CORS
+
+EC のオリジンをコンソールのウィジェット設定の **許可ドメイン** に含めてください。開発では EC のポート（例: `localhost:3001`）も必要なら追加します。詳細は `apps/console/src/app/api/public/widget-config/route.ts` 周りとコンソール UI を確認してください。
+
+### Public Key
+
+公開前提のキーですが、運用上は環境変数や設定で差し替え可能にしておくと安全です。
+
+### 外部商品 ID
+
+コンソールに登録した商品の **external product id** と一致させないと、`widget-config` が該当商品を返せません。ルートパラメータをそのまま渡すだけでは足りず、コンソール側の ID と合わせる必要があります。
+
+## トラブルシューティング
+
+### ボタンが出ない
+
+- コンソールに `[FIT&LOOK Widget]` のログが出ているか確認
+- `data-fitlook-public-key` と `data-fitlook-external-product-id` が **同一要素**にあるか確認
+- `widget.js` のネットワークエラーがないか確認
+
+### 「商品 ID が設定されていません」などのアラート
+
+- `data-fitlook-external-product-id`（またはレガシー `data-atelier-external-product-id`）が欠けていませんか。
+
+### CORS
+
+許可ドメインと API のオリジン（`data-fitlook-api-url`）が実際のページと一致しているか確認してください。
+
+## Next.js App Router: `searchParams` が Promise の場合
+
+ページコンポーネントでクエリを読むとき、フレームワークから **`searchParams` が Promise** と型されることがあります。エラーになる場合は `await searchParams` または `React.use()` で展開してください（公式ドキュメントに沿ってください）。
+
+## チェックリスト
+
+- [ ] Public Key を取得した
+- [ ] `widget.js` の URL（本番 / 開発）を決めた
+- [ ] 許可ドメインに EC のオリジンを入れた
+- [ ] コンソールに商品を登録し、**external product id** をページ側の属性と一致させた
+- [ ] コンソールと EC が別オリジンのとき `data-fitlook-api-url` を付けた

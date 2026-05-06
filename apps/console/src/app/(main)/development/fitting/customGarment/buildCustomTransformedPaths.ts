@@ -2,8 +2,8 @@ import type { CustomGarmentData, BodyZones } from "../lib/types";
 import {
   buildTopPlacement,
   customLandmarksToTopLandmarks,
-} from "../lib/garmentBase";
-import { scaleModelViewToBodyTemplate } from "../lib/modelRigData";
+} from "../lib/garment/garmentBase";
+import { scaleModelViewToBodyTemplate } from "../lib/rig/modelRigData";
 import { tPath, getPathPoints } from "../lib/pathUtils";
 import { BODY_CX, REF_HEIGHT_CM } from "../lib/constants";
 import {
@@ -114,7 +114,7 @@ export type BuildCustomTransformedPathsOptions = {
   placementLockToModelRig?: boolean;
   /**
    * リグロック時のデザイン→ボディ写像。省略時は `scaleModelViewToBodyTemplate`（model+rig 3391×6431）。
-   * 線画検証・格子リグ（391/389×518）アップロードではここに `gridRigSvgPointToBodyTemplatePreserveAspect` / `gridRigVectorPointToBodyTemplate` 相当を渡す。
+   * 格子リグ（389×518）アップロードではここに `gridRigSvgPointToBodyTemplatePreserveAspect` / `gridRigVectorPointToBodyTemplate` 相当を渡す。
    */
   placeDesignToBodyWhenRigLocked?: (x: number, y: number) => [number, number];
   /** 後方互換のため残すが、服のプレース・袖ワープには使わない */

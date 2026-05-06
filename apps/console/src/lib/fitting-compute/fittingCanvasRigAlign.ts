@@ -1,5 +1,5 @@
 import { REF_HEIGHT_CM } from "@/app/(main)/development/fitting/lib/constants";
-import { MODEL_RIG_LINE_PATH_DS } from "@/app/(main)/development/fitting/lib/modelRigData";
+import { MODEL_RIG_LINE_PATH_DS } from "@/app/(main)/development/fitting/lib/rig/modelRigData";
 import type { RigRedLineArmDiagram } from "./fittingCanvasComputeTypes";
 import { getPathPoints, tPath } from "@/app/(main)/development/fitting/lib/pathUtils";
 

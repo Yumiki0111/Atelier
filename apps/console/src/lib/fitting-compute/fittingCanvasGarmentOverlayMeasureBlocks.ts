@@ -7,7 +7,7 @@ export type LengthOverlayPurpleState = {
   lengthMeasuredCm: number;
 };
 
-/** 着丈: ランドマーク肩〜裾ヒューリスティック（Grading v4 等） */
+/** 着丈: ランドマーク肩〜裾ヒューリスティック（平置き cm 等） */
 export function computeLengthOverlayBaseline(input: {
   bodyPxPerCm: number;
   designToGarmentCanvas: (gx: number, gy: number) => [number, number];

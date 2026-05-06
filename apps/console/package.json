@@ -11,7 +11,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "generate:grading-v4-body-template": "npx tsx scripts/generate-grading-v4-body-template.ts"
+    "generate:garment-flat-cm-grid-body-template": "npx tsx scripts/generate-garment-flat-cm-grid-body-template.ts",
+    "analyze:grid-body-path-overlap": "npx tsx scripts/analyze-grid-body-path-overlap.ts"
   },
   "dependencies": {
     "@Atelier/shared": "*",

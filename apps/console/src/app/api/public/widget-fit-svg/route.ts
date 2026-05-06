@@ -7,7 +7,7 @@ import {
 } from "@/lib/widget-fit/applyWidgetSizeToGarment";
 import { validateGarmentSpecForProduction } from "@/lib/products/validateGarmentSpecForProduction";
 import { resolveWidgetFitSizeKeysOrder } from "@/lib/widget/resolveWidgetFitSizeKeysOrder";
-import { normalizeWidgetFitSizeQuery } from "@/lib/widget-fit/widgetFitGradingSize";
+import { normalizeWidgetFitSizeQuery } from "@/lib/widget-fit/widgetFitFlatCmSize";
 import { computeWidgetFitSnapshot } from "@/lib/widget-fit/computeWidgetFitSnapshot";
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
 
@@ -118,6 +118,7 @@ export async function GET(request: NextRequest) {
       garmentPathStrokes: snap.garmentPathStrokes,
       garmentPathFills: snap.garmentPathFills,
       presetId: base.presetId,
+      bodyModelVariant: snap.bodyModelVariant,
       fitEaseSummary: snap.fitEaseSummary,
       fitEaseDiagram: snap.fitEaseDiagram,
     });
