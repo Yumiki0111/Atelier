@@ -4,7 +4,7 @@ import type { JacketSize, ShirtSize } from "@/app/(main)/development/fitting/lib
 export const GARMENT_FILL = "none";
 
 /** 開発ページのデフォルト体重（`weightKgFromBodyVal(DEFAULT)` ≈ 53kg） */
-export const DEFAULT_FIT_BODY_VAL = 25;
+export const DEFAULT_FIT_BODY_VAL = 9;
 
 export const VIEWBOX_W = 1505;
 export const PREVIEW_SHIRT_SIZE: ShirtSize = "48";

@@ -24,6 +24,8 @@ export function useFittingCanvasData({
   toCustomGarmentData = null,
   rigBodyEnabled = false,
   bodyModelVariant,
+  debugFlatCmGridBodyLiveHeightWarp,
+  shoulderFollowOptions,
 }: UseFittingCanvasDataParams): FittingCanvasSnapshot {
   /** UI の body トグルが無いビュー（プレビュー等）は `CustomGarmentData.bodyModelVariant` にフォールバック */
   const resolvedBodyModelVariant = bodyModelVariant ?? customGarmentData?.bodyModelVariant;
@@ -47,6 +49,8 @@ export function useFittingCanvasData({
         rigBodyEnabled,
         bodyModelVariant: resolvedBodyModelVariant,
         rigLinePaths,
+        debugFlatCmGridBodyLiveHeightWarp,
+        shoulderFollowOptions,
       }),
     [
       height,
@@ -59,11 +63,13 @@ export function useFittingCanvasData({
       bodyModelVariant,
       resolvedBodyModelVariant,
       rigLinePaths,
+      debugFlatCmGridBodyLiveHeightWarp,
       animProgress,
       fromSize,
       toSize,
       fromCustomGarmentData,
       toCustomGarmentData,
+      shoulderFollowOptions,
     ]
   );
 }

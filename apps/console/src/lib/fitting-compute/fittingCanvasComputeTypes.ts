@@ -8,6 +8,24 @@ import type {
 } from "@/app/(main)/development/fitting/lib/types";
 import type { BodyModelVariant } from "@/app/(main)/development/fitting/lib/bodyModelVariant";
 
+/**
+ * 肩追従/リグ固定化に関する段階導入オプション。すべて未指定（=false）なら従来挙動を維持。
+ * - useShoulderRigidFollowAllModes: 格子ボディ（gridSvgBody/Back）でも肩2点ベース剛体追従を有効化
+ *   （フェーズ1: 服の肩線が人体の肩傾斜に乗るようになる）
+ * - useShoulderSlopeDistribution: 肩幅変形(`dSh`)を水平のみではなく肩スロープ単位ベクトルへ分配
+ *   （フェーズ2: 真横ではなく斜め下に「落ちる」変形になる）
+ * - bodyRigFreezeArmAngle: 体型由来の腕角度差分Δθを「人体スキニング」に適用しない
+ *   （フェーズ3: 人体は基準姿勢のまま。Δθは服側の rigid マップでのみ参照）
+ * - bodyDiffViaGarmentLocalDeltas: 身長/体重差を服の局所伸縮(dBw/dBl/dSleeveLengthPx)へ写像
+ *   （フェーズ4: 人体を動かさず、服の特定箇所の拡大縮小で体型差を吸収）
+ */
+export interface FittingShoulderFollowOptions {
+  useShoulderRigidFollowAllModes?: boolean;
+  useShoulderSlopeDistribution?: boolean;
+  bodyRigFreezeArmAngle?: boolean;
+  bodyDiffViaGarmentLocalDeltas?: boolean;
+}
+
 export interface UseFittingCanvasDataParams {
   height: number;
   weight: number;
@@ -29,6 +47,16 @@ export interface UseFittingCanvasDataParams {
    * 平置き cm プリセット時は既定で格子ボディに固定するが、true のときは `bodyModelVariant` / `rigLinePaths` を渡されたまま使う（開発プレビュー切替用）。
    */
   respectRequestedBodyModelVariant?: boolean;
+  /**
+   * 開発用: 格子線形ボディで `computeFittingCanvasSnapshot` 内の「モデル・輪郭・赤リグのみ現在身長ワープ」を明示的にオン/オフ。
+   * 未指定時は従来どおり平置き cm プリセット選択時のみオン。
+   */
+  debugFlatCmGridBodyLiveHeightWarp?: boolean;
+  /**
+   * 肩追従・リグ固定化のフェーズ別フラグ（既定すべて false で従来挙動）。
+   * `body-scale-lab` などの開発ラボでトグル確認するためのスイッチ群。
+   */
+  shoulderFollowOptions?: FittingShoulderFollowOptions;
 }
 
 export type FittingCanvasRigLandmarksDebug = {

@@ -3,7 +3,7 @@ import { BODY_CX, BODY_H, BZ } from "../constants";
 
 /**
  * 格子モデル専用: リグ線画は **public の `grid-body-rig.svg`** から取る 1 本の stroke-only compound。
- * `d` の文字列コピーは `npm run sync:grid-rig-d` でアセットとこのファイルの定数を揃える。
+ * `d` の文字列コピーは `npm run sync:grid-rig-d`（repo 直下）で `grid-body-rig.svg` とこのファイルの定数を揃える。
  * 構造は **中心垂直線（脊髄）** ＋ **それを挟む左右対称**の腕・肩ポリライン（4 subpath）。
  *
  * **平置き cm 基本服**（`garment-flat-cm-template-garment.svg` の `<g id="rig">`）と論理同一の id（綴りはアセット踏襲）:
@@ -14,9 +14,9 @@ import { BODY_CX, BODY_H, BZ } from "../constants";
  * 体側ワープは `armShoulderPivotOnFixedSeam` 等で肩先を軸に腕スパンが追随する。
  */
 
-/** `grid-body-rig.svg` と同一 viewBox */
+/** `grid-body-rig.svg` と同一 viewBox（model_F.svg リグと同期） */
 export const GRID_MODEL_RIG_VIEWBOX_W = 389;
-export const GRID_MODEL_RIG_VIEWBOX_H = 525;
+export const GRID_MODEL_RIG_VIEWBOX_H = 519;
 /** リグ SVG 上端 y（`Vector (9)` は 0） */
 export const GRID_MODEL_RIG_TOP_Y = 0;
 
@@ -103,7 +103,7 @@ export function gridRigVectorPointFromBodyTemplate(bx: number, by: number): [num
  * ランタイム用の `d`（`sync:grid-rig-d` で `grid-body-rig.svg` と同期）。
  */
 export const GRID_MODEL_RIG_STROKE_COMPOUND_D =
-  "M194.375 0V294M159.793 517L165.829 287.16L194.407 274.72M388.375 272L250.367 117.12L194.367 94.04L138.369 117.12L0.375 272M228.942 517L222.907 287.16L194.328 274.72";
+  "M194.375 0.25V292.249M194.407 272.969L165.829 285.409L159.793 515.249M388.375 270.249L250.367 115.369L194.367 92.2891L138.371 115.369L0.375 270.249M194.328 272.969L222.907 285.409L228.942 515.249";
 
 /** 脚補助の左右オフセット（脊髄 x からの距離・ピクセル）。アートに脚ベクタが無い場合のプレースホルダ。 */
 const DEFAULT_LEG_OFFSET_FROM_SPINE = 62;
@@ -184,49 +184,39 @@ function shoulderFirstPolyline(pts: [number, number][], spineCenterX: number, ne
 /**
  * compound `d` を fitting 9 本 index 契約に分解し、**リグ viewBox 座標の path d** を返す。
  */
-export function gridModelRigCompoundToNineSvgPathDs(compoundD: string, legOffsetFromSpine = DEFAULT_LEG_OFFSET_FROM_SPINE): string[] {
+export function gridModelRigCompoundToNineSvgPathDs(compoundD: string, _legOffsetFromSpine = DEFAULT_LEG_OFFSET_FROM_SPINE): string[] {
   assertValidGridModelRigCompound(compoundD);
   const sub = splitSvgPathDByMoveCommands(compoundD);
-  const [spineD, leftArmD, shoulderD, rightArmD] = sub as [string, string, string, string];
+  const [spineD, leftLegChainD, shoulderArmChainD, rightLegChainD] = sub as [string, string, string, string];
 
   const spinePts = getPathPoints(spineD) as [number, number][];
-  const spineX = spinePts.map(([x]) => x).reduce((a, b) => a + b, 0) / spinePts.length;
-  const neckY = 94.04; // shoulder chain 内頂・Vector (9) では ~94.04
 
-  const leftPts = shoulderFirstPolyline(getPathPoints(leftArmD) as [number, number][], spineX, neckY);
-  const rightPts = shoulderFirstPolyline(getPathPoints(rightArmD) as [number, number][], spineX, neckY);
+  const leftLegChain = getPathPoints(leftLegChainD) as [number, number][];
+  const rightLegChain = getPathPoints(rightLegChainD) as [number, number][];
 
-  const shPts = getPathPoints(shoulderD) as [number, number][];
+  const shPts = getPathPoints(shoulderArmChainD) as [number, number][];
   if (shPts.length < 5) throw new Error("[gridModelRig] 肩ポリラインの頂点数が不足");
+  if (leftLegChain.length < 3 || rightLegChain.length < 3) {
+    throw new Error("[gridModelRig] 脚チェーンの頂点数が不足");
+  }
 
   const [p0, p1, p2, p3, p4] = [shPts[0]!, shPts[1]!, shPts[2]!, shPts[3]!, shPts[4]!];
-  const path7 = dFromPts([p0, p1], 4);
-  const path6 = dFromPts([p1, p2], 4);
-  const path5 = dFromPts([p3, p2], 4);
-  const path8 = dFromPts([p3, p4], 4);
+  const path1 = dFromPts([p3, p4], 4); // arm_L
+  const path2 = dFromPts([p1, p0], 4); // arm_R
+  const path5 = dFromPts([p3, p2], 4); // sholder_L
+  const path6 = dFromPts([p1, p2], 4); // sholder_R
 
-  const yLegStart = Math.max(...spinePts.map(([, y]) => y));
-  const legLo = spineX - legOffsetFromSpine;
-  const legHi = spineX + legOffsetFromSpine;
-  const path3 = dFromPts(
-    [
-      [legLo, yLegStart],
-      [legLo, GRID_MODEL_RIG_VIEWBOX_H],
-    ],
-    4
-  );
-  const path4 = dFromPts(
-    [
-      [legHi, yLegStart],
-      [legHi, GRID_MODEL_RIG_VIEWBOX_H],
-    ],
-    4
-  );
+  const [leftHipBase, leftHipOuter, leftFoot] = [leftLegChain[0]!, leftLegChain[1]!, leftLegChain[2]!];
+  const [rightHipBase, rightHipOuter, rightFoot] = [rightLegChain[0]!, rightLegChain[1]!, rightLegChain[2]!];
+  const path3 = dFromPts([leftHipOuter, leftFoot], 4); // leg_L
+  const path4 = dFromPts([rightHipOuter, rightFoot], 4); // leg_R
+  const path7 = dFromPts([leftHipBase, leftHipOuter], 4); // hip_L
+  const path8 = dFromPts([rightHipBase, rightHipOuter], 4); // hip_R
 
   return [
     dFromPts(spinePts, 4),
-    dFromPts(leftPts, 4),
-    dFromPts(rightPts, 4),
+    path1,
+    path2,
     path3,
     path4,
     path5,

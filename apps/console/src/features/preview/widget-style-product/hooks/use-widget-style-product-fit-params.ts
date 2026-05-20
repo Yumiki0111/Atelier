@@ -37,13 +37,13 @@ export function useWidgetStyleProductFitParams(options: {
       return;
     }
 
-    const ac = new AbortController();
+    let cancelled = false;
     void (async () => {
       try {
         const res = await authenticatedFetch("/api/auth/profile", {
-          signal: ac.signal,
           cache: "no-store",
         });
+        if (cancelled) return;
         if (!res.ok) {
           const local = loadPreviewFit();
           setFitHeightCm(local.heightCm);
@@ -54,6 +54,7 @@ export function useWidgetStyleProductFitParams(options: {
           preview_fit_height_cm?: number | null;
           preview_fit_body_val?: number | null;
         };
+        if (cancelled) return;
         const h = p.preview_fit_height_cm;
         const b = p.preview_fit_body_val;
         if (
@@ -70,13 +71,16 @@ export function useWidgetStyleProductFitParams(options: {
           setFitBodyVal(local.bodyVal);
         }
       } catch (e) {
+        if (cancelled) return;
         if (e instanceof Error && e.name === "AbortError") return;
         const local = loadPreviewFit();
         setFitHeightCm(local.heightCm);
         setFitBodyVal(local.bodyVal);
       }
     })();
-    return () => ac.abort();
+    return () => {
+      cancelled = true;
+    };
   }, [embedPublicWidget, authLoading, isAuthenticated]);
 
   return { fitHeightCm, fitBodyVal, setFitHeightCm, setFitBodyVal };

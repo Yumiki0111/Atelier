@@ -883,22 +883,6 @@ export function updateModalWithConfig(
 
     bodyAdjustOverlay.appendChild(controls);
 
-    // #region agent log
-    fetch("http://127.0.0.1:7468/ingest/8ae11b2e-0353-49f9-add8-94485bd038d3", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "38ca00" },
-      body: JSON.stringify({
-        sessionId: "38ca00",
-        runId: "widget-body-controls",
-        hypothesisId: "H-widget-slider-gap",
-        location: "widget-modal-update-config.ts:bodyAdjustControlsMount",
-        message: "body adjust controls mounted (label/range spacing tune)",
-        data: { labelLineHeight: 1, labelMarginBottomPx: 2, rangeMargin: 0 },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-
     const ctaPad =
       "padding:8px 12px;padding-bottom:max(12px, env(safe-area-inset-bottom));flex-shrink:0;background:" +
         interfaceBg +

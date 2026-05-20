@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
 import { DevelopmentProductRegisterPanel } from "./DevelopmentProductRegisterPanel";
@@ -39,10 +40,18 @@ export default function DevelopmentPage() {
       <div className="mt-3 flex flex-col gap-3 border-t border-[#EEEEEE] bg-background pt-4 lg:gap-4 lg:pt-5">
         <div className="shrink-0">
           <h2 className="text-sm font-semibold text-foreground">フィット調整</h2>
-          <p className="mt-1 max-w-xl text-[11px] leading-relaxed text-muted-foreground">
-            Garment 平置き cm グレード（path id × ゾーンに基づく変形）。プレビュー・ウィジェットは登録済みの{" "}
-            <code className="text-[10px]">garment_spec</code> と同じ計算を参照します。
-          </p>
+        <p className="mt-1 max-w-xl text-[11px] leading-relaxed text-muted-foreground">
+          Garment 平置き cm グレード（path id × ゾーンに基づく変形）。プレビュー・ウィジェットは登録済みの{" "}
+          <code className="text-[10px]">garment_spec</code> と同じ計算を参照します。
+        </p>
+        <p className="mt-2 text-[11px]">
+          <Link
+            href="/development/fitting/body-scale-lab"
+            className="text-foreground underline underline-offset-2 hover:text-foreground/80"
+          >
+            体型ワープ・ラボ（格子モデル身長ロジックの単独実験）
+          </Link>
+        </p>
         </div>
         <GarmentFlatCmGradingFitting
           ref={garmentFlatCmGradingRef}

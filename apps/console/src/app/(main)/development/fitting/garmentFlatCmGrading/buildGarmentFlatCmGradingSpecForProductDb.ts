@@ -3,6 +3,7 @@ import { GARMENT_FLAT_CM_PRESET_ID } from "@/app/(main)/development/fitting/garm
 import { RIG_LINE_PATH_COUNT } from "@/lib/fitting-compute/fittingCanvasRigAlign";
 import {
   GARMENT_FLAT_CM_PATH_ZONES,
+  GARMENT_FLAT_CM_BACK_LAYER_IDS,
   CX,
   MEASURE_BODY_LENGTH_Y1,
   SH_L_X,
@@ -13,7 +14,9 @@ import {
 import {
   collectGarmentFlatCmBackLayerPathElementsByIdOrder,
   collectGarmentFlatCmFrontOutlinePathElements,
+  isGarmentFlatCmOutlineExcludedPath,
   resolveGarmentFlatCmDeformZone,
+  stripGarmentFlatCmMeasureDecorations,
 } from "./garmentFlatCmGradingSvgOutline";
 import { garmentFlatCmToShapeDeltas, type GarmentFlatCm } from "./garmentFlatCmGradingMeasurements";
 import { rewriteFlatCmGarmentPath } from "./garmentFlatCmGradingPathDeform";
@@ -32,42 +35,65 @@ function normalizePathDWhitespace(d: string): string {
   return d.trim().replace(/\s+/g, " ");
 }
 
+/**
+ * 縦脊髄 1 本（M194.x 付近・上端 y≈0・`V` で下着ぐらいまで）。
+ * エクスポート由来で `V291.999` / `V292.249` や `M … 0.25V…` になるため `294` 固定はしない。
+ */
 function isLikelyGridSpinePathDForFlatCmGarment(d: string): boolean {
   const t = normalizePathDWhitespace(d);
-  return /^M\s*194\.\d+\s+0\s*V\s*294$/i.test(t);
+  /** `0V291` のように V 直前に空白が無い export が多い（Downloads/rig.svg 等） */
+  const m = /^M\s*194\.\d+\s+(0(?:\.\d+)?)\s*V\s*(\d+(?:\.\d+)?)$/i.exec(t);
+  if (!m) return false;
+  const vy = Number.parseFloat(m[2]!);
+  return Number.isFinite(vy) && vy >= 285 && vy <= 300;
 }
 
-/**
- * Figma 等の「フラット export」では `#rig` 無しで先頭に9本のリグ path が並ぶことがある。
- * 先頭 path が脊髄線なら、先頭9本を `<g id="rig">` に束ねる（`collectOutlinePaths` ・リグ非表示と整合）。
- */
-export function ensureGarmentFlatCmRigGroupOnClonedSvg(svgRoot: SVGSVGElement): void {
-  if (svgRoot.querySelector("#rig")) return;
+function collectGarmentFlatCmNonMeasurePathElements(root: Element): SVGPathElement[] {
   const candidates: SVGPathElement[] = [];
-  svgRoot.querySelectorAll("path").forEach((node) => {
+  root.querySelectorAll("path").forEach((node) => {
     const p = node as SVGPathElement;
-    if (p.closest("#measures")) return;
+    if (isGarmentFlatCmOutlineExcludedPath(p)) return;
     const d = p.getAttribute("d");
     if (d?.trim()) candidates.push(p);
   });
-  if (candidates.length < RIG_LINE_PATH_COUNT) return;
-  const firstD = candidates[0].getAttribute("d");
-  if (!firstD || !isLikelyGridSpinePathDForFlatCmGarment(firstD)) return;
+  return candidates;
+}
+
+/** document 順で、脊髄とみなせる path から続く 9 本（格子リグ塊）。 */
+function findFlatCmGridNinePathBlock(candidates: SVGPathElement[]): SVGPathElement[] | null {
+  if (candidates.length < RIG_LINE_PATH_COUNT) return null;
+  for (let i = 0; i <= candidates.length - RIG_LINE_PATH_COUNT; i++) {
+    const d0 = candidates[i]!.getAttribute("d");
+    if (!d0 || !isLikelyGridSpinePathDForFlatCmGarment(d0)) continue;
+    return candidates.slice(i, i + RIG_LINE_PATH_COUNT);
+  }
+  return null;
+}
+
+/**
+ * Figma 等の「フラット export」では `#rig` 無しで 9 本のリグ path が並ぶことがある。
+ * document 順で最初に現れる脊髄（M194.x…）から **連続 9 本**を `<g id="rig">` に束ねる。
+ * リグは先頭でなくてもよい（計測の赤線や本体パスが前にあっても可）。
+ */
+export function ensureGarmentFlatCmRigGroupOnClonedSvg(svgRoot: SVGSVGElement): void {
+  if (svgRoot.querySelector("#rig")) return;
+  const candidates = collectGarmentFlatCmNonMeasurePathElements(svgRoot);
+  const rigPaths = findFlatCmGridNinePathBlock(candidates);
+  if (!rigPaths) return;
   const doc = svgRoot.ownerDocument;
   if (!doc) return;
-  const rigPaths = candidates.slice(0, RIG_LINE_PATH_COUNT);
-  const parent = rigPaths[0].parentNode;
+  const parent = rigPaths[0]!.parentNode;
   if (!parent) return;
   const rigG = doc.createElementNS(SVG_NS, "g");
   rigG.setAttribute("id", "rig");
-  parent.insertBefore(rigG, rigPaths[0]);
+  parent.insertBefore(rigG, rigPaths[0]!);
   for (const p of rigPaths) {
     rigG.appendChild(p);
   }
 }
 
 /**
- * `#rig` があればその子 path。無い場合はフラット export 前提で document 順の先頭9本（1本目が脊髄でないと null）。
+ * `#rig` があればその子 path。無い場合はフラット export 前提で document 順の連続9本（いずれかの位置で1本目が脊髄）。
  */
 export function collectGarmentFlatCmRigPathDsFromSvgRoot(root: Element): string[] | null {
   const rigG = root.querySelector("#rig");
@@ -78,17 +104,10 @@ export function collectGarmentFlatCmRigPathDsFromSvgRoot(root: Element): string[
       .filter((d): d is string => d != null && d.trim().length > 0);
     return rigDomDs.length === RIG_LINE_PATH_COUNT ? rigDomDs : null;
   }
-  const candidates: SVGPathElement[] = [];
-  root.querySelectorAll("path").forEach((node) => {
-    const p = node as SVGPathElement;
-    if (p.closest("#measures")) return;
-    const d = p.getAttribute("d");
-    if (d?.trim()) candidates.push(p);
-  });
-  if (candidates.length < RIG_LINE_PATH_COUNT) return null;
-  const firstD = candidates[0].getAttribute("d");
-  if (!firstD || !isLikelyGridSpinePathDForFlatCmGarment(firstD)) return null;
-  return candidates.slice(0, RIG_LINE_PATH_COUNT).map((p) => p.getAttribute("d")!.trim());
+  const candidates = collectGarmentFlatCmNonMeasurePathElements(root);
+  const block = findFlatCmGridNinePathBlock(candidates);
+  if (!block) return null;
+  return block.map((p) => p.getAttribute("d")!.trim());
 }
 
 /** 服 SVG アップロード検証: パース →（必要なら）フラットリグを `#rig` 化 →9本確認 */
@@ -108,7 +127,7 @@ export function garmentFlatCmRigMarkupValidationError(markup: string): string | 
   ensureGarmentFlatCmRigGroupOnClonedSvg(svgRoot);
   const ds = collectGarmentFlatCmRigPathDsFromSvgRoot(svgRoot);
   if (!ds || ds.length !== RIG_LINE_PATH_COUNT) {
-    return "リグを認識できません。#rig に9本の path を入れるか、格子モデルと同じ順で先頭9本を並べ（1本目は脊髄 M194.x 0V294）、または標準と同じ <g id=\"rig\"> で囲んでください。";
+    return "リグを認識できません。#rig に9本の path を入れるか、格子と同じ順の黒リグ9本を連続で置く（先頭は脊髄 M194.x 0付近の縦線。V294 以外の小数も可）。計測は #measures 内推奨。標準どおり <g id=\"rig\"> で囲んでも構いません。";
   }
   return null;
 }
@@ -181,6 +200,7 @@ export function extractFlatCmBaseGarmentSlicesFromMarkup(garmentSvgMarkup: strin
   }
   const svgRoot = srcRoot as unknown as SVGSVGElement;
   ensureGarmentFlatCmRigGroupOnClonedSvg(svgRoot);
+  stripGarmentFlatCmMeasureDecorations(svgRoot);
   const outlinePaths = collectGarmentFlatCmFrontOutlinePathElements(svgRoot);
   if (outlinePaths.length === 0) return null;
   const flatCmOutlinePathIds: string[] = [];
@@ -241,9 +261,11 @@ export function applyGarmentFlatCmGradeToParsedSvgRoot(
       const p = behindEls[i]!;
       const orig = bb.pathDs[i]!;
       const pathId = bb.pathIds?.[i] ?? p.getAttribute("id")?.trim() ?? "";
+      const canonBackId = GARMENT_FLAT_CM_BACK_LAYER_IDS[i];
       const zone =
         bb.pathZones?.[i] ??
         (pathId ? GARMENT_FLAT_CM_PATH_ZONES[pathId] : undefined) ??
+        (canonBackId ? GARMENT_FLAT_CM_PATH_ZONES[canonBackId] : undefined) ??
         ("body" as GarmentFlatCmZone);
       p.setAttribute("d", rewriteFlatCmGarmentPath(orig, zone, dSh, dBw, dBl, dSleeveLengthPx));
     }

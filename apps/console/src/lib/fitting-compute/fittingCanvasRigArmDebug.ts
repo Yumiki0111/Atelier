@@ -94,7 +94,7 @@ export function buildRigArmAngleDebug(params: {
   const warpedArmAxisDegR = rigSegmentAxisDeg(shR, wrR);
   const refWarpedArmAxisDegL = rigSegmentAxisDeg(refShL, refWrL);
   const refWarpedArmAxisDegR = rigSegmentAxisDeg(refShR, refWrR);
-  const dt = skinDeltaThetaOverride ?? getDeltaThetas(height, weight);
+  const dt = skinDeltaThetaOverride ?? getDeltaThetas(height, weight, REF_HEIGHT_CM);
   const radToDeg = 180 / Math.PI;
 
   return {

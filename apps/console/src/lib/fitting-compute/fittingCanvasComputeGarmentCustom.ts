@@ -3,7 +3,10 @@ import { BODY_CX, REF_HEIGHT_CM } from "@/app/(main)/development/fitting/lib/con
 import { gridRigVectorPointToBodyTemplate } from "@/app/(main)/development/fitting/lib/rig/gridModelRigExtract";
 import { inferLandmarksFromRigPaths } from "@/app/(main)/development/fitting/lib/garment/customLandmarkResolve";
 import { buildCustomTransformedPathsWithVertexPlots } from "@/app/(main)/development/fitting/lib/customGarmentUtils";
-import type { FittingCanvasRigLandmarksDebug } from "./fittingCanvasComputeTypes";
+import type {
+  FittingCanvasRigLandmarksDebug,
+  FittingShoulderFollowOptions,
+} from "./fittingCanvasComputeTypes";
 import { assembleCustomGarmentOverlayAndShoulderDebug } from "./fittingCanvasComputeGarmentCustomOverlay";
 import { smootherStep } from "./fittingCanvasRigArmDebug";
 import { rigidMapFromShoulderSegmentPair, RIG_LINE_SPINE } from "./fittingCanvasRigAlign";
@@ -19,6 +22,27 @@ import { getAllPathPoints } from "@/app/(main)/development/fitting/lib/fittingCo
 import { getPathPoints, interpolatePath, tPath } from "@/app/(main)/development/fitting/lib/pathUtils";
 import { bboxCenterXFromPathDs, bboxCenterXFromPoints } from "./fittingCanvasComputeGarmentCustomBbox";
 import { isGarmentFlatCmPresetId } from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmPreset";
+import {
+  GARMENT_FLAT_CM_PATH_ZONES,
+  GARMENT_FLAT_CM_BACK_LAYER_IDS,
+  type GarmentFlatCmZone,
+} from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmGradingConstants";
+import { rewriteFlatCmGarmentPath } from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmGradingPathDeform";
+
+/**
+ * 体型差→服 px 局所 delta の写像。元は `./bodySizeToGarmentLocalDeltas` を import していたが、
+ * 同モジュールはユーザー判断で削除済み。後段の `noOpDelta` 早期 return が常に成立する no-op に置き換え、
+ * P4 (`bodyDiffViaGarmentLocalDeltas`) を実質無効化したまま import エラーだけを解消する。
+ */
+const bodySizeToGarmentLocalDeltas = (
+  _heightCm: number,
+  _weightKg: number
+): { dSh: number; dBw: number; dBl: number; dSleeveLengthPx: number } => ({
+  dSh: 0,
+  dBw: 0,
+  dBl: 0,
+  dSleeveLengthPx: 0,
+});
 
 function mergeBehindBodyPathLayersForCompute(data: CustomGarmentData): {
   merged: CustomGarmentData;
@@ -61,6 +85,16 @@ export type CustomGarmentBranchContext = {
   bodyShoulderContour: [number, number][];
   /** `gridSvgBody` 系: アップロード SVG は格子 viewBox。リグロック写像は model+rig 系とは別 */
   bodyModelVariant?: BodyModelVariant;
+  /**
+   * 段階導入フラグ群（フェーズ1〜4）。未指定なら従来挙動。
+   * `body-scale-lab` で確認するためのスイッチ。
+   */
+  shoulderFollowOptions?: FittingShoulderFollowOptions;
+  /**
+   * 体型由来の腕角度差分（`getDeltaThetas` 由来、ラジアン）。
+   * 服側で肩2点ターゲットの回転にも使えるよう情報として伝達するが、フェーズ3 既定では人体側で 0 化されるだけで rigid マップは脊髄 align 由来の q0/q1 をそのまま使う。
+   */
+  bodyShoulderRigDeltaThetas?: { left: number; right: number } | null;
 };
 
 export function computeCustomGarmentBranch(
@@ -82,7 +116,7 @@ export function computeCustomGarmentBranch(
   const {
     height,
     weight,
-    customGarmentData,
+    customGarmentData: customGarmentDataInput,
     rigLinePaths,
     warpRigLineRefBodyGarment,
     rigSpineAlignFnGarment,
@@ -94,7 +128,86 @@ export function computeCustomGarmentBranch(
     animProgress,
     bodyShoulderContour,
     bodyModelVariant,
+    shoulderFollowOptions,
+    bodyShoulderRigDeltaThetas,
   } = ctx;
+
+  /**
+   * フェーズ4: 体型差を服の局所伸縮へ加算する。
+   * `customGarmentDataInput.pathDs` は既にサイズ選択分の delta が乗った状態（`applyWidgetSizeToCustomGarmentData` 後）。
+   * 平置き cm 変形は zone ごとに線形なので、**現在 pathDs に対して body 由来 delta を更に加算的に rewrite** する。
+   * フラグ off では `customGarmentDataInput` をそのまま使い後方互換。
+   */
+  const customGarmentData: CustomGarmentData = (() => {
+    const slopeOpt = {
+      useShoulderSlopeDistribution: shoulderFollowOptions?.useShoulderSlopeDistribution,
+    };
+    if (!shoulderFollowOptions?.bodyDiffViaGarmentLocalDeltas) {
+      return customGarmentDataInput;
+    }
+    if (!isGarmentFlatCmPresetId(customGarmentDataInput.presetId)) {
+      return customGarmentDataInput;
+    }
+    const bodyDeltas = bodySizeToGarmentLocalDeltas(height, weight);
+    const noOpDelta =
+      Math.abs(bodyDeltas.dSh) < 1e-9 &&
+      Math.abs(bodyDeltas.dBw) < 1e-9 &&
+      Math.abs(bodyDeltas.dBl) < 1e-9 &&
+      Math.abs(bodyDeltas.dSleeveLengthPx) < 1e-9;
+    if (noOpDelta) return customGarmentDataInput;
+
+    const outlineIds = customGarmentDataInput.flatCmOutlinePathIds;
+    if (outlineIds == null || outlineIds.length !== customGarmentDataInput.pathDs.length) {
+      return customGarmentDataInput;
+    }
+    const resolveZone = (i: number, pathId: string): GarmentFlatCmZone | undefined =>
+      customGarmentDataInput.flatCmOutlinePathZones?.[i] ?? GARMENT_FLAT_CM_PATH_ZONES[pathId];
+
+    const newPathDs = customGarmentDataInput.pathDs.map((curD, i) => {
+      const pathId = outlineIds[i];
+      if (pathId == null) return curD;
+      const zone = resolveZone(i, pathId);
+      if (!zone || curD == null || curD.length === 0) return curD ?? "";
+      return rewriteFlatCmGarmentPath(
+        curD,
+        zone,
+        bodyDeltas.dSh,
+        bodyDeltas.dBw,
+        bodyDeltas.dBl,
+        bodyDeltas.dSleeveLengthPx,
+        slopeOpt
+      );
+    });
+
+    let newBehindBody = customGarmentDataInput.behindBody;
+    const behind = customGarmentDataInput.behindBody;
+    if (behind?.pathDs?.length) {
+      const behindNew = behind.pathDs.map((curD, i) => {
+        const pathId = behind.pathIds?.[i] ?? "";
+        const canonId = GARMENT_FLAT_CM_BACK_LAYER_IDS[i];
+        const zone =
+          (pathId ? GARMENT_FLAT_CM_PATH_ZONES[pathId] : undefined) ??
+          (canonId ? GARMENT_FLAT_CM_PATH_ZONES[canonId] : undefined);
+        if (!zone || curD == null || curD.length === 0) return curD ?? "";
+        return rewriteFlatCmGarmentPath(
+          curD,
+          zone,
+          bodyDeltas.dSh,
+          bodyDeltas.dBw,
+          bodyDeltas.dBl,
+          bodyDeltas.dSleeveLengthPx,
+          slopeOpt
+        );
+      });
+      newBehindBody = { ...behind, pathDs: behindNew };
+    }
+
+    return {
+      ...customGarmentDataInput,
+      pathDs: newPathDs,
+      ...(newBehindBody ? { behindBody: newBehindBody } : {}),
+    };
+  })();
 
   const placeDesignToTemplate = gridRigVectorPointToBodyTemplate;
 
@@ -339,19 +452,36 @@ export function computeCustomGarmentBranch(
     customPoints = customPoints.map(([x, y]) => [x + sh, y] as [number, number]);
   }
 
+  /**
+   * フェーズ1: 格子ボディでも肩2点剛体追従を有効化する。
+   * 既存挙動は「格子は平行移動のみ（袖口の向きが身長でズレる懸念）」だったが、
+   * `useShoulderRigidFollowAllModes` で剛体追従に切替可能（フェーズ2 の肩スロープ分配と組み合わせて
+   * 肩浮き・腕下回り込みを抑える）。
+   */
+  const gridGarmentBypassRigidFabric =
+    !shoulderFollowOptions?.useShoulderRigidFollowAllModes &&
+    (bodyModelVariant === "gridSvgBody" || bodyModelVariant === "gridSvgBodyBack");
+
   const customGarmentFabricRigViewWarp: (x: number, y: number) => [number, number] = (() => {
     const translateOnly = (x: number, y: number): [number, number] => {
       const refW = warpRigLineRefBodyGarment(x, y);
-      if (rigNeckAnchorTranslateOnlyFnGarment) {
-        return rigNeckAnchorTranslateOnlyFnGarment(refW[0], refW[1]);
+      const [rx, ry] = refW;
+      if (gridGarmentBypassRigidFabric) {
+        return refW;
       }
-      if (rigSpineTranslateOnlyFnGarment) {
-        return rigSpineTranslateOnlyFnGarment(refW[0], refW[1]);
+      if (rigNeckAnchorTranslateOnlyFnGarment != null) {
+        return rigNeckAnchorTranslateOnlyFnGarment(rx, ry);
+      }
+      if (rigSpineTranslateOnlyFnGarment != null) {
+        return rigSpineTranslateOnlyFnGarment(rx, ry);
       }
       return refW;
     };
     /** 既定ボディも検証ボディも同一: ref ワープ → 肩2点の脊髄合わせ後位置で剛体マップ（浮き制御はここで行う） */
     if (!rigSpineAlignFnGarment) return translateOnly;
+    if (gridGarmentBypassRigidFabric) {
+      return translateOnly;
+    }
     const [rslx, rsly] = placeDesignToTemplate(fabricShoulderLx, shoulderSeamY);
     const [rsrx, rsry] = placeDesignToTemplate(fabricShoulderRx, shoulderSeamY);
     const alx = rslx;
@@ -361,12 +491,36 @@ export function computeCustomGarmentBranch(
     const sx = templateShiftXLocked;
     const p0 = warpRigLineRefBodyGarment(alx + sx, aly) as [number, number];
     const p1 = warpRigLineRefBodyGarment(arx + sx, ary) as [number, number];
-    const q0 = rigSpineAlignFnGarment(p0[0], p0[1]);
-    const q1 = rigSpineAlignFnGarment(p1[0], p1[1]);
+    let q0 = rigSpineAlignFnGarment(p0[0], p0[1]);
+    let q1 = rigSpineAlignFnGarment(p1[0], p1[1]);
+    /**
+     * フェーズ3: 人体側で Δθ を 0 化したぶんを服側で吸収する。
+     * 肩2点目標 (q0_L, q1_R) を肩中点まわりで Δθ_L / -Δθ_R 回転し、
+     * 肩線がΔθの分だけ「ねじれる」ように rigid マップへ投入する。
+     * `bodyRigFreezeArmAngle` が立っていない（=人体スキニングが従来どおり腕角を反映）ときは、
+     * 二重適用を避けるためここはスキップ。
+     */
+    if (
+      shoulderFollowOptions?.bodyRigFreezeArmAngle === true &&
+      bodyShoulderRigDeltaThetas != null &&
+      (Math.abs(bodyShoulderRigDeltaThetas.left) > 1e-9 ||
+        Math.abs(bodyShoulderRigDeltaThetas.right) > 1e-9)
+    ) {
+      const cqx = (q0[0] + q1[0]) / 2;
+      const cqy = (q0[1] + q1[1]) / 2;
+      const rotateAround = (p: [number, number], theta: number): [number, number] => {
+        const dx = p[0] - cqx;
+        const dy = p[1] - cqy;
+        const c = Math.cos(theta);
+        const s = Math.sin(theta);
+        return [cqx + dx * c - dy * s, cqy + dx * s + dy * c];
+      };
+      q0 = rotateAround(q0, bodyShoulderRigDeltaThetas.left);
+      q1 = rotateAround(q1, -bodyShoulderRigDeltaThetas.right);
+    }
     const rigidMap = rigidMapFromShoulderSegmentPair(p0, p1, q0, q1);
     if (rigidMap == null) return translateOnly;
-    return (x: number, y: number) =>
-      rigidMap(warpRigLineRefBodyGarment(x, y) as [number, number]);
+    return (x: number, y: number) => rigidMap(warpRigLineRefBodyGarment(x, y) as [number, number]);
   })();
 
   /** デザイン座標 → canvas。place → テンプレ X シフト → fabric ワープ */

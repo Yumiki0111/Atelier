@@ -19,7 +19,7 @@ export const GRID_BODY_PATH_OVERLAP_FRONT = {
   pathCount: 22,
   illustratedPathCount: 13,
   heuristicByPath: ["lateralOrSleeve","lateralOrSleeve","lateralOrSleeve","lowerBody","lowerBody","lowerBody","lowerBody","headNeckUpper","headNeckUpper","lateralOrSleeve","lateralOrSleeve","lateralOrSleeve","lateralOrSleeve","rigTail","rigTail","rigTail","rigTail","rigTail","rigTail","rigTail","rigTail","rigTail"] as const satisfies readonly GridBodyPathHeuristicKind[],
-  pathAdjacencyDescending: [[5,6,70],[3,4,70],[11,12,51],[9,10,51],[1,2,17],[7,8,10]] as readonly (readonly [number, number, number])[],
+  pathAdjacencyDescending: [[5,6,70],[3,4,70],[9,10,52],[11,12,51],[1,2,17],[7,8,10]] as readonly (readonly [number, number, number])[],
   illustratedCrossKindBridging: [[0,8,4]] as readonly (readonly [number, number, number])[],
   torsoLateralBridging: [] as readonly (readonly [number, number, number])[],
 } as const;

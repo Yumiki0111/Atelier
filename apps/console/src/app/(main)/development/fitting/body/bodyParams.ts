@@ -1,3 +1,5 @@
+import { PREVIEW_FIT_BODY_WEIGHT_MIN_KG } from "@Atelier/shared";
+
 import { REF_WEIGHT_KG } from "../lib/constants";
 import { yScaleFromHeightAndRigLinePaths } from "../lib/rig/rigDerivedHeight";
 
@@ -7,10 +9,9 @@ export interface BodyParams {
 }
 
 /**
- * 横幅に使う体重の下限（kg）。`sqrt(w/60)` だけだと低体重が細すぎるため、これ未満はこの値として扱う。
+ * 横幅に使う体重の下限（kg）。プレビュー体型スライダー下限と揃え、極端に細い表示を抑える。
  */
-/** これ未満は横幅をこの体重相当に（プレビュー体重レンジの下限 40kg と揃える） */
-const MIN_WEIGHT_KG_FOR_X_SCALE = 40;
+const MIN_WEIGHT_KG_FOR_X_SCALE = PREVIEW_FIT_BODY_WEIGHT_MIN_KG;
 
 /**
  * 身長・体重からワープ用スケールを返す。

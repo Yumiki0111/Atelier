@@ -8,7 +8,9 @@ import { garmentFlatCmToShapeDeltas } from "./garmentFlatCmGradingMeasurements";
 import { isGarmentFlatCmPresetId } from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmPreset";
 import { rewriteFlatCmGarmentPath } from "./garmentFlatCmGradingPathDeform";
 import {
+  collectGarmentFlatCmBackLayerPathElementsByIdOrder,
   collectGarmentFlatCmOutlinePathElements,
+  firstGarmentFlatCmBackLayerElement,
   resolveGarmentFlatCmDeformZone,
 } from "./garmentFlatCmGradingSvgOutline";
 
@@ -78,9 +80,7 @@ export function computeGarmentFlatCmLayersFromMarkup(
   const pathStrokes: (string | undefined)[] = [];
   const pathFills: (string | undefined)[] = [];
 
-  for (const id of GARMENT_FLAT_CM_BACK_LAYER_IDS) {
-    const p = working.querySelector(`#${CSS.escape(id)}`) as SVGPathElement | null;
-    if (!p) continue;
+  for (const p of collectGarmentFlatCmBackLayerPathElementsByIdOrder(working)) {
     const d = p.getAttribute("d");
     if (d == null || d.trim().length === 0) continue;
     const pres = pathPresentationFromEl(p);
@@ -101,7 +101,7 @@ export function computeGarmentFlatCmLayersFromMarkup(
 
   const frontRoot = working.cloneNode(true) as SVGSVGElement;
   for (const id of GARMENT_FLAT_CM_BACK_LAYER_IDS) {
-    frontRoot.querySelector(`#${CSS.escape(id)}`)?.remove();
+    firstGarmentFlatCmBackLayerElement(frontRoot, id)?.remove();
   }
   frontRoot.querySelector("#rig")?.setAttribute("display", "none");
 

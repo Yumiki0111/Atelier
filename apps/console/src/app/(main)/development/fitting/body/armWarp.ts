@@ -13,6 +13,13 @@ import { warp, type WarpOptions } from "./bodyWarp";
 
 const ARM_KEYS = ARM_OUTLINE_HEIGHT_KEYS.slice().sort((a, b) => a - b);
 
+/** 腕の上腕方向（ワープ後ベクトル）。身長スライダで `yScale` が変わっても向きがぶれないよう REF 体型のワープで固定する */
+const REF_ARM_AXIS_FRAME = (() => {
+  const { yScale, xScale } = getBodyParams(REF_HEIGHT_CM, REF_WEIGHT_KG, null);
+  return { yScale, xScale, zones: getZonesAnchored(yScale) };
+})();
+const REF_ARM_AXIS_WOPTS: WarpOptions = { heightCm: REF_HEIGHT_CM };
+
 /**
  * モデル腕の肩付け：デザイン上の肩線 X（外側肩の列）は固定し、Y だけ `warp` する。
  * `warp` の肩〜胴ブレンドで X が動くとリグ角が崩れるため、腕リグの原点だけここに揃える。
@@ -116,11 +123,15 @@ export function warpArmOutlineAlongArm(
   });
 }
 
+/** ワープ後の腕リグ肩→先の単位方向。指定時は REF 固定軸の代わりにアウトライン沿線をリグへ合わせる */
+export type RigWarpedArmUnitDir = { dirX: number; dirY: number };
+
 /**
  * モデル腕のスケール（脇山での切り替え・平行移動は行わない）:
- * - **肩線**: デザイン肩 X 固定・Y のみ `warp`（`armShoulderPivotOnFixedSeam`）。
+ * - **肩線**: 既定はデザイン肩 X 固定・Y のみ `warp`（`armShoulderPivotOnFixedSeam`）。格子胴では `templatePointWarp` を渡し肩・手首を胴と同一の `lineArt*` 写像へ。
  * - **沿線長**: 肩〜手首は **現在体型で `warp(肩)`→`warp(手首)` の射影** ÷ デザイン沿線長。
- * - **リグ方向**: `warp(手首, xScale=1)`（身長のみ）で上腕の方位が体重でぶれないようにする。
+ * - **リグ方向**: 既定は基準体型（`REF_HEIGHT_CM` / `REF_WEIGHT_KG`）で `warp(手首, xScale=1)`−肩 を単位化した固定方向。
+ *   `rigWarpedUnitDir` を渡すと **赤リグのワープ後方向**を優先し、身長スライダでもリグとアウトラインの上腕角を一致させる。
  * - **全頂点**: 同一の沿線スケール `alongScale` と直交 `perpScale=1` で変形（交点専用ロジックなし）。
  */
 export function warpArmOutlineAlongRefFixedAxis(
@@ -129,7 +140,11 @@ export function warpArmOutlineAlongRefFixedAxis(
   yScale: number,
   xScale: number,
   zones: BodyZones,
-  wopts?: WarpOptions
+  wopts?: WarpOptions,
+  /** 格子線形胴: 肩・手首の現在座標を胴シルエットと同一写像にし、肩ライン（特に Y）を身長可変でも固定して一致させる */
+  templatePointWarp?: TemplatePointWarpFn,
+  /** 格子: `warpRigLineAtIdx` 後の左右腕リグの単位方向（肩ピボット→先端）。未指定時は REF 固定軸 */
+  rigWarpedUnitDir?: RigWarpedArmUnitDir
 ): [number, number][] {
   if (armOutline.length === 0) return [];
 
@@ -138,21 +153,44 @@ export function warpArmOutlineAlongRefFixedAxis(
   const [sx, sy] = shoulder;
   const [wx, wy] = wrist;
 
-  const shoulderWarped = armShoulderPivotOnFixedSeam(sx, sy, yScale, xScale, zones, wopts);
-  const currWristW = warp(wx, wy, yScale, xScale, zones, wopts);
-  /** 肩〜手首の向きは身長のみ（xScale=1）。体重の横ワープで上腕の方位が変わらないようにする。 */
-  const wristForAxis = warp(wx, wy, yScale, 1, zones, wopts);
+  const shoulderWarped = templatePointWarp
+    ? templatePointWarp(sx, sy)
+    : armShoulderPivotOnFixedSeam(sx, sy, yScale, xScale, zones, wopts);
+  const currWristW = templatePointWarp
+    ? templatePointWarp(wx, wy)
+    : warp(wx, wy, yScale, xScale, zones, wopts);
 
-  let dirX = wristForAxis[0] - shoulderWarped[0];
-  let dirY = wristForAxis[1] - shoulderWarped[1];
-  let dirLen = Math.hypot(dirX, dirY);
-  if (dirLen < 1e-9) {
-    dirX = isLeft ? -0.7 : 0.7;
-    dirY = 0.7;
-    dirLen = Math.hypot(dirX, dirY) || 1;
+  let dirX: number;
+  let dirY: number;
+  const rigLen = rigWarpedUnitDir
+    ? Math.hypot(rigWarpedUnitDir.dirX, rigWarpedUnitDir.dirY)
+    : 0;
+  if (rigWarpedUnitDir && rigLen > 1e-9) {
+    dirX = rigWarpedUnitDir.dirX / rigLen;
+    dirY = rigWarpedUnitDir.dirY / rigLen;
+  } else {
+    /** 向きだけ REF 体型ワープ（身長スライダでは yScale が変わるため、現行 yScale だと上腕角がぶれる） */
+    const shoulderAxisRef = armShoulderPivotOnFixedSeam(
+      sx,
+      sy,
+      REF_ARM_AXIS_FRAME.yScale,
+      REF_ARM_AXIS_FRAME.xScale,
+      REF_ARM_AXIS_FRAME.zones,
+      REF_ARM_AXIS_WOPTS
+    );
+    const wristForAxis = warp(wx, wy, REF_ARM_AXIS_FRAME.yScale, 1, REF_ARM_AXIS_FRAME.zones, REF_ARM_AXIS_WOPTS);
+
+    let rdx = wristForAxis[0] - shoulderAxisRef[0];
+    let rdy = wristForAxis[1] - shoulderAxisRef[1];
+    let rdirLen = Math.hypot(rdx, rdy);
+    if (rdirLen < 1e-9) {
+      rdx = isLeft ? -0.7 : 0.7;
+      rdy = 0.7;
+      rdirLen = Math.hypot(rdx, rdy) || 1;
+    }
+    dirX = rdx / rdirLen;
+    dirY = rdy / rdirLen;
   }
-  dirX /= dirLen;
-  dirY /= dirLen;
   const perpX = -dirY;
   const perpY = dirX;
 
@@ -190,8 +228,11 @@ export function warpArmOutlineAlongRefFixedAxis(
   return legacy;
 }
 
-/** テンプレ肩をワープ後座標へ（既定は固定縫い目肩）。格子ボディ等では `lineArtLinearWarp` を渡して胴と連続にする。 */
-export type ShoulderWarpFromTemplateFn = (sx: number, sy: number) => [number, number];
+/** テンプレ (x,y) を画面上の胴と同じ写像へ（格子 `lineArt*` と共有）。 */
+export type TemplatePointWarpFn = (x: number, y: number) => [number, number];
+
+/** @deprecated {@link TemplatePointWarpFn} */
+export type ShoulderWarpFromTemplateFn = TemplatePointWarpFn;
 
 /** 既定: ワープ肩→手首方向へ沿線・直交を基準比でスケール（`warpArmOutlineAlongRefFixedAxis`）。 */
 export function warpArmOutline(
@@ -200,11 +241,22 @@ export function warpArmOutline(
   yScale: number,
   xScale: number,
   zones: BodyZones,
-  heightCm?: number
+  heightCm?: number,
+  templatePointWarp?: TemplatePointWarpFn,
+  rigWarpedUnitDir?: RigWarpedArmUnitDir
 ): [number, number][] {
   const wopts: WarpOptions | undefined =
     heightCm != null && Number.isFinite(heightCm) ? { heightCm } : undefined;
-  return warpArmOutlineAlongRefFixedAxis(armOutline, isLeft, yScale, xScale, zones, wopts);
+  return warpArmOutlineAlongRefFixedAxis(
+    armOutline,
+    isLeft,
+    yScale,
+    xScale,
+    zones,
+    wopts,
+    templatePointWarp,
+    rigWarpedUnitDir
+  );
 }
 
 /**
@@ -214,11 +266,31 @@ export function getWarpedArmAngles(
   yScale: number,
   xScale: number,
   zones: BodyZones,
-  heightCm: number = REF_HEIGHT_CM
+  heightCm: number = REF_HEIGHT_CM,
+  templatePointWarp?: TemplatePointWarpFn,
+  rigDirs?: { left?: RigWarpedArmUnitDir; right?: RigWarpedArmUnitDir }
 ): { leftAngle: number; rightAngle: number } {
   const { left: leftOutline, right: rightOutline } = getInterpolatedArmOutline(heightCm);
-  const leftWarped = warpArmOutline(leftOutline, true, yScale, xScale, zones, heightCm);
-  const rightWarped = warpArmOutline(rightOutline, false, yScale, xScale, zones, heightCm);
+  const leftWarped = warpArmOutline(
+    leftOutline,
+    true,
+    yScale,
+    xScale,
+    zones,
+    heightCm,
+    templatePointWarp,
+    rigDirs?.left
+  );
+  const rightWarped = warpArmOutline(
+    rightOutline,
+    false,
+    yScale,
+    xScale,
+    zones,
+    heightCm,
+    templatePointWarp,
+    rigDirs?.right
+  );
   const [l0w, l1w] = [leftWarped[0], leftWarped[leftWarped.length - 1]];
   const [r0w, r1w] = [rightWarped[0], rightWarped[rightWarped.length - 1]];
   return {
@@ -239,11 +311,26 @@ export const BASE_THETA_R = _baseAngles.rightAngle;
 /**
  * 現在体型での腕角度と、基準からの変化量 Δθ を返す。
  * スキニングでは Δθ を肩付近の頂点にウェイト付きで回転として適用する。
+ *
+ * @param armOutlineHeightCm `getInterpolatedArmOutline` に渡す身長。**省略時は `h`。** 基準外形のみ使う場合は `REF_HEIGHT_CM` を渡すと身長スライダで腕ポーズがモーフしない。
  */
-export function getDeltaThetas(h: number, w: number): { left: number; right: number } {
+export function getDeltaThetas(
+  h: number,
+  w: number,
+  armOutlineHeightCm: number = h,
+  templatePointWarp?: TemplatePointWarpFn,
+  rigDirs?: { left?: RigWarpedArmUnitDir; right?: RigWarpedArmUnitDir }
+): { left: number; right: number } {
   const { yScale, xScale } = getBodyParams(h, w);
   const zones = getZonesAnchored(yScale);
-  const { leftAngle, rightAngle } = getWarpedArmAngles(yScale, xScale, zones, h);
+  const { leftAngle, rightAngle } = getWarpedArmAngles(
+    yScale,
+    xScale,
+    zones,
+    armOutlineHeightCm,
+    templatePointWarp,
+    rigDirs
+  );
   return {
     left: leftAngle - BASE_THETA_L,
     right: rightAngle - BASE_THETA_R,

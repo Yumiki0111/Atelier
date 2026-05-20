@@ -89,15 +89,15 @@
 </g>
 </g>
 <g id="rig">
-<path id="shaft" d="M194.375 0V294" stroke="black"/>
-<path id="leg_L" d="M165.829 287.16L159.793 517" stroke="black"/>
-<path id="hip_L" d="M165.828 287.16L194.407 274.72" stroke="black"/>
-<path id="leg_R" d="M222.906 287.16L228.942 517" stroke="black"/>
-<path id="hip_R" d="M222.907 287.16L194.328 274.72" stroke="black"/>
-<path id="arm_R" d="M250.367 117.12L388.375 272" stroke="black"/>
-<path id="sholder_L" d="M138.371 117.12L194.37 94.04" stroke="black"/>
-<path id="sholder_R" d="M250.366 117.12L194.367 94.04" stroke="black"/>
-<path id="arm_L" d="M138.369 117.12L0.375 272" stroke="black"/>
+<path id="shaft" d="M194.375 0.25V292.249" stroke="black"/>
+<path id="leg_L" d="M165.829 285.409L159.793 515.249" stroke="black"/>
+<path id="hip_L" d="M165.828 285.409L194.407 272.969" stroke="black"/>
+<path id="leg_R" d="M222.906 285.409L228.942 515.249" stroke="black"/>
+<path id="hip_R" d="M222.907 285.409L194.328 272.969" stroke="black"/>
+<path id="arm_R" d="M250.367 115.369L388.375 270.249" stroke="black"/>
+<path id="sholder_L" d="M138.371 115.369L194.37 92.2891" stroke="black"/>
+<path id="sholder_R" d="M250.366 115.369L194.367 92.2891" stroke="black"/>
+<path id="arm_L" d="M138.369 115.369L0.375 270.249" stroke="black"/>
 </g>
 </g>
 <g id="measures">

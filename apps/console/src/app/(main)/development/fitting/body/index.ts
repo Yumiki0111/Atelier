@@ -22,4 +22,6 @@ export {
   warpArmOutlineAlongArm,
   warpArmOutlineAlongRefFixedAxis,
   type ShoulderWarpFromTemplateFn,
+  type TemplatePointWarpFn,
+  type RigWarpedArmUnitDir,
 } from "./armWarp";

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 /**
- * `grid-rig-vector9.svg`（= Vector (9).svg）から stroke-only の compound path `d` を 1 本だけ取り出す。
+ * `grid-body-rig.svg` から stroke-only の compound path `d` を 1 本だけ取り出す。
  * `gridModelRigExtract.extractStrokeOnlyPathDsFromSvgMarkup` と同じ判定。
  */
 export function extractStrokeCompoundDFromGridRigSvgMarkup(svg) {
@@ -23,7 +23,7 @@ export function extractStrokeCompoundDFromGridRigSvgMarkup(svg) {
 }
 
 export function readGridRigCompoundDFromRepo(repoRoot) {
-  const p = path.join(repoRoot, "apps/console/public/fitting-models/grid-rig-vector9.svg");
+  const p = path.join(repoRoot, "apps/console/public/fitting-models/grid-body-rig.svg");
   const svg = fs.readFileSync(p, "utf8");
   return extractStrokeCompoundDFromGridRigSvgMarkup(svg);
 }

@@ -73,7 +73,8 @@ export function applyWidgetSizeToCustomGarmentData(
       data.flatCmOutlinePathIds!.length === data.pathDs.length;
 
     if (explicitBaseReady) {
-      const { dSh, dBw, dBl, dSleeveLengthPx } = garmentFlatCmToShapeDeltas(targetFlatCm);
+      /** `flatCmBasePathDs` は登録時の実寸（refFlatCm）に対応するため、変形は S テンプレではなく ref→選択サイズの差分で取る */
+      const { dSh, dBw, dBl, dSleeveLengthPx } = garmentFlatCmToShapeDeltas(targetFlatCm, refFlatCm);
 
       const outlineZone = (i: number, pathId: string): GarmentFlatCmZone | undefined =>
         resolveFlatCmWidgetOutlineZone(i, pathId, data.flatCmOutlinePathZones);

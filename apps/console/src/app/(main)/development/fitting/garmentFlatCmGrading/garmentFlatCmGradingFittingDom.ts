@@ -7,6 +7,8 @@ import {
 import {
   collectGarmentFlatCmBackLayerPathElementsByIdOrder,
   collectGarmentFlatCmFrontOutlinePathElements,
+  firstGarmentFlatCmBackLayerElement,
+  stripGarmentFlatCmMeasureDecorations,
 } from "./garmentFlatCmGradingSvgOutline";
 import {
   ensureGarmentFlatCmRigGroupOnClonedSvg,
@@ -88,12 +90,9 @@ export function collectGarmentFlatCmOutlineBaseDsInOrder(srcRoot: Element): stri
  * 背面レイヤ試着用の S 基準 `d`（`GARMENT_FLAT_CM_BACK_LAYER_IDS` 順。`collectGarmentFlatCmBackLayerPathElementsByIdOrder` と同じ本数・順）。
  */
 export function collectGarmentFlatCmBehindOutlineBaseDsInOrder(srcRoot: Element): string[] {
-  const out: string[] = [];
-  for (const p of collectGarmentFlatCmBackLayerPathElementsByIdOrder(srcRoot)) {
-    const d = (p.getAttribute("d") ?? "").trim();
-    if (d.length > 0) out.push(d);
-  }
-  return out;
+  return collectGarmentFlatCmBackLayerPathElementsByIdOrder(srcRoot).map((p) =>
+    (p.getAttribute("d") ?? "").trim()
+  );
 }
 
 /**
@@ -115,13 +114,20 @@ export function installGradedGarmentDomFromMarkup(
     return false;
   }
 
-  garmentOriginalOutlineDs.current = collectGarmentFlatCmOutlineBaseDsInOrder(srcRoot);
   garmentOriginalBehindOutlineDs.current = collectGarmentFlatCmBehindOutlineBaseDsInOrder(srcRoot);
 
   const cloneFront = srcRoot.cloneNode(true) as SVGSVGElement;
   ensureGarmentFlatCmRigGroupOnClonedSvg(cloneFront);
+  /** 計測レイヤは試着・path 列挙から外す（赤線が fit に混入しないよう DOM から除去） */
+  stripGarmentFlatCmMeasureDecorations(cloneFront);
+  /**
+   * S 基準 d は「マウント後」と同じ DOM（`#rig` 確定後・計測除去後）で取る。
+   * 無いときに `ensureGarmentFlatCmRigGroupOnClonedSvg` が 9 本を移動すると、
+   * srcRoot 採取と `collectGarmentFlatCmOutlinePathElements(gFront)` の index がずれ平置き cm 変形が無効になる。
+   */
+  garmentOriginalOutlineDs.current = collectGarmentFlatCmOutlineBaseDsInOrder(cloneFront);
   for (const id of GARMENT_FLAT_CM_BACK_LAYER_IDS) {
-    cloneFront.querySelector(`#${CSS.escape(id)}`)?.remove();
+    firstGarmentFlatCmBackLayerElement(cloneFront, id)?.remove();
   }
   garmentFrontSvg.replaceChildren(...Array.from(cloneFront.children).map((n) => document.importNode(n, true)));
 
@@ -129,7 +135,7 @@ export function installGradedGarmentDomFromMarkup(
   const serializeIds = (ids: readonly string[]) =>
     ids
       .map((id) => {
-        const node = srcRoot.querySelector(`#${CSS.escape(id)}`);
+        const node = firstGarmentFlatCmBackLayerElement(srcRoot, id);
         return node ? ser.serializeToString(node) : "";
       })
       .join("");

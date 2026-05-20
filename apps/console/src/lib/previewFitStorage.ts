@@ -8,7 +8,8 @@ export type PreviewFitParams = {
 /** SSR とクライアント初回レンダーを一致させる（localStorage はマウント後に反映） */
 export const DEFAULT_PREVIEW_FIT_HEIGHT_CM = 170;
 /** `WidgetStyleProductPreview` の DEFAULT_FIT_BODY_VAL と揃える */
-export const DEFAULT_PREVIEW_FIT_BODY_VAL = 25;
+/** `weightKgFromBodyVal` とプレビュー体重レンジ変更時は、体感 ~53kg になるよう合わせる */
+export const DEFAULT_PREVIEW_FIT_BODY_VAL = 9;
 
 const DEFAULT_HEIGHT = DEFAULT_PREVIEW_FIT_HEIGHT_CM;
 const DEFAULT_BODY = DEFAULT_PREVIEW_FIT_BODY_VAL;

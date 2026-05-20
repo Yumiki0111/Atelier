@@ -12,13 +12,29 @@ export const RIG_LINE_CLAVICLE_R = 6;
 /** モデル・服 SVG のリグ path 本数（index 0..8）。肩図などは主に 0,1,2,5,6 を参照するが 7–8 も契約に含む */
 export const RIG_LINE_PATH_COUNT = MODEL_RIG_LINE_PATH_DS.length;
 
+/** 腕・鎖骨リグ: 胴の piecewise `warp` や脊髄合わせには乗せず、専用の線形＋ピボット相似のみで変形する index */
+export function rigPathUsesIndependentLimbWarp(pathIdx: number): boolean {
+  return (
+    pathIdx === RIG_LINE_ARM_L ||
+    pathIdx === RIG_LINE_ARM_R ||
+    pathIdx === RIG_LINE_CLAVICLE_L ||
+    pathIdx === RIG_LINE_CLAVICLE_R
+  );
+}
+
 /**
- * 上腕リグ(path 1/2)を肩支点で鉛直寄りに回す係数（°/cm）。0 で無効。
+ * 上腕リグ(path 1/2)を肩支点で鉛直寄りに回す係数（°/cm）。**0 で無効（身長で腕角度を変えない）**。
  * 体輪郭のリグスキン・服の `rigTemplateToRigView*` がこの腕線に合わせるため、
- * 0 にすると身長が基準からズレたとき「腕に袖が追従しにくい」ことがある。
- * 非 0 だと身長スライダーで鎖骨・脊髄に対する腕線の見かけの角も少し変わる（トレードオフ）。
+ * 非 0 だと身長スライダーで鎖骨・脊髄に対する腕線の見かけの角が変わる。
  */
-export const RIG_ARM_TOWARD_VERTICAL_DEG_PER_CM = 0.1;
+export const RIG_ARM_TOWARD_VERTICAL_DEG_PER_CM = 0;
+
+/** 身長に応じた左右腕リグの肩支点まわり回転角（ラジアン）。モデル表示・服リグ・袖側ファブリックで同じ値を使う。 */
+export function rigArmTwistRadFromHeightCm(heightCm: number): { twistL: number; twistR: number } {
+  const dh = heightCm - REF_HEIGHT_CM;
+  const k = (RIG_ARM_TOWARD_VERTICAL_DEG_PER_CM * Math.PI) / 180;
+  return { twistL: -dh * k, twistR: dh * k };
+}
 
 /** 脊髄頭側〜この割合までは全体スケールの掛かりを弱める（+Y 下で yTop が頭寄り） */
 export const RIG_ALIGN_HEAD_SPINE_FRACTION = 0.28;
@@ -55,10 +71,7 @@ export function applyRigArmAngleTiltToWarpedRigPaths(
   armRIdx: number
 ): string[] {
   if (paths.length <= armRIdx) return paths;
-  const dh = heightCm - REF_HEIGHT_CM;
-  const k = (RIG_ARM_TOWARD_VERTICAL_DEG_PER_CM * Math.PI) / 180;
-  const twistL = -dh * k;
-  const twistR = dh * k;
+  const { twistL, twistR } = rigArmTwistRadFromHeightCm(heightCm);
   if (Math.abs(twistL) < 1e-12) return paths;
   const ptsL = getPathPoints(paths[armLIdx]!);
   const ptsR = getPathPoints(paths[armRIdx]!);
