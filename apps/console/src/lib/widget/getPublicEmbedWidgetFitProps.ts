@@ -1,3 +1,4 @@
+import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { isGarmentSpecRenderable } from "@/lib/widget-fit/applyWidgetSizeToGarment";
 import { prepareFlatCmGarmentForWidgetSize } from "@/lib/widget-fit/garmentFlatCmFitPipeline";
