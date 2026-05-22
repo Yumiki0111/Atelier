@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUpdateProduct, useProduct } from "../useProducts";
 import { useAssets } from "../useAssets";
-import { createProductSchema } from "@Atelier/shared";
+import { createProductSchema, type Product } from "@Atelier/shared";
 import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { Plus, Trash2, Upload, X } from "lucide-react";
