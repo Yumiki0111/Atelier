@@ -130,7 +130,6 @@ export function WidgetStyleProductBodyAdjustOverlay(props: WidgetStyleProductBod
                   orderedSizeKeys={sizeKeys}
                   fitChestBandCategory={productCategory}
                   bodyOnly
-                  bodySheetHeightScale
                   fitEaseRevealNonce={fitEaseRevealNonce}
                   embeddedWidgetUi
                   garmentPreviewView={previewBodyView}

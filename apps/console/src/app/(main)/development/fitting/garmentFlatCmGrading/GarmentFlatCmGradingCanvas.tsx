@@ -28,7 +28,10 @@ export function GarmentFlatCmGradingCanvas({ ctx }: GarmentFlatCmGradingCanvasPr
   const {
     fitSnapFront,
     fitSnapBack,
+    showModelBody,
+    showGarment,
     showModelRig,
+    showGarmentRig,
     loadError,
     bundledAssetTexts,
     overlay,
@@ -159,7 +162,13 @@ export function GarmentFlatCmGradingCanvas({ ctx }: GarmentFlatCmGradingCanvasPr
                   試着ワープを組むには #rig 9 本が必要です。標準ガーメントを読み込むか、このエリアへ SVG をドロップしてください。
                 </p>
               ) : (
-                <GarmentFlatCmGradingFittingFitSnapSvg fitSnap={fitSnapFront} showModelRig={showModelRig} />
+                <GarmentFlatCmGradingFittingFitSnapSvg
+                  fitSnap={fitSnapFront}
+                  showModelBody={showModelBody}
+                  showGarment={showGarment}
+                  showModelRig={showModelRig}
+                  showGarmentRig={showGarmentRig}
+                />
               )}
             </div>
           </div>
@@ -194,7 +203,13 @@ export function GarmentFlatCmGradingCanvas({ ctx }: GarmentFlatCmGradingCanvasPr
                     : "左でメインの服SVGを読み込んでから、背面用 SVG をドロップできます。"}
                 </p>
               ) : (
-                <GarmentFlatCmGradingFittingFitSnapSvg fitSnap={fitSnapBack} showModelRig={showModelRig} />
+                <GarmentFlatCmGradingFittingFitSnapSvg
+                  fitSnap={fitSnapBack}
+                  showModelBody={showModelBody}
+                  showGarment={showGarment}
+                  showModelRig={showModelRig}
+                  showGarmentRig={showGarmentRig}
+                />
               )}
             </div>
           </div>

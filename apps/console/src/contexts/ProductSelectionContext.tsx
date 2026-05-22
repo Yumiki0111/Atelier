@@ -13,6 +13,8 @@ interface ProductSelectionContextType {
   selectedProduct: Product | undefined;
   selectedSize: ProductSize | undefined;
   selectProduct: (product: Product, size: ProductSize) => void;
+  /** 商品編集保存後など、選択中商品のスナップショットを最新 API 応答で差し替える */
+  replaceSelectedProduct: (product: Product) => void;
   /** プレビュー用の選択をクリア（商品削除後など） */
   clearProductSelection: () => void;
   isPreviewOpen: boolean;
@@ -64,6 +66,10 @@ export function ProductSelectionProvider({
     setSelectedSize(size);
   }, [selectedProduct?.id, selectedSize]);
 
+  const replaceSelectedProduct = useCallback((product: Product) => {
+    setSelectedProduct((prev) => (prev?.id === product.id ? product : prev));
+  }, []);
+
   const clearProductSelection = useCallback(() => {
     setSelectedProduct(undefined);
     setSelectedSize(undefined);
@@ -99,11 +105,12 @@ export function ProductSelectionProvider({
     selectedProduct,
     selectedSize,
     selectProduct,
+    replaceSelectedProduct,
     clearProductSelection,
     isPreviewOpen,
     togglePreview,
     viewStats,
-  }), [selectedProduct, selectedSize, selectProduct, clearProductSelection, isPreviewOpen, togglePreview, viewStats]);
+  }), [selectedProduct, selectedSize, selectProduct, replaceSelectedProduct, clearProductSelection, isPreviewOpen, togglePreview, viewStats]);
 
   return (
     <ProductSelectionContext.Provider value={contextValue}>

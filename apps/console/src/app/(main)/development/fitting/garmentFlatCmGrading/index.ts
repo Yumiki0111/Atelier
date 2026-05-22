@@ -1,6 +1,9 @@
 export { GarmentFlatCmGradingFitting, type GarmentFlatCmGradingFittingProps, type GarmentFlatCmGradingFittingHandle } from "./GarmentFlatCmGradingFitting";
 export * from "./garmentFlatCmGradingConstants";
-export { rewriteFlatCmGarmentPath } from "./garmentFlatCmGradingPathDeform";
+export {
+  GARMENT_FLAT_CM_DEFAULT_DEFORM_OPTIONS,
+  rewriteFlatCmGarmentPath,
+} from "./garmentFlatCmGradingPathDeform";
 export {
   garmentFlatCmToShapeDeltas,
   shapeDeltasToApproxGarmentFlatCm,
@@ -12,3 +15,14 @@ export {
   garmentFlatCmSleeveEffectivePxPerCm,
   type GarmentFlatCm,
 } from "./garmentFlatCmGradingMeasurements";
+export {
+  garmentFlatCmFromCustomGarmentSize,
+  garmentFlatCmShapeDeltasFromBase,
+} from "./garmentFlatCmGradingMeasurements";
+export {
+  prepareFlatCmGarmentForWidgetSize,
+  prepareFlatCmGarmentForEditorCm,
+  computeFlatCmGarmentFitSnapshot,
+  GRID_FLAT_CM_BODY_VARIANTS,
+} from "@/lib/widget-fit/garmentFlatCmFitPipeline";
+export { GarmentFlatCmFitSnapSvg } from "./GarmentFlatCmFitSnapSvg";

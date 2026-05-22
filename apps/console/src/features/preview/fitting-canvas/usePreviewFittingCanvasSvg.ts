@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useFittingCanvasData } from "@/app/(main)/development/fitting/canvas/useFittingCanvasData";
+import { useFlatCmGarmentFitSnapshot } from "@/lib/widget-fit/useFlatCmGarmentFitSnapshot";
 import { shouldSuppressGarmentPathRender } from "@/app/(main)/development/fitting/lib/pathUtils";
 import {
   GARMENT_FLAT_CM_GRID_BODY_SILHOUETTE_STROKE,
@@ -12,7 +12,7 @@ import {
 } from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmGradingConstants";
 import { landmarksEqual, pathDsContentEqual, sizeEqual } from "@/app/(main)/development/fitting/lib/fittingStateUtils";
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
-import { applyWidgetSizeToCustomGarmentData } from "@/lib/widget-fit/applyWidgetSizeToGarment";
+import { prepareFlatCmGarmentForWidgetSize } from "@/lib/widget-fit/garmentFlatCmFitPipeline";
 import { buildWidgetFitEaseDiagramFromSnapshot } from "@/lib/widget-fit/buildWidgetFitEaseDiagram";
 import { buildWidgetFitEaseSummaryFromSnapshot } from "@/lib/widget-fit/computeWidgetFitEaseSummary";
 import { resolveWidgetFitChestBandMode } from "@/app/(main)/development/fitting/lib/fitCalc";
@@ -32,7 +32,6 @@ export function usePreviewFittingCanvasSvg({
   orderedSizeKeys = [],
   fitChestBandCategory = null,
   bodyOnly = false,
-  bodySheetHeightScale = false,
   fitEaseRevealNonce = 0,
   embedSplashSuspended = false,
   garmentPreviewView = "front",
@@ -45,7 +44,6 @@ export function usePreviewFittingCanvasSvg({
   orderedSizeKeys?: string[];
   fitChestBandCategory?: string | null;
   bodyOnly?: boolean;
-  bodySheetHeightScale?: boolean;
   fitEaseRevealNonce?: number;
   embedSplashSuspended?: boolean;
   /** 平置き cm: 前後ボディ切替 */
@@ -60,7 +58,7 @@ export function usePreviewFittingCanvasSvg({
   const previewGarmentDefaultStrokeWidth = isGarmentFlatCm ? GARMENT_FLAT_CM_PREVIEW_GARMENT_DEFAULT_STROKE_WIDTH : 1;
 
   const sizedTarget = useMemo(
-    () => applyWidgetSizeToCustomGarmentData(customGarmentData, currentSize),
+    () => prepareFlatCmGarmentForWidgetSize(customGarmentData, currentSize),
     [customGarmentData, currentSize]
   );
 
@@ -90,8 +88,8 @@ export function usePreviewFittingCanvasSvg({
     }
     if (currentSize === sizeCommittedRef.current) return;
 
-    const fromSized = applyWidgetSizeToCustomGarmentData(customGarmentData, sizeCommittedRef.current);
-    const toSized = applyWidgetSizeToCustomGarmentData(customGarmentData, currentSize);
+    const fromSized = prepareFlatCmGarmentForWidgetSize(customGarmentData, sizeCommittedRef.current);
+    const toSized = prepareFlatCmGarmentForWidgetSize(customGarmentData, currentSize);
     const sizeOrLandmarksChanged =
       !sizeEqual(fromSized.size, toSized.size) || !landmarksEqual(fromSized.landmarks, toSized.landmarks);
     /** 平置き cm ミラーは lerp で滑らかにする */
@@ -143,24 +141,20 @@ export function usePreviewFittingCanvasSvg({
     };
   }, [fromCustom, toCustom, currentSize]);
 
-  const snap = useFittingCanvasData({
+  const snap = useFlatCmGarmentFitSnapshot({
     height: fitHeightCm,
     weight: weightKgFromBodyVal(fitBodyVal),
-    garment: "custom",
-    shirtSize: PREVIEW_SHIRT_SIZE,
-    jacketSize: PREVIEW_JACKET_SIZE,
     customGarmentData: garmentForCanvas,
+    bodyView: garmentPreviewView,
     animProgress,
-    fromSize: null,
-    toSize: null,
     fromCustomGarmentData: fromCustom
       ? resolveGarmentDataForPreviewView(fromCustom, garmentPreviewView)
       : null,
     toCustomGarmentData: toCustom
       ? resolveGarmentDataForPreviewView(toCustom, garmentPreviewView)
       : null,
-    rigBodyEnabled: false,
-    bodyModelVariant: garmentForCanvas.bodyModelVariant,
+    shirtSize: PREVIEW_SHIRT_SIZE,
+    jacketSize: PREVIEW_JACKET_SIZE,
   });
 
   const weightKg = weightKgFromBodyVal(fitBodyVal);
@@ -206,6 +200,7 @@ export function usePreviewFittingCanvasSvg({
 
   const behindBodyGarmentPathCount =
     !bodyOnly && isGarmentFlatCmPresetId(garmentForCanvas.presetId) ? snap.behindBodyPathCount : 0;
+  /** 体型シートも compute の viewBox を使う（身長だけ display を縮めると 150cm で足元が切れて体型変更時に下半身が消える） */
   const viewBoxH = snap.viewBoxHeight;
   const hasEaseDiagram = showFitEaseUi && Boolean(fitEaseDiagram?.ops?.length);
   const easeDiagramRenderable = hasEaseDiagram;

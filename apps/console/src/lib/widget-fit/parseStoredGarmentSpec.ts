@@ -56,6 +56,7 @@ export function parseStoredGarmentSpec(raw: unknown): CustomGarmentData | null {
     photoDerived: o.photoDerived as boolean | undefined,
     presetId,
     flatCmOfferedSizeLabels: o.flatCmOfferedSizeLabels as CustomGarmentData["flatCmOfferedSizeLabels"],
+    flatCmOfferedSizeCm: o.flatCmOfferedSizeCm as CustomGarmentData["flatCmOfferedSizeCm"],
     bodyModelVariant: parseStoredBodyModelVariant(o.bodyModelVariant),
     debugRigPathDs: o.debugRigPathDs as string[] | undefined,
     behindBody: pickBehindBody(o.behindBody),

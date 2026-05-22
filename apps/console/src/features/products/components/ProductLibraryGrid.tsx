@@ -116,7 +116,14 @@ function sortProducts(products: Product[], sortKey: SortKey): Product[] {
 export function ProductLibraryGrid() {
   const { shopId, canAccessDevelopment } = useAuth();
   const { data: products, isLoading, isError, error } = useProducts();
-  const { selectProduct, togglePreview, isPreviewOpen, selectedProduct, clearProductSelection } =
+  const {
+    selectProduct,
+    togglePreview,
+    isPreviewOpen,
+    selectedProduct,
+    replaceSelectedProduct,
+    clearProductSelection,
+  } =
     useProductSelection();
   const deleteProduct = useDeleteProduct();
   const bulkDeleteProducts = useBulkDeleteProducts();
@@ -546,7 +553,8 @@ export function ProductLibraryGrid() {
               setEditingProductId(null);
             }
           }}
-          onProductUpdated={() => {
+          onProductUpdated={(updated) => {
+            replaceSelectedProduct(updated);
             setEditingProductId(null);
           }}
         />

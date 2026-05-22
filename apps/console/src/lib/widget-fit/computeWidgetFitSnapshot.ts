@@ -1,8 +1,7 @@
 import "server-only";
 
-import { computeFittingCanvasSnapshot } from "@/lib/fitting-compute/fittingCanvasCompute";
-import { getBodyRigLinePathsTemplate } from "@/app/(main)/development/fitting/lib/bodyModelVariant";
 import { shouldSuppressGarmentPathRender } from "@/app/(main)/development/fitting/lib/pathUtils";
+import { computeFlatCmGarmentFitSnapshot } from "@/lib/widget-fit/garmentFlatCmFitPipeline";
 import type { CustomGarmentData, ShirtSize } from "@/app/(main)/development/fitting/lib/types";
 import type { BodyModelVariant } from "@/app/(main)/development/fitting/lib/bodyModelVariant";
 import { buildWidgetFitEaseDiagramFromSnapshot } from "@/lib/widget-fit/buildWidgetFitEaseDiagram";
@@ -18,10 +17,7 @@ import {
   resolveOrderedSizeKeysForBand,
 } from "@/lib/widget-fit/widgetFitChestBandOrdinal";
 import type { FittingCanvasSnapshot } from "@/lib/fitting-compute/fittingCanvasComputeTypes";
-import {
-  resolveGarmentDataForPreviewView,
-  type GarmentPreviewBodyView,
-} from "@/lib/widget-fit/resolveGarmentDataForPreviewView";
+import type { GarmentPreviewBodyView } from "@/lib/widget-fit/resolveGarmentDataForPreviewView";
 
 const WIDGET_FIT_EASE_DISABLED: WidgetFitEaseSummaryJson = {
   shoulderEaseCm: null,
@@ -110,27 +106,15 @@ export async function computeWidgetFitSnapshot(params: {
   fitEaseSummary: WidgetFitEaseSummaryJson;
   fitEaseDiagram: WidgetFitEaseDiagramJson | null;
 }> {
-  const garmentForSnap = resolveGarmentDataForPreviewView(
-    params.customGarmentData,
-    params.bodyView ?? "front"
-  );
-  const bodyModelVariant = garmentForSnap.bodyModelVariant;
-  const rigLinePaths = getBodyRigLinePathsTemplate(bodyModelVariant);
-  const shirtSize: ShirtSize = "48";
-  const snap = computeFittingCanvasSnapshot({
+  const snap = computeFlatCmGarmentFitSnapshot({
+    customGarmentData: params.customGarmentData,
     height: params.heightCm,
     weight: params.weightKg,
-    garment: "custom",
-    shirtSize,
+    bodyView: params.bodyView ?? "front",
+    shirtSize: "48" as ShirtSize,
     jacketSize: "4",
-    customGarmentData: garmentForSnap,
-    animProgress: 1,
-    fromSize: null,
-    toSize: null,
-    rigBodyEnabled: false,
-    bodyModelVariant,
-    rigLinePaths,
   });
+  const bodyModelVariant = snap.bodyModelVariant;
 
   const behindN = snap.behindBodyPathCount;
   const behind = collectRenderableGarmentSlice(snap, 0, behindN);

@@ -96,6 +96,7 @@ export function WidgetStyleProductPreviewServerFitViewer({
               bodyStrokeSimple={bodyStrokeSimple}
               presetId={fitData.presetId}
               bodyModelVariant={fitData.bodyModelVariant}
+              viewBoxHeight={fitData.viewBoxHeight}
               ids={{
                 fillRowKeyPrefix: "bf",
                 outlineClosedKey: "bo",

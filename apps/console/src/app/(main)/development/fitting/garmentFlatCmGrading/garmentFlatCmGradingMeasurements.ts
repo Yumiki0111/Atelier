@@ -36,7 +36,7 @@ export const GARMENT_FLAT_CM_LEGACY_SLEEVE_CM_OFFSET =
  * 差分に対してこの係数を掛けてcanvas上の広がりを抑える。
  */
 export const GARMENT_FLAT_CM_WEAR_DISPLAY_SHOULDER = 0.72;
-export const GARMENT_FLAT_CM_WEAR_DISPLAY_BODY = 0.72;
+export const GARMENT_FLAT_CM_WEAR_DISPLAY_BODY = 0.56;
 /** 袖は弧のため着丈と同じ軸で換算すると図上で胴に対して長く出やすいので差分を抑える */
 export const GARMENT_FLAT_CM_WEAR_DISPLAY_SLEEVE = 0.55;
 
@@ -102,6 +102,23 @@ export function garmentFlatCmToShapeDeltas(
   const dSleeveLengthPx = (input.sleeve - base.sleeve) * pxPerCmSleeveAxis * wearSleeve;
 
   return { dSh, dBw, dBl, dSleeveLengthPx };
+}
+
+/** 未グレード SVG（S）基準 → 目標 cm（開発・プレビュー・登録で共通） */
+export function garmentFlatCmShapeDeltasFromBase(targetCm: GarmentFlatCm) {
+  return garmentFlatCmToShapeDeltas(targetCm, GARMENT_FLAT_CM_BASE);
+}
+
+/** `size`（DB / spec）→ 平置き cm */
+export function garmentFlatCmFromCustomGarmentSize(data: {
+  size: { shoulder: number; chest: number; length: number; sleeve: number };
+}): GarmentFlatCm {
+  return {
+    shoulder: data.size.shoulder,
+    bodyWidth: data.size.chest,
+    bodyLength: data.size.length,
+    sleeve: data.size.sleeve,
+  };
 }
 
 /** 計測線から概算平置き cm（参考表示。肩・身幅は逆補正しない素の換算） */

@@ -1,5 +1,6 @@
 import type { BodyModelVariant } from "./bodyModelVariant";
 import type { FlatCmSizeKey, GarmentFlatCmZone } from "../garmentFlatCmGrading/garmentFlatCmGradingConstants";
+import type { GarmentFlatCm } from "../garmentFlatCmGrading/garmentFlatCmGradingMeasurements";
 import type { GarmentFlatCmPresetId } from "../garmentFlatCmGrading/garmentFlatCmPreset";
 
 /** 開発キャンバスでモデルより下（背面）にだけ積む path。※前面 `pathDs` と別配列 */
@@ -80,7 +81,12 @@ export interface CustomGarmentData {
    * プレビュー／ウィジェットのサイズチップ列（資産の `size` が無い場合のフォールバック）。
    * 開発登録時に保存プリセットから自動付与する。
    */
-  flatCmOfferedSizeLabels?: readonly FlatCmSizeKey[];
+  /** 登録サイズチップ表示名（XS…XXL または SIZE 1 等の任意ラベル） */
+  flatCmOfferedSizeLabels?: readonly string[];
+  /**
+   * 登録時に保存したサイズ別平置き cm（キーは `flatCmOfferedSizeLabels` と同一文字列）。
+   */
+  flatCmOfferedSizeCm?: Record<string, GarmentFlatCm>;
 
   /**
    * 試着キャンバスの 2D ボディ。未指定は格子ボディテンプレ（前面）。

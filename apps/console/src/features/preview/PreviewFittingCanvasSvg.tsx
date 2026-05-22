@@ -4,7 +4,6 @@ import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/typ
 import type { GarmentPreviewBodyView } from "@/lib/widget-fit/resolveGarmentDataForPreviewView";
 import { resolveCustomSvgPathRenderablePaint } from "@/app/(main)/development/fitting/customGarment/resolveCustomSvgPathRenderablePaint";
 import { cn } from "@/lib/utils";
-import { bodySheetPreviewHeightScale } from "./widget-style-product/fit-svg-viewbox";
 import { GARMENT_FILL } from "./widget-style-product/fit-constants";
 import { PreviewFitEaseFootnote, PreviewFitEaseSummary } from "./widget-style-product/fit-ease-ui";
 import { GarmentFlatCmGradingEditorMirrorPreview } from "./fitting-canvas/GarmentFlatCmGradingEditorMirrorPreview";
@@ -13,6 +12,8 @@ import { usePreviewFittingCanvasSvg } from "./fitting-canvas/usePreviewFittingCa
 import {
   garmentFlatCmOmitGridBodySilhouetteStroke,
   garmentFlatCmGridBodyFillLayerPaint,
+  garmentFlatCmPreviewBodySilhouetteStrokeWidth,
+  garmentFlatCmPreviewGarmentMinStrokeWidth,
 } from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmGradingConstants";
 
 export function PreviewFittingCanvasSvg({
@@ -23,7 +24,6 @@ export function PreviewFittingCanvasSvg({
   orderedSizeKeys = [],
   fitChestBandCategory = null,
   bodyOnly = false,
-  bodySheetHeightScale = false,
   fitEaseRevealNonce = 0,
   embedSplashSuspended = false,
   embeddedWidgetUi = false,
@@ -40,8 +40,6 @@ export function PreviewFittingCanvasSvg({
   fitChestBandCategory?: string | null;
   /** 体型調整シートなど：体型ラインのみ（服パスを描かない） */
   bodyOnly?: boolean;
-  /** 体型変更オーバーレイ：身長に応じて表示を拡大（`meet` による見かけの縮小を補う） */
-  bodySheetHeightScale?: boolean;
   /** 増やすたびに図解・胸バンド文言の段階表示をやり直す（体型適用など） */
   fitEaseRevealNonce?: number;
   /** 親ウィジェットのスプラッシュ中は図解・脚注の段階表示を保留 */
@@ -81,14 +79,16 @@ export function PreviewFittingCanvasSvg({
     orderedSizeKeys,
     fitChestBandCategory,
     bodyOnly,
-    bodySheetHeightScale,
     fitEaseRevealNonce,
     embedSplashSuspended,
     garmentPreviewView,
     showFitEaseUi,
   });
 
-  const sheetScale = bodySheetHeightScale ? bodySheetPreviewHeightScale(fitHeightCm) : 1;
+  const previewBodyStrokeWidth = garmentFlatCmPreviewBodySilhouetteStrokeWidth(viewBoxH);
+  const previewGarmentMinStrokeWidth = isGarmentFlatCm
+    ? garmentFlatCmPreviewGarmentMinStrokeWidth(viewBoxH)
+    : undefined;
 
   return (
     <div
@@ -104,11 +104,6 @@ export function PreviewFittingCanvasSvg({
             ? "min-h-0 w-full min-w-0 max-w-full max-h-[88%] overflow-hidden sm:max-h-[94%]"
             : "overflow-visible",
         )}
-        style={
-          bodySheetHeightScale
-            ? { transform: `scale(${sheetScale})`, transformOrigin: "center center" }
-            : undefined
-        }
       >
         {isGarmentFlatCm && !bodyOnly ? (
           <div
@@ -161,6 +156,9 @@ export function PreviewFittingCanvasSvg({
                     allPathStrokes: snap.customPathStrokes,
                     pathIndex: j,
                     preserveFillOnlyPaths: isGarmentFlatCm,
+                    ...(previewGarmentMinStrokeWidth != null
+                      ? { minStrokeWidth: previewGarmentMinStrokeWidth }
+                      : {}),
                   });
                   if (paint.omit === true) return null;
                   return (
@@ -188,7 +186,12 @@ export function PreviewFittingCanvasSvg({
                       />
                     ))}
                   </g>
-                  <g fill="none" stroke={previewBodyStroke} strokeWidth={4} pointerEvents="none">
+                  <g
+                    fill="none"
+                    stroke={previewBodyStroke}
+                    strokeWidth={previewBodyStrokeWidth}
+                    pointerEvents="none"
+                  >
                     {snap.bodyPaths[0] &&
                     !garmentFlatCmOmitGridBodySilhouetteStroke(0, snap.bodyModelVariant) ? (
                       <path key="bo" d={snap.bodyPaths[0]} />
@@ -201,7 +204,11 @@ export function PreviewFittingCanvasSvg({
                   </g>
                 </>
               ) : (
-                <g fill={canvasSurfaceBackground} stroke={previewBodyStroke} strokeWidth={4}>
+                <g
+                  fill={canvasSurfaceBackground}
+                  stroke={previewBodyStroke}
+                  strokeWidth={previewBodyStrokeWidth}
+                >
                   {snap.bodyPaths.map((d, i) => (
                     <path key={`b-${i}`} d={d} />
                   ))}
@@ -222,6 +229,9 @@ export function PreviewFittingCanvasSvg({
                     allPathStrokes: snap.customPathStrokes,
                     pathIndex: i,
                     preserveFillOnlyPaths: isGarmentFlatCm,
+                    ...(previewGarmentMinStrokeWidth != null
+                      ? { minStrokeWidth: previewGarmentMinStrokeWidth }
+                      : {}),
                   });
                   if (paint.omit === true) return null;
                   return (

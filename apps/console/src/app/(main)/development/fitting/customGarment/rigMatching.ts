@@ -48,14 +48,26 @@ export function findPathIndexByExpectedD(pathDs: string[], expectedD: string): n
  * アップロードの服リグ path が、読み込んだモデル `rigLinePaths`（body 座標系）と順序・形状が一致するか。
  * 一致時は `placement.place` を通さずモデルと同じ休止座標を使える（赤リグが完全に重なる）。
  */
+function rigPathDGeometricallyEqual(a: string, b: string, tolPx = 2.5): boolean {
+  if (normalizePathDForMatch(a) === normalizePathDForMatch(b)) return true;
+  const ea = endpointsByModelD(a);
+  const eb = endpointsByModelD(b);
+  if (!ea || !eb) return false;
+  const dist = (p: [number, number], q: [number, number]) => Math.hypot(p[0] - q[0], p[1] - q[1]);
+  return dist(ea.min, eb.min) <= tolPx && dist(ea.max, eb.max) <= tolPx;
+}
+
+/**
+ * アップロード服リグとモデル `rigLinePaths` の一致判定。
+ * 格子は compound 分解（`M…V…`→`M…L…`）と DOM 順の差があるため、端点距離でも許容する。
+ */
 export function garmentDebugRigMatchesLoadedRig(
   debugRigPathDs: string[],
   rigLinePaths: string[] | null
 ): boolean {
   if (!rigLinePaths || debugRigPathDs.length !== rigLinePaths.length) return false;
   for (let i = 0; i < debugRigPathDs.length; i++) {
-    if (normalizePathDForMatch(debugRigPathDs[i]!) !== normalizePathDForMatch(rigLinePaths[i]!))
-      return false;
+    if (!rigPathDGeometricallyEqual(debugRigPathDs[i]!, rigLinePaths[i]!)) return false;
   }
   return true;
 }

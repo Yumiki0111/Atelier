@@ -21,13 +21,18 @@ import type {
 import { getAllPathPoints } from "@/app/(main)/development/fitting/lib/fittingContourUtils";
 import { getPathPoints, interpolatePath, tPath } from "@/app/(main)/development/fitting/lib/pathUtils";
 import { bboxCenterXFromPathDs, bboxCenterXFromPoints } from "./fittingCanvasComputeGarmentCustomBbox";
+import { garmentDebugRigMatchesLoadedRig } from "@/app/(main)/development/fitting/customGarment/rigMatching";
 import { isGarmentFlatCmPresetId } from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmPreset";
 import {
   GARMENT_FLAT_CM_PATH_ZONES,
   GARMENT_FLAT_CM_BACK_LAYER_IDS,
   type GarmentFlatCmZone,
 } from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmGradingConstants";
-import { rewriteFlatCmGarmentPath } from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmGradingPathDeform";
+import {
+  type GarmentFlatCmDeformOptions,
+  GARMENT_FLAT_CM_DEFAULT_DEFORM_OPTIONS,
+  rewriteFlatCmGarmentPath,
+} from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmGradingPathDeform";
 
 /**
  * 体型差→服 px 局所 delta の写像。元は `./bodySizeToGarmentLocalDeltas` を import していたが、
@@ -85,6 +90,8 @@ export type CustomGarmentBranchContext = {
   bodyShoulderContour: [number, number][];
   /** `gridSvgBody` 系: アップロード SVG は格子 viewBox。リグロック写像は model+rig 系とは別 */
   bodyModelVariant?: BodyModelVariant;
+  /** 平置き cm + 格子: Figma の 389×viewBox 座標のまま着せる（body テンプレ cover 写像なし） */
+  flatCmGridNativeSvgCoords?: boolean;
   /**
    * 段階導入フラグ群（フェーズ1〜4）。未指定なら従来挙動。
    * `body-scale-lab` で確認するためのスイッチ。
@@ -128,6 +135,7 @@ export function computeCustomGarmentBranch(
     animProgress,
     bodyShoulderContour,
     bodyModelVariant,
+    flatCmGridNativeSvgCoords,
     shoulderFollowOptions,
     bodyShoulderRigDeltaThetas,
   } = ctx;
@@ -139,9 +147,20 @@ export function computeCustomGarmentBranch(
    * フラグ off では `customGarmentDataInput` をそのまま使い後方互換。
    */
   const customGarmentData: CustomGarmentData = (() => {
-    const slopeOpt = {
-      useShoulderSlopeDistribution: shoulderFollowOptions?.useShoulderSlopeDistribution,
-    };
+    const slopeOpt: GarmentFlatCmDeformOptions | undefined = (() => {
+      if (
+        shoulderFollowOptions?.useShoulderSlopeDistribution === false &&
+        shoulderFollowOptions?.useShoulderAnchorDrop === false
+      ) {
+        return undefined;
+      }
+      return {
+        useShoulderSlopeDistribution:
+          shoulderFollowOptions?.useShoulderSlopeDistribution !== false,
+        useShoulderAnchorDrop:
+          shoulderFollowOptions?.useShoulderAnchorDrop !== false,
+      };
+    })();
     if (!shoulderFollowOptions?.bodyDiffViaGarmentLocalDeltas) {
       return customGarmentDataInput;
     }
@@ -209,7 +228,9 @@ export function computeCustomGarmentBranch(
     };
   })();
 
-  const placeDesignToTemplate = gridRigVectorPointToBodyTemplate;
+  const placeDesignToTemplate: (x: number, y: number) => [number, number] = flatCmGridNativeSvgCoords
+    ? (x, y) => [x, y]
+    : gridRigVectorPointToBodyTemplate;
 
   const rigLockTransformOpts = {
     placementLockToModelRig: true as const,
@@ -254,6 +275,8 @@ export function computeCustomGarmentBranch(
   }
 
   const rigDs = customGarmentData.debugRigPathDs!;
+  /** アップロード 9 本がモデル `rigLinePaths` と幾何一致するときだけモデル赤リグを表示用に流用する */
+  const rigGeometryMatchesModel = garmentDebugRigMatchesLoadedRig(rigDs, rigLinePaths);
   const rigLm = inferLandmarksFromRigPaths(rigDs);
   const useRigLandmarksForPlacement = rigLm != null;
 
@@ -320,7 +343,7 @@ export function computeCustomGarmentBranch(
     (cg.debugRigPathDs?.length ?? 0) === rigLinePaths.length;
   const transformHeightCmForCustomPaths = REF_HEIGHT_CM;
 
-  let customRigPathDs = rigLinePaths.slice();
+  let customRigPathDs = rigGeometryMatchesModel ? rigLinePaths.slice() : rigDs.slice();
 
   const fabricShoulderLx = rigLm ? rigLm.shoulderLx : c.shoulderLx;
   const fabricShoulderRx = rigLm ? rigLm.shoulderRx : c.shoulderRx;
@@ -482,6 +505,12 @@ export function computeCustomGarmentBranch(
     if (gridGarmentBypassRigidFabric) {
       return translateOnly;
     }
+    /**
+     * 肩アンカー＋オチは path 変形で済む。剛体回転まで掛けると袖の下り角度が潰れて見えるため平行移動のみ。
+     */
+    if (shoulderFollowOptions?.useShoulderAnchorDrop === true) {
+      return translateOnly;
+    }
     const [rslx, rsly] = placeDesignToTemplate(fabricShoulderLx, shoulderSeamY);
     const [rsrx, rsry] = placeDesignToTemplate(fabricShoulderRx, shoulderSeamY);
     const alx = rslx;
@@ -530,7 +559,16 @@ export function computeCustomGarmentBranch(
   };
 
   customPathDs = customPathDs.map((d) => tPath(d, customGarmentFabricRigViewWarp));
-  customRigPathDs = customRigPathDs.map((d, idx) => tPath(d, rigTemplateToRigViewForGarmentPath(idx)));
+  if (rigGeometryMatchesModel) {
+    customRigPathDs = customRigPathDs.map((d, idx) => tPath(d, rigTemplateToRigViewForGarmentPath(idx)));
+  } else {
+    customRigPathDs = customRigPathDs.map((d) =>
+      tPath(d, (x, y) => {
+        const [px, py] = placeDesignToTemplate(x, y);
+        return customGarmentFabricRigViewWarp(px + templateShiftXLocked, py);
+      })
+    );
+  }
   customPoints = customPoints.map(([x, y]) => customGarmentFabricRigViewWarp(x, y));
 
   /**

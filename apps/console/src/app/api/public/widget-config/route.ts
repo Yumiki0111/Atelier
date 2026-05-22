@@ -3,8 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { setCorsHeaders, handleCorsOptions, validatePublicKeyAndDomain } from "@/lib/api/cors";
 import { isGarmentSpecRenderable } from "@/lib/widget-fit/applyWidgetSizeToGarment";
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
-import { inferGarmentFlatCmSizeKey } from "@/lib/widget-fit/widgetFitFlatCmSize";
-import { GARMENT_FLAT_CM_ORDERED_SIZE_LABELS } from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmGradingMeasurements";
+import { inferGarmentFlatCmSizeKey, resolveWidgetFitInitialSize } from "@/lib/widget-fit/widgetFitFlatCmSize";
 import { resolveWidgetFitSizeKeysOrder } from "@/lib/widget/resolveWidgetFitSizeKeysOrder";
 import { formatPriceYenForDisplay, normalizeWidgetCtaAccentColor, isGarmentFlatCmPresetId } from "@Atelier/shared";
 
@@ -150,40 +149,26 @@ export async function GET(request: NextRequest) {
       }
     } else if (garmentFitAvailable) {
       const gs = product.garment_spec as CustomGarmentData;
-      if (isGarmentFlatCmPresetId(gs.presetId)) {
-        for (const label of GARMENT_FLAT_CM_ORDERED_SIZE_LABELS) {
-          sizes[label] = [{ category }];
-        }
-        defaultSize = inferGarmentFlatCmSizeKey(gs) ?? "S";
-      } else {
-        for (const label of GARMENT_FLAT_CM_ORDERED_SIZE_LABELS) {
-          sizes[label] = [{ category }];
-        }
-        defaultSize = "S";
+      const ordered = resolveWidgetFitSizeKeysOrder([], product.garment_spec);
+      for (const label of ordered) {
+        sizes[label] = [{ category }];
       }
+      defaultSize = resolveWidgetFitInitialSize(undefined, gs, ordered);
     }
 
-    /** `Object.keys` の順が UI の並びになるため、プレビューと同じ着丈→袖丈順に組み替え（プリセットのみキーもマージ） */
+    /** 平置き cm: 登録サイズのみ。3D 資産キーはマージしない */
     if (garmentFitAvailable) {
-      const ordered = resolveWidgetFitSizeKeysOrder(Object.keys(sizes), product.garment_spec);
-      const flatCmCatalogLabelSet = new Set<string>(GARMENT_FLAT_CM_ORDERED_SIZE_LABELS as readonly string[]);
+      const gsInner = product.garment_spec as CustomGarmentData;
+      const assetKeysForMerge = isGarmentFlatCmPresetId(gsInner.presetId)
+        ? []
+        : Object.keys(sizes);
+      const ordered = resolveWidgetFitSizeKeysOrder(assetKeysForMerge, product.garment_spec);
       const next: Record<string, { category?: string }[]> = {};
       for (const k of ordered) {
-        const existing = sizes[k];
-        if (existing != null && existing.length > 0) {
-          next[k] = existing;
-        } else if (flatCmCatalogLabelSet.has(k)) {
-          next[k] = [{ category }];
-        }
+        next[k] = sizes[k] ?? [{ category }];
       }
       sizes = next;
-      const gsInner = product.garment_spec as CustomGarmentData;
-      const preferred =
-        gsInner.presetId != null && isGarmentFlatCmPresetId(gsInner.presetId)
-          ? (inferGarmentFlatCmSizeKey(gsInner) ?? "S")
-          : "S";
-      defaultSize =
-        next[preferred] != null && next[preferred]!.length > 0 ? preferred : ordered[0] ?? preferred;
+      defaultSize = resolveWidgetFitInitialSize(defaultSize, gsInner, ordered);
     }
 
     // ウィジェットデザイン設定を取得

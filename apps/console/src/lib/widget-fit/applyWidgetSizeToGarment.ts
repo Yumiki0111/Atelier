@@ -8,12 +8,17 @@ import {
 import { GARMENT_FLAT_CM_PRESET_ID, isGarmentFlatCmPresetId } from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmPreset";
 import {
   garmentFlatCmToShapeDeltas,
+  GARMENT_FLAT_CM_BASE,
   GARMENT_FLAT_CM_SIZE_TABLE,
   type GarmentFlatCm,
 } from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmGradingMeasurements";
-import { rewriteFlatCmGarmentPath } from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmGradingPathDeform";
+import {
+  GARMENT_FLAT_CM_DEFAULT_DEFORM_OPTIONS,
+  rewriteFlatCmGarmentPath,
+} from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmGradingPathDeform";
 
-import { inferGarmentFlatCmSizeKey, parseFlatCmSizeKey } from "@/lib/widget-fit/widgetFitFlatCmSize";
+import { parseFlatCmSizeKey } from "@/lib/widget-fit/widgetFitFlatCmSize";
+import { normalizeWidgetFitSizeLabel } from "@/lib/widget-fit/widgetFitSizeLabels";
 
 function resolveFlatCmWidgetOutlineZone(
   i: number,
@@ -23,6 +28,33 @@ function resolveFlatCmWidgetOutlineZone(
   return flatCmOutlinePathZones?.[i] ?? GARMENT_FLAT_CM_PATH_ZONES[pathId];
 }
 
+function resolveTargetFlatCmForWidgetSize(data: CustomGarmentData, sizeLabel: string): GarmentFlatCm {
+  const offered = data.flatCmOfferedSizeCm?.[sizeLabel];
+  if (offered) return { ...offered };
+  const catalogKey = parseFlatCmSizeKey(sizeLabel);
+  if (catalogKey != null) return { ...GARMENT_FLAT_CM_SIZE_TABLE[catalogKey] };
+  return {
+    shoulder: data.size.shoulder,
+    bodyWidth: data.size.chest,
+    bodyLength: data.size.length,
+    sleeve: data.size.sleeve,
+  };
+}
+
+function resolveRefFlatCmForPathRewrite(
+  data: CustomGarmentData,
+  explicitBaseReady: boolean
+): GarmentFlatCm {
+  /** `flatCmBasePathDs` は未グレード SVG（S 形状）由来のため、基準 cm は BASE */
+  if (explicitBaseReady) return { ...GARMENT_FLAT_CM_BASE };
+  return {
+    shoulder: data.size.shoulder,
+    bodyWidth: data.size.chest,
+    bodyLength: data.size.length,
+    sleeve: data.size.sleeve,
+  };
+}
+
 /** ウィジェットで選んだサイズラベルに合わせて平置き cm カタログを反映 */
 export function applyWidgetSizeToCustomGarmentData(
   base: CustomGarmentData,
@@ -30,29 +62,22 @@ export function applyWidgetSizeToCustomGarmentData(
 ): CustomGarmentData {
   const data = JSON.parse(JSON.stringify(base)) as CustomGarmentData;
   const refSizeSnapshot = { ...data.size };
-  const key =
-    parseFlatCmSizeKey(selectedSize) ?? inferGarmentFlatCmSizeKey(data) ?? "S";
-  const flat = GARMENT_FLAT_CM_SIZE_TABLE[key];
+  const sizeLabel = normalizeWidgetFitSizeLabel(selectedSize);
 
-  const refFlatCm: GarmentFlatCm = {
-    shoulder: data.size.shoulder,
-    bodyWidth: data.size.chest,
-    bodyLength: data.size.length,
-    sleeve: data.size.sleeve,
-  };
+  const explicitBaseReadyEarly =
+    Boolean(data.flatCmOutlinePathIds?.length) &&
+    Boolean(data.flatCmBasePathDs?.length) &&
+    data.flatCmOutlinePathIds!.length === data.flatCmBasePathDs!.length &&
+    data.flatCmOutlinePathIds!.length === data.pathDs.length;
+
+  const refFlatCm = resolveRefFlatCmForPathRewrite(data, explicitBaseReadyEarly);
+  const targetFlatCm = resolveTargetFlatCmForWidgetSize(data, sizeLabel);
 
   data.size = {
-    shoulder: flat.shoulder,
-    chest: flat.bodyWidth,
-    length: flat.bodyLength,
-    sleeve: flat.sleeve,
-  };
-
-  const targetFlatCm: GarmentFlatCm = {
-    shoulder: flat.shoulder,
-    bodyWidth: flat.bodyWidth,
-    bodyLength: flat.bodyLength,
-    sleeve: flat.sleeve,
+    shoulder: targetFlatCm.shoulder,
+    chest: targetFlatCm.bodyWidth,
+    length: targetFlatCm.bodyLength,
+    sleeve: targetFlatCm.sleeve,
   };
 
   const resolveFlatCmOutlineIdsForRewrite = (dataPathN: number): readonly string[] | null => {
@@ -66,14 +91,7 @@ export function applyWidgetSizeToCustomGarmentData(
     data.presetId = GARMENT_FLAT_CM_PRESET_ID;
 
     const outlineIds = resolveFlatCmOutlineIdsForRewrite(data.pathDs.length);
-    const explicitBaseReady =
-      Boolean(data.flatCmOutlinePathIds?.length) &&
-      Boolean(data.flatCmBasePathDs?.length) &&
-      data.flatCmOutlinePathIds!.length === data.flatCmBasePathDs!.length &&
-      data.flatCmOutlinePathIds!.length === data.pathDs.length;
-
-    if (explicitBaseReady) {
-      /** `flatCmBasePathDs` は登録時の実寸（refFlatCm）に対応するため、変形は S テンプレではなく ref→選択サイズの差分で取る */
+    if (explicitBaseReadyEarly) {
       const { dSh, dBw, dBl, dSleeveLengthPx } = garmentFlatCmToShapeDeltas(targetFlatCm, refFlatCm);
 
       const outlineZone = (i: number, pathId: string): GarmentFlatCmZone | undefined =>
@@ -85,7 +103,15 @@ export function applyWidgetSizeToCustomGarmentData(
         if (!zone || baseD == null || baseD.length === 0) {
           return data.pathDs[i] ?? "";
         }
-        return rewriteFlatCmGarmentPath(baseD, zone, dSh, dBw, dBl, dSleeveLengthPx);
+        return rewriteFlatCmGarmentPath(
+          baseD,
+          zone,
+          dSh,
+          dBw,
+          dBl,
+          dSleeveLengthPx,
+          GARMENT_FLAT_CM_DEFAULT_DEFORM_OPTIONS
+        );
       });
 
       const behind = data.behindBody;
@@ -100,7 +126,15 @@ export function applyWidgetSizeToCustomGarmentData(
           if (!zone || baseDRow == null || baseDRow.length === 0) {
             return prevBehindDs[i] ?? "";
           }
-          return rewriteFlatCmGarmentPath(baseDRow, zone, dSh, dBw, dBl, dSleeveLengthPx);
+          return rewriteFlatCmGarmentPath(
+            baseDRow,
+            zone,
+            dSh,
+            dBw,
+            dBl,
+            dSleeveLengthPx,
+            GARMENT_FLAT_CM_DEFAULT_DEFORM_OPTIONS
+          );
         });
       }
     } else if (outlineIds != null && outlineIds.length === data.pathDs.length) {
@@ -110,7 +144,15 @@ export function applyWidgetSizeToCustomGarmentData(
         const zone = resolveFlatCmWidgetOutlineZone(i, pathId, data.flatCmOutlinePathZones);
         const cur = data.pathDs[i];
         if (!zone || cur == null || cur.length === 0) return cur ?? "";
-        return rewriteFlatCmGarmentPath(cur, zone, dSh, dBw, dBl, dSleeveLengthPx);
+        return rewriteFlatCmGarmentPath(
+          cur,
+          zone,
+          dSh,
+          dBw,
+          dBl,
+          dSleeveLengthPx,
+          GARMENT_FLAT_CM_DEFAULT_DEFORM_OPTIONS
+        );
       });
 
       const behind = data.behindBody;
@@ -124,7 +166,15 @@ export function applyWidgetSizeToCustomGarmentData(
           const zone = GARMENT_FLAT_CM_PATH_ZONES[pathId];
           const cur = behind.pathDs[i];
           if (!zone || cur == null || cur.length === 0) return cur ?? "";
-          return rewriteFlatCmGarmentPath(cur, zone, dSh, dBw, dBl, dSleeveLengthPx);
+          return rewriteFlatCmGarmentPath(
+          cur,
+          zone,
+          dSh,
+          dBw,
+          dBl,
+          dSleeveLengthPx,
+          GARMENT_FLAT_CM_DEFAULT_DEFORM_OPTIONS
+        );
         });
       }
     }

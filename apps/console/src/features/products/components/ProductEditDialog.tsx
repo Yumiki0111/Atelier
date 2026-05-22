@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,10 @@ import {
 } from "@/lib/products/parseGarmentSizePresets";
 import { isGarmentSpecRenderable } from "@/lib/widget-fit/applyWidgetSizeToGarment";
 import { CircularImageCropDialog } from "@/features/products/components/CircularImageCropDialog";
+import {
+  GarmentSizeReorderGrip,
+  moveArrayItem,
+} from "@/components/garment/GarmentSizeReorderGrip";
 
 const productFormSchema = createProductSchema.extend({
   // Form-specific fields can be added here if needed
@@ -43,7 +47,7 @@ interface ProductEditDialogProps {
   productId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onProductUpdated?: () => void;
+  onProductUpdated?: (product: Product) => void;
 }
 
 export function ProductEditDialog({
@@ -60,7 +64,19 @@ export function ProductEditDialog({
   const [cropOpen, setCropOpen] = useState(false);
   const [thumbnailCropFile, setThumbnailCropFile] = useState<File | null>(null);
   const [presetDrafts, setPresetDrafts] = useState<GarmentSizePresetRow[]>([]);
+  const [presetDragFromIndex, setPresetDragFromIndex] = useState<number | null>(null);
+  const [presetDragOverIndex, setPresetDragOverIndex] = useState<number | null>(null);
   const [priceYenInput, setPriceYenInput] = useState("");
+
+  const finishPresetDrag = useCallback(() => {
+    setPresetDragFromIndex(null);
+    setPresetDragOverIndex(null);
+  }, []);
+
+  const reorderPresetDrafts = useCallback((fromIndex: number, toIndex: number) => {
+    setPresetDrafts((prev) => moveArrayItem(prev, fromIndex, toIndex));
+    finishPresetDrag();
+  }, [finishPresetDrag]);
   const canEditMeasures = useMemo(
     () => canEditGarmentSizePresets(product?.garmentSpec),
     [product?.garmentSpec]
@@ -213,23 +229,34 @@ export function ProductEditDialog({
         .filter((r) => r.label.trim().length > 0)
         .map((r) => ({
           label: r.label.trim(),
+          shoulderCm: Number(r.shoulderCm),
+          bodyWidthCm: Number(r.bodyWidthCm),
           lengthCm: Number(r.lengthCm),
           sleeveCm: Number(r.sleeveCm),
         }))
-        .filter((r) => Number.isFinite(r.lengthCm) && Number.isFinite(r.sleeveCm));
+        .filter(
+          (r) =>
+            Number.isFinite(r.shoulderCm) &&
+            Number.isFinite(r.bodyWidthCm) &&
+            Number.isFinite(r.lengthCm) &&
+            Number.isFinite(r.sleeveCm)
+        );
 
       let garmentSpecUpdate: unknown | undefined;
-      if (garmentFitRenderable) {
-        let gs: unknown = product.garmentSpec;
-        if (canEditMeasures) {
-          gs = mergeGarmentSpecSizePresets(gs, sanitizedPresets);
+      if (canEditMeasures) {
+        if (sanitizedPresets.length === 0) {
+          toast.error("サイズを1件以上登録してください");
+          return;
         }
-        garmentSpecUpdate = mergeGarmentSpecBodyModelVariant(gs, null);
-      } else if (canEditMeasures) {
-        garmentSpecUpdate = mergeGarmentSpecSizePresets(product.garmentSpec, sanitizedPresets);
+        garmentSpecUpdate = mergeGarmentSpecBodyModelVariant(
+          mergeGarmentSpecSizePresets(product.garmentSpec, sanitizedPresets),
+          null
+        );
+      } else if (garmentFitRenderable) {
+        garmentSpecUpdate = mergeGarmentSpecBodyModelVariant(product.garmentSpec, null);
       }
 
-      await updateProduct.mutateAsync({
+      const updated = await updateProduct.mutateAsync({
         id: productId,
         updates: {
           ...cleanedData,
@@ -239,7 +266,7 @@ export function ProductEditDialog({
       reset();
       handleOpenChange(false);
       toast.success("商品を更新しました");
-      onProductUpdated?.();
+      onProductUpdated?.(updated);
     } catch (error) {
       console.error("Failed to update product:", error);
       const errorMessage = error instanceof Error ? error.message : "商品の更新に失敗しました";
@@ -382,15 +409,42 @@ export function ProductEditDialog({
             <p className="text-xs font-medium text-gray-800">登録サイズと寸法（開発フィット）</p>
             {canEditMeasures ? (
               <>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  ラベル・着丈・袖丈（cm）を変更して更新できます。行の追加・削除も可能です。
-                </p>
                 <div className="mt-3 space-y-3">
                   {presetDrafts.map((row, i) => (
                     <div
                       key={`preset-${i}`}
-                      className="flex flex-col gap-2 rounded-md border border-gray-200/80 bg-white p-2 sm:flex-row sm:items-end"
+                      className={cn(
+                        "flex flex-col gap-2 rounded-md border border-gray-200/80 bg-white p-2 sm:flex-row sm:items-end",
+                        presetDragOverIndex === i &&
+                          presetDragFromIndex !== i &&
+                          "ring-2 ring-primary/30"
+                      )}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "move";
+                        setPresetDragOverIndex(i);
+                      }}
+                      onDragLeave={() => {
+                        setPresetDragOverIndex((prev) => (prev === i ? null : prev));
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const raw = e.dataTransfer.getData("text/plain");
+                        const from = Number.parseInt(raw, 10);
+                        if (Number.isFinite(from)) reorderPresetDrafts(from, i);
+                        else finishPresetDrag();
+                      }}
                     >
+                      <GarmentSizeReorderGrip
+                        className="self-center sm:self-end"
+                        draggable
+                        onDragStart={(e) => {
+                          setPresetDragFromIndex(i);
+                          e.dataTransfer.effectAllowed = "move";
+                          e.dataTransfer.setData("text/plain", String(i));
+                        }}
+                        onDragEnd={finishPresetDrag}
+                      />
                       <div className="min-w-0 flex-1 space-y-1">
                         <Label className="text-xs text-gray-600">ラベル</Label>
                         <Input
@@ -400,11 +454,47 @@ export function ProductEditDialog({
                             next[i] = { ...next[i], label: e.target.value };
                             setPresetDrafts(next);
                           }}
-                          placeholder="例: 3"
+                          placeholder="例: SIZE 1"
                           className="h-9"
                         />
                       </div>
-                      <div className="w-full space-y-1 sm:w-24">
+                      <div className="w-full space-y-1 sm:w-[4.5rem]">
+                        <Label className="text-xs text-gray-600">肩(cm)</Label>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          value={Number.isFinite(row.shoulderCm) ? row.shoulderCm : ""}
+                          onChange={(e) => {
+                            const v = parseFloat(e.target.value);
+                            const next = [...presetDrafts];
+                            next[i] = {
+                              ...next[i],
+                              shoulderCm: Number.isFinite(v) ? v : 0,
+                            };
+                            setPresetDrafts(next);
+                          }}
+                          className="h-9"
+                        />
+                      </div>
+                      <div className="w-full space-y-1 sm:w-[4.5rem]">
+                        <Label className="text-xs text-gray-600">身幅(cm)</Label>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          value={Number.isFinite(row.bodyWidthCm) ? row.bodyWidthCm : ""}
+                          onChange={(e) => {
+                            const v = parseFloat(e.target.value);
+                            const next = [...presetDrafts];
+                            next[i] = {
+                              ...next[i],
+                              bodyWidthCm: Number.isFinite(v) ? v : 0,
+                            };
+                            setPresetDrafts(next);
+                          }}
+                          className="h-9"
+                        />
+                      </div>
+                      <div className="w-full space-y-1 sm:w-[4.5rem]">
                         <Label className="text-xs text-gray-600">着丈(cm)</Label>
                         <Input
                           type="number"
@@ -422,7 +512,7 @@ export function ProductEditDialog({
                           className="h-9"
                         />
                       </div>
-                      <div className="w-full space-y-1 sm:w-24">
+                      <div className="w-full space-y-1 sm:w-[4.5rem]">
                         <Label className="text-xs text-gray-600">袖(cm)</Label>
                         <Input
                           type="number"
@@ -460,12 +550,20 @@ export function ProductEditDialog({
                   variant="outline"
                   size="sm"
                   className="mt-3 gap-1"
-                  onClick={() =>
+                  onClick={() => {
+                    const n = presetDrafts.length + 1;
+                    const last = presetDrafts[presetDrafts.length - 1];
                     setPresetDrafts([
                       ...presetDrafts,
-                      { label: "", lengthCm: 0, sleeveCm: 0 },
-                    ])
-                  }
+                      {
+                        label: `SIZE ${n}`,
+                        shoulderCm: last?.shoulderCm ?? 44,
+                        bodyWidthCm: last?.bodyWidthCm ?? 48,
+                        lengthCm: last?.lengthCm ?? 68,
+                        sleeveCm: last?.sleeveCm ?? 62,
+                      },
+                    ]);
+                  }}
                 >
                   <Plus className="h-4 w-4" />
                   行を追加
@@ -478,15 +576,16 @@ export function ProductEditDialog({
                     {presetReadOnly.map((row) => (
                       <li key={row.label}>
                         <span className="font-medium text-gray-700">{row.label}</span>
-                        {" · 着丈 "}
-                        {row.lengthCm}cm · 袖 {row.sleeveCm}cm
+                        {" · 肩 "}
+                        {row.shoulderCm} · 身幅 {row.bodyWidthCm} · 着丈 {row.lengthCm} · 袖{" "}
+                        {row.sleeveCm}cm
                       </li>
                     ))}
                   </ul>
                 )}
-                {!isLoading && product && !canEditMeasures && (
+                {!isLoading && product && !canEditMeasures && !garmentFitRenderable && (
                   <p className="mt-2 text-xs text-muted-foreground">
-                    サイズラベルは平置き cm の固定カタログ（XS〜XXL）です。平置き寸法は開発タブの Garment 平置き cm グレードで調整してください。
+                    2D 試着用の平置き cm データがないため、サイズ寸法はここでは編集できません。
                   </p>
                 )}
               </>

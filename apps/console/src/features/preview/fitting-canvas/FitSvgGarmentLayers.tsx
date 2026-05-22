@@ -6,7 +6,7 @@ import { shouldSuppressGarmentPathRender } from "@/app/(main)/development/fittin
 import { resolveCustomSvgPathRenderablePaint } from "@/app/(main)/development/fitting/customGarment/resolveCustomSvgPathRenderablePaint";
 import {
   GARMENT_FLAT_CM_PREVIEW_GARMENT_DEFAULT_STROKE_WIDTH,
-  GARMENT_FLAT_CM_PREVIEW_GARMENT_MIN_STROKE_WIDTH,
+  garmentFlatCmPreviewGarmentMinStrokeWidth,
   garmentFlatCmPaintBehindStrokeMatchGridBody,
 } from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmGradingConstants";
 import type { FitSvgPayload } from "../widget-style-product/fit-svg-types";
@@ -39,6 +39,9 @@ export function FitSvgBehindGarmentLayer({
   if (behind == null || behind.length === 0) return null;
   const isGarmentFlatCm = isGarmentFlatCmPresetId(fitData.presetId);
   const defaultStrokeWidth = isGarmentFlatCm ? GARMENT_FLAT_CM_PREVIEW_GARMENT_DEFAULT_STROKE_WIDTH : 1;
+  const minGarmentStrokeWidth = isGarmentFlatCm
+    ? garmentFlatCmPreviewGarmentMinStrokeWidth(fitData.viewBoxHeight)
+    : undefined;
   const mergedStrokes = mergedStrokesForFitSvg(fitData);
   const behindPaintMatchBody =
     isGarmentFlatCm &&
@@ -60,9 +63,9 @@ export function FitSvgBehindGarmentLayer({
           allPathStrokes: mergedStrokes,
           pathIndex: i,
           preserveFillOnlyPaths: isGarmentFlatCm,
-          ...(isGarmentFlatCm
+          ...(isGarmentFlatCm && minGarmentStrokeWidth != null
             ? {
-                minStrokeWidth: GARMENT_FLAT_CM_PREVIEW_GARMENT_MIN_STROKE_WIDTH,
+                minStrokeWidth: minGarmentStrokeWidth,
                 flatCmBehindHealFillOnlyAsStroke: true,
               }
             : {}),
@@ -97,6 +100,9 @@ export function FitSvgFrontGarmentLayer({
 }) {
   const isGarmentFlatCm = isGarmentFlatCmPresetId(fitData.presetId);
   const defaultStrokeWidth = isGarmentFlatCm ? GARMENT_FLAT_CM_PREVIEW_GARMENT_DEFAULT_STROKE_WIDTH : 1;
+  const minGarmentStrokeWidth = isGarmentFlatCm
+    ? garmentFlatCmPreviewGarmentMinStrokeWidth(fitData.viewBoxHeight)
+    : undefined;
   const behind = fitData.garmentPathsBehindBody;
   const behindLen = behind?.length ?? 0;
   const mergedStrokes = mergedStrokesForFitSvg(fitData);
@@ -115,7 +121,9 @@ export function FitSvgFrontGarmentLayer({
           allPathStrokes: mergedStrokes,
           pathIndex: i,
           preserveFillOnlyPaths: isGarmentFlatCm,
-          ...(isGarmentFlatCm ? { minStrokeWidth: GARMENT_FLAT_CM_PREVIEW_GARMENT_MIN_STROKE_WIDTH } : {}),
+          ...(isGarmentFlatCm && minGarmentStrokeWidth != null
+            ? { minStrokeWidth: minGarmentStrokeWidth }
+            : {}),
         });
         if (paint.omit === true) return null;
         return (

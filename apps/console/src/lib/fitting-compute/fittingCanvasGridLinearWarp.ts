@@ -1,4 +1,5 @@
 import { BZ, BODY_CX } from "@/app/(main)/development/fitting/lib/constants";
+import { GARMENT_FLAT_CM_VIEWBOX } from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmGradingConstants";
 
 /**
  * テンプレ Y（`BZ.head_bot` より下）について、身長スケール yS に対する「増分」の配分比率。
@@ -21,26 +22,48 @@ const GRID_Y_SEGMENT_LEN: readonly [number, number, number] = [
   BZ.foot - BZ.crotch,
 ];
 
+export type GridBodyYLandmarks = {
+  head_bot: number;
+  shoulder: number;
+  crotch: number;
+  foot: number;
+};
+
 /**
- * テンプレ Y（`BZ.head_bot` より上は固定、以下は折れ線）の身長ワープ。
- *
- * **パーツ境界の一致**: 結び目は {@link BZ} の landmark（`shoulder` / `crotch` / `foot`）のみとし、
- * テンプレ上で同じ Y に乗る頂点（隣接パスの共有点含む）は写像が `y` のみの関数なので常に同一出力 Y へ集まり、帯の境界が開かない。
- * 結び目の値をここと模板 SVG・`bodyZones` でずらさないこと。
+ * Figma ネイティブ格子ボディ（`GARMENT_FLAT_CM_VIEWBOX`）の身長・体重ワープ用。
+ * 肩=パンツ上端（path0 下端〜233）、股=脚付け（264）。腕先 y≈263 は肩〜股帯に収める。
  */
-export function gridBodyTemplateYRawFromHeightScale(y: number, yS: number): number {
-  if (y <= BZ.head_bot) return y;
-  const [L0, L1, L2] = GRID_Y_SEGMENT_LEN;
+export const NATIVE_GRID_BODY_Y_LANDMARKS: GridBodyYLandmarks = {
+  head_bot: 85,
+  shoulder: 233,
+  crotch: 264,
+  foot: 524,
+};
+
+const nativeVbParts = GARMENT_FLAT_CM_VIEWBOX.trim().split(/\s+/).map(Number);
+/** ネイティブ viewBox 中心 X（`389×525` 系） */
+export const NATIVE_GRID_BODY_CX = (nativeVbParts[2] ?? 389) / 2;
+
+export type LineArtLinearWarpOpts = {
+  bodyCx?: number;
+  yWarpFn?: (y: number, yS: number) => number;
+};
+
+function gridBodyTemplateYRawFromLandmarks(y: number, yS: number, lm: GridBodyYLandmarks): number {
+  if (y <= lm.head_bot) return y;
+  const L0 = lm.shoulder - lm.head_bot;
+  const L1 = lm.crotch - lm.shoulder;
+  const L2 = lm.foot - lm.crotch;
   const Lsum = L0 + L1 + L2;
   const f = GRID_BODY_HEIGHT_GROWTH_FRACTION_TO_STATURE;
   const deltaTotal = (yS - 1) * Lsum;
   const Lp0 = L0 + f[0]! * deltaTotal;
   const Lp1 = L1 + f[1]! * deltaTotal;
   const Lp2 = L2 + f[2]! * deltaTotal;
-  const yKb = BZ.head_bot;
-  const yK1 = BZ.shoulder;
-  const yK2 = BZ.crotch;
-  const yK3 = BZ.foot;
+  const yKb = lm.head_bot;
+  const yK1 = lm.shoulder;
+  const yK2 = lm.crotch;
+  const yK3 = lm.foot;
   const m0 = yKb;
   const m1 = m0 + Lp0;
   const m2 = m1 + Lp1;
@@ -61,6 +84,68 @@ export function gridBodyTemplateYRawFromHeightScale(y: number, yS: number): numb
   return m2 + t * (m3 - m2);
 }
 
+/** ネイティブ向け: 各帯長を `yS` 倍（脚寄せ 58% 配分だと低身長でパンツ帯だけ潰れる） */
+function gridBodyTemplateYRawProportionalFromLandmarks(
+  y: number,
+  yS: number,
+  lm: GridBodyYLandmarks
+): number {
+  if (y <= lm.head_bot) return y;
+  const L0 = (lm.shoulder - lm.head_bot) * yS;
+  const L1 = (lm.crotch - lm.shoulder) * yS;
+  const L2 = (lm.foot - lm.crotch) * yS;
+  const yKb = lm.head_bot;
+  const yK1 = lm.shoulder;
+  const yK2 = lm.crotch;
+  const yK3 = lm.foot;
+  const m0 = yKb;
+  const m1 = m0 + L0;
+  const m2 = m1 + L1;
+  const m3 = m2 + L2;
+  if (y >= yK3) {
+    const slope = L2 / Math.max(lm.foot - lm.crotch, 1e-9);
+    return m3 + (y - yK3) * slope;
+  }
+  if (y <= yK1) {
+    const t = (y - yKb) / Math.max(yK1 - yKb, 1e-9);
+    return m0 + t * (m1 - m0);
+  }
+  if (y <= yK2) {
+    const t = (y - yK1) / Math.max(yK2 - yK1, 1e-9);
+    return m1 + t * (m2 - m1);
+  }
+  const t = (y - yK2) / Math.max(yK3 - yK2, 1e-9);
+  return m2 + t * (m3 - m2);
+}
+
+function gridBodyTemplateYWarpFromLandmarks(
+  y: number,
+  yS: number,
+  lm: GridBodyYLandmarks,
+  yRaw: (yy: number, ys: number, landmarks: GridBodyYLandmarks) => number = gridBodyTemplateYRawFromLandmarks
+): number {
+  if (y <= lm.head_bot) return y;
+  const g = yRaw(y, yS, lm);
+  const yOff = lm.shoulder - yRaw(lm.shoulder, yS, lm);
+  const lNeck = Math.max(lm.shoulder - lm.head_bot, 1e-9);
+  if (y <= lm.shoulder) {
+    const t = (y - lm.head_bot) / lNeck;
+    return g + yOff * t;
+  }
+  return g + yOff;
+}
+
+/**
+ * テンプレ Y（`BZ.head_bot` より上は固定、以下は折れ線）の身長ワープ。
+ *
+ * **パーツ境界の一致**: 結び目は {@link BZ} の landmark（`shoulder` / `crotch` / `foot`）のみとし、
+ * テンプレ上で同じ Y に乗る頂点（隣接パスの共有点含む）は写像が `y` のみの関数なので常に同一出力 Y へ集まり、帯の境界が開かない。
+ * 結び目の値をここと模板 SVG・`bodyZones` でずらさないこと。
+ */
+export function gridBodyTemplateYRawFromHeightScale(y: number, yS: number): number {
+  return gridBodyTemplateYRawFromLandmarks(y, yS, BZ);
+}
+
 /**
  * 頭は `head_bot` 以下で未変形。それより下は {@link gridBodyTemplateYRawFromHeightScale} に肩合わせ。
  *
@@ -68,30 +153,23 @@ export function gridBodyTemplateYRawFromHeightScale(y: number, yS: number): numb
  * 首帯（`head_bot`〜`shoulder`）では `yOff` を 0→1 に線形ブレンドし、`head_bot`・`shoulder` で頭・肩ラインと連続にする。
  */
 export function gridBodyTemplateYWarpWithNeckShoulderAnchor(y: number, yS: number): number {
-  if (y <= BZ.head_bot) return y;
-  const g = gridBodyTemplateYRawFromHeightScale(y, yS);
-  const yOff = BZ.shoulder - gridBodyTemplateYRawFromHeightScale(BZ.shoulder, yS);
-  const lNeck = Math.max(BZ.shoulder - BZ.head_bot, 1e-9);
-  if (y <= BZ.shoulder) {
-    const t = (y - BZ.head_bot) / lNeck;
-    return g + yOff * t;
-  }
-  return g + yOff;
+  return gridBodyTemplateYWarpFromLandmarks(y, yS, BZ);
 }
 
-/** 線画検証: `warp` の腕帯・胴ラテラルはベクタの細曲線（裾の指先級）を頂点ごとにねじるので、胴中心基点の線形スケールのみ */
-export function lineArtLinearWarpFromScales(yS: number, xS: number) {
-  return (x: number, y: number): [number, number] => {
-    const newY = gridBodyTemplateYWarpWithNeckShoulderAnchor(y, yS);
-    return [BODY_CX + (x - BODY_CX) * xS, newY];
-  };
+/** 平置き cm ネイティブ座標（Figma viewBox）向けの身長ワープ */
+export function gridNativeBodyTemplateYWarpWithNeckShoulderAnchor(y: number, yS: number): number {
+  return gridBodyTemplateYWarpFromLandmarks(
+    y,
+    yS,
+    NATIVE_GRID_BODY_Y_LANDMARKS,
+    gridBodyTemplateYRawProportionalFromLandmarks
+  );
 }
 
-/** 格子ボディ: 頭〜腕山より下〜脚より上の胴（テンプレ Y）。体重横スケールはマスク込みでここ＋中央寄り X のみへブレンド */
-export function gridTorsoTemplateYLateralWeightBlend(y: number): number {
-  const yStart = BZ.shoulder + 50;
-  const yPeak = BZ.belly;
-  const yEnd = BZ.hip;
+function gridTorsoTemplateYLateralWeightBlendFromLandmarks(y: number, lm: GridBodyYLandmarks): number {
+  const yStart = lm.shoulder + 8;
+  const yPeak = lm.head_bot + (lm.crotch - lm.head_bot) * 0.42;
+  const yEnd = lm.crotch - 6;
   if (y <= yStart || y >= yEnd) return 0;
   if (y <= yPeak) {
     const t = (y - yStart) / Math.max(yPeak - yStart, 1e-6);
@@ -99,6 +177,29 @@ export function gridTorsoTemplateYLateralWeightBlend(y: number): number {
   }
   const t = (yEnd - y) / Math.max(yEnd - yPeak, 1e-6);
   return t * t * (3 - 2 * t);
+}
+
+/** 格子ボディ: 頭〜腕山より下〜脚より上の胴（テンプレ Y）。体重横スケールはマスク込みでここ＋中央寄り X のみへブレンド */
+export function gridTorsoTemplateYLateralWeightBlend(y: number): number {
+  return gridTorsoTemplateYLateralWeightBlendFromLandmarks(y, BZ);
+}
+
+function gridTorsoTemplateLateralWeightMaskXYWithCx(
+  x: number,
+  y: number,
+  bodyCx: number,
+  yBlend: (yy: number) => number
+): number {
+  const by = yBlend(y);
+  if (by <= 0) return 0;
+  const adx = Math.abs(x - bodyCx);
+  const inner = bodyCx * GRID_TORSO_LATERAL_MASK_X_HALF_CORE_FRAC_OF_CX;
+  const fade = bodyCx * GRID_TORSO_LATERAL_MASK_X_FADE_FRAC_OF_CX;
+  if (adx <= inner) return by;
+  if (adx >= inner + fade) return 0;
+  const t = (adx - inner) / fade;
+  const smooth = t * t * (3 - 2 * t);
+  return by * (1 - smooth);
 }
 
 /**
@@ -111,16 +212,23 @@ export const GRID_TORSO_LATERAL_MASK_X_HALF_CORE_FRAC_OF_CX = 0.3;
 export const GRID_TORSO_LATERAL_MASK_X_FADE_FRAC_OF_CX = 0.12;
 
 export function gridTorsoTemplateLateralWeightMaskXY(x: number, y: number): number {
-  const by = gridTorsoTemplateYLateralWeightBlend(y);
-  if (by <= 0) return 0;
-  const adx = Math.abs(x - BODY_CX);
-  const inner = BODY_CX * GRID_TORSO_LATERAL_MASK_X_HALF_CORE_FRAC_OF_CX;
-  const fade = BODY_CX * GRID_TORSO_LATERAL_MASK_X_FADE_FRAC_OF_CX;
-  if (adx <= inner) return by;
-  if (adx >= inner + fade) return 0;
-  const t = (adx - inner) / fade;
-  const smooth = t * t * (3 - 2 * t);
-  return by * (1 - smooth);
+  return gridTorsoTemplateLateralWeightMaskXYWithCx(x, y, BODY_CX, gridTorsoTemplateYLateralWeightBlend);
+}
+
+export function gridNativeTorsoTemplateLateralWeightMaskXY(x: number, y: number): number {
+  return gridTorsoTemplateLateralWeightMaskXYWithCx(x, y, NATIVE_GRID_BODY_CX, (yy) =>
+    gridTorsoTemplateYLateralWeightBlendFromLandmarks(yy, NATIVE_GRID_BODY_Y_LANDMARKS)
+  );
+}
+
+/** 線画検証: `warp` の腕帯・胴ラテラルはベクタの細曲線（裾の指先級）を頂点ごとにねじるので、胴中心基点の線形スケールのみ */
+export function lineArtLinearWarpFromScales(yS: number, xS: number, opts?: LineArtLinearWarpOpts) {
+  const bodyCx = opts?.bodyCx ?? BODY_CX;
+  const yWarpFn = opts?.yWarpFn ?? gridBodyTemplateYWarpWithNeckShoulderAnchor;
+  return (x: number, y: number): [number, number] => {
+    const newY = yWarpFn(y, yS);
+    return [bodyCx + (x - bodyCx) * xS, newY];
+  };
 }
 
 /** 胴帯だけ `lateralRatio`（実体重 / REF）を横スケールへ混ぜる線形ワープ。輪郭後処理ではなくテンプレ変換で一体化する */
@@ -128,15 +236,18 @@ export function lineArtLinearWarpFromScalesWithTorsoWeight(
   yS: number,
   xSBase: number,
   lateralRatio: number,
-  torsoMaskXY: (templateX: number, templateY: number) => number
+  torsoMaskXY: (templateX: number, templateY: number) => number,
+  opts?: LineArtLinearWarpOpts
 ) {
+  const bodyCx = opts?.bodyCx ?? BODY_CX;
+  const yWarpFn = opts?.yWarpFn ?? gridBodyTemplateYWarpWithNeckShoulderAnchor;
   return (x: number, y: number): [number, number] => {
-    const newY = gridBodyTemplateYWarpWithNeckShoulderAnchor(y, yS);
+    const newY = yWarpFn(y, yS);
     const b = torsoMaskXY(x, y);
     const xS =
       b <= 0 || Math.abs(lateralRatio - 1) < 1e-9
         ? xSBase
         : xSBase * (1 + (lateralRatio - 1) * b);
-    return [BODY_CX + (x - BODY_CX) * xS, newY];
+    return [bodyCx + (x - bodyCx) * xS, newY];
   };
 }

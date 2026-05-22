@@ -1,14 +1,39 @@
 import type { GarmentType } from "@/app/(main)/development/fitting/lib/types";
 import { bodyHeight } from "@/app/(main)/development/fitting/lib/bodyUtils";
 import { getPathPoints } from "@/app/(main)/development/fitting/lib/pathUtils";
+import { GARMENT_FLAT_CM_VIEWBOX } from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmGradingConstants";
 
 /** ログ検証: 身長変化で rig bbox が body より最大 ~107px 内外側にはみ出す → 余裕を見て両側に確保 */
 export const GRID_CUSTOM_VIEWBOX_RIG_MARGIN_X = 128;
+
+function scanPathDsBBox(ds: string[]): {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+} {
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const d of ds) {
+    if (!d || d.length === 0) continue;
+    for (const [x, y] of getPathPoints(d)) {
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+  return { minX, maxX, minY, maxY };
+}
 
 export function computeFittingCanvasSnapshotViewBox(opts: {
   garment: GarmentType;
   useLinearBodyWarpForSvgTemplates: boolean;
   flatCmGridBodyUsesLiveHeightWarp: boolean;
+  /** 平置き cm: Figma 389×525 座標のまま描画 → viewBox を内容 bbox に合わせる */
+  flatCmGridNativeSvgCoords?: boolean;
   /** 現在体型の縦スケール（meet 縦〜足元調整に使用） */
   yScale: number;
   /** REF 線形での縦スケール（平置き REF モード時の viewBox 縦ベースに使用） */
@@ -32,6 +57,7 @@ export function computeFittingCanvasSnapshotViewBox(opts: {
     garment,
     useLinearBodyWarpForSvgTemplates,
     flatCmGridBodyUsesLiveHeightWarp,
+    flatCmGridNativeSvgCoords,
     yScale,
     refRigYs,
     bodyPaths,
@@ -43,6 +69,46 @@ export function computeFittingCanvasSnapshotViewBox(opts: {
     jacketFill,
     jacketDetail,
   } = opts;
+
+  if (flatCmGridNativeSvgCoords && garment === "custom") {
+    const pad = 16;
+    const parts = GARMENT_FLAT_CM_VIEWBOX.trim().split(/\s+/).map(Number);
+    const fallbackW = parts[2] ?? 389;
+    const fallbackH = parts[3] ?? 525;
+    const toScan: string[] = [
+      ...bodyPaths,
+      ...customPathDs,
+      ...customRigPathDs,
+      ...(rigLineWarpedRigViewPaths.length > 0
+        ? rigLineWarpedRigViewPaths
+        : rigLineWarpedPaths),
+    ];
+    const { minX, maxX, minY, maxY } = scanPathDsBBox(toScan);
+    if (
+      Number.isFinite(minX) &&
+      Number.isFinite(maxX) &&
+      Number.isFinite(minY) &&
+      Number.isFinite(maxY)
+    ) {
+      const viewBoxMinX = Math.max(0, Math.floor(minX - pad));
+      const viewBoxWidth = Math.ceil(maxX + pad - viewBoxMinX);
+      /**
+       * ライブ身長: viewBox を常に maxY 追従にすると `meet` で見かけ身長が一定になる。
+       * 170cm 基準の fallbackH を床にし、低身長は枠内に余白・高身長は足元まで伸ばす。
+       */
+      const viewBoxHeight = flatCmGridBodyUsesLiveHeightWarp
+        ? Math.max(fallbackH, Math.ceil(maxY + pad))
+        : Math.ceil(maxY + pad);
+      const yScaleForViewBoxVertical = refRigYs;
+      return { viewBoxMinX, viewBoxWidth, viewBoxHeight, yScaleForViewBoxVertical };
+    }
+    return {
+      viewBoxMinX: 0,
+      viewBoxWidth: fallbackW,
+      viewBoxHeight: fallbackH,
+      yScaleForViewBoxVertical: refRigYs,
+    };
+  }
 
   /**
    * 格子: **custom** は常に REF 縦基準。さらに **ライブ身長ワープ**（平置き cm・Body Scale Lab の shirt 含む）時は

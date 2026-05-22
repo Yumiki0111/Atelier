@@ -3,10 +3,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { PreviewFitEaseSummary } from "./fit-ease-ui";
 import type { FitSvgPayload } from "./fit-svg-types";
-import {
-  bodySheetPreviewHeightScale,
-  uniformPreviewViewBoxHeightFromHeightCm,
-} from "./fit-svg-viewbox";
 import { WidgetPreviewFitSvgBodyPaths } from "./fit-svg-body-paths";
 
 export type WidgetStyleProductPreviewBodySheetServerSvgProps = {
@@ -32,24 +28,18 @@ export function WidgetStyleProductPreviewBodySheetServerSvg({
   footerSlot,
   canvasFadeStyle,
 }: WidgetStyleProductPreviewBodySheetServerSvgProps) {
-  const vbH = uniformPreviewViewBoxHeightFromHeightCm(bodyDraftHeight);
-
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col items-center justify-center gap-1 overflow-hidden py-0.5">
       <div
         className="flex min-h-0 w-full max-w-full max-h-[88%] flex-1 items-center justify-center overflow-hidden sm:max-h-[94%]"
-        style={{
-          transform: `scale(${bodySheetPreviewHeightScale(bodyDraftHeight)})`,
-          transformOrigin: "center center",
-          ...canvasFadeStyle,
-        }}
+        style={canvasFadeStyle}
       >
         <svg
-          viewBox={`${draftFitData.viewBoxMinX ?? 0} 0 ${draftFitData.viewBoxWidth} ${vbH}`}
+          viewBox={`${draftFitData.viewBoxMinX ?? 0} 0 ${draftFitData.viewBoxWidth} ${draftFitData.viewBoxHeight}`}
           preserveAspectRatio="xMidYMid meet"
           className="block h-auto max-h-full w-auto min-h-0 min-w-0 max-w-full overflow-visible"
           style={{
-            aspectRatio: `${draftFitData.viewBoxWidth} / ${vbH}`,
+            aspectRatio: `${draftFitData.viewBoxWidth} / ${draftFitData.viewBoxHeight}`,
           }}
           xmlns="http://www.w3.org/2000/svg"
           aria-hidden
@@ -66,6 +56,7 @@ export function WidgetStyleProductPreviewBodySheetServerSvg({
               bodyStrokeSimple={bodyStroke}
               presetId={draftFitData.presetId}
               bodyModelVariant={draftFitData.bodyModelVariant}
+              viewBoxHeight={draftFitData.viewBoxHeight}
               ids={{
                 fillRowKeyPrefix: "bdf",
                 outlineClosedKey: "bod-o",

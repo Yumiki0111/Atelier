@@ -5,6 +5,69 @@
 import type { CustomLandmarks } from "../types";
 import { getLandmarksFromPaths } from "@/app/(main)/development/fitting/customGarment/svgGarmentSplit";
 import { getPathPoints } from "../pathUtils";
+import {
+  RIG_LINE_CLAVICLE_L,
+  RIG_LINE_CLAVICLE_R,
+  RIG_LINE_SPINE,
+} from "@/lib/fitting-compute/fittingCanvasRigAlign";
+import { CX, MEASURE_BODY_LENGTH_Y1, M } from "../../garmentFlatCmGrading/garmentFlatCmGradingConstants";
+
+function normalizeRigPathD(d: string): string {
+  return d.trim().replace(/\s+/g, " ");
+}
+
+function isLikelyGridFlatCmSpinePathD(d: string): boolean {
+  const t = normalizeRigPathD(d);
+  const m = /^M\s*194\.\d+\s+(0(?:\.\d+)?)\s*V\s*(\d+(?:\.\d+)?)$/i.exec(t);
+  if (!m) return false;
+  const vy = Number.parseFloat(m[2]!);
+  return Number.isFinite(vy) && vy >= 285 && vy <= 300;
+}
+
+/**
+ * 格子 9 本リグ（`GARMENT_FLAT_CM_DOM_RIG_PATH_INDICES` 並び）から肩・裾を取る。
+ * 汎用ヒューリスティックは脊髄付近の交点を肩と誤認し y≈72 になるため、平置き cm ではこちらを優先する。
+ */
+export function inferGridFlatCmLandmarksFromNineRigPaths(rigPathDs: string[]): CustomLandmarks | null {
+  if (rigPathDs.length !== 9) return null;
+  const spineD = rigPathDs[RIG_LINE_SPINE];
+  if (!spineD || !isLikelyGridFlatCmSpinePathD(spineD)) return null;
+
+  const clL = getPathPoints(rigPathDs[RIG_LINE_CLAVICLE_L]!);
+  const clR = getPathPoints(rigPathDs[RIG_LINE_CLAVICLE_R]!);
+  if (clL.length < 2 || clR.length < 2) {
+    return {
+      shoulderY: M.shY,
+      shoulderLx: M.shLx,
+      shoulderRx: M.shRx,
+      hemY: MEASURE_BODY_LENGTH_Y1,
+      hemCx: CX,
+    };
+  }
+
+  const pickOuterShoulder = (pts: [number, number][]): [number, number] => {
+    const cx = M.cx;
+    return pts.reduce((best, p) =>
+      Math.abs(p[0] - cx) > Math.abs(best[0] - cx) ? p : best
+    );
+  };
+  const outerL = pickOuterShoulder(clL);
+  const outerR = pickOuterShoulder(clR);
+  const shoulderY = (outerL[1] + outerR[1]) / 2;
+  const shoulderLx = outerL[0];
+  const shoulderRx = outerR[0];
+
+  const allY = rigPathDs.flatMap((d) => getPathPoints(d).map((p) => p[1]));
+  const hemY = allY.length > 0 ? Math.max(...allY) : MEASURE_BODY_LENGTH_Y1;
+
+  return {
+    shoulderY,
+    shoulderLx,
+    shoulderRx,
+    hemY,
+    hemCx: CX,
+  };
+}
 
 function roundTo(v: number, step: number): number {
   if (!Number.isFinite(v)) return v;
@@ -18,6 +81,8 @@ function roundTo(v: number, step: number): number {
  * 格子 Vector(9) は軸線フィルタ後に縦スパン不足で落ちるため、9 本のとき `getLandmarksFromPaths` にフォールバック。
  */
 export function inferLandmarksFromRigPaths(rigPathDs: string[]): CustomLandmarks | null {
+  const grid = inferGridFlatCmLandmarksFromNineRigPaths(rigPathDs);
+  if (grid != null) return grid;
   const h = inferLandmarksFromRigPathsHeuristic(rigPathDs);
   if (h != null) return h;
   if (rigPathDs.length === 9) return getLandmarksFromPaths(rigPathDs);

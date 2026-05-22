@@ -1,7 +1,12 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  GarmentSizeReorderGrip,
+  moveArrayItem,
+} from "@/components/garment/GarmentSizeReorderGrip";
 import { GARMENT_FLAT_CM_FITTING_COLORS } from "./garmentFlatCmGradingConstants";
 import type { GarmentFlatCmGradingFittingCtx } from "./useGarmentFlatCmGradingFitting";
 import { flatCmEqual, formatCmInputValue, parseCmInputDraft, clampGarmentCmKey, round1 } from "./garmentFlatCmGradingFittingMeasureFormat";
@@ -27,21 +32,36 @@ export function GarmentFlatCmGradingSidebarGarment({ ctx }: GarmentFlatCmGrading
     activeGarmentCmFieldRef,
     applyUserPreset,
     deleteUserPreset,
+    reorderUserPresets,
     persistGarmentCm,
     overwriteActivePreset,
     loadGarmentCm,
   } = ctx;
+
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  const finishDrag = useCallback(() => {
+    setDragOverIndex(null);
+  }, []);
+
+  const onPresetDrop = useCallback(
+    (fromIndex: number, toIndex: number) => {
+      reorderUserPresets(fromIndex, toIndex);
+      finishDrag();
+    },
+    [finishDrag, reorderUserPresets]
+  );
 
   return (
     <div className="flex flex-col gap-4 pb-4 pt-1" style={{ color: ink }}>
       {/* 登録サイズ一覧 */}
       <div>
         <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.14em]" style={{ color: muted }}>
-          登録サイズ（切替 · 上書き保存 · 削除 · 画面に即反映）
+          登録サイズ（切替 · 並び替え · 上書き保存 · 削除）
         </div>
         {presetsState && presetsState.userPresets.length > 0 ? (
           <div className="flex flex-col gap-1">
-            {presetsState.userPresets.map((pr) => {
+            {presetsState.userPresets.map((pr, presetIndex) => {
               const selected =
                 presetsState.activeUserPresetId === pr.id && flatCmEqual(pr.cm, garmentCm);
               const cmSummary = [
@@ -50,8 +70,44 @@ export function GarmentFlatCmGradingSidebarGarment({ ctx }: GarmentFlatCmGrading
                 `着 ${formatCmInputValue(pr.cm.bodyLength)}`,
                 `袖 ${formatCmInputValue(pr.cm.sleeve)}`,
               ].join(" · ");
+              const isDragOver = dragOverIndex === presetIndex;
               return (
-                <div key={pr.id} className="flex w-full max-w-full items-stretch gap-px">
+                <div
+                  key={pr.id}
+                  className={cn(
+                    "flex w-full max-w-full items-stretch gap-px",
+                    isDragOver && "ring-1 ring-inset"
+                  )}
+                  style={isDragOver ? { boxShadow: `inset 0 0 0 1px ${accent}` } : undefined}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                    setDragOverIndex(presetIndex);
+                  }}
+                  onDragLeave={() => {
+                    setDragOverIndex((prev) => (prev === presetIndex ? null : prev));
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const raw = e.dataTransfer.getData("text/plain");
+                    const from = Number.parseInt(raw, 10);
+                    if (Number.isFinite(from)) onPresetDrop(from, presetIndex);
+                    else finishDrag();
+                  }}
+                >
+                  <GarmentSizeReorderGrip
+                    className="self-stretch border px-1"
+                    style={{ borderColor: rule, color: muted }}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.effectAllowed = "move";
+                      e.dataTransfer.setData("text/plain", String(presetIndex));
+                    }}
+                    onDragEnd={finishDrag}
+                    onMouseDown={() => {
+                      if (activeGarmentCmFieldRef.current) skipNextGarmentCmFieldBlurRef.current = true;
+                    }}
+                  />
                   <button
                     type="button"
                     className={cn(

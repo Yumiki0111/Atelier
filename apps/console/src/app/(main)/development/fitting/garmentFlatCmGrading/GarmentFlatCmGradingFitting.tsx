@@ -127,18 +127,29 @@ export const GarmentFlatCmGradingFitting = forwardRef<
           >
             標準ガーメント
           </button>
-          <label
-            className="flex cursor-pointer select-none items-center gap-1.5"
-            title="試着ボディの輪郭線は常時表示。このチェックでリグ（シャフト等）だけを重ねます。"
+          <div
+            className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px]"
+            title="前面プレビューのレイヤ表示。リグはモデル（赤）と服（青）を別々に重ねられます。"
           >
-            <input
-              type="checkbox"
-              className="size-3 accent-[#1A1A18] ring-offset-[#F5F3EF] focus-visible:ring-1 focus-visible:ring-[#1A1A18]/30"
-              checked={ctx.showModelRig}
-              onChange={(e) => ctx.setShowModelRig(e.target.checked)}
-            />
-            リグのみ表示
-          </label>
+            {(
+              [
+                ["showModelBody", "モデル", ctx.showModelBody, ctx.setShowModelBody],
+                ["showGarment", "服", ctx.showGarment, ctx.setShowGarment],
+                ["showModelRig", "モデルリグ", ctx.showModelRig, ctx.setShowModelRig],
+                ["showGarmentRig", "服リグ", ctx.showGarmentRig, ctx.setShowGarmentRig],
+              ] as const
+            ).map(([key, label, checked, setter]) => (
+              <label key={key} className="flex cursor-pointer select-none items-center gap-1">
+                <input
+                  type="checkbox"
+                  className="size-3 accent-[#1A1A18] ring-offset-[#F5F3EF] focus-visible:ring-1 focus-visible:ring-[#1A1A18]/30"
+                  checked={checked}
+                  onChange={(e) => setter(e.target.checked)}
+                />
+                {label}
+              </label>
+            ))}
+          </div>
         </div>
       </header>
 

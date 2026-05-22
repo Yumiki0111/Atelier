@@ -30,15 +30,31 @@ export function normalizeGarmentFlatCmId(raw: string | null | undefined): string
   return (raw ?? "").trim().toLowerCase();
 }
 
+/**
+ * 祖先 `<g id>` → 平置き cm 変形ゾーン。
+ * 新標準: `clothes` / `arm_L` / `arm_R` / `body`（Figma: FIREMAN JACKET 系）。
+ * 旧テンプレ: `garment` / `sleeve_L` / `sleeve_R` / … も併記。
+ */
 const ZONE_BY_PARENT_G_ID_LOWER: Readonly<Record<string, GarmentFlatCmZone>> = {
+  body: "body",
+  arm_l: "sleeve_L",
+  arm_r: "sleeve_R",
   sleeve_l: "sleeve_L",
   sleeve_r: "sleeve_R",
-  body: "body",
   collar: "collar",
   button_l: "button_L",
   button_r: "button_R",
   button_r_detail: "button_R",
 };
+
+/** Figma 複製で `arm_L_2` / `arm_R_2` になるケース（リグの `arm_L`/`arm_R` と id 衝突回避） */
+function zoneFromClothesChildGroupId(gNorm: string): GarmentFlatCmZone | undefined {
+  const direct = ZONE_BY_PARENT_G_ID_LOWER[gNorm];
+  if (direct) return direct;
+  if (/^arm_l(_\d+)?$/.test(gNorm)) return "sleeve_L";
+  if (/^arm_r(_\d+)?$/.test(gNorm)) return "sleeve_R";
+  return undefined;
+}
 
 const PATH_ZONES_BY_ID_LOWER: Readonly<Record<string, GarmentFlatCmZone>> = (() => {
   const out: Record<string, GarmentFlatCmZone> = {};
@@ -118,19 +134,44 @@ export function stripGarmentFlatCmMeasureDecorations(root: SVGSVGElement): void 
   loose.forEach((el) => el.remove());
   const redStrokes: Element[] = [];
   root.querySelectorAll("path, line, polyline, polygon").forEach((el) => {
-    if (el.closest("#rig")) return;
+    if (isInsideRigGroupCaseInsensitive(el)) return;
     if (isGarmentFlatCmMeasureConstructionStroke(el.getAttribute("stroke"))) redStrokes.push(el);
   });
   redStrokes.forEach((el) => el.remove());
 }
 
-function isUnderGarmentGroupCaseInsensitive(pathEl: Element): boolean {
+/** 服アートのルート `<g>`（`clothes` または旧 `garment`）の内側か */
+function isUnderClothesOrGarmentGroupCaseInsensitive(pathEl: Element): boolean {
   let el: Element | null = pathEl.parentElement;
   while (el) {
-    if (el.tagName.toLowerCase() === "g" && normalizeGarmentFlatCmId(el.getAttribute("id")) === "garment") {
-      return true;
+    if (el.tagName.toLowerCase() === "g") {
+      const gNorm = normalizeGarmentFlatCmId(el.getAttribute("id"));
+      if (gNorm === "clothes" || gNorm === "garment") return true;
     }
     el = el.parentElement;
+  }
+  return false;
+}
+
+/** ルート直下などの `<g id="rig">`（大文字小文字無視） */
+export function findGarmentFlatCmRigGroupElement(root: Element): SVGGElement | null {
+  for (const g of root.querySelectorAll("g[id]")) {
+    if (/^rig$/i.test((g.getAttribute("id") ?? "").trim())) {
+      return g as SVGGElement;
+    }
+  }
+  return null;
+}
+
+/** `#rig` / `Rig` 等の id ゆれを吸収 */
+export function isInsideRigGroupCaseInsensitive(el: Element): boolean {
+  let cur: Element | null = el.parentElement;
+  while (cur) {
+    if (cur.tagName.toLowerCase() === "g") {
+      const gid = (cur.getAttribute("id") ?? "").trim();
+      if (/^rig$/i.test(gid)) return true;
+    }
+    cur = cur.parentElement;
   }
   return false;
 }
@@ -186,28 +227,23 @@ export function collectGarmentFlatCmBackLayerPathElementsByIdOrder(root: Element
     if (el.tagName.toLowerCase() === "path") {
       pathEls.push(el as SVGPathElement);
     } else if (el.tagName.toLowerCase() === "g") {
-      const direct: SVGPathElement[] = [];
-      for (const child of el.children) {
-        if (child.tagName.toLowerCase() === "path") direct.push(child as SVGPathElement);
-      }
-      if (direct.length > 0) {
-        for (const dp of direct) pathEls.push(dp);
-      } else {
-        /** Figma 等: `<g data-name="back-stroke"><g>…<path/></g></g>` */
-        const nested = el.querySelector("path");
-        if (nested) pathEls.push(nested as SVGPathElement);
-      }
+      const nested = Array.from(el.querySelectorAll("path")).filter(
+        (p) =>
+          !isInsideRigGroupCaseInsensitive(p) &&
+          !(p instanceof SVGPathElement && isGarmentFlatCmOutlineExcludedPath(p))
+      );
+      for (const dp of nested) pathEls.push(dp);
     }
   }
   return pathEls;
 }
 
-/** `#rig` / `#measures` / 定義系コンテナ以外で、d ありのガーメント輪郭 path を document 順に列挙 */
+/** `#rig` / `#measures` / 定義系コンテナ以外で、d ありのガーメント輪郭 path を document 順に列挙（`clothes` 配下） */
 export function collectGarmentFlatCmOutlinePathElements(root: SVGSVGElement): SVGPathElement[] {
   const out: SVGPathElement[] = [];
   root.querySelectorAll("path").forEach((node) => {
     const p = node as SVGPathElement;
-    if (p.closest("#rig") || isGarmentFlatCmOutlineExcludedPath(p)) return;
+    if (isInsideRigGroupCaseInsensitive(p) || isGarmentFlatCmOutlineExcludedPath(p)) return;
     if (p.closest("defs") || p.closest("clipPath") || p.closest("mask")) return;
     const d = p.getAttribute("d");
     if (d != null && d.trim().length > 0) {
@@ -219,16 +255,16 @@ export function collectGarmentFlatCmOutlinePathElements(root: SVGSVGElement): SV
 
 /**
  * 平置き cm 変形ゾーンを決定する。
- * 1. 祖先 `<g id>` … `sleeve_L` / `sleeve_R` / `body` / `collar` / `button_L` / `button_R` / `button_R_detail`（`button_R_detail` は右パーツ追加グループ用）
+ * 1. 祖先 `<g id>` … `clothes/arm_L` / `clothes/arm_R` / `clothes/body`（新標準）または `sleeve_L` / `body` / …（旧テンプレ）
  * 2. `GARMENT_FLAT_CM_PATH_ZONES[pathId]` … **背面 back-stroke** だけ（前面から切り取りで祖先 `<g>` を失うとき）
- * 3. `garment` 内なら `body`
- * 4. 上記いずれも無いフラットな出力（`Group` のみ等）では **`body` に丸め**（固定座標グレードはテンプレ S に合わせた近似）
+ * 3. `clothes` または `garment` 内で上記が無い path は `body`
+ * 4. 上記いずれも無いフラットな出力では **`body` に丸め**
  */
 export function resolveGarmentFlatCmDeformZone(
   pathEl: Element,
   pathId: string | null | undefined
 ): GarmentFlatCmZone | null {
-  if (pathEl.closest("#rig")) return null;
+  if (isInsideRigGroupCaseInsensitive(pathEl)) return null;
   if (pathEl.closest("defs") || pathEl.closest("clipPath") || pathEl.closest("mask")) return null;
   if (pathEl instanceof SVGPathElement && isGarmentFlatCmOutlineExcludedPath(pathEl)) return null;
   let el: Element | null = pathEl.parentElement;
@@ -237,7 +273,7 @@ export function resolveGarmentFlatCmDeformZone(
       const gidRaw = el.getAttribute("id");
       const gNorm = normalizeGarmentFlatCmId(gidRaw);
       if (gNorm) {
-        const byZone = ZONE_BY_PARENT_G_ID_LOWER[gNorm];
+        const byZone = zoneFromClothesChildGroupId(gNorm);
         if (byZone) return byZone;
         const byPathKey = PATH_ZONES_BY_ID_LOWER[gNorm];
         if (byPathKey) return byPathKey;
@@ -261,7 +297,7 @@ export function resolveGarmentFlatCmDeformZone(
     const byBackKey = BACK_LAYER_ZONE_BY_NORMALIZED_KEY.get(backLayerKey);
     if (byBackKey) return byBackKey;
   }
-  if (isUnderGarmentGroupCaseInsensitive(pathEl)) {
+  if (isUnderClothesOrGarmentGroupCaseInsensitive(pathEl)) {
     return "body";
   }
   return "body";

@@ -8,12 +8,15 @@ import {
   type ChangeEvent,
 } from "react";
 import { toast } from "sonner";
-import {
-  getBodyRigLinePathsTemplate,
-  type BodyModelVariant,
-} from "@/app/(main)/development/fitting/lib/bodyModelVariant";
-import { computeFittingCanvasSnapshot } from "@/lib/fitting-compute/fittingCanvasCompute";
+import { getBodyRigLinePathsTemplate } from "@/app/(main)/development/fitting/lib/bodyModelVariant";
 import type { FittingCanvasSnapshot } from "@/lib/fitting-compute/fittingCanvasComputeTypes";
+import {
+  computeFlatCmGarmentFitSnapshot,
+  garmentFlatCmShapeDeltasFromBase,
+  enrichCustomGarmentWithFlatCmOfferedMetadata,
+  prepareFlatCmGarmentForEditorCm,
+  GRID_FLAT_CM_BODY_VARIANTS,
+} from "@/lib/widget-fit/garmentFlatCmFitPipeline";
 import {
   GARMENT_FLAT_CM_BACK_LAYER_IDS,
   GARMENT_FLAT_CM_PATH_ZONES,
@@ -24,10 +27,13 @@ import {
   SH_L_X,
   SH_R_X,
 } from "./garmentFlatCmGradingConstants";
-import { flatCmGarmentPointDelta, rewriteFlatCmGarmentPath } from "./garmentFlatCmGradingPathDeform";
+import {
+  flatCmGarmentPointDelta,
+  GARMENT_FLAT_CM_DEFAULT_DEFORM_OPTIONS,
+  rewriteFlatCmGarmentPath,
+} from "./garmentFlatCmGradingPathDeform";
 import {
   GARMENT_FLAT_CM_BASE,
-  garmentFlatCmToShapeDeltas,
   garmentFlatCmSleeveEffectivePxPerCm,
   type GarmentFlatCm,
 } from "./garmentFlatCmGradingMeasurements";
@@ -36,13 +42,7 @@ import {
   buildGarmentFlatCmGradingSpecFromFrontAndBackSvg,
   mergeRearGarmentMarkupIntoFlatCmSpec,
 } from "./buildGarmentFlatCmGradingSpecForProductDb";
-import { resolveGarmentDataForPreviewView } from "@/lib/widget-fit/resolveGarmentDataForPreviewView";
-import { flatCmOfferedSizeLabelsForRegister } from "./flatCmOfferedSizeLabelsForRegister";
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
-import {
-  PREVIEW_JACKET_SIZE,
-  PREVIEW_SHIRT_SIZE,
-} from "@/features/preview/widget-style-product/fit-constants";
 import {
   installGradedGarmentDomFromMarkup,
   maybeWarnGarmentFlatCmViewBox,
@@ -52,6 +52,7 @@ import {
   collectGarmentFlatCmBackLayerPathElementsByIdOrder,
   collectGarmentFlatCmOutlinePathElements,
   isGarmentFlatCmMeasureConstructionStroke,
+  isInsideRigGroupCaseInsensitive,
   resolveGarmentFlatCmDeformZone,
 } from "./garmentFlatCmGradingSvgOutline";
 import {
@@ -71,17 +72,9 @@ export { flatCmEqual, formatCmInputValue, parseCmInputDraft, clampGarmentCmKey, 
 
 const GARMENT_SRC = "/fitting-models/garment-flat-cm-template-garment.svg";
 
-const GRID_PREVIEW_BODY_VARIANTS = {
-  front: "gridSvgBody" as BodyModelVariant,
-  back: "gridSvgBodyBack" as BodyModelVariant,
-};
-
 export function useGarmentFlatCmGradingFitting(height: number, weight: number) {
   const [tab, setTab] = useState<"garment" | "model">("garment");
   const [garmentCm, setGarmentCm] = useState<GarmentFlatCm>(() => ({
-    ...GARMENT_FLAT_CM_BASE,
-  }));
-  const [outlineGradeBaselineCm, setOutlineGradeBaselineCm] = useState<GarmentFlatCm>(() => ({
     ...GARMENT_FLAT_CM_BASE,
   }));
   const [editingGarmentField, setEditingGarmentField] = useState<keyof GarmentFlatCm | null>(null);
@@ -90,7 +83,10 @@ export function useGarmentFlatCmGradingFitting(height: number, weight: number) {
   const [uploadedRearGarmentMarkup, setUploadedRearGarmentMarkup] = useState<string | null>(null);
   const [bundledAssetTexts, setBundledAssetTexts] = useState<{ garment: string } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [showModelBody, setShowModelBody] = useState(true);
+  const [showGarment, setShowGarment] = useState(true);
   const [showModelRig, setShowModelRig] = useState(false);
+  const [showGarmentRig, setShowGarmentRig] = useState(false);
   const [fitSnapFront, setFitSnapFront] = useState<FittingCanvasSnapshot | null>(null);
   const [fitSnapBack, setFitSnapBack] = useState<FittingCanvasSnapshot | null>(null);
 
@@ -104,8 +100,6 @@ export function useGarmentFlatCmGradingFitting(height: number, weight: number) {
   const rearGarmentSvgUploadRef = useRef<HTMLInputElement | null>(null);
   const skipNextGarmentCmFieldBlurRef = useRef(false);
   const activeGarmentCmFieldRef = useRef<keyof GarmentFlatCm | null>(null);
-  /** `garmentOriginalOutlineDs` が取り込まれたマークアップ。変形は常にこの時点の平置き cm を基準にする（S テンプレ固定だとアップロード形状が歪む） */
-  const prevEffectiveGarmentMarkupForGradeBaselineRef = useRef<string | null>(null);
 
   const clearEditingField = useCallback(() => {
     activeGarmentCmFieldRef.current = null;
@@ -122,6 +116,7 @@ export function useGarmentFlatCmGradingFitting(height: number, weight: number) {
     persistGarmentCm: persistGarmentCmBase,
     overwriteActivePreset: overwriteActivePresetBase,
     loadGarmentCm,
+    reorderUserPresets,
   } = useGarmentFlatCmPresets({ setGarmentCm, onPresetApply: clearEditingField });
 
   useLayoutEffect(() => {
@@ -144,11 +139,7 @@ export function useGarmentFlatCmGradingFitting(height: number, weight: number) {
     const main = buildGarmentFlatCmGradingSpecFromFrontAndBackSvg(front, back, garmentCm, mk ?? undefined);
     if (!main) return null;
     const withRear = mergeRearGarmentMarkupIntoFlatCmSpec(main, uploadedRearGarmentMarkup, garmentCm);
-    const offered = flatCmOfferedSizeLabelsForRegister(presetsState, garmentCm);
-    if (offered.length > 0) {
-      return { ...withRear, flatCmOfferedSizeLabels: offered };
-    }
-    return withRear;
+    return enrichCustomGarmentWithFlatCmOfferedMetadata(withRear, garmentCm, presetsState);
   }, [garmentCm, effectiveGarmentMarkup, uploadedRearGarmentMarkup, presetsState]);
 
   const applyGarmentSvgText = useCallback((raw: string) => {
@@ -164,7 +155,7 @@ export function useGarmentFlatCmGradingFitting(height: number, weight: number) {
     garmentFlatCmDomReadyRef.current = false;
     setUploadedGarmentMarkup(raw);
     toast.success(
-      "ガーメント SVG を読み込みました。sleeve_L / sleeve_R / body の各グループ内の path に平置き cm ゾーン変形が掛かります（path id は不要です）。"
+      "ガーメント SVG を読み込みました。clothes 内の body / arm_L / arm_R（Figma の arm_L_2 等も袖ゾーン）に平置き cm 変形が掛かります。viewBox は model_front と同一（389×525）推奨。"
     );
   }, []);
 
@@ -182,8 +173,8 @@ export function useGarmentFlatCmGradingFitting(height: number, weight: number) {
   }, []);
 
   const { dSh, dBw, dBl, dSleeveLengthPx } = useMemo(
-    () => garmentFlatCmToShapeDeltas(garmentCm, outlineGradeBaselineCm),
-    [garmentCm, outlineGradeBaselineCm]
+    () => garmentFlatCmShapeDeltasFromBase(garmentCm),
+    [garmentCm]
   );
 
   const sleevePxPerCmLive = useMemo(
@@ -268,7 +259,16 @@ export function useGarmentFlatCmGradingFitting(height: number, weight: number) {
     const bl = fmtMeasureLabel(MEASURE_BODY_LENGTH_BASE_PX, dBl);
     const baseSl = measureOpenPolylineLength(MEASURE_SLEEVE_L_VERTS);
     const warpedSl = MEASURE_SLEEVE_L_VERTS.map(([x, y]) => {
-      const [dx, dy] = flatCmGarmentPointDelta(x, y, "sleeve_L", dSh, dBw, dBl, dSleeveLengthPx);
+      const [dx, dy] = flatCmGarmentPointDelta(
+        x,
+        y,
+        "sleeve_L",
+        dSh,
+        dBw,
+        dBl,
+        dSleeveLengthPx,
+        GARMENT_FLAT_CM_DEFAULT_DEFORM_OPTIONS
+      );
       return [x + dx, y + dy] as [number, number];
     });
     const curSl = measureOpenPolylineLength(warpedSl);
@@ -319,7 +319,15 @@ export function useGarmentFlatCmGradingFitting(height: number, weight: number) {
         const id = p.getAttribute("id");
         const zone = resolveGarmentFlatCmDeformZone(p, id);
         if (!zone) return;
-        const newD = rewriteFlatCmGarmentPath(orig, zone, sh, bw, bl, slPx);
+        const newD = rewriteFlatCmGarmentPath(
+          orig,
+          zone,
+          sh,
+          bw,
+          bl,
+          slPx,
+          GARMENT_FLAT_CM_DEFAULT_DEFORM_OPTIONS
+        );
         p.setAttribute("d", newD);
       });
     },
@@ -348,7 +356,15 @@ export function useGarmentFlatCmGradingFitting(height: number, weight: number) {
         const canonId = GARMENT_FLAT_CM_BACK_LAYER_IDS[i];
         const zone =
           canonId != null ? GARMENT_FLAT_CM_PATH_ZONES[canonId] ?? "body" : "body";
-        const newD = rewriteFlatCmGarmentPath(orig, zone, sh, bw, bl, slPx);
+        const newD = rewriteFlatCmGarmentPath(
+          orig,
+          zone,
+          sh,
+          bw,
+          bl,
+          slPx,
+          GARMENT_FLAT_CM_DEFAULT_DEFORM_OPTIONS
+        );
         p.setAttribute("d", newD);
       });
     },
@@ -373,7 +389,7 @@ export function useGarmentFlatCmGradingFitting(height: number, weight: number) {
         }
       });
       gFront.querySelectorAll("path, line, polyline, polygon").forEach((el) => {
-        if (el.closest("#rig")) return;
+        if (isInsideRigGroupCaseInsensitive(el)) return;
         if (isGarmentFlatCmMeasureConstructionStroke(el.getAttribute("stroke"))) {
           el.setAttribute("display", "none");
         }
@@ -407,19 +423,11 @@ export function useGarmentFlatCmGradingFitting(height: number, weight: number) {
     }
     lastMountedGarmentKeyRef.current = garmentKey;
     garmentFlatCmDomReadyRef.current = true;
-    const markupJustChanged = prevEffectiveGarmentMarkupForGradeBaselineRef.current !== garmentKey;
-    const baselineForImmediate = markupJustChanged ? garmentCm : outlineGradeBaselineCm;
-    const immediateShapeDeltas = garmentFlatCmToShapeDeltas(garmentCm, baselineForImmediate);
-    if (markupJustChanged) {
-      prevEffectiveGarmentMarkupForGradeBaselineRef.current = garmentKey;
-      setOutlineGradeBaselineCm({ ...garmentCm });
-    }
-    applyGarmentScene(immediateShapeDeltas);
+    applyGarmentScene(garmentFlatCmShapeDeltasFromBase(garmentCm));
 
     const spec = buildGarmentFlatCmGradingSpecFromFrontAndBackSvg(gFront, gBack, garmentCm, garmentKey);
-    const { front: frontBodyVariant, back: backBodyVariant } = GRID_PREVIEW_BODY_VARIANTS;
-    const rigTplFront = getBodyRigLinePathsTemplate(frontBodyVariant);
-    const rigTplBack = getBodyRigLinePathsTemplate(backBodyVariant);
+    const rigTplFront = getBodyRigLinePathsTemplate(GRID_FLAT_CM_BODY_VARIANTS.front);
+    const rigTplBack = getBodyRigLinePathsTemplate(GRID_FLAT_CM_BODY_VARIANTS.back);
     if (
       spec == null ||
       rigTplFront.length === 0 ||
@@ -430,37 +438,22 @@ export function useGarmentFlatCmGradingFitting(height: number, weight: number) {
       setFitSnapFront(null);
       setFitSnapBack(null);
     } else {
-      const baseSnapOpts = {
-        height,
-        weight,
-        garment: "custom" as const,
-        shirtSize: PREVIEW_SHIRT_SIZE,
-        jacketSize: PREVIEW_JACKET_SIZE,
-        animProgress: 1,
-        fromSize: null,
-        toSize: null,
-        fromCustomGarmentData: null,
-        toCustomGarmentData: null,
-        rigBodyEnabled: false,
-      };
       const specWithRear = mergeRearGarmentMarkupIntoFlatCmSpec(spec, uploadedRearGarmentMarkup, garmentCm);
-      const specBack = resolveGarmentDataForPreviewView(specWithRear, "back");
+      const specForSnap = prepareFlatCmGarmentForEditorCm(specWithRear, garmentCm, presetsState);
       setFitSnapFront(
-        computeFittingCanvasSnapshot({
-          ...baseSnapOpts,
-          customGarmentData: spec,
-          bodyModelVariant: frontBodyVariant,
-          rigLinePaths: rigTplFront,
-          respectRequestedBodyModelVariant: true,
+        computeFlatCmGarmentFitSnapshot({
+          customGarmentData: specForSnap,
+          height,
+          weight,
+          bodyView: "front",
         })
       );
       setFitSnapBack(
-        computeFittingCanvasSnapshot({
-          ...baseSnapOpts,
-          customGarmentData: specBack,
-          bodyModelVariant: backBodyVariant,
-          rigLinePaths: rigTplBack,
-          respectRequestedBodyModelVariant: true,
+        computeFlatCmGarmentFitSnapshot({
+          customGarmentData: specForSnap,
+          height,
+          weight,
+          bodyView: "back",
         })
       );
     }
@@ -475,7 +468,7 @@ export function useGarmentFlatCmGradingFitting(height: number, weight: number) {
     height,
     weight,
     uploadedRearGarmentMarkup,
-    outlineGradeBaselineCm,
+    presetsState,
   ]);
 
   return {
@@ -494,8 +487,14 @@ export function useGarmentFlatCmGradingFitting(height: number, weight: number) {
     uploadedRearGarmentMarkup,
     bundledAssetTexts,
     loadError,
+    showModelBody,
+    setShowModelBody,
+    showGarment,
+    setShowGarment,
     showModelRig,
     setShowModelRig,
+    showGarmentRig,
+    setShowGarmentRig,
     fitSnapFront,
     fitSnapBack,
     garmentFrontSvgRef,
@@ -510,6 +509,7 @@ export function useGarmentFlatCmGradingFitting(height: number, weight: number) {
     buildGarmentSpec,
     applyUserPreset,
     deleteUserPreset,
+    reorderUserPresets,
     persistGarmentCm,
     overwriteActivePreset,
     loadGarmentCm,

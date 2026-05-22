@@ -12,8 +12,8 @@ import type { BodyModelVariant } from "@/app/(main)/development/fitting/lib/body
  * 肩追従/リグ固定化に関する段階導入オプション。すべて未指定（=false）なら従来挙動を維持。
  * - useShoulderRigidFollowAllModes: 格子ボディ（gridSvgBody/Back）でも肩2点ベース剛体追従を有効化
  *   （フェーズ1: 服の肩線が人体の肩傾斜に乗るようになる）
- * - useShoulderSlopeDistribution: 肩幅変形(`dSh`)を水平のみではなく肩スロープ単位ベクトルへ分配
- *   （フェーズ2: 真横ではなく斜め下に「落ちる」変形になる）
+ * - useShoulderSlopeDistribution: 肩幅(`dSh`)・身幅(`dBw`)を水平のみではなくスロープ単位ベクトルへ分配
+ * - useShoulderAnchorDrop: 肩付け内側を固定し、dSh は外側頂点のオチ(dy)中心（水平スパンは弱く）
  * - bodyRigFreezeArmAngle: 体型由来の腕角度差分Δθを「人体スキニング」に適用しない
  *   （フェーズ3: 人体は基準姿勢のまま。Δθは服側の rigid マップでのみ参照）
  * - bodyDiffViaGarmentLocalDeltas: 身長/体重差を服の局所伸縮(dBw/dBl/dSleeveLengthPx)へ写像
@@ -22,6 +22,7 @@ import type { BodyModelVariant } from "@/app/(main)/development/fitting/lib/body
 export interface FittingShoulderFollowOptions {
   useShoulderRigidFollowAllModes?: boolean;
   useShoulderSlopeDistribution?: boolean;
+  useShoulderAnchorDrop?: boolean;
   bodyRigFreezeArmAngle?: boolean;
   bodyDiffViaGarmentLocalDeltas?: boolean;
 }

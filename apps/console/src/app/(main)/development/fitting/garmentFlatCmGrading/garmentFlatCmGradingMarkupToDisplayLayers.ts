@@ -4,9 +4,15 @@ import {
   GARMENT_FLAT_CM_BACK_LAYER_IDS,
 } from "./garmentFlatCmGradingConstants";
 import type { GarmentFlatCm } from "./garmentFlatCmGradingMeasurements";
-import { garmentFlatCmToShapeDeltas } from "./garmentFlatCmGradingMeasurements";
+import {
+  garmentFlatCmFromCustomGarmentSize,
+  garmentFlatCmShapeDeltasFromBase,
+} from "./garmentFlatCmGradingMeasurements";
 import { isGarmentFlatCmPresetId } from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmPreset";
-import { rewriteFlatCmGarmentPath } from "./garmentFlatCmGradingPathDeform";
+import {
+  GARMENT_FLAT_CM_DEFAULT_DEFORM_OPTIONS,
+  rewriteFlatCmGarmentPath,
+} from "./garmentFlatCmGradingPathDeform";
 import {
   collectGarmentFlatCmBackLayerPathElementsByIdOrder,
   collectGarmentFlatCmOutlinePathElements,
@@ -62,7 +68,7 @@ export function computeGarmentFlatCmLayersFromMarkup(
   const srcOutline = collectOutlinePaths(srcRoot as unknown as SVGSVGElement);
   const initialDsOrdered = srcOutline.map((p) => (p.getAttribute("d") ?? "").trim());
   const working = srcRoot.cloneNode(true) as SVGSVGElement;
-  const { dSh, dBw, dBl, dSleeveLengthPx } = garmentFlatCmToShapeDeltas(flatCm);
+  const { dSh, dBw, dBl, dSleeveLengthPx } = garmentFlatCmShapeDeltasFromBase(flatCm);
 
   const workingOutline = collectOutlinePaths(working);
   workingOutline.forEach((p, i) => {
@@ -71,7 +77,18 @@ export function computeGarmentFlatCmLayersFromMarkup(
     const id = p.getAttribute("id");
     const zone = resolveGarmentFlatCmDeformZone(p, id);
     if (!zone) return;
-    p.setAttribute("d", rewriteFlatCmGarmentPath(orig, zone, dSh, dBw, dBl, dSleeveLengthPx));
+    p.setAttribute(
+      "d",
+      rewriteFlatCmGarmentPath(
+        orig,
+        zone,
+        dSh,
+        dBw,
+        dBl,
+        dSleeveLengthPx,
+        GARMENT_FLAT_CM_DEFAULT_DEFORM_OPTIONS
+      )
+    );
   });
 
   const pathDs: string[] = [];
@@ -158,14 +175,4 @@ export function resolveGarmentFlatCmMirrorMeasuresForPreview(args: {
   return garmentFlatCmFromCustomGarmentSize(data);
 }
 
-/** `size`（DB）→ 平置き cm（肩幅・身幅・着丈・袖） */
-export function garmentFlatCmFromCustomGarmentSize(data: {
-  size: { shoulder: number; chest: number; length: number; sleeve: number };
-}): GarmentFlatCm {
-  return {
-    shoulder: data.size.shoulder,
-    bodyWidth: data.size.chest,
-    bodyLength: data.size.length,
-    sleeve: data.size.sleeve,
-  };
-}
+export { garmentFlatCmFromCustomGarmentSize } from "./garmentFlatCmGradingMeasurements";

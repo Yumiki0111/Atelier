@@ -60,7 +60,11 @@ fs.writeFileSync(
   destPath,
   [
     `/** 自動生成: npx tsx scripts/generate-garment-flat-cm-grid-body-template.ts`,
-    ` * 前面 ${nFront} 本・viewBox ${frontVb.w}×${frontVb.h}／背面 ${nBack} 本・viewBox ${backVb.w}×${backVb.h} */`,
+    ` * 前面 ${nFront} 本・viewBox ${frontVb.w}×${frontVb.h}／背面 ${nBack} 本・viewBox ${backVb.w}×${backVb.h}`,
+    ` * NATIVE: Figma/model_front と同じ SVG 座標（平置き cm 試着で服と 1:1 重ねる用） */`,
+    `export const BPATHS_GARMENT_FLAT_CM_GRID_SVG_BODY_NATIVE: string[] = ${JSON.stringify(frontDs)};`,
+    `export const BPATHS_GARMENT_FLAT_CM_GRID_SVG_BODY_BACK_NATIVE: string[] = ${JSON.stringify(backDs)};`,
+    `/** 旧: ボディテンプレ (1505×2852) へ cover 写像済み — model+rig 系ワープ用 */`,
     `export const BPATHS_GARMENT_FLAT_CM_GRID_SVG_BODY_TEMPLATE: string[] = ${JSON.stringify(outFront)};`,
     `/** 格子背面ボディ（grid-body-back-silhouette-path-source.svg） */`,
     `export const BPATHS_GARMENT_FLAT_CM_GRID_SVG_BODY_BACK_TEMPLATE: string[] = ${JSON.stringify(outBack)};`,

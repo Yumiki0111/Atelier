@@ -1,0 +1,12 @@
+<svg width="389" height="525" viewBox="0 0 389 525" fill="none" xmlns="http://www.w3.org/2000/svg">
+<!-- model_front (3).svg #rig ’ BPATHS index Qshaft, arm_L, arm_R, leg_L, leg_R, sholder_L, sholder_R, hip_L, hip_R	 -->
+<path id="shaft" d="M194.375 0V294" stroke="black"/>
+<path id="arm_L" d="M138.369 117.12L0.375 272" stroke="black"/>
+<path id="arm_R" d="M250.367 117.12L388.375 272" stroke="black"/>
+<path id="leg_L" d="M165.829 287.16L159.793 517" stroke="black"/>
+<path id="leg_R" d="M222.906 287.16L228.942 517" stroke="black"/>
+<path id="sholder_L" d="M138.371 117.12L194.37 94.04" stroke="black"/>
+<path id="sholder_R" d="M250.366 117.12L194.367 94.04" stroke="black"/>
+<path id="hip_L" d="M165.828 287.16L194.407 274.72" stroke="black"/>
+<path id="hip_R" d="M222.907 287.16L194.328 274.72" stroke="black"/>
+</svg>

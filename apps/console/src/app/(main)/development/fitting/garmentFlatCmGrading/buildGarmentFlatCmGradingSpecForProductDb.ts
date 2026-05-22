@@ -4,29 +4,29 @@ import { RIG_LINE_PATH_COUNT } from "@/lib/fitting-compute/fittingCanvasRigAlign
 import {
   GARMENT_FLAT_CM_PATH_ZONES,
   GARMENT_FLAT_CM_BACK_LAYER_IDS,
+  GARMENT_FLAT_CM_DOM_RIG_PATH_INDICES_FOR_BPATHS_ORDER,
   CX,
   MEASURE_BODY_LENGTH_Y1,
-  SH_L_X,
-  SH_R_X,
-  SH_Y,
+  M,
   type GarmentFlatCmZone,
 } from "./garmentFlatCmGradingConstants";
 import {
   collectGarmentFlatCmBackLayerPathElementsByIdOrder,
   collectGarmentFlatCmFrontOutlinePathElements,
   isGarmentFlatCmOutlineExcludedPath,
+  isInsideRigGroupCaseInsensitive,
   resolveGarmentFlatCmDeformZone,
   stripGarmentFlatCmMeasureDecorations,
+  findGarmentFlatCmRigGroupElement,
 } from "./garmentFlatCmGradingSvgOutline";
-import { garmentFlatCmToShapeDeltas, type GarmentFlatCm } from "./garmentFlatCmGradingMeasurements";
-import { rewriteFlatCmGarmentPath } from "./garmentFlatCmGradingPathDeform";
+import { garmentFlatCmShapeDeltasFromBase } from "./garmentFlatCmGradingMeasurements";
+import type { GarmentFlatCm } from "./garmentFlatCmGradingMeasurements";
+import {
+  GARMENT_FLAT_CM_DEFAULT_DEFORM_OPTIONS,
+  rewriteFlatCmGarmentPath,
+} from "./garmentFlatCmGradingPathDeform";
 
-/**
- * `#rig` 内の DOM 順（shaft…）→ `gridSvgRigData` と同一 index 契約への並べ替え。
- */
-export const GARMENT_FLAT_CM_DOM_RIG_PATH_INDICES_FOR_BPATHS_ORDER: readonly number[] = [
-  0, 8, 5, 1, 3, 6, 7, 2, 4,
-];
+export { GARMENT_FLAT_CM_DOM_RIG_PATH_INDICES_FOR_BPATHS_ORDER } from "./garmentFlatCmGradingConstants";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -52,7 +52,7 @@ function collectGarmentFlatCmNonMeasurePathElements(root: Element): SVGPathEleme
   const candidates: SVGPathElement[] = [];
   root.querySelectorAll("path").forEach((node) => {
     const p = node as SVGPathElement;
-    if (isGarmentFlatCmOutlineExcludedPath(p)) return;
+    if (isGarmentFlatCmOutlineExcludedPath(p) || isInsideRigGroupCaseInsensitive(p)) return;
     const d = p.getAttribute("d");
     if (d?.trim()) candidates.push(p);
   });
@@ -76,7 +76,7 @@ function findFlatCmGridNinePathBlock(candidates: SVGPathElement[]): SVGPathEleme
  * リグは先頭でなくてもよい（計測の赤線や本体パスが前にあっても可）。
  */
 export function ensureGarmentFlatCmRigGroupOnClonedSvg(svgRoot: SVGSVGElement): void {
-  if (svgRoot.querySelector("#rig")) return;
+  if (findGarmentFlatCmRigGroupElement(svgRoot)) return;
   const candidates = collectGarmentFlatCmNonMeasurePathElements(svgRoot);
   const rigPaths = findFlatCmGridNinePathBlock(candidates);
   if (!rigPaths) return;
@@ -96,7 +96,7 @@ export function ensureGarmentFlatCmRigGroupOnClonedSvg(svgRoot: SVGSVGElement): 
  * `#rig` があればその子 path。無い場合はフラット export 前提で document 順の連続9本（いずれかの位置で1本目が脊髄）。
  */
 export function collectGarmentFlatCmRigPathDsFromSvgRoot(root: Element): string[] | null {
-  const rigG = root.querySelector("#rig");
+  const rigG = findGarmentFlatCmRigGroupElement(root);
   if (rigG) {
     const rigPathsRaw = Array.from(rigG.querySelectorAll("path")) as SVGPathElement[];
     const rigDomDs = rigPathsRaw
@@ -127,7 +127,7 @@ export function garmentFlatCmRigMarkupValidationError(markup: string): string | 
   ensureGarmentFlatCmRigGroupOnClonedSvg(svgRoot);
   const ds = collectGarmentFlatCmRigPathDsFromSvgRoot(svgRoot);
   if (!ds || ds.length !== RIG_LINE_PATH_COUNT) {
-    return "リグを認識できません。#rig に9本の path を入れるか、格子と同じ順の黒リグ9本を連続で置く（先頭は脊髄 M194.x 0付近の縦線。V294 以外の小数も可）。計測は #measures 内推奨。標準どおり <g id=\"rig\"> で囲んでも構いません。";
+    return "リグを認識できません。<g id=\"rig\"> に9本の path を入れるか、格子と同じ順の黒リグ9本を連続で置く（先頭は脊髄 M194.x 0付近の縦線）。計測は <g id=\"measures\">、服は <g id=\"clothes\">（body / arm_L / arm_R）推奨。";
   }
   return null;
 }
@@ -241,7 +241,7 @@ export function applyGarmentFlatCmGradeToParsedSvgRoot(
 ): void {
   const slices = extractFlatCmBaseGarmentSlicesFromMarkup(sourceMarkup);
   if (slices == null) return;
-  const { dSh, dBw, dBl, dSleeveLengthPx } = garmentFlatCmToShapeDeltas(garmentCm);
+  const { dSh, dBw, dBl, dSleeveLengthPx } = garmentFlatCmShapeDeltasFromBase(garmentCm);
   const frontPaths = collectGarmentFlatCmFrontOutlinePathElements(svgRoot);
   const nFront = Math.min(
     frontPaths.length,
@@ -252,7 +252,18 @@ export function applyGarmentFlatCmGradeToParsedSvgRoot(
     const p = frontPaths[i]!;
     const orig = slices.flatCmBasePathDs[i]!;
     const zone = slices.flatCmOutlinePathZones[i]!;
-    p.setAttribute("d", rewriteFlatCmGarmentPath(orig, zone, dSh, dBw, dBl, dSleeveLengthPx));
+    p.setAttribute(
+      "d",
+      rewriteFlatCmGarmentPath(
+        orig,
+        zone,
+        dSh,
+        dBw,
+        dBl,
+        dSleeveLengthPx,
+        GARMENT_FLAT_CM_DEFAULT_DEFORM_OPTIONS
+      )
+    );
   }
   const bb = slices.flatCmBaseBehindBody;
   if (bb?.pathDs?.length) {
@@ -267,7 +278,18 @@ export function applyGarmentFlatCmGradeToParsedSvgRoot(
         (pathId ? GARMENT_FLAT_CM_PATH_ZONES[pathId] : undefined) ??
         (canonBackId ? GARMENT_FLAT_CM_PATH_ZONES[canonBackId] : undefined) ??
         ("body" as GarmentFlatCmZone);
-      p.setAttribute("d", rewriteFlatCmGarmentPath(orig, zone, dSh, dBw, dBl, dSleeveLengthPx));
+      p.setAttribute(
+        "d",
+        rewriteFlatCmGarmentPath(
+          orig,
+          zone,
+          dSh,
+          dBw,
+          dBl,
+          dSleeveLengthPx,
+          GARMENT_FLAT_CM_DEFAULT_DEFORM_OPTIONS
+        )
+      );
     }
   }
 }
@@ -325,9 +347,9 @@ export function buildGarmentFlatCmGradingSpecFromFrontAndBackSvg(
     pathStrokes,
     pathFills,
     landmarks: {
-      shoulderY: SH_Y,
-      shoulderLx: SH_L_X,
-      shoulderRx: SH_R_X,
+      shoulderY: M.shY,
+      shoulderLx: M.shLx,
+      shoulderRx: M.shRx,
       hemY: MEASURE_BODY_LENGTH_Y1,
       hemCx: CX,
     },

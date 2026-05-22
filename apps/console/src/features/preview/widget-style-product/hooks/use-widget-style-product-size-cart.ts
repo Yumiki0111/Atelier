@@ -8,6 +8,7 @@ import {
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
 import { sendWidgetAnalyticsEvent } from "@/lib/widget/sendWidgetAnalyticsEvent";
 import { resolveWidgetFitSizeKeysOrder } from "@/lib/widget/resolveWidgetFitSizeKeysOrder";
+import { resolveWidgetFitInitialSize } from "@/lib/widget-fit/widgetFitFlatCmSize";
 import { PREVIEW_SIZE_CAROUSEL_WINDOW } from "../../WidgetPreviewChrome";
 import { DEFAULT_SWATCHES } from "../constants";
 
@@ -49,18 +50,13 @@ export function useWidgetStyleProductSizeAndCart(options: {
     return sizeKeysProp.length > 0 ? [...sizeKeysProp] : ["3", "4", "5"];
   }, [sizeKeysProp, customGarmentData]);
 
-  const [currentSize, setCurrentSize] = useState<string>(() => {
-    if (sizeKeys.includes(initialSize as string)) return initialSize as string;
-    return sizeKeys[0] ?? "M";
-  });
+  const [currentSize, setCurrentSize] = useState<string>(() =>
+    resolveWidgetFitInitialSize(initialSize as string, customGarmentData, sizeKeys)
+  );
 
   useEffect(() => {
-    if (sizeKeys.includes(initialSize as string)) {
-      setCurrentSize(initialSize as string);
-    } else if (sizeKeys[0]) {
-      setCurrentSize(sizeKeys[0]);
-    }
-  }, [initialSize, sizeKeys]);
+    setCurrentSize(resolveWidgetFitInitialSize(initialSize as string, customGarmentData, sizeKeys));
+  }, [initialSize, sizeKeys, customGarmentData]);
 
   const handleSelectSizeForAnalytics = useCallback(
     (sz: string) => {

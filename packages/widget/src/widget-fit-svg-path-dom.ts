@@ -11,8 +11,25 @@ export type WidgetFitSvgPathStyleArrays = {
   fills?: (string | undefined)[];
 };
 
-/** アプリ側 `GARMENT_FLAT_CM_PREVIEW_GARMENT_MIN_STROKE_WIDTH` と同値（埋め込みウィジェットの stroke 下限） */
-const GARMENT_FLAT_CM_EMBED_GARMENT_MIN_STROKE_WIDTH = 5.05;
+/** 旧 cover 写像 viewBox 用（meet 極小縮小対策） */
+const GARMENT_FLAT_CM_EMBED_GARMENT_MIN_STROKE_LEGACY = 5.05;
+/** model_front ネイティブ viewBox（~525）— console `GARMENT_FLAT_CM_DEV_FITTING_GARMENT_MIN_STROKE_WIDTH` と同値 */
+const GARMENT_FLAT_CM_EMBED_GARMENT_MIN_STROKE_NATIVE = 1.25;
+const GARMENT_FLAT_CM_EMBED_NATIVE_VIEWBOX_HEIGHT_MAX = 640;
+function embedGarmentMinStrokeWidth(viewBoxHeight: number): number {
+  return viewBoxHeight > 0 && viewBoxHeight <= GARMENT_FLAT_CM_EMBED_NATIVE_VIEWBOX_HEIGHT_MAX
+    ? GARMENT_FLAT_CM_EMBED_GARMENT_MIN_STROKE_NATIVE
+    : GARMENT_FLAT_CM_EMBED_GARMENT_MIN_STROKE_LEGACY;
+}
+
+function readSvgViewBoxHeight(svg: SVGSVGElement): number {
+  const vb = svg.viewBox?.baseVal;
+  if (vb != null && vb.height > 0) return vb.height;
+  const attr = svg.getAttribute("viewBox");
+  if (!attr) return 0;
+  const parts = attr.trim().split(/\s+/).map(Number);
+  return parts.length >= 4 && Number.isFinite(parts[3]) ? parts[3]! : 0;
+}
 
 export function appendWidgetFitGarmentPathGroup(
   svg: SVGSVGElement,
@@ -30,8 +47,9 @@ export function appendWidgetFitGarmentPathGroup(
   const isGarmentFlatCm = isGarmentFlatCmPresetId(options.presetId);
   const defaultWidth = isGarmentFlatCm ? 1 : 8;
 
+  const minGarmentStroke = embedGarmentMinStrokeWidth(readSvgViewBoxHeight(svg));
   const widenGarmentFlatCmStroke = (base: number): number =>
-    !isGarmentFlatCm || !Number.isFinite(base) ? base : Math.max(base, GARMENT_FLAT_CM_EMBED_GARMENT_MIN_STROKE_WIDTH);
+    !isGarmentFlatCm || !Number.isFinite(base) ? base : Math.max(base, minGarmentStroke);
 
   const gGarment = document.createElementNS(ns, "g");
   gGarment.setAttribute("data-fitlook-fit-garment", "true");

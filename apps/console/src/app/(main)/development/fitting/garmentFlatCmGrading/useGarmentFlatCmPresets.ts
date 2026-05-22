@@ -118,6 +118,26 @@ export function useGarmentFlatCmPresets({
     toast.success("保存済みの選択・プリセットを読み込みました");
   }, [onPresetApply, setGarmentCm]);
 
+  const reorderUserPresets = useCallback((fromIndex: number, toIndex: number) => {
+    const current = presetsRef.current;
+    if (!current || fromIndex === toIndex) return;
+    const { userPresets } = current;
+    if (
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= userPresets.length ||
+      toIndex >= userPresets.length
+    ) {
+      return;
+    }
+    const nextList = [...userPresets];
+    const [removed] = nextList.splice(fromIndex, 1);
+    nextList.splice(toIndex, 0, removed);
+    const next: GarmentFlatCmPresetsState = { ...current, userPresets: nextList };
+    saveGarmentFlatCmPresetsState(next);
+    setPresetsState(next);
+  }, []);
+
   return {
     presetsState,
     presetNameDraft,
@@ -128,5 +148,6 @@ export function useGarmentFlatCmPresets({
     persistGarmentCm,
     overwriteActivePreset,
     loadGarmentCm,
+    reorderUserPresets,
   };
 }

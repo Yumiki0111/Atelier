@@ -4,6 +4,7 @@ import { useMemo, useRef } from "react";
 import type { Product, ProductSize } from "@Atelier/shared";
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
 import { isGarmentSpecRenderable } from "@/lib/widget-fit/applyWidgetSizeToGarment";
+import { resolveWidgetFitInitialSize } from "@/lib/widget-fit/widgetFitFlatCmSize";
 import { PhoneFrame } from "@/features/preview/PhoneFrame";
 import { WidgetStyleProductPreview } from "@/features/preview/WidgetStyleProductPreview";
 import { getPreviewSizeKeys } from "@/features/preview/previewProductSizeKeys";
@@ -62,10 +63,10 @@ export function WidgetDesignInterfacePreview({
   );
 
   const initialSize = useMemo((): ProductSize => {
-    if (sizeKeys.includes("M")) return "M";
-    const first = sizeKeys[0];
-    return (first ?? "M") as ProductSize;
-  }, [sizeKeys]);
+    const spec =
+      canShowFit && sampleProduct ? (sampleProduct.garmentSpec as CustomGarmentData) : null;
+    return resolveWidgetFitInitialSize(undefined, spec, sizeKeys) as ProductSize;
+  }, [sizeKeys, canShowFit, sampleProduct]);
 
   const noop = () => {};
 

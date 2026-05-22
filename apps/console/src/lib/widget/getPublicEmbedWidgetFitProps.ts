@@ -1,7 +1,9 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { isGarmentSpecRenderable } from "@/lib/widget-fit/applyWidgetSizeToGarment";
-import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
+import { prepareFlatCmGarmentForWidgetSize } from "@/lib/widget-fit/garmentFlatCmFitPipeline";
+import { parseStoredGarmentSpec } from "@/lib/widget-fit/parseStoredGarmentSpec";
 import { resolveWidgetFitSizeKeysOrder } from "@/lib/widget/resolveWidgetFitSizeKeysOrder";
+import { resolveWidgetFitInitialSize } from "@/lib/widget-fit/widgetFitFlatCmSize";
 import { formatPriceYenForDisplay, normalizeWidgetCtaAccentColor } from "@Atelier/shared";
 
 export type PublicEmbedWidgetFitProps = {
@@ -60,11 +62,16 @@ export async function getPublicEmbedWidgetFitProps(
   const garmentFitAvailable = isGarmentSpecRenderable(product.garment_spec);
   if (!garmentFitAvailable) return null;
 
-  const sizeKeys = resolveWidgetFitSizeKeysOrder([], product.garment_spec);
-  const defaultSize =
-    sizeKeys.includes("M") ? "M" : sizeKeys.length > 0 ? sizeKeys[0] : undefined;
+  const parsedSpec = parseStoredGarmentSpec(product.garment_spec);
+  if (!parsedSpec) return null;
 
-  const initialSize = defaultSize && sizeKeys.includes(defaultSize) ? defaultSize : sizeKeys[0] ?? "M";
+  const sizeKeys = resolveWidgetFitSizeKeysOrder([], parsedSpec);
+  const initialSize = resolveWidgetFitInitialSize(
+    sizeKeys.includes("M") ? "M" : undefined,
+    parsedSpec,
+    sizeKeys
+  );
+  const customGarmentData = prepareFlatCmGarmentForWidgetSize(parsedSpec, initialSize);
 
   const { data: designData } = await supabaseAdmin
     .from("widget_designs")
@@ -93,7 +100,7 @@ export async function getPublicEmbedWidgetFitProps(
     sizeKeys,
     initialSize,
     garmentFitAvailable: true,
-    customGarmentData: product.garment_spec as CustomGarmentData,
+    customGarmentData,
     interfaceBackgroundColor: design?.interfaceBackgroundColor,
     canvasBackgroundColor: design?.canvasBackgroundColor,
     ctaCartLabel: design?.ctaCartLabel,

@@ -54,9 +54,12 @@ import { isDebugFittingBodyVerticesEnabled } from "./fittingCanvasDebugFlags";
 import { isGarmentFlatCmPresetId } from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmPreset";
 import { GRID_RIG_OVERLAY_OMIT_INDICES } from "@/app/(main)/development/fitting/lib/rig/gridSvgRigData";
 import {
+  gridNativeBodyTemplateYWarpWithNeckShoulderAnchor,
+  gridNativeTorsoTemplateLateralWeightMaskXY,
   gridTorsoTemplateLateralWeightMaskXY,
   lineArtLinearWarpFromScales,
   lineArtLinearWarpFromScalesWithTorsoWeight,
+  NATIVE_GRID_BODY_CX,
 } from "./fittingCanvasGridLinearWarp";
 import { computeFittingCanvasSnapshotViewBox } from "./fittingCanvasComputeViewBox";
 
@@ -88,6 +91,7 @@ export function computeFittingCanvasSnapshot(
     rigLinePaths: rigLinePathsParam,
     respectRequestedBodyModelVariant = false,
     debugFlatCmGridBodyLiveHeightWarp,
+    shoulderFollowOptions,
   }: UseFittingCanvasDataParams & { rigLinePaths: string[] | null }
 ): FittingCanvasSnapshot {
   const flatCmGarmentPreset =
@@ -103,10 +107,23 @@ export function computeFittingCanvasSnapshot(
       ? "gridSvgBodyBack"
       : "gridSvgBody"
     : bodyVariantParam;
+  /** Figma 格子座標のまま重ねる（服・モデルリグ・輪郭を body テンプレへ cover 写像しない） */
+  const flatCmGridNativeSvgCoords = flatCmGarmentPreset && garmentFlatCmUsesGridSvgBody;
+  /** Figma 389×525: legacy `BZ` / `BODY_CX` では身長・体重ワープがほぼ効かない */
+  const gridLinearWarpOpts = flatCmGridNativeSvgCoords
+    ? { bodyCx: NATIVE_GRID_BODY_CX, yWarpFn: gridNativeBodyTemplateYWarpWithNeckShoulderAnchor }
+    : undefined;
+  const gridTorsoMaskXY = flatCmGridNativeSvgCoords
+    ? gridNativeTorsoTemplateLateralWeightMaskXY
+    : gridTorsoTemplateLateralWeightMaskXY;
   const rigLinePaths = garmentFlatCmUsesGridSvgBody
     ? getBodyRigLinePathsTemplate(bodyModelVariant)
     : rigLinePathsParam;
-  const bodyPathsTemplate = getBodyTemplatePaths(bodyModelVariant);
+  /** ネイティブ格子リグの脊髄 span は legacy 基準と別スケールのため、身長 yScale に混ぜない */
+  const rigLinePathsForBodyScale = flatCmGridNativeSvgCoords ? null : rigLinePaths;
+  const bodyPathsTemplate = getBodyTemplatePaths(bodyModelVariant, {
+    flatCmNativeSvgCoords: flatCmGridNativeSvgCoords,
+  });
   /**
    * 格子前面／背面（391×518 系 SVG テンプレ）は model+rig 向け warp()+リグスキンと相性が悪いため線形スケール系へ寄せる。
    */
@@ -128,27 +145,32 @@ export function computeFittingCanvasSnapshot(
     heightCm: height,
     applyArmpitBaseRigRelief: true,
   } as const;
-  const { yScale, xScale } = getBodyParams(height, weight, rigLinePaths);
+  const { yScale, xScale } = getBodyParams(height, weight, rigLinePathsForBodyScale);
   /** model+rig: 腕・鎖骨リグ専用。胴の `warp`（ゾーン）を通さない線形基底 */
-  const bodyRigLimbLinearUniform = lineArtLinearWarpFromScales(yScale, xScale);
+  const bodyRigLimbLinearUniform = lineArtLinearWarpFromScales(yScale, xScale, gridLinearWarpOpts);
   /**
    * 格子 SVG: 服・モデル赤リグは横を REF 体重固定。全域で体重 xScale を掛けると服と破綻するので、
    * 線形ワープの基底横は REF に揃え、胴テンプレ Y 帯だけ `sqrt(w/REF)` 比率を横スケールへ混ぜる。
    */
   const xScaleGridRigMatchGarment = useLinearBodyWarpForSvgTemplates
-    ? getBodyParams(height, REF_WEIGHT_KG, rigLinePaths).xScale
+    ? getBodyParams(height, REF_WEIGHT_KG, rigLinePathsForBodyScale).xScale
     : xScale;
   const gridTorsoLateralRatio =
     useLinearBodyWarpForSvgTemplates
       ? xScale / Math.max(xScaleGridRigMatchGarment, 1e-9)
       : 1;
-  const lineArtLinearWarpUniform = lineArtLinearWarpFromScales(yScale, xScaleGridRigMatchGarment);
+  const lineArtLinearWarpUniform = lineArtLinearWarpFromScales(
+    yScale,
+    xScaleGridRigMatchGarment,
+    gridLinearWarpOpts
+  );
   const lineArtLinearWarpTorso = useLinearBodyWarpForSvgTemplates
     ? lineArtLinearWarpFromScalesWithTorsoWeight(
         yScale,
         xScaleGridRigMatchGarment,
         gridTorsoLateralRatio,
-        gridTorsoTemplateLateralWeightMaskXY
+        gridTorsoMaskXY,
+        gridLinearWarpOpts
       )
     : lineArtLinearWarpUniform;
   const tplPivotForRigPath = (pathIdx: number): [number, number] | null => {
@@ -160,7 +182,13 @@ export function computeFittingCanvasSnapshot(
   const gridPivotArmR = tplPivotForRigPath(RIG_LINE_ARM_R);
   const gridPivotClavicleL = tplPivotForRigPath(RIG_LINE_CLAVICLE_L);
   const gridPivotClavicleR = tplPivotForRigPath(RIG_LINE_CLAVICLE_R);
-  /** piecewise Y を腕・鎖骨の各点に掛けると斜め辺の見かけ角度が崩れる。ピボットの piecewise 位置に、テンプレ差に yScale を掛けた相似で追従させる。 */
+  /**
+   * ネイティブ格子: `lineArt*` が既に身長を含むため lam=1（角度維持のみ）。
+   * legacy 模板: lam=yScale でリグ腕を身長に追従。
+   */
+  const gridRigArmPivotSimilarityLam = flatCmGridNativeSvgCoords ? 1 : yScale;
+
+  /** piecewise Y を腕・鎖骨の各点に掛けると斜め辺の見かけ角度が崩れる。ピボットの piecewise 位置に、テンプレ差に lam を掛けた相似で追従させる。 */
   const warpSimilarityFromPivot = (
     pivotTpl: [number, number] | null,
     x: number,
@@ -192,17 +220,37 @@ export function computeFittingCanvasSnapshot(
   const warpRigLineAtIdx = (pathIdx: number, x: number, y: number): [number, number] =>
     useLinearBodyWarpForSvgTemplates
       ? pathIdx === RIG_LINE_ARM_L
-        ? (warpSimilarityFromPivot(gridPivotArmL, x, y, lineArtLinearWarpUniform, yScale) ??
-          lineArtLinearWarpUniform(x, y))
+        ? (warpSimilarityFromPivot(
+            gridPivotArmL,
+            x,
+            y,
+            lineArtLinearWarpUniform,
+            gridRigArmPivotSimilarityLam
+          ) ?? lineArtLinearWarpUniform(x, y))
         : pathIdx === RIG_LINE_ARM_R
-          ? (warpSimilarityFromPivot(gridPivotArmR, x, y, lineArtLinearWarpUniform, yScale) ??
-            lineArtLinearWarpUniform(x, y))
+          ? (warpSimilarityFromPivot(
+              gridPivotArmR,
+              x,
+              y,
+              lineArtLinearWarpUniform,
+              gridRigArmPivotSimilarityLam
+            ) ?? lineArtLinearWarpUniform(x, y))
           : pathIdx === RIG_LINE_CLAVICLE_L
-            ? (warpSimilarityFromPivot(gridPivotClavicleL, x, y, lineArtLinearWarpUniform, yScale) ??
-              lineArtLinearWarpUniform(x, y))
+            ? (warpSimilarityFromPivot(
+                gridPivotClavicleL,
+                x,
+                y,
+                lineArtLinearWarpUniform,
+                gridRigArmPivotSimilarityLam
+              ) ?? lineArtLinearWarpUniform(x, y))
             : pathIdx === RIG_LINE_CLAVICLE_R
-              ? (warpSimilarityFromPivot(gridPivotClavicleR, x, y, lineArtLinearWarpUniform, yScale) ??
-                lineArtLinearWarpUniform(x, y))
+              ? (warpSimilarityFromPivot(
+                  gridPivotClavicleR,
+                  x,
+                  y,
+                  lineArtLinearWarpUniform,
+                  gridRigArmPivotSimilarityLam
+                ) ?? lineArtLinearWarpUniform(x, y))
               : gridRigLineUsesTorsoWeightLateral(pathIdx)
                 ? lineArtLinearWarpTorso(x, y)
                 : lineArtLinearWarpUniform(x, y)
@@ -224,15 +272,20 @@ export function computeFittingCanvasSnapshot(
   const { yScale: refRigYs, xScale: refRigXs } = getBodyParams(
     REF_HEIGHT_CM,
     useLinearBodyWarpForSvgTemplates ? REF_WEIGHT_KG : weight,
-    rigLinePaths
+    rigLinePathsForBodyScale
   );
-  const lineArtRefLinearWarpUniform = lineArtLinearWarpFromScales(refRigYs, refRigXs);
+  const lineArtRefLinearWarpUniform = lineArtLinearWarpFromScales(
+    refRigYs,
+    refRigXs,
+    gridLinearWarpOpts
+  );
   const lineArtRefLinearWarpTorso = useLinearBodyWarpForSvgTemplates
     ? lineArtLinearWarpFromScalesWithTorsoWeight(
         refRigYs,
         refRigXs,
         gridTorsoLateralRatio,
-        gridTorsoTemplateLateralWeightMaskXY
+        gridTorsoMaskXY,
+        gridLinearWarpOpts
       )
     : lineArtRefLinearWarpUniform;
   const refRigZones = getZonesAnchored(refRigYs);
@@ -290,20 +343,33 @@ export function computeFittingCanvasSnapshot(
       : rigRefWarpedPaths;
 
   /** 服 SVG・服に載せる赤リグ（非格子: 現在身長 y）。格子は後段で基準身長ワープのみに固定し服が身長スライドしないようにする */
-  const { yScale: ysGarment, xScale: xsGarment } = getBodyParams(height, REF_WEIGHT_KG, rigLinePaths);
+  const { yScale: ysGarment, xScale: xsGarment } = getBodyParams(
+    height,
+    REF_WEIGHT_KG,
+    rigLinePathsForBodyScale
+  );
   const zonesGarment = getZonesAnchored(ysGarment);
   const warpOptsGarment = { heightCm: height, applyArmpitBaseRigRelief: false } as const;
   const { yScale: refRigYsG, xScale: refRigXsG } = getBodyParams(
     REF_HEIGHT_CM,
     REF_WEIGHT_KG,
-    rigLinePaths
+    rigLinePathsForBodyScale
   );
-  const lineArtRefGarmentLinearWarp = lineArtLinearWarpFromScales(refRigYsG, refRigXsG);
+  const lineArtRefGarmentLinearWarp = lineArtLinearWarpFromScales(
+    refRigYsG,
+    refRigXsG,
+    gridLinearWarpOpts
+  );
   const refRigZonesG = getZonesAnchored(refRigYsG);
   const warpOptsRefGarment = { heightCm: REF_HEIGHT_CM, applyArmpitBaseRigRelief: false } as const;
+  /** ネイティブ格子: シルエットはテンプレ座標のまま（下の bodyPaths 分岐）。服も同じ基準に揃え、身長だけ服が伸びて浮くのを防ぐ。 */
+  const flatCmGarmentUsesLiveHeightLinearWarp =
+    flatCmGarmentPreset && flatCmGridBodyUsesLiveHeightWarp && !flatCmGridNativeSvgCoords;
   const warpRigLineRefBodyGarment = (x: number, y: number): [number, number] =>
     useLinearBodyWarpForSvgTemplates
-      ? lineArtRefGarmentLinearWarp(x, y)
+      ? flatCmGarmentUsesLiveHeightLinearWarp
+        ? lineArtLinearWarpUniform(x, y)
+        : lineArtRefGarmentLinearWarp(x, y)
       : warp(x, y, refRigYsG, refRigXsG, refRigZonesG, warpOptsRefGarment);
   /** 格子: ref 線形のみ＝モデル赤リグと同じ基準。非格子: warp(ysGarment) */
   const warpRigLineGarment = useLinearBodyWarpForSvgTemplates
@@ -430,7 +496,13 @@ export function computeFittingCanvasSnapshot(
           GRID_RIG_OVERLAY_OMIT_INDICES.has(i) ? "" : d
         )
       : rigLineWarpedRigViewPathsTilted;
-  const rigLineWarpedRigViewPaths = rigLineWarpedRigViewPathsAfterOmit;
+  let rigLineWarpedRigViewPaths = rigLineWarpedRigViewPathsAfterOmit;
+
+  /** 平置き cm ネイティブ: model_front の #rig 座標をそのまま表示（身長ワープ・腕傾き・脊髄合わせしない） */
+  if (flatCmGridNativeSvgCoords && rigLinePaths && rigLinePaths.length > 0) {
+    const nativePt = (x: number, y: number): [number, number] => [x, y];
+    rigLineWarpedRigViewPaths = rigLinePaths.map((d) => tPath(d, nativePt));
+  }
 
   const rigLineWarpedPathsTiltedCore =
     rigLineWarpedPathsRaw.length > RIG_LINE_ARM_R
@@ -441,12 +513,17 @@ export function computeFittingCanvasSnapshot(
           RIG_LINE_ARM_R
         )
       : rigLineWarpedPathsRaw;
-  const rigLineWarpedPaths =
+  let rigLineWarpedPaths =
     useLinearBodyWarpForSvgTemplates && rigLineWarpedPathsTiltedCore.length > RIG_LINE_ARM_R
       ? rigLineWarpedPathsTiltedCore.map((d, i) =>
           GRID_RIG_OVERLAY_OMIT_INDICES.has(i) ? "" : d
         )
       : rigLineWarpedPathsTiltedCore;
+
+  if (flatCmGridNativeSvgCoords && rigLinePaths && rigLinePaths.length > 0) {
+    const nativePt = (x: number, y: number): [number, number] => [x, y];
+    rigLineWarpedPaths = rigLinePaths.map((d) => tPath(d, nativePt));
+  }
 
   const xScaleForArms = useLinearBodyWarpForSvgTemplates ? xScaleGridRigMatchGarment : xScale;
   /** 腕の肩・手首を、胴輪郭の補助点（`silhouettePathIdx === null`）と同じ格子線形写像へ揃え、肩位置を身長可変でも固定 */
@@ -565,9 +642,13 @@ export function computeFittingCanvasSnapshot(
     rightArmOutline[armPeakIdxR]![1]
   );
 
-  const bodyPaths = bodyPathsTemplate.map((d, idx) =>
+  let bodyPaths = bodyPathsTemplate.map((d, idx) =>
     tPath(d, bodyFollowFnForSilhouettePath(idx))
   );
+  /** ライブ身長オフ時のみテンプレ固定。オン時は上の warp をそのまま使う（以前は native で常に固定し服だけ伸びて浮いて見えた）。 */
+  if (flatCmGridNativeSvgCoords && !flatCmGridBodyUsesLiveHeightWarp) {
+    bodyPaths = bodyPathsTemplate.map((d) => tPath(d, (x, y) => [x, y]));
+  }
   const rigRedLineArmDiagram =
     rigLineWarpedRigViewPaths.length >= RIG_LINE_PATH_COUNT
       ? buildRigRedLineArmDiagram(rigLineWarpedRigViewPaths)
@@ -576,13 +657,16 @@ export function computeFittingCanvasSnapshot(
         : null;
   const bodyOutlinePoints = bodyPaths.flatMap((d) => getPathPoints(d));
 
-  const bodyShoulderBandYMin = BZ.shoulder - 5;
-  const bodyShoulderBandYMax = BZ.shoulder + 15;
+  const bodyShoulderBandYMin = flatCmGridNativeSvgCoords ? 100 : BZ.shoulder - 5;
+  const bodyShoulderBandYMax = flatCmGridNativeSvgCoords ? 130 : BZ.shoulder + 15;
   const bodyRaw = shoulderContourFromPath(
     bodyPathsTemplate,
     bodyShoulderBandYMin,
     bodyShoulderBandYMax
   );
+  const bodyPointForShoulder: (x: number, y: number) => [number, number] = flatCmGridNativeSvgCoords
+    ? (x, y) => [x, y]
+    : bodyFollowFnForSilhouettePath(null);
   const bodyShoulderContour: [number, number][] = (() => {
     if (bodyRaw.length >= 2) {
       const ys = bodyRaw.map((p) => p[1]);
@@ -590,16 +674,13 @@ export function computeFittingCanvasSnapshot(
       if (yRange < 3) {
         const [lx, ly] = BODY_ARM_OUTLINE_L[0];
         const rx = BODY_CX * 2 - lx;
-        return [
-          bodyFollowFnForSilhouettePath(null)(lx, ly),
-          bodyFollowFnForSilhouettePath(null)(rx, ly),
-        ];
+        return [bodyPointForShoulder(lx, ly), bodyPointForShoulder(rx, ly)];
       }
-      return bodyRaw.map(([x, y]) => bodyFollowFnForSilhouettePath(null)(x, y));
+      return bodyRaw.map(([x, y]) => bodyPointForShoulder(x, y));
     }
     const [lx, ly] = BODY_ARM_OUTLINE_L[0];
     const rx = BODY_CX * 2 - lx;
-    return [bodyFollowFnForSilhouettePath(null)(lx, ly), bodyFollowFnForSilhouettePath(null)(rx, ly)];
+    return [bodyPointForShoulder(lx, ly), bodyPointForShoulder(rx, ly)];
   })();
 
   const bodyHeightTop = bodyFollowFnForSilhouettePath(null)(BODY_CX, BZ.head_top);
@@ -692,6 +773,15 @@ export function computeFittingCanvasSnapshot(
       animProgress,
       bodyShoulderContour,
       bodyModelVariant,
+      flatCmGridNativeSvgCoords,
+      shoulderFollowOptions: flatCmGarmentPreset
+        ? {
+            useShoulderRigidFollowAllModes: true,
+            useShoulderSlopeDistribution: true,
+            useShoulderAnchorDrop: true,
+            ...shoulderFollowOptions,
+          }
+        : shoulderFollowOptions,
     });
     customPathDs = cu.customPathDs;
     customPathStrokeDasharrays = cu.customPathStrokeDasharrays;
@@ -710,6 +800,7 @@ export function computeFittingCanvasSnapshot(
       garment,
       useLinearBodyWarpForSvgTemplates,
       flatCmGridBodyUsesLiveHeightWarp,
+      flatCmGridNativeSvgCoords,
       yScale,
       refRigYs,
       bodyPaths,

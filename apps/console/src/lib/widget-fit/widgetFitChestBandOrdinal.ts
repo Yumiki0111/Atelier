@@ -1,7 +1,7 @@
 import { isGarmentFlatCmPresetId } from "@Atelier/shared";
 import type { BodyModelVariant } from "@/app/(main)/development/fitting/lib/bodyModelVariant";
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
-import { GARMENT_FLAT_CM_ORDERED_SIZE_LABELS } from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmGradingMeasurements";
+import { resolveWidgetFitSizeKeysOrder } from "@/lib/widget/resolveWidgetFitSizeKeysOrder";
 import { WIDGET_FIT_CHEST_BAND_JA, type WidgetFitChestBandJaLabel } from "@/app/(main)/development/fitting/lib/fitCalc";
 
 /** 身長レンジ（cm）。`t` の線形写像に使う上限 */
@@ -77,7 +77,7 @@ export function recommendedSizeIndexForBody(
 
 export function orderedSizeLabelsFromCustomGarment(data: CustomGarmentData | null | undefined): string[] {
   if (data != null && isGarmentFlatCmPresetId(data.presetId)) {
-    return [...GARMENT_FLAT_CM_ORDERED_SIZE_LABELS];
+    return resolveWidgetFitSizeKeysOrder([], data);
   }
   return [];
 }

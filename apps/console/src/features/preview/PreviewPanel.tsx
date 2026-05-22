@@ -8,10 +8,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { authenticatedFetch } from "@/lib/auth/api-client";
 import { useProductSelection } from "@/contexts/ProductSelectionContext";
 import { useAssets } from "../products/useAssets";
+import { useProduct } from "../products/useProducts";
 import { PhoneFrame } from "./PhoneFrame";
 import { WidgetStyleProductPreview } from "./WidgetStyleProductPreview";
 import { isGarmentSpecRenderable } from "../../lib/widget-fit/applyWidgetSizeToGarment";
 import type { CustomGarmentData } from "@/app/(main)/development/fitting/lib/types";
+import { parseStoredGarmentSpec } from "@/lib/widget-fit/parseStoredGarmentSpec";
+import { resolveWidgetFitInitialSize } from "@/lib/widget-fit/widgetFitFlatCmSize";
 import { getPreviewSizeKeys } from "./previewProductSizeKeys";
 
 async function fetchWidgetDesignForPreview(): Promise<{
@@ -34,7 +37,9 @@ interface PreviewPanelProps {
 export function PreviewPanel({ selectedProduct, selectedSize }: PreviewPanelProps) {
   const { shopId } = useAuth();
   const { clearProductSelection } = useProductSelection();
-  const { data: assets = [] } = useAssets(selectedProduct?.id);
+  const { data: liveProduct } = useProduct(selectedProduct?.id ?? "");
+  const previewProduct = liveProduct ?? selectedProduct;
+  const { data: assets = [] } = useAssets(previewProduct?.id);
   const { data: widgetUi } = useQuery({
     queryKey: ["widget-design", shopId],
     queryFn: fetchWidgetDesignForPreview,
@@ -45,16 +50,28 @@ export function PreviewPanel({ selectedProduct, selectedSize }: PreviewPanelProp
   const borderRef = useRef<HTMLDivElement>(null);
 
   const sizeKeys = useMemo(
-    () => (selectedProduct ? getPreviewSizeKeys(selectedProduct, assets) : []),
-    [selectedProduct, assets]
+    () => (previewProduct ? getPreviewSizeKeys(previewProduct, assets) : []),
+    [previewProduct, assets]
   );
 
   const garmentFitAvailable =
-    selectedProduct != null && isGarmentSpecRenderable(selectedProduct.garmentSpec);
+    previewProduct != null && isGarmentSpecRenderable(previewProduct.garmentSpec);
 
-  const initialSize = (selectedSize ?? "M") as ProductSize;
+  const customGarmentForPreview = useMemo(() => {
+    if (!garmentFitAvailable || !previewProduct) return null;
+    return parseStoredGarmentSpec(previewProduct.garmentSpec);
+  }, [garmentFitAvailable, previewProduct]);
 
-  if (!selectedProduct) {
+  const initialSize = useMemo((): ProductSize => {
+    const preferred = selectedSize ?? undefined;
+    return resolveWidgetFitInitialSize(
+      preferred,
+      customGarmentForPreview,
+      sizeKeys
+    ) as ProductSize;
+  }, [selectedSize, customGarmentForPreview, sizeKeys]);
+
+  if (!previewProduct) {
     return (
       <div className="flex h-screen w-[400px] flex-col items-center justify-center bg-white text-sm text-gray-500">
         商品を選択してください
@@ -89,17 +106,16 @@ export function PreviewPanel({ selectedProduct, selectedSize }: PreviewPanelProp
               }}
             >
               <WidgetStyleProductPreview
-                productId={selectedProduct.id}
-                productCategory={selectedProduct.category ?? null}
-                productName={selectedProduct.name}
-                thumbnailUrl={selectedProduct.thumbnailUrl}
-                priceDisplay={formatPriceYenForDisplay(selectedProduct.priceYen)}
+                key={`${previewProduct.id}-${previewProduct.updatedAt ?? ""}`}
+                productId={previewProduct.id}
+                productCategory={previewProduct.category ?? null}
+                productName={previewProduct.name}
+                thumbnailUrl={previewProduct.thumbnailUrl}
+                priceDisplay={formatPriceYenForDisplay(previewProduct.priceYen)}
                 sizeKeys={sizeKeys}
                 initialSize={initialSize}
                 garmentFitAvailable={garmentFitAvailable}
-                customGarmentData={
-                  garmentFitAvailable ? (selectedProduct.garmentSpec as CustomGarmentData) : null
-                }
+                customGarmentData={customGarmentForPreview}
                 onClose={clearProductSelection}
                 interfaceBackgroundColor={widgetUi?.interfaceBackgroundColor}
                 canvasBackgroundColor={widgetUi?.canvasBackgroundColor}

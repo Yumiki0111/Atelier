@@ -5,30 +5,286 @@ import {
   BODY_BOT,
   BODY_TOP,
   CX,
+  GARMENT_FLAT_CM_SHOULDER_ANCHOR_INNER_FRAC,
+  GARMENT_FLAT_CM_BODY_WIDTH_SPAN_K,
+  GARMENT_FLAT_CM_SHOULDER_DROP_K,
+  GARMENT_FLAT_CM_SHOULDER_SPAN_K,
   MEASURE_BODY_LENGTH_Y1,
   MEASURE_BODY_LENGTH_Y2,
   MEASURE_SLEEVE_L_PATH_D,
+  MEASURE_SLEEVE_L_VERTS,
   MEASURE_SLEEVE_R_PATH_D,
+  MEASURE_SLEEVE_R_VERTS,
+  GARMENT_FLAT_CM_SLEEVE_BODY_DY_BLEND,
   type GarmentFlatCmZone,
   SH_L_X,
   SH_R_X,
   SH_Y,
 } from "./garmentFlatCmGradingConstants";
-/**
- * 肩スロープ単位ベクトル。元は `./garmentFlatCmShoulderSlope` から import していたが、
- * 同モジュールはユーザー判断で削除済み。`uy = 0`（真横）の no-op に置き換え、
- * `useShoulderSlopeDistribution` を有効化しても従来の水平方向のみの分配と等価になる。
- */
-const GARMENT_FLAT_CM_SHOULDER_SLOPE_UNIT_L = { ux: -1, uy: 0 } as const;
-const GARMENT_FLAT_CM_SHOULDER_SLOPE_UNIT_R = { ux: 1, uy: 0 } as const;
+import {
+  GARMENT_FLAT_CM_BODY_WIDTH_SLOPE_UNIT_L,
+  GARMENT_FLAT_CM_BODY_WIDTH_SLOPE_UNIT_R,
+  GARMENT_FLAT_CM_SHOULDER_SLOPE_UNIT_L,
+  GARMENT_FLAT_CM_SHOULDER_SLOPE_UNIT_R,
+} from "./garmentFlatCmShoulderSlope";
 
 /**
  * 平置き cm の局所変形オプション。
- * - useShoulderSlopeDistribution: 肩幅 dSh を真横ではなく肩スロープ単位ベクトル方向（斜め下）へ分配
- *   （フェーズ2: 「実際に着ると肩に追従して落ちる」見え方を再現）
+ * - useShoulderSlopeDistribution: 肩幅 dSh・身幅 dBw をスロープ方向へ分配
+ * - useShoulderAnchorDrop: 肩付け内側を SVG 基準で固定し、dSh は外側頂点のオチ(dy)中心・水平は弱く
  */
 export interface GarmentFlatCmDeformOptions {
   useShoulderSlopeDistribution?: boolean;
+  useShoulderAnchorDrop?: boolean;
+}
+
+/** サイズグレード・ウィジェット・プレビューで共通に使う既定 */
+export const GARMENT_FLAT_CM_DEFAULT_DEFORM_OPTIONS: GarmentFlatCmDeformOptions = {
+  useShoulderSlopeDistribution: true,
+  useShoulderAnchorDrop: true,
+};
+
+/** 首寄り固定帯の外側ほど 1（肩山・袖付け）。内側アンカー付近は 0 */
+function shoulderOuterInfluenceX(x: number, sideLeft: boolean): number {
+  const frac = GARMENT_FLAT_CM_SHOULDER_ANCHOR_INNER_FRAC;
+  if (sideLeft) {
+    const innerX = CX - (CX - SH_L_X) * frac;
+    const span = innerX - SH_L_X;
+    if (span <= 1e-6) return 0;
+    const u = Math.max(0, Math.min(1, (innerX - x) / span));
+    return u * u;
+  }
+  const innerX = CX + (SH_R_X - CX) * frac;
+  const span = SH_R_X - innerX;
+  if (span <= 1e-6) return 0;
+  const u = Math.max(0, Math.min(1, (x - innerX) / span));
+  return u * u;
+}
+
+function shoulderSlopeUnit(sideLeft: boolean) {
+  return sideLeft ? GARMENT_FLAT_CM_SHOULDER_SLOPE_UNIT_L : GARMENT_FLAT_CM_SHOULDER_SLOPE_UNIT_R;
+}
+
+function bodyWidthSlopeUnit(sideLeft: boolean) {
+  return sideLeft ? GARMENT_FLAT_CM_BODY_WIDTH_SLOPE_UNIT_L : GARMENT_FLAT_CM_BODY_WIDTH_SLOPE_UNIT_R;
+}
+
+/** オチ(dy)は肩線付近だけ。下袖まで落とすと袖の見かけ角度が上がる */
+function shoulderDropAlongYFade(y: number): number {
+  const span = BODY_TOP - SH_Y;
+  if (span <= 1e-6 || y <= SH_Y) return 1;
+  const u = Math.max(0, Math.min(1, (y - SH_Y) / span));
+  const v = 1 - u;
+  return v * v;
+}
+
+/** 剛体追従の肩2点: 外側ではなく内側アンカー（オチで肩線が傾きすぎない） */
+export function garmentFlatCmInnerShoulderAnchorX(
+  shoulderLx: number,
+  shoulderRx: number
+): { lx: number; rx: number } {
+  const f = GARMENT_FLAT_CM_SHOULDER_ANCHOR_INNER_FRAC;
+  return {
+    lx: shoulderLx + (CX - shoulderLx) * f,
+    rx: shoulderRx - (shoulderRx - CX) * f,
+  };
+}
+
+/** 肩幅片側 dSh → 局所 (dx, dy)。アンカー時は内側固定・外側オチ */
+function shoulderWidthDelta(
+  dSh: number,
+  x: number,
+  sideLeft: boolean,
+  useSlope: boolean,
+  useAnchorDrop: boolean,
+  y?: number
+): [number, number] {
+  const tOut = useAnchorDrop ? shoulderOuterInfluenceX(x, sideLeft) : 1;
+  if (Math.abs(dSh) < 1e-12 || tOut < 1e-12) return [0, 0];
+
+  const spanK = useAnchorDrop ? GARMENT_FLAT_CM_SHOULDER_SPAN_K : 1;
+  const dropK = useAnchorDrop ? GARMENT_FLAT_CM_SHOULDER_DROP_K : 1;
+  const dropYFade = y != null && useAnchorDrop ? shoulderDropAlongYFade(y) : 1;
+
+  if (!useSlope) {
+    const dx = (sideLeft ? -1 : 1) * dSh * tOut * spanK;
+    return [dx, 0];
+  }
+
+  const u = shoulderSlopeUnit(sideLeft);
+  const mag = dSh * tOut;
+  return [mag * u.ux * spanK, mag * u.uy * dropK * dropYFade];
+}
+
+/** 肩〜脇（body ゾーン）の変位。袖 path との脇頂点で不連続にならないよう袖側からも参照する */
+function bodyZoneDelta(
+  x: number,
+  y: number,
+  dSh: number,
+  dBw: number,
+  dBl: number,
+  options: GarmentFlatCmDeformOptions | undefined
+): [number, number] {
+  const useSlope = options?.useShoulderSlopeDistribution === true;
+  const useAnchorDrop = options?.useShoulderAnchorDrop === true;
+
+  const BLEND_TOP = SH_Y;
+  const BLEND_BOT = BODY_TOP;
+  const tyBlend = Math.max(0, Math.min(1, (y - BLEND_TOP) / (BLEND_BOT - BLEND_TOP)));
+
+  const half = x <= CX ? CX - BDY_L_X : BDY_R_X - CX;
+  const distFromCX = x - CX;
+  const t = half > 0 ? Math.min(1, Math.abs(distFromCX) / half) : 0;
+  const sideLeft = distFromCX < 0;
+  const sign = sideLeft ? -1 : 1;
+  const tSh = useAnchorDrop ? shoulderOuterInfluenceX(x, sideLeft) : 1;
+  const bodySpanK = useAnchorDrop ? GARMENT_FLAT_CM_BODY_WIDTH_SPAN_K : 1;
+
+  let dx = 0;
+  let dy = 0;
+
+  if (useSlope) {
+    const uSh = shoulderSlopeUnit(sideLeft);
+    const uBw = bodyWidthSlopeUnit(sideLeft);
+    const shoulderInfluence = (1 - tyBlend) * tSh;
+    const bodyWidthInfluence = tyBlend;
+
+    if (y >= BODY_TOP) {
+      dx = sign * dBw * Math.abs(uBw.ux) * t * bodySpanK;
+      dy = dBw * uBw.uy * t * bodySpanK;
+    } else {
+      const spanK = useAnchorDrop ? GARMENT_FLAT_CM_SHOULDER_SPAN_K : 1;
+      const dropK = useAnchorDrop ? GARMENT_FLAT_CM_SHOULDER_DROP_K : 1;
+      const slopeDx =
+        dSh * Math.abs(uSh.ux) * t * shoulderInfluence * spanK +
+        dBw * Math.abs(uBw.ux) * t * bodyWidthInfluence * bodySpanK;
+      dx = sign * slopeDx;
+      dy =
+        dSh * uSh.uy * shoulderInfluence * dropK * shoulderDropAlongYFade(y) +
+        dBw * uBw.uy * bodyWidthInfluence * bodySpanK;
+    }
+  } else {
+    const shMag = useAnchorDrop ? dSh * tSh * GARMENT_FLAT_CM_SHOULDER_SPAN_K : dSh * (1 - tyBlend);
+    const bwMag = dBw * tyBlend * bodySpanK;
+    const mag = shMag + bwMag;
+    dx = distFromCX >= 0 ? mag * t : -mag * t;
+    dy = 0;
+    if (useAnchorDrop && tyBlend < 1) {
+      dy =
+        dSh *
+        tSh *
+        GARMENT_FLAT_CM_SHOULDER_DROP_K *
+        shoulderSlopeUnit(sideLeft).uy *
+        shoulderDropAlongYFade(y);
+    }
+  }
+
+  if (y >= BODY_TOP) {
+    const ty = BODY_BOT - BODY_TOP > 0 ? Math.min(1, (y - BODY_TOP) / (BODY_BOT - BODY_TOP)) : 0;
+    dy += dBl * ty;
+  }
+
+  return [dx, dy];
+}
+
+/** 袖 path 上の点の、肩付けからの折れ線沿い長さ（S 基準 verts） */
+function sleeveArcLengthFromShoulder(
+  x: number,
+  y: number,
+  verts: ReadonlyArray<readonly [number, number]>
+): number {
+  if (verts.length < 2) return 0;
+  let best = 0;
+  let bestDist2 = Infinity;
+  let cum = 0;
+  for (let i = 0; i < verts.length - 1; i += 1) {
+    const [x0, y0] = verts[i]!;
+    const [x1, y1] = verts[i + 1]!;
+    const segLen = Math.hypot(x1 - x0, y1 - y0);
+    const vx = x1 - x0;
+    const vy = y1 - y0;
+    const segLen2 = vx * vx + vy * vy || 1e-12;
+    let t = ((x - x0) * vx + (y - y0) * vy) / segLen2;
+    t = Math.max(0, Math.min(1, t));
+    const px = x0 + t * vx;
+    const py = y0 + t * vy;
+    const d2 = (x - px) ** 2 + (y - py) ** 2;
+    if (d2 < bestDist2) {
+      bestDist2 = d2;
+      best = cum + t * segLen;
+    }
+    cum += segLen;
+  }
+  return best;
+}
+
+function sleevePolylineTotalLength(verts: ReadonlyArray<readonly [number, number]>): number {
+  let len = 0;
+  for (let i = 0; i < verts.length - 1; i += 1) {
+    const [x0, y0] = verts[i]!;
+    const [x1, y1] = verts[i + 1]!;
+    len += Math.hypot(x1 - x0, y1 - y0);
+  }
+  return len;
+}
+
+/** 袖丈 dSleeveLengthPx を肩→袖口の折れ線方向へ（従来未適用だった） */
+function sleeveLengthDeltaAlongAxis(
+  x: number,
+  y: number,
+  sideLeft: boolean,
+  dSleeveLengthPx: number
+): [number, number] {
+  if (Math.abs(dSleeveLengthPx) < 1e-12) return [0, 0];
+  const verts = sideLeft ? MEASURE_SLEEVE_L_VERTS : MEASURE_SLEEVE_R_VERTS;
+  const total = sleevePolylineTotalLength(verts);
+  if (total < 1e-6) return [0, 0];
+  const along = sleeveArcLengthFromShoulder(x, y, verts);
+  const t = Math.max(0, Math.min(1, along / total));
+  const [sx, sy] = verts[0]!;
+  const [ex, ey] = verts[verts.length - 1]!;
+  const ux = (ex - sx) / total;
+  const uy = (ey - sy) / total;
+  const mag = dSleeveLengthPx * t;
+  return [ux * mag, uy * mag];
+}
+
+/**
+ * 下袖〜脇: 袖ゾーンは dSh のみ・胴は dBw 主体で変形が割れるため角が立つ。
+ * 肩線高さから身幅計測高さへ、袖 path の変位を胴ゾーンへブレンドする。
+ */
+function sleeveZoneDelta(
+  x: number,
+  y: number,
+  sideLeft: boolean,
+  dSh: number,
+  dBw: number,
+  dBl: number,
+  dSleeveLengthPx: number,
+  options: GarmentFlatCmDeformOptions | undefined
+): [number, number] {
+  const useSlope = options?.useShoulderSlopeDistribution === true;
+  const useAnchorDrop = options?.useShoulderAnchorDrop === true;
+
+  /** 袖 path は肩付けのオチを維持（y フェードは胴側のみ） */
+  const [dxSh, dySh] = shoulderWidthDelta(dSh, x, sideLeft, useSlope, useAnchorDrop, SH_Y);
+  const [dxSl, dySl] = sleeveLengthDeltaAlongAxis(x, y, sideLeft, dSleeveLengthPx);
+
+  let dx = dxSh + dxSl;
+  let dy = dySh + dySl;
+
+  const span = BODY_TOP - SH_Y;
+  if (span <= 1e-6 || y <= SH_Y) return [dx, dy];
+
+  const u = Math.max(0, Math.min(1, (y - SH_Y) / span));
+  const w = u * u;
+  if (w < 1e-6) return [dx, dy];
+
+  const [dxBd, dyBd] = bodyZoneDelta(x, y, dSh, dBw, dBl, options);
+  const dyBlend = GARMENT_FLAT_CM_SLEEVE_BODY_DY_BLEND;
+  dx += w * (dxBd - dxSh);
+  dy += w * dyBlend * (dyBd - dySh);
+  return [dx, dy];
 }
 
 function getDelta(
@@ -43,94 +299,63 @@ function getDelta(
 ): [number, number] {
   let dx = 0;
   let dy = 0;
-  let z: GarmentFlatCmZone | "body" = zone;
   const useSlope = options?.useShoulderSlopeDistribution === true;
-  /**
-   * 「左半身か右半身か」を判定する: x <= CX なら左、それ以外は右。
-   * 肩スロープ単位ベクトル `(ux, uy)` は左右で `ux` の符号が反転（外側方向）し、`uy` は両側 +Y（下方向）。
-   */
-  const slopeUnit = (sideLeft: boolean) =>
-    sideLeft ? GARMENT_FLAT_CM_SHOULDER_SLOPE_UNIT_L : GARMENT_FLAT_CM_SHOULDER_SLOPE_UNIT_R;
 
   if (zone === "sleeve_L") {
     if (x > SH_L_X) {
-      z = "body";
-      return getDelta(x, y, z, dSh, dBw, dBl, dSleeveLengthPx, options);
+      return bodyZoneDelta(x, y, dSh, dBw, dBl, options);
     }
-    if (useSlope) {
-      const u = slopeUnit(true);
-      // dSh は「肩幅変化 px の片側」相当。これを左肩スロープ方向へ符号付きで投影。
-      // 既存挙動 (`dx = -dSh`) は `u.ux ≈ -0.925` でほぼ等価、加えて `dy = +dSh * uy` が「肩を下に落とす」。
-      dx = dSh * u.ux;
-      dy = dSh * u.uy;
-    } else {
-      dx = -dSh;
-      dy = 0;
-    }
+    [dx, dy] = sleeveZoneDelta(x, y, true, dSh, dBw, dBl, dSleeveLengthPx, options);
   } else if (zone === "sleeve_R") {
     if (x < SH_R_X) {
-      z = "body";
-      return getDelta(x, y, z, dSh, dBw, dBl, dSleeveLengthPx, options);
+      return bodyZoneDelta(x, y, dSh, dBw, dBl, options);
     }
-    if (useSlope) {
-      const u = slopeUnit(false);
-      dx = dSh * u.ux;
-      dy = dSh * u.uy;
-    } else {
-      dx = dSh;
-      dy = 0;
-    }
+    [dx, dy] = sleeveZoneDelta(x, y, false, dSh, dBw, dBl, dSleeveLengthPx, options);
   } else if (zone === "body") {
-    const BLEND_TOP = SH_Y;
-    const BLEND_BOT = BODY_TOP;
-    const tyBlend = Math.max(0, Math.min(1, (y - BLEND_TOP) / (BLEND_BOT - BLEND_TOP)));
-    const effectiveDw = dSh * (1 - tyBlend) + dBw * tyBlend;
-
-    const half = x <= CX ? CX - BDY_L_X : BDY_R_X - CX;
-    const distFromCX = x - CX;
-    const t = half > 0 ? Math.min(1, Math.abs(distFromCX) / half) : 0;
-    const sideLeft = distFromCX < 0;
-    if (useSlope) {
-      /**
-       * 胴ブレンド領域（y in [SH_Y, BODY_TOP]）は肩寄りほど tyBlend≈0 で `dSh` 主体。
-       * その帯では肩スロープ方向の `(ux, uy)` を、肩→胴へ移るほど水平へなだらかに減衰させる:
-       *   shoulderInfluence = (1 - tyBlend)  // 肩に近いほど 1
-       *   dx_slope = dSh * ux * shoulderInfluence
-       *   dy_slope = dSh * uy * shoulderInfluence
-       * その上に従来の水平ブレンド `effectiveDw * sign * t * tyBlend` を残し、
-       * 胴下方では従来挙動（純水平）と一致させる。
-       */
-      const u = slopeUnit(sideLeft);
-      const shoulderInfluence = 1 - tyBlend;
-      const horizontalBody = effectiveDw * t * tyBlend;
-      const slopeDx = dSh * Math.abs(u.ux) * t * shoulderInfluence; // 肩寄りでは dSh が水平に効く（sign は下で付与）
-      dx = (sideLeft ? -1 : 1) * (slopeDx + horizontalBody);
-      dy = dSh * u.uy * shoulderInfluence; // 肩寄りほど下へ落ちる
-    } else {
-      dx = distFromCX >= 0 ? effectiveDw * t : -effectiveDw * t;
-      dy = 0;
-    }
-
-    if (y >= BODY_TOP) {
-      const ty =
-        BODY_BOT - BODY_TOP > 0 ? Math.min(1, (y - BODY_TOP) / (BODY_BOT - BODY_TOP)) : 0;
-      dy += dBl * ty;
-    }
+    [dx, dy] = bodyZoneDelta(x, y, dSh, dBw, dBl, options);
   } else if (zone === "collar") {
     const t = CX - BDY_L_X > 0 ? Math.min(1, Math.abs(x - CX) / (CX - BDY_L_X)) : 0;
-    dx = x - CX >= 0 ? dBw * t * 0.3 : -dBw * t * 0.3;
-    dy = 0;
+    const sideLeft = x - CX < 0;
+    const bwScale = 0.3;
+    const bodySpanK = options?.useShoulderAnchorDrop === true ? GARMENT_FLAT_CM_BODY_WIDTH_SPAN_K : 1;
+    if (useSlope) {
+      const u = bodyWidthSlopeUnit(sideLeft);
+      const mag = dBw * t * bwScale * bodySpanK;
+      dx = mag * u.ux;
+      dy = mag * u.uy;
+    } else {
+      dx = x - CX >= 0 ? dBw * t * bwScale * bodySpanK : -dBw * t * bwScale * bodySpanK;
+      dy = 0;
+    }
   } else if (zone === "button_L") {
-    dx = -dBw * 0.05;
+    const bwScale = 0.05;
+    const bodySpanK = options?.useShoulderAnchorDrop === true ? GARMENT_FLAT_CM_BODY_WIDTH_SPAN_K : 1;
+    if (useSlope) {
+      const u = bodyWidthSlopeUnit(true);
+      dx = dBw * bwScale * bodySpanK * u.ux;
+      dy = dBw * bwScale * bodySpanK * u.uy;
+    } else {
+      dx = -dBw * bwScale * bodySpanK;
+      dy = 0;
+    }
     if (y >= BODY_TOP) {
       const ty = Math.min(1, (y - BODY_TOP) / (BODY_BOT - BODY_TOP));
-      dy = dBl * ty;
+      dy += dBl * ty;
     }
   } else if (zone === "button_R") {
-    dx = dBw * 0.05;
+    const bwScale = 0.05;
+    const bodySpanK = options?.useShoulderAnchorDrop === true ? GARMENT_FLAT_CM_BODY_WIDTH_SPAN_K : 1;
+    if (useSlope) {
+      const u = bodyWidthSlopeUnit(false);
+      dx = dBw * bwScale * bodySpanK * u.ux;
+      dy = dBw * bwScale * bodySpanK * u.uy;
+    } else {
+      dx = dBw * bwScale * bodySpanK;
+      dy = 0;
+    }
     if (y >= BODY_TOP) {
       const ty = Math.min(1, (y - BODY_TOP) / (BODY_BOT - BODY_TOP));
-      dy = dBl * ty;
+      dy += dBl * ty;
     }
   }
 
@@ -226,7 +451,8 @@ export function flatCmMeasureLineAttrs(
   dSh: number,
   dBw: number,
   dBl: number,
-  dSleeveLengthPx: number
+  dSleeveLengthPx: number,
+  options: GarmentFlatCmDeformOptions = GARMENT_FLAT_CM_DEFAULT_DEFORM_OPTIONS
 ): {
   shoulder: { x1: string; x2: string; y1: string; y2: string };
   bodyWidth: { x1: string; x2: string; y1: string; y2: string };
@@ -234,12 +460,19 @@ export function flatCmMeasureLineAttrs(
   sleeveL: { d: string };
   sleeveR: { d: string };
 } {
+  const useAnchorDrop = options.useShoulderAnchorDrop === true;
+  const spanDx = dSh * (useAnchorDrop ? GARMENT_FLAT_CM_SHOULDER_SPAN_K : 1);
+  const dropDy =
+    useAnchorDrop && options.useShoulderSlopeDistribution
+      ? dSh * GARMENT_FLAT_CM_SHOULDER_DROP_K * GARMENT_FLAT_CM_SHOULDER_SLOPE_UNIT_L.uy
+      : 0;
+
   return {
     shoulder: {
-      x1: String(fmt(SH_L_X - dSh)),
-      x2: String(fmt(SH_R_X + dSh)),
-      y1: "103.501",
-      y2: "103.501",
+      x1: String(fmt(SH_L_X - spanDx)),
+      x2: String(fmt(SH_R_X + spanDx)),
+      y1: String(fmt(SH_Y + dropDy)),
+      y2: String(fmt(SH_Y + dropDy)),
     },
     bodyWidth: {
       x1: String(fmt(BDY_L_X - dBw)),
@@ -260,7 +493,8 @@ export function flatCmMeasureLineAttrs(
         dSh,
         dBw,
         dBl,
-        dSleeveLengthPx
+        dSleeveLengthPx,
+        options
       ),
     },
     sleeveR: {
@@ -270,7 +504,8 @@ export function flatCmMeasureLineAttrs(
         dSh,
         dBw,
         dBl,
-        dSleeveLengthPx
+        dSleeveLengthPx,
+        options
       ),
     },
   };

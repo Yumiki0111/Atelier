@@ -1,9 +1,18 @@
 import { getPathPoints } from "../pathUtils";
 import { BODY_CX, BODY_H, BZ } from "../constants";
+import { GARMENT_FLAT_CM_VIEWBOX } from "../../garmentFlatCmGrading/garmentFlatCmGradingConstants";
+
+function parseGarmentFlatCmViewBoxSize(): { w: number; h: number } {
+  const parts = GARMENT_FLAT_CM_VIEWBOX.trim().split(/\s+/).map(Number);
+  if (parts.length >= 4 && parts.every((n) => Number.isFinite(n))) {
+    return { w: parts[2]!, h: parts[3]! };
+  }
+  return { w: 389, h: 519 };
+}
 
 /**
- * 格子モデル専用: リグ線画は **public の `grid-body-rig.svg`** から取る 1 本の stroke-only compound。
- * `d` の文字列コピーは `npm run sync:grid-rig-d`（repo 直下）で `grid-body-rig.svg` とこのファイルの定数を揃える。
+ * 格子モデル専用: ランタイム 9 本は `gridSvgRigData.GRID_RIG_NINE_PATH_DS_SVG`（`model-front-rig-nine.svg`）。
+ * 旧 compound 1 本は **public の `grid-body-rig.svg`**（`npm run sync:grid-rig-d`）。compound 分解は hip の向きが model_front と逆になるため表示には使わない。
  * 構造は **中心垂直線（脊髄）** ＋ **それを挟む左右対称**の腕・肩ポリライン（4 subpath）。
  *
  * **平置き cm 基本服**（`garment-flat-cm-template-garment.svg` の `<g id="rig">`）と論理同一の id（綴りはアセット踏襲）:
@@ -14,9 +23,10 @@ import { BODY_CX, BODY_H, BZ } from "../constants";
  * 体側ワープは `armShoulderPivotOnFixedSeam` 等で肩先を軸に腕スパンが追随する。
  */
 
-/** `grid-body-rig.svg` と同一 viewBox（model_F.svg リグと同期） */
-export const GRID_MODEL_RIG_VIEWBOX_W = 389;
-export const GRID_MODEL_RIG_VIEWBOX_H = 519;
+/** 平置き cm / model_front 系 SVG の viewBox（`GARMENT_FLAT_CM_VIEWBOX` と同期） */
+const _flatCmVb = parseGarmentFlatCmViewBoxSize();
+export const GRID_MODEL_RIG_VIEWBOX_W = _flatCmVb.w;
+export const GRID_MODEL_RIG_VIEWBOX_H = _flatCmVb.h;
 /** リグ SVG 上端 y（`Vector (9)` は 0） */
 export const GRID_MODEL_RIG_TOP_Y = 0;
 
@@ -102,8 +112,9 @@ export function gridRigVectorPointFromBodyTemplate(bx: number, by: number): [num
 /**
  * ランタイム用の `d`（`sync:grid-rig-d` で `grid-body-rig.svg` と同期）。
  */
+/** model_front / FIREMAN JACKET `#rig` と同期（肩 Y≈117・首 Y≈94） */
 export const GRID_MODEL_RIG_STROKE_COMPOUND_D =
-  "M194.375 0.25V292.249M194.407 272.969L165.829 285.409L159.793 515.249M388.375 270.249L250.367 115.369L194.367 92.2891L138.371 115.369L0.375 270.249M194.328 272.969L222.907 285.409L228.942 515.249";
+  "M194.375 0V294M194.407 274.72L165.829 287.16L159.793 517M388.375 272L250.367 117.12L194.367 94.04L138.371 117.12L0.375 272M194.328 274.72L222.907 287.16L228.942 517";
 
 /** 脚補助の左右オフセット（脊髄 x からの距離・ピクセル）。アートに脚ベクタが無い場合のプレースホルダ。 */
 const DEFAULT_LEG_OFFSET_FROM_SPINE = 62;
@@ -224,6 +235,21 @@ export function gridModelRigCompoundToNineSvgPathDs(compoundD: string, _legOffse
     path7,
     path8,
   ];
+}
+
+/** リグ viewBox 座標の 9 本 `d` をボディテンプレへ（`model_front` の `#rig` 直取り用） */
+export function gridNineSvgPathDsToBodyTemplatePaths(
+  svgDs: string[],
+  rigViewBoxWidth: number = GRID_MODEL_RIG_VIEWBOX_W,
+  rigViewBoxHeight: number = GRID_MODEL_RIG_VIEWBOX_H
+): string[] {
+  return svgDs.map((d) => {
+    const pts = getPathPoints(d) as [number, number][];
+    const bodyPts = pts.map(([x, y]) =>
+      gridRigSvgPointToBodyTemplatePreserveAspect(rigViewBoxWidth, rigViewBoxHeight, x, y)
+    );
+    return dFromPts(bodyPts, 2);
+  });
 }
 
 /** 9 本をボディテンプレへ。論理サイズは Vector(9) / Group116 と同様 `W×H`（既定 389×518）で等方写像 */

@@ -8,6 +8,14 @@ import {
 
 export const GARMENT_FLAT_CM_VIEWBOX = "0 0 389 525";
 
+/**
+ * `#rig` 内の DOM 順（shaft…）→ `gridSvgRigData` と同一 index 契約への並べ替え。
+ * （`gridSvgRigData` が `buildGarmentFlatCmGradingSpecForProductDb` を import しないようここに置く）
+ */
+export const GARMENT_FLAT_CM_DOM_RIG_PATH_INDICES_FOR_BPATHS_ORDER: readonly number[] = [
+  0, 8, 5, 1, 3, 6, 7, 2, 4,
+];
+
 export const CX = 194.375;
 export const SH_Y = 103.5;
 export const BODY_TOP = 145.5;
@@ -15,6 +23,20 @@ export const BODY_BOT = 293.5;
 
 export const SH_L_X = 125.875;
 export const SH_R_X = 262.875;
+
+/**
+ * 肩付け内側アンカー帯（CX↔肩計測点のこの割合まで固定。それより外側だけ dSh が効く）
+ */
+export const GARMENT_FLAT_CM_SHOULDER_ANCHOR_INNER_FRAC = 0.42;
+/** 肩幅 dSh の水平（計測スパン）成分。残りは主にオチ(dy) */
+export const GARMENT_FLAT_CM_SHOULDER_SPAN_K = 0.22;
+/** 肩幅 dSh のオチ(dy)倍率 */
+export const GARMENT_FLAT_CM_SHOULDER_DROP_K = 1.05;
+/** 袖ゾーンで胴変位の dy をブレンドする割合（1 だと身幅の水平寄り dy が袖角度を潰す） */
+export const GARMENT_FLAT_CM_SLEEVE_BODY_DY_BLEND = 0.18;
+/** 身幅 dBw の path 水平成分（肩の SPAN_K と同様、試着見えで広がり過ぎを抑える） */
+export const GARMENT_FLAT_CM_BODY_WIDTH_SPAN_K = 0.58;
+
 export const BDY_L_X = 136.375;
 export const BDY_R_X = 252.375;
 export const TIP_L_X = 11.375;
@@ -81,7 +103,7 @@ export type GarmentFlatCmZone =
 
 /**
  * 背面 `back-stroke*` だけ path id フォールバックが必要なケース（前面から切り取りシリアライズすると祖先 `<g>` を失う）。
- * それ以外のゾーンは SVG の `<g id="sleeve_L"|"sleeve_R"|"body"|"collar"|"button_L"|"button_R"|"button_R_detail">` と
+ * それ以外のゾーンは SVG の `<g id="clothes/arm_L"|"clothes/arm_R"|"clothes/body">`（新標準）または旧 `sleeve_L` / `body` / … と
  * `flatCmOutlinePathZones` / `extractFlatCmBaseGarmentSlicesFromMarkup` に委ねる。
  */
 export const GARMENT_FLAT_CM_PATH_ZONES: Record<string, GarmentFlatCmZone> = {
@@ -156,11 +178,32 @@ export function garmentFlatCmOmitGridBodySilhouetteStroke(
   return GARMENT_FLAT_CM_GRID_BODY_BACK_GUIDE_ONLY_STROKE_PATH_INDICES.has(pathIndex);
 }
 
+function isIllustratedGridBodySilhouettePathTotal(pathTotal: number): boolean {
+  return (
+    pathTotal === GARMENT_FLAT_CM_GRID_BODY_MODEL_FRONT_PATH_TOTAL ||
+    pathTotal === GARMENT_FLAT_CM_GRID_BODY_ILLUSTRATED_FRONT_PATH_TOTAL ||
+    pathTotal === GARMENT_FLAT_CM_GRID_BODY_ILLUSTRATED_BACK_PATH_TOTAL
+  );
+}
+
+/** 末尾 N 本を構築線として肌塗り・輪郭から除外する（22/21 本テンプレのみ。13 本 model_front では 0） */
+function illustratedGridBodyRigTailPathCount(pathTotal: number): number {
+  if (pathTotal === GARMENT_FLAT_CM_GRID_BODY_MODEL_FRONT_PATH_TOTAL) return 0;
+  if (
+    pathTotal === GARMENT_FLAT_CM_GRID_BODY_ILLUSTRATED_FRONT_PATH_TOTAL ||
+    pathTotal === GARMENT_FLAT_CM_GRID_BODY_ILLUSTRATED_BACK_PATH_TOTAL
+  ) {
+    return GARMENT_FLAT_CM_GRID_BODY_ILLUSTRATED_FRONT_RIG_TAIL_PATHS;
+  }
+  return 0;
+}
+
 export function garmentFlatCmUsesLayeredGridBodySilhouette(bodyPathCount: number): boolean {
   if (bodyPathCount <= 0) return false;
   return (
     bodyPathCount === GARMENT_FLAT_CM_GRID_BODY_TEMPLATE_PATH_COUNT ||
-    bodyPathCount === GARMENT_FLAT_CM_GRID_BODY_BACK_TEMPLATE_PATH_COUNT
+    bodyPathCount === GARMENT_FLAT_CM_GRID_BODY_BACK_TEMPLATE_PATH_COUNT ||
+    bodyPathCount === GARMENT_FLAT_CM_GRID_BODY_MODEL_FRONT_PATH_TOTAL
   );
 }
 
@@ -191,8 +234,12 @@ export function garmentFlatCmGridBodyPathEndsClosed(pathD: string): boolean {
 }
 
 /**
- * イラスト系前面テンプレ（`grid-body-silhouette-path-source.svg` / model_front）契約。
- * `<path>` 出現順の先頭が肌塗り、末尾が黒構築線。
+ * `model_front (3).svg` の `#body` 直下 path 本数（リグは別 SVG。末尾 9 本スキップは不要）。
+ */
+export const GARMENT_FLAT_CM_GRID_BODY_MODEL_FRONT_PATH_TOTAL = 13;
+
+/**
+ * 旧 bundled 前面テンプレ（22 本＝肌 13 + 末尾構築線 9）。新規は {@link GARMENT_FLAT_CM_GRID_BODY_MODEL_FRONT_PATH_TOTAL}。
  */
 export const GARMENT_FLAT_CM_GRID_BODY_ILLUSTRATED_FRONT_PATH_TOTAL = 22;
 /**
@@ -211,10 +258,10 @@ export function garmentFlatCmGridBodyFillLayerPaint(
   pathTotal: number,
   canvasBg: string
 ): string {
+  const rigTail = illustratedGridBodyRigTailPathCount(pathTotal);
   const illustrated =
-    (pathTotal === GARMENT_FLAT_CM_GRID_BODY_ILLUSTRATED_FRONT_PATH_TOTAL ||
-      pathTotal === GARMENT_FLAT_CM_GRID_BODY_ILLUSTRATED_BACK_PATH_TOTAL) &&
-    pathIdx < pathTotal - GARMENT_FLAT_CM_GRID_BODY_ILLUSTRATED_FRONT_RIG_TAIL_PATHS &&
+    isIllustratedGridBodySilhouettePathTotal(pathTotal) &&
+    pathIdx < pathTotal - rigTail &&
     garmentFlatCmGridBodyPathEndsClosed(pathD);
   if (illustrated) {
     return GARMENT_FLAT_CM_GRID_BODY_ILLUSTRATED_SKIN_FILL;
@@ -234,14 +281,13 @@ export function garmentFlatCmGridBodyLayeredOutlinePathAfterFirst(
 ): boolean {
   if (pathIdx < 1) return false;
   if (garmentFlatCmOmitGridBodySilhouetteStroke(pathIdx, bodyModelVariant)) return false;
-  const illustrated =
-    pathTotal === GARMENT_FLAT_CM_GRID_BODY_ILLUSTRATED_FRONT_PATH_TOTAL ||
-    pathTotal === GARMENT_FLAT_CM_GRID_BODY_ILLUSTRATED_BACK_PATH_TOTAL;
-  if (illustrated && pathIdx >= pathTotal - GARMENT_FLAT_CM_GRID_BODY_ILLUSTRATED_FRONT_RIG_TAIL_PATHS) {
+  const rigTail = illustratedGridBodyRigTailPathCount(pathTotal);
+  const illustrated = isIllustratedGridBodySilhouettePathTotal(pathTotal);
+  if (illustrated && rigTail > 0 && pathIdx >= pathTotal - rigTail) {
     return false;
   }
   if (!garmentFlatCmGridBodyPathEndsClosed(pathD)) return true;
-  return illustrated && pathIdx < pathTotal - GARMENT_FLAT_CM_GRID_BODY_ILLUSTRATED_FRONT_RIG_TAIL_PATHS;
+  return illustrated && pathIdx < pathTotal - rigTail;
 }
 
 /** 明示 stroke-width がない平置き cm ガーメント path 向け既定（ユーザー単位） */
@@ -253,5 +299,34 @@ export const GARMENT_FLAT_CM_PREVIEW_GARMENT_DEFAULT_STROKE_WIDTH = 1.25;
  */
 export const GARMENT_FLAT_CM_PREVIEW_GARMENT_STROKE_FALLBACK = "rgba(26,26,26,0.97)";
 
-/** プレビュー・開発ツール・ウィジェット埋め込みでの服アウトライン stroke の下限（meet 縮小後も極細に見えないよう） */
+/** プレビュー・ウィジェット埋め込みでの服アウトライン stroke の下限（meet 縮小後も極細に見えないよう） */
 export const GARMENT_FLAT_CM_PREVIEW_GARMENT_MIN_STROKE_WIDTH = 5.05;
+
+/**
+ * 開発ツール試着プレビュー用。ネイティブ viewBox（~389×525）では meet 極小縮小がないため
+ * `GARMENT_FLAT_CM_PREVIEW_GARMENT_MIN_STROKE_WIDTH` のクランプは線が太く見える。
+ */
+export const GARMENT_FLAT_CM_DEV_FITTING_GARMENT_MIN_STROKE_WIDTH = 1.25;
+
+/** 開発ツール試着プレビューのモデル輪郭 stroke（SVG ユーザー単位） */
+export const GARMENT_FLAT_CM_DEV_FITTING_BODY_SILHOUETTE_STROKE_WIDTH = 1.5;
+
+/** 旧テンプレ cover 写像（viewBox 縦 ~2700）と model_front ネイティブ（~525）の境界 */
+const GARMENT_FLAT_CM_NATIVE_VIEWBOX_HEIGHT_MAX = 640;
+
+/** 平置き cm の viewBox が Figma ネイティブ寸法か（プレビュー stroke 幅の分岐） */
+export function garmentFlatCmPreviewUsesNativeSvgViewBox(viewBoxHeight: number): boolean {
+  return viewBoxHeight > 0 && viewBoxHeight <= GARMENT_FLAT_CM_NATIVE_VIEWBOX_HEIGHT_MAX;
+}
+
+export function garmentFlatCmPreviewGarmentMinStrokeWidth(viewBoxHeight: number): number {
+  return garmentFlatCmPreviewUsesNativeSvgViewBox(viewBoxHeight)
+    ? GARMENT_FLAT_CM_DEV_FITTING_GARMENT_MIN_STROKE_WIDTH
+    : GARMENT_FLAT_CM_PREVIEW_GARMENT_MIN_STROKE_WIDTH;
+}
+
+export function garmentFlatCmPreviewBodySilhouetteStrokeWidth(viewBoxHeight: number): number {
+  return garmentFlatCmPreviewUsesNativeSvgViewBox(viewBoxHeight)
+    ? GARMENT_FLAT_CM_DEV_FITTING_BODY_SILHOUETTE_STROKE_WIDTH
+    : 4;
+}

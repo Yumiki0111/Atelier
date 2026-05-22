@@ -7,6 +7,7 @@ import {
 import {
   collectGarmentFlatCmBackLayerPathElementsByIdOrder,
   collectGarmentFlatCmFrontOutlinePathElements,
+  findGarmentFlatCmRigGroupElement,
   firstGarmentFlatCmBackLayerElement,
   stripGarmentFlatCmMeasureDecorations,
 } from "./garmentFlatCmGradingSvgOutline";
@@ -116,6 +117,27 @@ export function installGradedGarmentDomFromMarkup(
 
   garmentOriginalBehindOutlineDs.current = collectGarmentFlatCmBehindOutlineBaseDsInOrder(srcRoot);
 
+  // #region agent log
+  fetch("http://127.0.0.1:7468/ingest/8ae11b2e-0353-49f9-add8-94485bd038d3", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0da327" },
+    body: JSON.stringify({
+      sessionId: "0da327",
+      runId: "post-fix-v2",
+      hypothesisId: "H-back",
+      location: "garmentFlatCmGradingFittingDom.ts:installGradedGarmentDom",
+      message: "back-stroke layer collect",
+      data: {
+        behindPathCount: garmentOriginalBehindOutlineDs.current.length,
+        behindIdsFound: GARMENT_FLAT_CM_BACK_LAYER_IDS.filter(
+          (id) => firstGarmentFlatCmBackLayerElement(srcRoot, id) != null
+        ),
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
+
   const cloneFront = srcRoot.cloneNode(true) as SVGSVGElement;
   ensureGarmentFlatCmRigGroupOnClonedSvg(cloneFront);
   /** 計測レイヤは試着・path 列挙から外す（赤線が fit に混入しないよう DOM から除去） */
@@ -141,7 +163,7 @@ export function installGradedGarmentDomFromMarkup(
       .join("");
   const backFragments = serializeIds(GARMENT_FLAT_CM_BACK_LAYER_IDS);
   installGarmentBackBehindModelOnly(garmentBackSvg, backFragments);
-  garmentFrontSvg.querySelector("#rig")?.setAttribute("display", "none");
+  findGarmentFlatCmRigGroupElement(garmentFrontSvg)?.setAttribute("display", "none");
   return true;
 }
 

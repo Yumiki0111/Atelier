@@ -1,5 +1,6 @@
 import { bodyHeight } from "@/app/(main)/development/fitting/lib/bodyUtils";
 import { REF_HEIGHT_CM } from "@/app/(main)/development/fitting/lib/constants";
+import { GARMENT_FLAT_CM_VIEWBOX } from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmGradingConstants";
 import { DEFAULT_PREVIEW_FIT_HEIGHT_CM } from "@/lib/previewFitStorage";
 
 /**
@@ -13,8 +14,18 @@ export function uniformPreviewViewBoxHeightFromHeightCm(heightCm: number): numbe
 }
 
 /**
- * 体型変更シート専用。低身長側はやや縮小してバランスを取る。
- * 上限は 1.0：それ以上の拡大は `transform` でキャンバスからはみ出しやすい（特に 195cm 付近）。
+ * 平置き cm 体型シート: viewBox 高さを身長比で変え、`meet` でシルエットの見た目も連動させる。
+ * 170cm で Figma ネイティブ 525 と揃える。
+ */
+export function nativeFlatCmPreviewViewBoxHeightFromHeightCm(heightCm: number): number {
+  const h = Math.max(150, Math.min(195, Math.round(heightCm)));
+  const parts = GARMENT_FLAT_CM_VIEWBOX.trim().split(/\s+/).map(Number);
+  const refH = parts[3] ?? 525;
+  return Math.ceil(refH * (h / REF_HEIGHT_CM));
+}
+
+/**
+ * @deprecated 表示は {@link nativeFlatCmPreviewViewBoxHeightFromHeightCm} を使う（CSS scale は二重になりやすい）
  */
 export function bodySheetPreviewHeightScale(heightCm: number): number {
   const h = Math.max(150, Math.min(195, Math.round(heightCm)));

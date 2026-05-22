@@ -8,6 +8,7 @@ import {
   garmentFlatCmGridBodyFillLayerPaint,
   garmentFlatCmGridBodyLayeredOutlinePathAfterFirst,
   garmentFlatCmOmitGridBodySilhouetteStroke,
+  garmentFlatCmPreviewBodySilhouetteStrokeWidth,
   garmentFlatCmUsesLayeredGridBodySilhouette,
 } from "@/app/(main)/development/fitting/garmentFlatCmGrading/garmentFlatCmGradingConstants";
 
@@ -25,6 +26,7 @@ export function WidgetPreviewFitSvgBodyPaths({
   bodyStrokeSimple,
   presetId,
   bodyModelVariant,
+  viewBoxHeight,
   ids,
 }: {
   bodyPaths: string[];
@@ -32,8 +34,10 @@ export function WidgetPreviewFitSvgBodyPaths({
   bodyStrokeSimple: string;
   presetId?: GarmentFlatCmPresetId;
   bodyModelVariant?: BodyModelVariant;
+  viewBoxHeight: number;
   ids: WidgetPreviewFitSvgBodyPathIds;
 }) {
+  const bodyStrokeWidth = garmentFlatCmPreviewBodySilhouetteStrokeWidth(viewBoxHeight);
   if (
     isGarmentFlatCmPresetId(presetId) &&
     garmentFlatCmUsesLayeredGridBodySilhouette(bodyPaths.length)
@@ -52,7 +56,7 @@ export function WidgetPreviewFitSvgBodyPaths({
         <g
           fill="none"
           stroke={GARMENT_FLAT_CM_GRID_BODY_SILHOUETTE_STROKE}
-          strokeWidth={4}
+          strokeWidth={bodyStrokeWidth}
           pointerEvents="none"
         >
           {bodyPaths[0] && !garmentFlatCmOmitGridBodySilhouetteStroke(0, bodyModelVariant) ? (
@@ -68,7 +72,7 @@ export function WidgetPreviewFitSvgBodyPaths({
     );
   }
   return (
-    <g fill={canvasBg} stroke={bodyStrokeSimple} strokeWidth={4}>
+    <g fill={canvasBg} stroke={bodyStrokeSimple} strokeWidth={bodyStrokeWidth}>
       {bodyPaths.map((d, i) => (
         <path key={`${ids.simpleRowKeyPrefix}-${i}`} d={d} />
       ))}
